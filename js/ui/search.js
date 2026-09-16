@@ -2,7 +2,7 @@
 // Backed by Open Food Facts name search (debounced 400ms), selecting a result opens
 // AddFoodView prefilled with the product (§19 ScannedProduct).
 
-import { offSearchByName } from "../api.js";
+import { offSearchByName, usdaSearchByName } from "../api.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { openAddFoodSheet } from "./addfood.js";
@@ -86,14 +86,22 @@ export function openFoodSearchSheet() {
         const generation = ++searchGeneration;
         state = { kind: "loading" };
         renderState();
-        const outcome = await offSearchByName(trimmed);
+        // USDA covers plain whole foods with clean names ("Bananas, raw"); OFF covers branded
+        // packaged products. Both run in parallel; USDA's cleaner matches lead the list, since a
+        // person typing "banana" almost always means the fruit, not a branded banana product.
+        const [usda, off] = await Promise.all([usdaSearchByName(trimmed), offSearchByName(trimmed)]);
         if (generation !== searchGeneration) return; // superseded by a newer search
-        if (outcome.status === "failed") {
-          state = { kind: "error", message: outcome.message };
-        } else if (outcome.products.length === 0) {
-          state = { kind: "noResults", query: trimmed };
+
+        const usdaProducts = usda.status === "success" ? usda.products : [];
+        const offProducts = off.status === "success" ? off.products : [];
+        const products = [...usdaProducts, ...offProducts];
+
+        if (products.length > 0) {
+          state = { kind: "results", products };
+        } else if (usda.status === "failed" && off.status === "failed") {
+          state = { kind: "error", message: off.message };
         } else {
-          state = { kind: "results", products: outcome.products };
+          state = { kind: "noResults", query: trimmed };
         }
         renderState();
       };

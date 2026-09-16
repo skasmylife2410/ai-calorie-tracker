@@ -307,6 +307,48 @@ function usdaFoodToScannedProduct(barcode, food) {
 }
 
 /**
+ * GET https://api.nal.usda.gov/fdc/v1/foods/search?api_key=...&query=...&dataType=Foundation,SR+Legacy
+ * Name search restricted to generic whole foods (no branded/UPC data), which is where FDC's
+ * plain-English descriptions ("Bananas, raw") beat Open Food Facts' barcode-scan product titles.
+ * Used by search.js alongside offSearchByName(), not as a replacement — FDC has no branded
+ * product catalog worth searching by name (Branded dataType names are as messy as OFF's).
+ * @returns {Promise<{status:"success", products:object[]}|{status:"failed", message:string}>}
+ */
+export async function usdaSearchByName(query) {
+  if (typeof query !== "string" || query.trim() === "") return { status: "success", products: [] };
+
+  const params = new URLSearchParams({
+    api_key: usdaApiKey(),
+    query: query.trim(),
+    dataType: "Foundation,SR Legacy",
+    pageSize: "10",
+  });
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?${params.toString()}`;
+
+  let res;
+  try {
+    res = await fetchWithTimeout(url, {}, USDA_TIMEOUT_MS);
+  } catch (err) {
+    return { status: "failed", message: `USDA network error: ${err.message ?? err}` };
+  }
+  if (!res.ok) return { status: "failed", message: `USDA HTTP ${res.status}` };
+
+  let body;
+  try {
+    body = await res.json();
+  } catch (err) {
+    return { status: "failed", message: `USDA decode error: ${err.message ?? err}` };
+  }
+
+  const foods = Array.isArray(body?.foods) ? body.foods : [];
+  const products = foods
+    .map((f) => usdaFoodToScannedProduct(`usda:${f.fdcId}`, f))
+    .filter((p) => p !== null);
+
+  return { status: "success", products };
+}
+
+/**
  * GET https://api.nal.usda.gov/fdc/v1/foods/search?api_key=...&query={barcode}&dataType=Branded
  * FDC has no direct barcode endpoint — filters foods[] by normalized gtinUpc match.
  * @returns {Promise<{status:"found", product:object}|{status:"notFound"}|{status:"failed", message:string}>}
