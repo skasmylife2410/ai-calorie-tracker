@@ -22,7 +22,7 @@ export function render(container) {
     <div class="navbar" style="position:sticky;">
       <span class="navbar-spacer"></span>
       <div class="navbar-title">Progress</div>
-      <span class="navbar-spacer"></span>
+      <a class="navbar-btn" href="/compare.html" style="text-decoration:none;">Together</a>
     </div>
     <div class="history-content" id="history-content"></div>
   `;
