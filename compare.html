@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Together · SnapCal</title>
+  <meta name="theme-color" content="#F7F6F3" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/css/compare.css" />
+</head>
+<body>
+  <main class="tg">
+    <header class="tg-top">
+      <a class="tg-back" href="/">‹ Log</a>
+      <h1 class="tg-title">Together</h1>
+      <div class="tg-range" role="group" aria-label="Time range">
+        <button type="button" data-range="7" aria-pressed="true">7 days</button>
+        <button type="button" data-range="30" aria-pressed="false">30 days</button>
+      </div>
+    </header>
+    <div id="tg-body" aria-live="polite"><p class="tg-note">Loading…</p></div>
+  </main>
+  <script type="module" src="/js/compare.js"></script>
+</body>
+</html>
