@@ -1,0 +1,9 @@
+After uploading, delete these three old files on GitHub (they were renamed):
+
+  compare.html      ->  now us.html
+  css/compare.css   ->  now css/us.css
+  js/compare.js     ->  now js/us.js
+  js/ui/saved.js    ->  replaced by js/ui/favourites.js (nothing imports saved.js any more)
+
+On github.com: open the file, click the "..." menu at the top right, choose Delete file, commit.
+Leaving them in place does no harm — they're just dead weight — but us.html is the live page now.
