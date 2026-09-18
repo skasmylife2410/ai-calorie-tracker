@@ -575,6 +575,73 @@ export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
  * @param {{mode:"meal"|"label"|"text", imageDataUrl?:string, text?:string}} params
  * @returns {Promise<{success:true, items:Array}|{success:false, reason:string}>}
  */
+/**
+ * Parses a free-text workout ("45 min soccer, pretty intense") into structured sessions.
+ * @returns {Promise<{ok:true, sessions:Array}|{ok:false, errorType:string, message:string}>}
+ */
+export async function parseExerciseText(text, { lang = "en" } = {}) {
+  const outcome = await geminiRequest({ mode: "exercise", text, lang });
+  if (!outcome.ok) return outcome;
+  const sessions = outcome.items
+    .map((raw) => ({
+      name: typeof raw?.name === "string" && raw.name.trim() !== "" ? raw.name.trim() : "Workout",
+      activity: String(raw?.activity ?? "other").toLowerCase(),
+      minutes: Math.max(0, Math.round(Number(raw?.minutes) || 0)),
+      intensity: String(raw?.intensity ?? "moderate").toLowerCase(),
+    }))
+    .filter((s) => s.minutes > 0);
+  return { ok: true, sessions };
+}
+
+/**
+ * Asks for three recipe ideas that fit the calories/protein left in the day.
+ * Nothing is persisted — ideas are regenerated on demand.
+ */
+export async function suggestRecipes({ caloriesLeft, proteinLeft, preferences = [], lang = "en" } = {}) {
+  const outcome = await geminiRequest({ mode: "recipes", caloriesLeft, proteinLeft, preferences, lang });
+  if (!outcome.ok) return outcome;
+  const recipes = outcome.items
+    .map((raw) => ({
+      name: String(raw?.name ?? "").trim(),
+      minutes: Math.max(0, Math.round(Number(raw?.minutes) || 0)),
+      calories: Math.max(0, Math.round(Number(raw?.calories) || 0)),
+      proteinG: Math.max(0, Math.round(Number(raw?.protein_g) || 0)),
+      carbsG: Math.max(0, Math.round(Number(raw?.carbs_g) || 0)),
+      fatG: Math.max(0, Math.round(Number(raw?.fat_g) || 0)),
+      ingredients: Array.isArray(raw?.ingredients) ? raw.ingredients.map(String).filter(Boolean) : [],
+      steps: Array.isArray(raw?.steps) ? raw.steps.map(String).filter(Boolean) : [],
+    }))
+    .filter((r) => r.name !== "" && r.calories > 0);
+  return { ok: true, recipes };
+}
+
+/** Shared POST /api/gemini plumbing for the non-meal modes. */
+async function geminiRequest(payload) {
+  let res;
+  try {
+    res = await apiFetch("/api/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    return { ok: false, errorType: "network", message: `Network error: ${err?.message ?? err}` };
+  }
+  let body;
+  try {
+    body = await res.json();
+  } catch (err) {
+    return { ok: false, errorType: "parse", message: `Decode error: ${err?.message ?? err}` };
+  }
+  if (!res.ok || body?.errorType) {
+    return { ok: false, errorType: body?.errorType ?? "other", message: body?.message ?? `HTTP ${res.status}` };
+  }
+  if (!Array.isArray(body?.items)) {
+    return { ok: false, errorType: "parse", message: "Unexpected response from the AI." };
+  }
+  return { ok: true, items: body.items };
+}
+
 export async function analyzeMeal({ mode, imageDataUrl, text }) {
   const modeInfo = ANALYSIS_MODES[mode] ?? ANALYSIS_MODES.meal;
 

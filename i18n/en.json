@@ -1,0 +1,172 @@
+{
+  "app": {
+    "name": "SnapCal",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "delete": "Delete",
+    "retry": "Try again",
+    "add": "+ Add",
+    "log": "Log"
+  },
+  "home": {
+    "caloriesLeft": "Calories left",
+    "caloriesOver": "Calories over",
+    "exerciseNote": "{goal} goal + {credit} from exercise · {burned} burned",
+    "proteinLeft": "Protein left",
+    "carbsLeft": "Carbs left",
+    "fatLeft": "Fat left",
+    "proteinOver": "Protein over",
+    "carbsOver": "Carbs over",
+    "fatOver": "Fat over",
+    "recentlyUploaded": "Recently uploaded",
+    "mealsThatDay": "Meals that day",
+    "exercise": "Exercise",
+    "noExercise": "Nothing logged.",
+    "viewingDay": "Viewing {day}",
+    "backToToday": "Back to today",
+    "water": "Water",
+    "ideasTitle": "{calories} kcal and {protein}g protein left",
+    "ideasSub": "See three ideas that fit",
+    "ideasButton": "Suggest"
+  },
+  "menu": {
+    "favourites": "Favourites",
+    "database": "Food Database",
+    "scan": "Scan food",
+    "describe": "Describe meal",
+    "exercise": "Exercise",
+    "ideas": "Ideas"
+  },
+  "meal": {
+    "title": "Edit Meal",
+    "servings": "Servings",
+    "servingsHint": "Multiplies the whole meal",
+    "items": "Items",
+    "itemsHint": "Tap any number to edit it. Editing grams rescales that item's macros proportionally.",
+    "fixResults": "Fix results",
+    "saveChanges": "Save changes",
+    "noItems": "No items left — add one back with \"Fix results\" or cancel."
+  },
+  "favourites": {
+    "title": "Favourites",
+    "saved": "Saved",
+    "recent": "Recent",
+    "emptySavedTitle": "No favourites yet",
+    "emptySavedBody": "Tap the heart on any meal to keep it here for one-tap logging.",
+    "emptyRecentTitle": "Nothing logged yet",
+    "emptyRecentBody": "Foods you log will show up here so you can log them again.",
+    "macros": "{calories} kcal · {protein}g protein",
+    "servingsSuffix": " · ×{n}"
+  },
+  "exercise": {
+    "title": "Exercise",
+    "describeIt": "Describe it",
+    "placeholder": "45 min soccer, pretty intense",
+    "orPick": "Or pick below",
+    "reading": "Reading that…",
+    "readAs": "Read as: {name}",
+    "notAWorkout": "That didn't look like a workout — pick below instead.",
+    "activity": "Activity",
+    "duration": "Duration",
+    "minutes": "minutes",
+    "intensity": "Intensity",
+    "easy": "Easy",
+    "moderate": "Moderate",
+    "hard": "Hard",
+    "burned": "kcal burned",
+    "creditNote": "{credit} kcal of that is added to today's budget. Burn estimates run high, so only part of it counts.",
+    "save": "Save exercise",
+    "rowSub": "{minutes} min · −{burned} kcal ({credit} counted)",
+    "activities": {
+      "soccer": "Soccer",
+      "walk": "Walk",
+      "run": "Run",
+      "gym": "Gym",
+      "cycling": "Cycling",
+      "swim": "Swim",
+      "other": "Other"
+    }
+  },
+  "ideas": {
+    "title": "Ideas",
+    "kcalLeft": "kcal left",
+    "proteinLeft": "protein left",
+    "refresh": "↻ New ideas",
+    "loading": "Looking for three ideas that fit…",
+    "recipe": "Recipe",
+    "hideRecipe": "Hide recipe",
+    "logIt": "Log it",
+    "ingredients": "Ingredients",
+    "steps": "Steps",
+    "errorTitle": "No ideas right now",
+    "emptyTitle": "Nothing to suggest",
+    "emptyBody": "You're out of room for today — ideas come back tomorrow."
+  },
+  "us": {
+    "title": "Us",
+    "today": "Today",
+    "days7": "7 days",
+    "days30": "30 days",
+    "caloriesByDay": "Calories by day",
+    "goalLine": "daily calorie goal",
+    "lastNDays": "Last {n} days",
+    "daysLogged": "Days logged",
+    "avgCalories": "Avg calories",
+    "avgProtein": "Avg protein",
+    "daysNearGoal": "Days near goal",
+    "exercise": "Exercise",
+    "waterPerDay": "Water a day",
+    "you": "you",
+    "nearGoalNote": "“Near goal” means within 10% of that person's calorie goal.",
+    "mealsAndExercise": "{meals} · {exercise}",
+    "glassesOfWater": "{n} glass of water|{n} glasses of water",
+    "mealsCount": "{n} meal|{n} meals",
+    "noExercise": "no exercise",
+    "sessionsCount": "{n} session|{n} sessions"
+  },
+  "profile": {
+    "language": "Language",
+    "english": "English",
+    "spanish": "Español",
+    "exerciseCredit": "Add exercise calories",
+    "exerciseCreditNote": "When on, {percent}% of what you burn is added to your daily budget."
+  },
+  "errors": {
+    "offline": "No connection. Check your internet and try again.",
+    "quota": "Daily free AI limit reached — add the meal manually.",
+    "generic": "Something went wrong. Try again in a moment."
+  },
+  "tabs": {
+    "home": "Home",
+    "progress": "Progress",
+    "profile": "Profile"
+  },
+  "progress": {
+    "title": "Progress",
+    "together": "Together",
+    "streak": "Streak",
+    "noHistory": "Nothing logged yet"
+  },
+  "profileScreen": {
+    "title": "Profile",
+    "sync": "Sync",
+    "status": "Status",
+    "syncNow": "Tap to sync now.",
+    "dailyGoals": "Daily goals",
+    "bodyStats": "Body stats",
+    "activityLevel": "Activity level",
+    "goal": "Goal",
+    "calculator": "Calculator estimate"
+  },
+  "doodle": {
+    "strongTitle": "Looking strong",
+    "strongSub": "{streak}-day streak. Keep logging and he keeps growing.|{streak}-day streak. Keep logging and he keeps growing.",
+    "strongSubNew": "Log a few days in a row and he starts growing.",
+    "wellFedTitle": "Well fed",
+    "wellFedSub": "Over the goal today — no drama, it resets tomorrow.",
+    "idleTitle": "Where'd you go?",
+    "idleSub": "Nothing logged in {days} days. The streak stopped.",
+    "bigMeal": "+{calories} kcal · {protein}g protein"
+  }
+}

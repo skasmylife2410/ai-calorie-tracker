@@ -5,6 +5,7 @@
 // appended correction via queue.submitCorrection.
 
 import * as store from "../store.js";
+import { t } from "../i18n.js";
 import * as queue from "../queue.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
@@ -33,10 +34,22 @@ export function openResultsSheet(entry) {
   openSheet({
     render(panel, close) {
       panel.innerHTML = `
-        ${navBar({ title: "Edit Meal", leading: { label: "Cancel" } })}
+        ${navBar({ title: t("meal.title"), leading: { label: t("app.cancel") } })}
         <div class="sheet-panel-body">
           ${thumbHtml(entry)}
-          <div class="results-items-section-header">Items</div>
+          <div class="servings-card" id="servings-card">
+            <div class="servings-label">
+              <div class="servings-title">${t("meal.servings")}</div>
+              <div class="servings-hint">${t("meal.servingsHint")}</div>
+            </div>
+            <div class="servings-stepper">
+              <button type="button" data-serv="-1" aria-label="Fewer servings">−</button>
+              <span id="servings-value">1</span>
+              <button type="button" data-serv="1" aria-label="More servings">+</button>
+            </div>
+            <button type="button" class="servings-heart" id="fav-toggle" aria-label="Favourite">♡</button>
+          </div>
+          <div class="results-items-section-header">${t("meal.items")}</div>
           <div class="ios-section" style="margin-bottom:0;">
             <div class="ios-section-body" id="results-items"></div>
           </div>
@@ -44,8 +57,8 @@ export function openResultsSheet(entry) {
         </div>
         <div class="results-totals-bar" id="results-totals"></div>
         <div class="results-actions">
-          <button class="btn-bordered" id="fix-results-btn">${icon("wandAndStars", { size: 18 })}<span>Fix results</span></button>
-          <button class="btn-prominent" id="save-changes-btn">Save changes</button>
+          <button class="btn-bordered" id="fix-results-btn">${icon("wandAndStars", { size: 18 })}<span>${t("meal.fixResults")}</span></button>
+          <button class="btn-prominent" id="save-changes-btn">${t("meal.saveChanges")}</button>
         </div>
       `;
 
@@ -53,9 +66,41 @@ export function openResultsSheet(entry) {
       const totalsEl = panel.querySelector("#results-totals");
       const saveBtn = panel.querySelector("#save-changes-btn");
 
+      // --- servings + favourite -------------------------------------------------
+      // The stepper acts on the SAVED entry immediately (like the heart does); item edits below
+      // still work per-serving, because items always describe one serving of the meal.
+      const servValue = panel.querySelector("#servings-value");
+      const favBtn = panel.querySelector("#fav-toggle");
+      let servings = store.normalizeServings(entry.servings);
+
+      const renderServings = () => {
+        servValue.textContent = String(servings);
+        panel.querySelector("#servings-card").classList.toggle("is-multiple", servings !== 1);
+      };
+      const renderFav = () => {
+        const on = store.isFavorited(store.getFoodEntry(entry.id) ?? entry);
+        favBtn.textContent = on ? "♥" : "♡";
+        favBtn.classList.toggle("is-on", on);
+      };
+
+      panel.querySelectorAll("[data-serv]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          servings = store.normalizeServings(servings + Number(btn.dataset.serv) * 0.5);
+          store.setServings(entry.id, servings);
+          renderServings();
+          renderTotals();
+        });
+      });
+      favBtn.addEventListener("click", () => {
+        store.toggleFavorite(entry.id);
+        renderFav();
+      });
+      renderServings();
+      renderFav();
+
       const renderTotals = () => {
         totalsEl.innerHTML = TOTAL_DEFS.map((t) => {
-          const total = items.reduce((acc, i) => acc + (i[t.key] ?? 0), 0);
+          const total = items.reduce((acc, i) => acc + (i[t.key] ?? 0), 0) * servings;
           return `
             <div class="total-stat">
               <div class="total-stat-value numeric-text">${formatNumeric(total)}${t.suffix}</div>

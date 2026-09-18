@@ -101,6 +101,25 @@ export function buildPushPayload(sinceMs = 0) {
       updatedAt: new Date(w.updatedAt ?? Date.now()).toISOString(),
     }));
 
+  const dirtyExercise = store
+    .allExerciseEntries()
+    .filter((e) => (e.updatedAt ?? 0) > sinceMs)
+    .map((e) => ({
+      id: e.id,
+      day: localDateString(e.timestamp),
+      data: e,
+      updatedAt: new Date(e.updatedAt ?? Date.now()).toISOString(),
+    }));
+
+  const dirtyFavorites = store
+    .allSavedFoods()
+    .filter((f) => (f.updatedAt ?? f.createdAt ?? 0) > sinceMs)
+    .map((f) => ({
+      id: f.id,
+      data: f,
+      updatedAt: new Date(f.updatedAt ?? f.createdAt ?? Date.now()).toISOString(),
+    }));
+
   const profile = store.getProfile();
   const profilePayload =
     (profile.updatedAt ?? 0) > sinceMs ? { data: profile, updatedAt: new Date(profile.updatedAt).toISOString() } : null;
@@ -108,21 +127,25 @@ export function buildPushPayload(sinceMs = 0) {
   return {
     entries: [...dirtyEntries, ...tombstoneRows],
     water: dirtyWater,
+    exercise: dirtyExercise,
+    favorites: dirtyFavorites,
     profile: profilePayload,
     tombstoneIds: tombstones.map((t) => t.id),
   };
 }
 
 async function push(sinceMs) {
-  const { entries, water, profile, tombstoneIds } = buildPushPayload(sinceMs);
-  if (entries.length === 0 && water.length === 0 && !profile) return { ok: true };
+  const { entries, water, exercise, favorites, profile, tombstoneIds } = buildPushPayload(sinceMs);
+  if (entries.length === 0 && water.length === 0 && exercise.length === 0 && favorites.length === 0 && !profile) {
+    return { ok: true };
+  }
 
   let res;
   try {
     res = await apiFetch("/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ op: "push", entries, water, profile }),
+      body: JSON.stringify({ op: "push", entries, water, exercise, favorites, profile }),
     });
   } catch {
     return { ok: false };
@@ -173,6 +196,12 @@ async function pull(sinceIso) {
   }
   for (const w of body.water ?? []) {
     store.applyRemoteWater(w.day, w.glasses, Date.parse(w.updatedAt));
+  }
+  for (const row of body.exercise ?? []) {
+    store.applyRemoteExercise(row.data ?? row, Date.parse(row.updatedAt));
+  }
+  for (const row of body.favorites ?? []) {
+    store.applyRemoteFavorite(row.data ?? row, Date.parse(row.updatedAt));
   }
   if (body.profile) {
     store.applyRemoteProfile(body.profile.data, Date.parse(body.profile.updatedAt));

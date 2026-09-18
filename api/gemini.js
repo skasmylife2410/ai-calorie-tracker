@@ -14,7 +14,7 @@ import { checkAuth } from "./_auth.js";
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
 const REQUEST_TIMEOUT_MS = 45_000;
-const REQUIRES_IMAGE = Object.freeze({ meal: true, label: true, text: false });
+const REQUIRES_IMAGE = Object.freeze({ meal: true, label: true, text: false, exercise: false, recipes: false });
 
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
@@ -38,6 +38,92 @@ const RESPONSE_SCHEMA = {
   },
   required: ["items"],
 };
+
+// --- Schemas for the non-meal modes (exercise parsing, recipe ideas) ---------------------------
+
+const EXERCISE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    items: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          activity: { type: "STRING" },
+          minutes: { type: "NUMBER" },
+          intensity: { type: "STRING" },
+        },
+        required: ["name", "activity", "minutes", "intensity"],
+      },
+    },
+  },
+  required: ["items"],
+};
+
+const RECIPE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    items: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          minutes: { type: "NUMBER" },
+          calories: { type: "NUMBER" },
+          protein_g: { type: "NUMBER" },
+          carbs_g: { type: "NUMBER" },
+          fat_g: { type: "NUMBER" },
+          ingredients: { type: "ARRAY", items: { type: "STRING" } },
+          steps: { type: "ARRAY", items: { type: "STRING" } },
+        },
+        required: ["name", "minutes", "calories", "protein_g", "carbs_g", "fat_g", "ingredients", "steps"],
+      },
+    },
+  },
+  required: ["items"],
+};
+
+const LANGUAGE_NAMES = { en: "English", es: "Spanish" };
+
+function languageLine(lang) {
+  const name = LANGUAGE_NAMES[String(lang || "en").slice(0, 2)] || "English";
+  return `Write every name and every line of text in ${name}.`;
+}
+
+function buildExercisePrompt(text, lang) {
+  return [
+    "You turn a short free-text description of a workout into structured data for a fitness log.",
+    `The user wrote: "${String(text).trim()}"`,
+    `Rules:
+- activity MUST be exactly one of: walk, run, soccer, gym, cycling, swim, other.
+- minutes is the total duration in minutes. If the user gives a range, take the middle. If no duration is stated, estimate a typical one for that activity and say so in the name.
+- intensity MUST be exactly one of: easy, moderate, hard.
+- name is a short human label for the session, e.g. "Evening soccer".
+- If several distinct workouts are described, return one item each. If nothing resembles exercise, return an empty items array.`,
+    languageLine(lang),
+    "Return ONLY JSON matching the schema.",
+  ].join("\n");
+}
+
+function buildRecipesPrompt({ caloriesLeft, proteinLeft, preferences, lang }) {
+  const prefs = Array.isArray(preferences) && preferences.length > 0 ? preferences.join(", ") : "none";
+  return [
+    "You suggest simple meal ideas for someone tracking calories.",
+    `They have about ${Math.round(caloriesLeft)} kcal and ${Math.round(proteinLeft)} g of protein left for today.`,
+    `Preferences: ${prefs}.`,
+    `Rules:
+- Return exactly 3 different ideas that a home cook can make.
+- Each idea should fit comfortably inside the remaining calories: aim between 40% and 90% of the calories left, and get as close to the remaining protein as is realistic.
+- calories, protein_g, carbs_g and fat_g are for one serving of the finished dish.
+- minutes is total hands-on plus cooking time.
+- ingredients: 4-10 short lines with quantities. steps: 3-6 short lines.
+- Keep them ordinary and affordable — everyday supermarket ingredients, no restaurant technique.`,
+    languageLine(lang),
+    "Return ONLY JSON matching the schema.",
+  ].join("\n");
+}
 
 // --- The three verbatim prompts (SPEC-LOGIC.md §3) ---------------------------------------------
 
@@ -106,7 +192,7 @@ function stripCodeFences(raw) {
 
 // --- Single Gemini call, classified into the GeminiFailureKind taxonomy ------------------------
 
-async function callGemini(apiKey, { image, promptText }) {
+async function callGemini(apiKey, { image, promptText, schema = RESPONSE_SCHEMA }) {
   const parts = [];
   if (image && image.length > 0) {
     parts.push({ inline_data: { mime_type: "image/jpeg", data: image } });
@@ -118,7 +204,7 @@ async function callGemini(apiKey, { image, promptText }) {
     generationConfig: {
       temperature: 0.1,
       responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
+      responseSchema: schema,
       thinkingConfig: { thinkingBudget: 0 },
     },
   };
@@ -216,7 +302,7 @@ export default async function handler(req, res) {
   }
 
   const body = parseRequestBody(req);
-  const mode = ["meal", "label", "text"].includes(body.mode) ? body.mode : "meal";
+  const mode = ["meal", "label", "text", "exercise", "recipes"].includes(body.mode) ? body.mode : "meal";
   const { image, text } = body;
 
   // Mode/input mismatch — fail fast, no network call (mirrors GeminiMealAnalyzer.analyze steps 1-2).
@@ -226,8 +312,12 @@ export default async function handler(req, res) {
       .json({ errorType: "other", message: "That photo couldn't be read — retake it or add the meal manually." });
     return;
   }
-  if (!REQUIRES_IMAGE[mode] && (!text || text.trim() === "")) {
+  if (mode === "text" && (!text || text.trim() === "")) {
     res.status(200).json({ errorType: "other", message: "Add a description of what you ate." });
+    return;
+  }
+  if (mode === "exercise" && (!text || text.trim() === "")) {
+    res.status(200).json({ errorType: "other", message: "Describe the workout first." });
     return;
   }
 
@@ -242,11 +332,21 @@ export default async function handler(req, res) {
   }
 
   const promptText =
-    mode === "meal" ? buildMealPrompt(text) : mode === "text" ? buildTextPrompt(text) : LABEL_PROMPT;
+    mode === "meal" ? buildMealPrompt(text)
+    : mode === "text" ? buildTextPrompt(text)
+    : mode === "exercise" ? buildExercisePrompt(text, body.lang)
+    : mode === "recipes" ? buildRecipesPrompt({
+        caloriesLeft: Number(body.caloriesLeft) || 600,
+        proteinLeft: Number(body.proteinLeft) || 30,
+        preferences: body.preferences,
+        lang: body.lang,
+      })
+    : LABEL_PROMPT;
+  const schema = mode === "exercise" ? EXERCISE_SCHEMA : mode === "recipes" ? RECIPE_SCHEMA : RESPONSE_SCHEMA;
   // Empty-image rule: a 0-byte image must never be base64-encoded into inline_data (§3).
   const normalizedImage = image && image.length > 0 ? image : undefined;
 
-  const primaryOutcome = await callGemini(primaryKey, { image: normalizedImage, promptText });
+  const primaryOutcome = await callGemini(primaryKey, { image: normalizedImage, promptText, schema });
 
   if (primaryOutcome.kind === "success") {
     res.status(200).json({ items: primaryOutcome.items });
@@ -264,7 +364,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const backupOutcome = await callGemini(backupKey, { image: normalizedImage, promptText });
+  const backupOutcome = await callGemini(backupKey, { image: normalizedImage, promptText, schema });
 
   if (primaryOutcome.kind === "rateLimited" && backupOutcome.kind === "rateLimited") {
     res.status(200).json({

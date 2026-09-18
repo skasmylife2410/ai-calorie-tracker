@@ -3,6 +3,7 @@
 // sheets/covers (camera, food database, describe, saved foods, barcode flow), SW registration.
 
 import * as store from "./store.js";
+import { t as translate, initI18n, onLanguageChange } from "./i18n.js";
 import * as queue from "./queue.js";
 import { initSync } from "./sync.js";
 import { foodLookup } from "./api.js";
@@ -14,22 +15,27 @@ import { render as renderOnboarding } from "./ui/onboarding.js";
 import { openCameraScan } from "./ui/scan.js";
 import { openFoodSearchSheet } from "./ui/search.js";
 import { openDescribeMealSheet } from "./ui/describe.js";
-import { openSavedFoodsSheet } from "./ui/saved.js";
+import { openFavouritesSheet } from "./ui/favourites.js";
+import { openExerciseSheet } from "./ui/exercise.js";
+import { viewedTimestamp } from "./ui/today.js";
+import { openRecipesSheet } from "./ui/recipes.js";
 import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
 
 const TABS = [
-  { id: "home", label: "Home", icon: "houseFill" },
-  { id: "progress", label: "Progress", icon: "chartBarFill" },
-  { id: "profile", label: "Profile", icon: "personFill" },
+  { id: "home", labelKey: "tabs.home", icon: "houseFill" },
+  { id: "progress", labelKey: "tabs.progress", icon: "chartBarFill" },
+  { id: "profile", labelKey: "tabs.profile", icon: "personFill" },
 ];
 
 // Popup tile grid — exact 2x2 order (§2.2): row 1 = look something up, row 2 = capture new.
 const POPUP_TILES = [
-  { id: "saved", icon: "bookmarkFill", label: "Saved foods" },
-  { id: "search", icon: "magnifyingglass", label: "Food Database" },
-  { id: "scan", icon: "cameraViewfinder", label: "Scan food" },
-  { id: "describe", icon: "textBubbleFill", label: "Describe meal" },
+  { id: "saved", icon: "bookmarkFill", labelKey: "menu.favourites" },
+  { id: "search", icon: "magnifyingglass", labelKey: "menu.database" },
+  { id: "scan", icon: "cameraViewfinder", labelKey: "menu.scan" },
+  { id: "describe", icon: "textBubbleFill", labelKey: "menu.describe" },
+  { id: "exercise", icon: "boltFill", labelKey: "menu.exercise" },
+  { id: "recipes", icon: "wandAndStars", labelKey: "menu.ideas" },
 ];
 
 let selectedTab = "home";
@@ -50,8 +56,11 @@ function profileExists() {
 // Boot
 // ---------------------------------------------------------------------------
 
-function boot() {
+async function boot() {
   queue.sweepIfNeeded(); // reload mid-analysis -> orphaned pendings become retryable-failed
+  // Language comes from the profile (so it travels between this person's devices), else the phone.
+  await initI18n({ stored: store.getProfile().language });
+  onLanguageChange(() => renderShell());
   initSync();
   hasProfile = profileExists();
 
@@ -90,7 +99,7 @@ function renderShell() {
         (t) => `
         <button class="fab-tile" data-tile="${t.id}">
           ${icon(t.icon, { size: 26 })}
-          <span class="fab-tile-label">${t.label}</span>
+          <span class="fab-tile-label">${translate(t.labelKey)}</span>
         </button>`
       ).join("")}
     </div>
@@ -117,7 +126,7 @@ function tabButtonHtml(tab) {
   return `
     <button class="tab-btn${active ? " active" : ""}" data-tab="${tab.id}">
       <span class="tab-icon-pill">${icon(tab.icon, { size: 19 })}</span>
-      <span class="tab-label">${tab.label}</span>
+      <span class="tab-label">${translate(tab.labelKey)}</span>
     </button>
   `;
 }
@@ -176,7 +185,7 @@ function setPopupOpen(open) {
 function handleTileAction(tileId) {
   switch (tileId) {
     case "saved":
-      openSavedFoodsSheet();
+      openFavouritesSheet({ timestamp: viewedTimestamp() });
       break;
     case "search":
       openFoodSearchSheet();
@@ -186,6 +195,12 @@ function handleTileAction(tileId) {
       break;
     case "describe":
       openDescribeMealSheet();
+      break;
+    case "exercise":
+      openExerciseSheet({ onSaved: () => renderCurrentTab() });
+      break;
+    case "recipes":
+      openRecipesSheet();
       break;
   }
 }
@@ -251,11 +266,11 @@ function startBarcodeFlow(barcode) {
     if (progressClose) progressClose();
     setTimeout(() => {
       if (outcome.status === "found") {
-        openAddFoodSheet({ prefill: outcome.product });
+        openAddFoodSheet({ prefill: outcome.product, timestamp: viewedTimestamp() });
       } else if (outcome.status === "notFound") {
-        openAddFoodSheet({ prefillBarcode: barcode });
+        openAddFoodSheet({ prefillBarcode: barcode, timestamp: viewedTimestamp() });
       } else {
-        openAddFoodSheet({ prefillBarcode: barcode, failureReason: outcome.message });
+        openAddFoodSheet({ prefillBarcode: barcode, failureReason: outcome.message, timestamp: viewedTimestamp() });
       }
     }, 340);
   });

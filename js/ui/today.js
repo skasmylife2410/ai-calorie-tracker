@@ -1,6 +1,7 @@
 // today.js — Home tab (TodayView.swift), SPEC-UI.md §5.
 
 import * as store from "../store.js";
+import { t, weekdayLabels, formatDate } from "../i18n.js";
 import * as queue from "../queue.js";
 import { roundDisplay, startOfDay } from "../nutrition.js";
 import { icon } from "./icons.js";
@@ -9,32 +10,57 @@ import { mountEntryRow } from "./entry-row.js";
 import { openActionSheet } from "./action-sheet.js";
 import { openResultsSheet } from "./results.js";
 import { openAddFoodSheet } from "./addfood.js";
+import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
+import { openRecipesSheet } from "./recipes.js";
+import { doodleSvg, doodleState } from "./doodle.js";
 
 const MACRO_DEFS = [
-  { key: "proteinG", targetKey: "proteinTargetG", name: "Protein", color: "var(--sc-protein)", track: "rgba(232,93,93,0.18)", icon: "fishFill" },
-  { key: "carbsG", targetKey: "carbsTargetG", name: "Carbs", color: "var(--sc-carbs)", track: "rgba(229,160,84,0.18)", icon: "leafFill" },
-  { key: "fatG", targetKey: "fatTargetG", name: "Fat", color: "var(--sc-fat)", track: "rgba(107,141,227,0.18)", icon: "dropFill" },
+  { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", color: "var(--sc-protein)", track: "rgba(232,93,93,0.18)", icon: "fishFill" },
+  { key: "carbsG", targetKey: "carbsTargetG", nameKey: "carbs", color: "var(--sc-carbs)", track: "rgba(229,160,84,0.18)", icon: "leafFill" },
+  { key: "fatG", targetKey: "fatTargetG", nameKey: "fat", color: "var(--sc-fat)", track: "rgba(107,141,227,0.18)", icon: "dropFill" },
 ];
 
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Week strip labels follow the active language (Mon/lun…).
 
 let swiperPage = 0;
 let rowCleanups = [];
+// The day the Home tab is showing. null = today (and it snaps back to today on a fresh launch).
+let selectedDayStart = null;
+
+function viewedDate() {
+  return selectedDayStart === null ? new Date() : new Date(selectedDayStart);
+}
+
+function isViewingToday() {
+  return selectedDayStart === null || selectedDayStart === startOfDay(new Date());
+}
+
+/** Timestamp to stamp new entries with: now for today, else midday on the selected day. */
+export function viewedTimestamp() {
+  if (isViewingToday()) return Date.now();
+  return selectedDayStart + 12 * 60 * 60 * 1000;
+}
 
 export function render(container) {
   rowCleanups.forEach((fn) => fn());
   rowCleanups = [];
 
-  const totals = store.totalsForDay();
+  const date = viewedDate();
+  const viewingToday = isViewingToday();
+  const totals = store.totalsForDay(date);
   const goals = store.computeGoals();
-  const week = store.weekStrip();
+  const week = store.weekStrip(date);
   const streakCount = store.streak();
-  const water = store.getWaterEntryForDay();
-  const recent = store.recentlyUploaded(10);
+  const water = store.getWaterEntryForDay(date);
+  const recent = viewingToday
+    ? store.recentlyUploaded(10)
+    : store.entriesForDay(date).sort((a, b) => b.timestamp - a.timestamp);
   const anyPending = recent.some((e) => e.isPending === true);
   const showNotifyBanner = anyPending && !queue.isNotificationAuthorized() && !store.isNotifyBannerDismissed();
 
-  const remaining = goals.targetCalories - totals.calories;
+  // dayEnergy folds in the credited share of exercise (see nutrition.EXERCISE_CREDIT_RATIO).
+  const energy = store.dayEnergy(date);
+  const remaining = energy.remaining;
   const overBudget = remaining < 0;
 
   container.innerHTML = `
@@ -45,10 +71,15 @@ export function render(container) {
       </div>
 
       ${weekStripHtml(week)}
+      ${viewingToday ? "" : `
+        <div class="viewing-day">
+          <span>${t("home.viewingDay", { day: formatViewedDay(date) })}</span>
+          <button type="button" id="back-to-today">${t("home.backToToday")}</button>
+        </div>`}
 
       <div class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
-          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget)}</div>
+          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy)}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
         </div>
       </div>
@@ -57,8 +88,21 @@ export function render(container) {
         <span class="swiper-dot${swiperPage === 1 ? " active" : ""}" data-dot="1"></span>
       </div>
 
+      ${viewingToday ? doodleCardHtml() : ""}
+
+      ${exerciseSectionHtml(date)}
+
+      ${viewingToday && remaining > 150 ? `
+      <div class="ideas-card" id="ideas-card">
+        <div class="ideas-text">
+          <div class="ideas-title">${t("home.ideasTitle", { calories: roundDisplay(Math.abs(remaining)), protein: roundDisplay(Math.max(0, goals.proteinTargetG - totals.proteinG)) })}</div>
+          <div class="ideas-sub">${t("home.ideasSub")}</div>
+        </div>
+        <button type="button" class="ideas-btn" id="ideas-btn">${t("home.ideasButton")}</button>
+      </div>` : ""}
+
       <div class="recent-section">
-        <h2 class="section-title">Recently uploaded</h2>
+        <h2 class="section-title">${viewingToday ? t("home.recentlyUploaded") : t("home.mealsThatDay")}</h2>
         ${showNotifyBanner ? notifyBannerHtml() : ""}
         <div class="recent-list" id="recent-list"></div>
       </div>
@@ -68,6 +112,9 @@ export function render(container) {
 
   wireSwiper(container);
   wireWaterButtons(container);
+  wireExercise(container, date);
+  wireDaySelection(container);
+  container.querySelector("#ideas-btn")?.addEventListener("click", () => openRecipesSheet());
   wireNotifyBanner(container);
 
   const recentList = container.querySelector("#recent-list");
@@ -106,12 +153,14 @@ function weekStripHtml(week) {
           const numClasses = ["week-day-number"];
           if (isToday) numClasses.push("bold");
           if (isFuture) numClasses.push("future");
+          const isSelected = day.dayStart === (selectedDayStart ?? todayStart);
           const colClasses = ["week-day-col"];
+          if (isSelected && !isToday) colClasses.push("selected");
           if (isFuture) colClasses.push("future");
           else if (isPastNoLog) colClasses.push("past-nolog");
           return `
-            <div class="${colClasses.join(" ")}">
-              <div class="week-day-label">${WEEKDAY_LABELS[i]}</div>
+            <div class="${colClasses.join(" ")}" data-day-start="${day.dayStart}">
+              <div class="week-day-label">${weekdayLabels()[i]}</div>
               <div class="week-day-badge-wrap">
                 ${isToday ? '<div class="week-day-today-backdrop"></div>' : ""}
                 <div class="${circleClasses.join(" ")}">
@@ -126,8 +175,8 @@ function weekStripHtml(week) {
   `;
 }
 
-function caloriesPageHtml(totals, goals, remaining, overBudget) {
-  const ringProgress = goals.targetCalories > 0 ? totals.calories / goals.targetCalories : 0;
+function caloriesPageHtml(totals, goals, remaining, overBudget, energy) {
+  const ringProgress = energy.adjustedTarget > 0 ? totals.calories / energy.adjustedTarget : 0;
   const ring = ringGauge({
     size: 96,
     strokeWidth: 12,
@@ -154,7 +203,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget) {
     return `
       <div class="macro-tile card">
         <div class="macro-value${macroOver ? " over" : ""}">${roundDisplay(Math.abs(macroRemaining))}g</div>
-        <div class="macro-caption">${m.name} ${macroOver ? "over" : "left"}</div>
+        <div class="macro-caption">${t(`home.${m.nameKey}${macroOver ? "Over" : "Left"}`)}</div>
         ${miniRing}
       </div>
     `;
@@ -165,7 +214,8 @@ function caloriesPageHtml(totals, goals, remaining, overBudget) {
       <div class="calorie-card card">
         <div class="calorie-left">
           <div class="calorie-remaining${overBudget ? " over" : ""}">${roundDisplay(Math.abs(remaining))}</div>
-          <div class="calorie-caption">${overBudget ? "Calories over" : "Calories left"}</div>
+          <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>
+          ${energy.credit > 0 ? `<div class="calorie-exercise">${t("home.exerciseNote", { goal: energy.baseTarget, credit: energy.credit, burned: energy.burned })}</div>` : ""}
         </div>
         ${ring}
       </div>
@@ -265,8 +315,8 @@ function wireSwiper(container) {
 function wireWaterButtons(container) {
   const minus = container.querySelector('[data-water="minus"]');
   const plus = container.querySelector('[data-water="plus"]');
-  if (minus) minus.addEventListener("click", () => store.decrementWater());
-  if (plus) plus.addEventListener("click", () => store.incrementWater());
+  if (minus) minus.addEventListener("click", () => store.decrementWater(viewedDate()));
+  if (plus) plus.addEventListener("click", () => store.incrementWater(viewedDate()));
 }
 
 function wireNotifyBanner(container) {
@@ -311,4 +361,75 @@ export function handleRowTap(entry, container) {
     return;
   }
   openAddFoodSheet({ entry });
+}
+
+
+function exerciseSectionHtml(date = new Date()) {
+  const rows = exerciseRowsHtml(date);
+  return `
+    <div class="exercise-section">
+      <div class="section-head-row">
+        <h2 class="section-title">${t("home.exercise")}</h2>
+        <button type="button" class="section-action" id="add-exercise-btn">${t("app.add")}</button>
+      </div>
+      ${rows || `<div class="exercise-empty">${t("home.noExercise")}</div>`}
+    </div>`;
+}
+
+function wireExercise(container, date = new Date()) {
+  container.querySelector("#add-exercise-btn")?.addEventListener("click", () =>
+    openExerciseSheet({ timestamp: viewedTimestamp(), onSaved: () => render(container) })
+  );
+  container.querySelectorAll("[data-delete-exercise]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      store.deleteExerciseEntry(btn.dataset.deleteExercise);
+      render(container);
+    });
+  });
+}
+
+
+/** Tapping a day in the week strip opens it; future days are ignored. */
+function wireDaySelection(container) {
+  container.querySelectorAll("[data-day-start]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const dayStart = Number(el.dataset.dayStart);
+      if (!Number.isFinite(dayStart) || dayStart > startOfDay(new Date())) return;
+      selectedDayStart = dayStart === startOfDay(new Date()) ? null : dayStart;
+      render(container);
+    });
+  });
+  container.querySelector("#back-to-today")?.addEventListener("click", () => {
+    selectedDayStart = null;
+    render(container);
+  });
+}
+
+function formatViewedDay(date) {
+  return formatDate(date, { weekday: "long", month: "short", day: "numeric" });
+}
+
+
+/** The doodle card: character on the left, one line about why it looks like that. */
+function doodleCardHtml() {
+  const { state, streak, daysSinceLog } = doodleState();
+  const variant = store.getProfile().doodleVariant === "b" ? "b" : "a";
+  const title = t(`doodle.${state}Title`);
+  const sub =
+    state === "strong"
+      ? streak > 0
+        ? t("doodle.strongSub", { streak, n: streak })
+        : t("doodle.strongSubNew")
+      : state === "idle"
+      ? t("doodle.idleSub", { days: Number.isFinite(daysSinceLog) ? daysSinceLog : 2 })
+      : t("doodle.wellFedSub");
+
+  return `
+    <div class="doodle-card">
+      ${doodleSvg({ state, streak, variant, size: 86 })}
+      <div class="doodle-text">
+        <div class="doodle-title">${title}</div>
+        <div class="doodle-sub">${sub}</div>
+      </div>
+    </div>`;
 }

@@ -1,0 +1,172 @@
+{
+  "app": {
+    "name": "SnapCal",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "retry": "Reintentar",
+    "add": "+ Añadir",
+    "log": "Registrar"
+  },
+  "home": {
+    "caloriesLeft": "Calorías restantes",
+    "caloriesOver": "Calorías de más",
+    "exerciseNote": "meta de {goal} + {credit} por ejercicio · {burned} quemadas",
+    "proteinLeft": "Proteína restante",
+    "carbsLeft": "Carbohidratos restantes",
+    "fatLeft": "Grasa restante",
+    "proteinOver": "Proteína de más",
+    "carbsOver": "Carbohidratos de más",
+    "fatOver": "Grasa de más",
+    "recentlyUploaded": "Registrado hace poco",
+    "mealsThatDay": "Comidas de ese día",
+    "exercise": "Ejercicio",
+    "noExercise": "Nada registrado.",
+    "viewingDay": "Viendo {day}",
+    "backToToday": "Volver a hoy",
+    "water": "Agua",
+    "ideasTitle": "Te quedan {calories} kcal y {protein} g de proteína",
+    "ideasSub": "Ver tres ideas que encajan",
+    "ideasButton": "Sugerir"
+  },
+  "menu": {
+    "favourites": "Favoritos",
+    "database": "Base de alimentos",
+    "scan": "Escanear comida",
+    "describe": "Describir comida",
+    "exercise": "Ejercicio",
+    "ideas": "Ideas"
+  },
+  "meal": {
+    "title": "Editar comida",
+    "servings": "Porciones",
+    "servingsHint": "Multiplica toda la comida",
+    "items": "Alimentos",
+    "itemsHint": "Toca cualquier número para editarlo. Al cambiar los gramos, los macros se ajustan solos.",
+    "fixResults": "Corregir",
+    "saveChanges": "Guardar cambios",
+    "noItems": "No queda ningún alimento: añade uno con «Corregir» o cancela."
+  },
+  "favourites": {
+    "title": "Favoritos",
+    "saved": "Guardados",
+    "recent": "Recientes",
+    "emptySavedTitle": "Aún no hay favoritos",
+    "emptySavedBody": "Toca el corazón en cualquier comida para guardarla y registrarla con un toque.",
+    "emptyRecentTitle": "Aún no has registrado nada",
+    "emptyRecentBody": "Lo que registres aparecerá aquí para volver a registrarlo.",
+    "macros": "{calories} kcal · {protein} g de proteína",
+    "servingsSuffix": " · ×{n}"
+  },
+  "exercise": {
+    "title": "Ejercicio",
+    "describeIt": "Descríbelo",
+    "placeholder": "45 min de fútbol, bastante intenso",
+    "orPick": "O elige abajo",
+    "reading": "Leyendo eso…",
+    "readAs": "Entendido como: {name}",
+    "notAWorkout": "Eso no parecía ejercicio: elige abajo.",
+    "activity": "Actividad",
+    "duration": "Duración",
+    "minutes": "minutos",
+    "intensity": "Intensidad",
+    "easy": "Suave",
+    "moderate": "Moderada",
+    "hard": "Fuerte",
+    "burned": "kcal quemadas",
+    "creditNote": "{credit} kcal se suman al presupuesto de hoy. Las estimaciones de gasto suelen ser altas, así que solo cuenta una parte.",
+    "save": "Guardar ejercicio",
+    "rowSub": "{minutes} min · −{burned} kcal ({credit} contadas)",
+    "activities": {
+      "soccer": "Fútbol",
+      "walk": "Caminata",
+      "run": "Correr",
+      "gym": "Gimnasio",
+      "cycling": "Bicicleta",
+      "swim": "Natación",
+      "other": "Otro"
+    }
+  },
+  "ideas": {
+    "title": "Ideas",
+    "kcalLeft": "kcal restantes",
+    "proteinLeft": "proteína restante",
+    "refresh": "↻ Otras ideas",
+    "loading": "Buscando tres ideas que encajen…",
+    "recipe": "Receta",
+    "hideRecipe": "Ocultar receta",
+    "logIt": "Registrar",
+    "ingredients": "Ingredientes",
+    "steps": "Pasos",
+    "errorTitle": "No hay ideas ahora mismo",
+    "emptyTitle": "Nada que sugerir",
+    "emptyBody": "Ya no queda margen por hoy: las ideas vuelven mañana."
+  },
+  "us": {
+    "title": "Nosotros",
+    "today": "Hoy",
+    "days7": "7 días",
+    "days30": "30 días",
+    "caloriesByDay": "Calorías por día",
+    "goalLine": "meta diaria de calorías",
+    "lastNDays": "Últimos {n} días",
+    "daysLogged": "Días registrados",
+    "avgCalories": "Calorías promedio",
+    "avgProtein": "Proteína promedio",
+    "daysNearGoal": "Días cerca de la meta",
+    "exercise": "Ejercicio",
+    "waterPerDay": "Vasos de agua al día",
+    "you": "tú",
+    "nearGoalNote": "«Cerca de la meta» significa dentro del 10% de la meta de calorías de esa persona.",
+    "mealsAndExercise": "{meals} · {exercise}",
+    "glassesOfWater": "{n} vaso de agua|{n} vasos de agua",
+    "mealsCount": "{n} comida|{n} comidas",
+    "noExercise": "sin ejercicio",
+    "sessionsCount": "{n} sesión|{n} sesiones"
+  },
+  "profile": {
+    "language": "Idioma",
+    "english": "English",
+    "spanish": "Español",
+    "exerciseCredit": "Sumar calorías del ejercicio",
+    "exerciseCreditNote": "Cuando está activo, el {percent}% de lo que quemas se suma a tu presupuesto diario."
+  },
+  "errors": {
+    "offline": "Sin conexión. Revisa tu internet e inténtalo de nuevo.",
+    "quota": "Se acabó el límite diario de IA: añade la comida a mano.",
+    "generic": "Algo salió mal. Inténtalo en un momento."
+  },
+  "tabs": {
+    "home": "Inicio",
+    "progress": "Progreso",
+    "profile": "Perfil"
+  },
+  "progress": {
+    "title": "Progreso",
+    "together": "Nosotros",
+    "streak": "Racha",
+    "noHistory": "Aún no hay registros"
+  },
+  "profileScreen": {
+    "title": "Perfil",
+    "sync": "Sincronización",
+    "status": "Estado",
+    "syncNow": "Toca para sincronizar ahora.",
+    "dailyGoals": "Metas diarias",
+    "bodyStats": "Datos corporales",
+    "activityLevel": "Nivel de actividad",
+    "goal": "Objetivo",
+    "calculator": "Estimación del cálculo"
+  },
+  "doodle": {
+    "strongTitle": "Se te ve fuerte",
+    "strongSub": "Racha de {streak} día. Sigue registrando y sigue creciendo.|Racha de {streak} días. Sigue registrando y sigue creciendo.",
+    "strongSubNew": "Registra varios días seguidos y empieza a crecer.",
+    "wellFedTitle": "Bien comido",
+    "wellFedSub": "Hoy pasaste la meta: sin drama, mañana empieza de nuevo.",
+    "idleTitle": "¿Dónde te metiste?",
+    "idleSub": "Llevas {days} días sin registrar nada. Se cortó la racha.",
+    "bigMeal": "+{calories} kcal · {protein} g de proteína"
+  }
+}

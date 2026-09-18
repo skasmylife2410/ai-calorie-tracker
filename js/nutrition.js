@@ -126,6 +126,54 @@ export function resolveUserGoals(profile) {
 }
 
 /** Device-local start-of-day timestamp (ms since epoch), matching Calendar.current.startOfDay semantics. */
+// ---------------------------------------------------------------------------
+// Exercise
+// ---------------------------------------------------------------------------
+
+/**
+ * Share of burned calories added back to the day's budget. Deliberately below 1.0: wearable and
+ * formula burn estimates run high, and TDEE already includes some daily activity, so crediting
+ * every burned calorie double-counts. The UI always shows the full burn AND the credited part.
+ */
+export const EXERCISE_CREDIT_RATIO = 0.6;
+
+/** Calories from exercise that count toward the day's budget (whole calories). */
+export function exerciseCredit(caloriesBurned, ratio = EXERCISE_CREDIT_RATIO) {
+  const n = Number(caloriesBurned);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n * ratio);
+}
+
+/** MET values per activity at moderate intensity (compendium of physical activities, rounded). */
+export const ACTIVITY_METS = Object.freeze({
+  walk: 3.5, run: 9.8, soccer: 7.0, gym: 5.0, cycling: 7.5, swim: 7.0, other: 5.0,
+});
+
+export const INTENSITY_FACTORS = Object.freeze({ easy: 0.75, moderate: 1.0, hard: 1.3 });
+
+export function normalizeActivity(raw) {
+  const key = String(raw ?? "").toLowerCase();
+  return Object.prototype.hasOwnProperty.call(ACTIVITY_METS, key) ? key : "other";
+}
+
+export function normalizeIntensity(raw) {
+  const key = String(raw ?? "").toLowerCase();
+  return Object.prototype.hasOwnProperty.call(INTENSITY_FACTORS, key) ? key : "moderate";
+}
+
+/**
+ * kcal = MET x intensity x weightKg x hours. Falls back to 70 kg when the profile has no weight,
+ * so the number is still roughly right rather than zero.
+ */
+export function estimateCaloriesBurned({ activity, minutes, intensity, weightKg }) {
+  const mins = Number(minutes);
+  if (!Number.isFinite(mins) || mins <= 0) return 0;
+  const met = ACTIVITY_METS[normalizeActivity(activity)];
+  const factor = INTENSITY_FACTORS[normalizeIntensity(intensity)];
+  const kg = Number.isFinite(Number(weightKg)) && Number(weightKg) > 0 ? Number(weightKg) : 70;
+  return Math.round(met * factor * kg * (mins / 60));
+}
+
 export function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);

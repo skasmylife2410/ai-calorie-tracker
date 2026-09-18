@@ -1,6 +1,7 @@
 // history.js — Progress tab (HistoryView.swift), SPEC-UI.md §6.
 
 import * as store from "../store.js";
+import { t } from "../i18n.js";
 import { roundDisplay } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { mountEntryRow } from "./entry-row.js";
@@ -21,8 +22,8 @@ export function render(container) {
   container.innerHTML = `
     <div class="navbar" style="position:sticky;">
       <span class="navbar-spacer"></span>
-      <div class="navbar-title">Progress</div>
-      <a class="navbar-btn" href="/compare.html" style="text-decoration:none;">Together</a>
+      <div class="navbar-title">${t("progress.title")}</div>
+      <a class="navbar-btn" href="/us.html" style="text-decoration:none;">${t("progress.together")}</a>
     </div>
     <div class="history-content" id="history-content"></div>
   `;

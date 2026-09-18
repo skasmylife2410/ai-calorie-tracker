@@ -2,6 +2,7 @@
 
 import * as store from "../store.js";
 import * as sync from "../sync.js";
+import { t, currentLanguage, setLanguage, supportedLanguages } from "../i18n.js";
 import { roundDisplay } from "../nutrition.js";
 import { wireNumericInput } from "./numeric-field.js";
 import {
@@ -32,6 +33,7 @@ export function render(container) {
       ${activityLevelSectionHtml(profile)}
       ${goalSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
+      ${languageSectionHtml()}
       ${syncSectionHtml()}
       <div class="bottom-safe-spacer"></div>
     </div>
@@ -41,6 +43,7 @@ export function render(container) {
   wireDailyGoalsSection(container, profile, goals);
   wireCalculatorSection(container, goals);
   wireSyncSection(container);
+  wireLanguage(container);
 }
 
 function syncStatusLabel({ state, lastSyncAt }) {
@@ -55,18 +58,47 @@ function syncStatusLabel({ state, lastSyncAt }) {
   return "Off";
 }
 
+/** Language picker — per person, stored on the profile so it follows them between devices. */
+function languageSectionHtml() {
+  const lang = currentLanguage();
+  const label = { en: "profile.english", es: "profile.spanish" };
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("profile.language")}</div>
+      <div class="ios-section-body">
+        <div class="lang-row">
+          ${supportedLanguages()
+            .map((code) => `<button type="button" class="lang-btn${code === lang ? " is-on" : ""}" data-lang="${code}">${t(label[code])}</button>`)
+            .join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function wireLanguage(container) {
+  container.querySelectorAll("[data-lang]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const code = btn.dataset.lang;
+      if (code === currentLanguage()) return;
+      store.setProfile({ language: code }); // travels with this person's profile on sync
+      await setLanguage(code);
+    });
+  });
+}
+
 function syncSectionHtml() {
   return `
     <div class="ios-section">
-      <div class="ios-section-header">Sync</div>
+      <div class="ios-section-header">${t("profileScreen.sync")}</div>
       <div class="ios-section-body">
         <div class="ios-row linklike" id="sync-row">
-          <div class="ios-row-label">Status</div>
+          <div class="ios-row-label">${t("profileScreen.status")}</div>
           <div class="ios-row-spacer"></div>
           <div class="ios-row-value" id="sync-status-value">${syncStatusLabel(sync.getSyncStatus())}</div>
         </div>
       </div>
-      <div class="ios-section-footer">Tap to sync now.</div>
+      <div class="ios-section-footer">${t("profileScreen.syncNow")}</div>
     </div>
   `;
 }
@@ -98,7 +130,7 @@ function dailyGoalsSectionHtml(profile, goals) {
   }).join("");
   return `
     <div class="ios-section">
-      <div class="ios-section-header">Daily goals</div>
+      <div class="ios-section-header">${t("profileScreen.dailyGoals")}</div>
       <div class="ios-section-body">${rows}</div>
       <div class="ios-section-footer">Protein, carbs and fat are calculated from your calorie target unless you set them yourself.</div>
     </div>
@@ -108,7 +140,7 @@ function dailyGoalsSectionHtml(profile, goals) {
 function calculatorSectionHtml(goals) {
   return `
     <div class="ios-section">
-      <div class="ios-section-header">Calculator estimate</div>
+      <div class="ios-section-header">${t("profileScreen.calculator")}</div>
       <div class="ios-section-body">${calculatorEstimateRowsHtml(goals)}</div>
       <div class="ios-section-footer">Estimate based on the Mifflin-St Jeor equation.</div>
       <div style="margin-top:12px;">

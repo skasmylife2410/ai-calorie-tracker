@@ -85,9 +85,9 @@ export default async function handler(req, res) {
   const owners = configured.length > 0 ? configured : [DEFAULT_OWNER];
   const ownerFilter = `in.(${owners.join(",")})`;
 
-  let entries, water, profiles;
+  let entries, water, exercise, profiles;
   try {
-    [entries, water, profiles] = await Promise.all([
+    [entries, water, exercise, profiles] = await Promise.all([
       select("snapcal_food_entries", {
         select: "owner,day,calories,protein_g,carbs_g,fat_g",
         owner: ownerFilter,
@@ -96,6 +96,7 @@ export default async function handler(req, res) {
         limit: "5000",
       }),
       select("snapcal_water", { select: "owner,day,glasses", owner: ownerFilter, day: `gte.${from}` }),
+      select("snapcal_exercise", { select: "owner,day,data", owner: ownerFilter, day: `gte.${from}`, limit: "2000" }),
       select("snapcal_profile", { select: "owner,data", owner: ownerFilter }),
     ]);
   } catch (err) {
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
   });
   const byOwner = Object.fromEntries(people.map((p) => [p.owner, p]));
   const dayOf = (person, day) =>
-    (person.days[day] ??= { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, meals: 0, water: 0 });
+    (person.days[day] ??= { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, meals: 0, water: 0, burned: 0, sessions: 0 });
 
   for (const e of entries) {
     const person = byOwner[e.owner];
@@ -121,13 +122,20 @@ export default async function handler(req, res) {
     d.fatG += num(e.fat_g);
     d.meals += 1;
   }
+  for (const x of exercise) {
+    const person = byOwner[x.owner];
+    if (!person) continue;
+    const d = dayOf(person, x.day);
+    d.burned += num(x.data?.caloriesBurned);
+    d.sessions += 1;
+  }
   for (const w of water) {
     const person = byOwner[w.owner];
     if (person) dayOf(person, w.day).water = num(w.glasses);
   }
   for (const p of people) {
     for (const d of Object.values(p.days)) {
-      for (const k of ["calories", "proteinG", "carbsG", "fatG"]) d[k] = Math.round(d[k]);
+      for (const k of ["calories", "proteinG", "carbsG", "fatG", "burned"]) d[k] = Math.round(d[k]);
     }
   }
 

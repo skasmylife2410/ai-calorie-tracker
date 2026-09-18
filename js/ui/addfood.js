@@ -15,7 +15,7 @@ const MACRO_FIELDS = [
 /**
  * @param {{entry?:object, prefill?:object, prefillBarcode?:string, failureReason?:string, onSaved?:(entry)=>void}} opts
  */
-export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode = null, failureReason = null, onSaved } = {}) {
+export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode = null, failureReason = null, timestamp = null, onSaved } = {}) {
   const isEditing = entry != null;
   const draft = {
     name: entry?.name ?? prefill?.name ?? "",
@@ -114,7 +114,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               carbsG: draft.carbsG,
               fatG: draft.fatG,
               source,
-              timestamp: Date.now(),
+              timestamp: timestamp ?? Date.now(),
             });
           }
           if (typeof onSaved === "function") onSaved(saved);

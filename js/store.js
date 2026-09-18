@@ -2,13 +2,14 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString } from "./nutrition.js";
+import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit } from "./nutrition.js";
 
 export const STORAGE_KEYS = Object.freeze({
   foodEntries: "snapcal.foodEntries",
   waterEntries: "snapcal.waterEntries",
   userProfile: "snapcal.userProfile",
   savedFoods: "snapcal.savedFoods",
+  exerciseEntries: "snapcal.exerciseEntries",
   notifyBannerDismissed: "snapcal.notifyBannerDismissed",
   deletedEntryTombstones: "snapcal.deletedEntryTombstones",
 });
@@ -119,8 +120,54 @@ export function makeFoodEntry(fields) {
     analysisFailureReason: fields.analysisFailureReason ?? null,
     analysisMode: fields.analysisMode ?? null,
     analysisDescription: fields.analysisDescription ?? null,
+    servings: normalizeServings(fields.servings),
+    base: fields.base ?? {
+      calories: fields.calories ?? 0,
+      proteinG: fields.proteinG ?? 0,
+      carbsG: fields.carbsG ?? 0,
+      fatG: fields.fatG ?? 0,
+    },
     updatedAt: fields.updatedAt ?? now,
   };
+}
+
+/** Servings are 0.5-step multipliers between 0.5 and 20. */
+export function normalizeServings(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.min(20, Math.max(0.5, Math.round(n * 2) / 2));
+}
+
+/**
+ * Reads an entry's one-serving macros. Entries created before servings existed have no `base`,
+ * so their current macros ARE the one-serving values (servings defaults to 1).
+ */
+export function baseMacros(entry) {
+  const b = entry?.base;
+  const servings = normalizeServings(entry?.servings);
+  if (b && typeof b === "object") return { ...b };
+  return {
+    calories: (entry?.calories ?? 0) / servings,
+    proteinG: (entry?.proteinG ?? 0) / servings,
+    carbsG: (entry?.carbsG ?? 0) / servings,
+    fatG: (entry?.fatG ?? 0) / servings,
+  };
+}
+
+/** Sets the serving multiplier, rescaling the stored totals from the one-serving base. */
+export function setServings(id, servings) {
+  const entry = getFoodEntry(id);
+  if (!entry) return null;
+  const n = normalizeServings(servings);
+  const b = baseMacros(entry);
+  return updateFoodEntry(id, {
+    servings: n,
+    base: b,
+    calories: Math.round(b.calories * n),
+    proteinG: Math.round(b.proteinG * n * 10) / 10,
+    carbsG: Math.round(b.carbsG * n * 10) / 10,
+    fatG: Math.round(b.fatG * n * 10) / 10,
+  });
 }
 
 /** All food entries (no ordering guarantee). */
@@ -438,7 +485,7 @@ export function allSavedFoods() {
 }
 
 /** Saves a food for quick re-logging later. `source` is copied but analysisItems is NEVER copied. */
-export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 0, source = "manual" }) {
+export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 0, source = "manual", photoDataUrl = null, servings = 1, favorite = true, fromEntryId = null }) {
   const saved = {
     id: generateId(),
     name,
@@ -447,7 +494,12 @@ export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 
     carbsG,
     fatG,
     source: normalizeEntrySource(source),
+    photoDataUrl,
+    servings: normalizeServings(servings),
+    favorite: favorite !== false,
+    fromEntryId,
     createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
   const list = allSavedFoodsRaw();
   list.push(saved);
@@ -468,19 +520,191 @@ export function deleteSavedFood(id) {
  * `analysisItems` is intentionally left null so this never opens the AI results screen
  * (detection is on analysisItems presence, not on `source === "photo"` — see spec §6 state 3).
  */
-export function logSavedFood(id, { timestamp = Date.now() } = {}) {
+export function logSavedFood(id, { timestamp = Date.now(), servings } = {}) {
   const saved = allSavedFoodsRaw().find((f) => f.id === id);
   if (!saved) return null;
-  return addFoodEntry({
-    name: saved.name,
+  // A saved food's macros are always ONE serving; the multiplier is applied here.
+  const n = normalizeServings(servings ?? saved.servings ?? 1);
+  const base = {
     calories: saved.calories,
     proteinG: saved.proteinG,
     carbsG: saved.carbsG,
     fatG: saved.fatG,
+  };
+  return addFoodEntry({
+    name: saved.name,
+    calories: Math.round(base.calories * n),
+    proteinG: Math.round(base.proteinG * n * 10) / 10,
+    carbsG: Math.round(base.carbsG * n * 10) / 10,
+    fatG: Math.round(base.fatG * n * 10) / 10,
+    base,
+    servings: n,
     source: saved.source,
+    photoDataUrl: saved.photoDataUrl ?? null,
     timestamp,
     analysisItems: null,
   });
+}
+
+/** True when an entry has already been hearted (matched by origin entry id, else by name). */
+export function isFavorited(entry) {
+  if (!entry) return false;
+  const name = String(entry.name ?? "").trim().toLowerCase();
+  return allSavedFoodsRaw().some(
+    (f) => f.favorite !== false && (f.fromEntryId === entry.id || String(f.name ?? "").trim().toLowerCase() === name)
+  );
+}
+
+/** Heart / un-heart an entry. Returns true when it is now a favourite. */
+export function toggleFavorite(entryId) {
+  const entry = getFoodEntry(entryId);
+  if (!entry) return false;
+  const name = String(entry.name ?? "").trim().toLowerCase();
+  const list = allSavedFoodsRaw();
+  const existing = list.find(
+    (f) => f.favorite !== false && (f.fromEntryId === entry.id || String(f.name ?? "").trim().toLowerCase() === name)
+  );
+  if (existing) {
+    deleteSavedFood(existing.id);
+    return false;
+  }
+  const b = baseMacros(entry);
+  addSavedFood({
+    name: entry.name,
+    calories: Math.round(b.calories),
+    proteinG: Math.round(b.proteinG * 10) / 10,
+    carbsG: Math.round(b.carbsG * 10) / 10,
+    fatG: Math.round(b.fatG * 10) / 10,
+    source: entry.source,
+    photoDataUrl: entry.photoDataUrl ?? null,
+    servings: entry.servings ?? 1,
+    fromEntryId: entry.id,
+  });
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// ExerciseEntry
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {Object} ExerciseEntry
+ * @property {string} id
+ * @property {string} name - what the user called it ("Soccer", "Evening walk")
+ * @property {string} activity - key in ACTIVITY_METS
+ * @property {number} minutes
+ * @property {string} intensity - easy | moderate | hard
+ * @property {number} caloriesBurned - full estimated burn (NOT the credited share)
+ * @property {number} timestamp
+ * @property {number} updatedAt
+ */
+
+function allExerciseRaw() {
+  return readJSON(STORAGE_KEYS.exerciseEntries, []);
+}
+
+function saveExercise(list) {
+  writeJSON(STORAGE_KEYS.exerciseEntries, list);
+  notify();
+}
+
+export function allExerciseEntries() {
+  return allExerciseRaw();
+}
+
+/** Adds an exercise entry. caloriesBurned is estimated from the profile weight when omitted. */
+export function addExerciseEntry(fields = {}) {
+  const now = Date.now();
+  const activity = normalizeActivity(fields.activity);
+  const intensity = normalizeIntensity(fields.intensity);
+  const minutes = Math.max(0, Math.round(Number(fields.minutes) || 0));
+  const burned = Number.isFinite(Number(fields.caloriesBurned)) && Number(fields.caloriesBurned) > 0
+    ? Math.round(Number(fields.caloriesBurned))
+    : estimateCaloriesBurned({ activity, minutes, intensity, weightKg: getProfile().weightKg });
+  const entry = {
+    id: fields.id ?? generateId(),
+    name: fields.name ?? "",
+    activity,
+    minutes,
+    intensity,
+    caloriesBurned: burned,
+    timestamp: fields.timestamp ?? now,
+    updatedAt: fields.updatedAt ?? now,
+  };
+  const list = allExerciseRaw();
+  list.push(entry);
+  saveExercise(list);
+  return entry;
+}
+
+export function updateExerciseEntry(id, patch) {
+  const list = allExerciseRaw();
+  const idx = list.findIndex((e) => e.id === id);
+  if (idx === -1) return null;
+  list[idx] = { ...list[idx], ...patch, updatedAt: patch.updatedAt ?? Date.now() };
+  saveExercise(list);
+  return list[idx];
+}
+
+export function deleteExerciseEntry(id) {
+  const list = allExerciseRaw();
+  const next = list.filter((e) => e.id !== id);
+  const changed = next.length !== list.length;
+  if (changed) saveExercise(next);
+  return changed;
+}
+
+export function exerciseForDay(date = new Date()) {
+  const day = localDateString(date instanceof Date ? date.getTime() : date);
+  return allExerciseRaw()
+    .filter((e) => localDateString(e.timestamp) === day)
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+/**
+ * The day's calorie picture once exercise is taken into account.
+ * `burned` is the full estimate; `credit` is the 60% share that actually raises the budget,
+ * so the UI can show both rather than one blended number.
+ */
+export function dayEnergy(date = new Date()) {
+  const goals = computeGoals();
+  const totals = totalsForDay(date);
+  const burned = exerciseForDay(date).reduce((sum, e) => sum + (e.caloriesBurned || 0), 0);
+  const credit = exerciseCredit(burned);
+  const baseTarget = Math.round(goals.targetCalories);
+  const adjustedTarget = baseTarget + credit;
+  return {
+    baseTarget,
+    burned,
+    credit,
+    adjustedTarget,
+    eaten: Math.round(totals.calories),
+    remaining: adjustedTarget - Math.round(totals.calories),
+  };
+}
+
+/** LWW merge of one remote exercise row (see js/sync.js). */
+export function applyRemoteExercise(data, remoteUpdatedAt) {
+  if (!data || typeof data !== "object" || typeof data.id !== "string") return;
+  const stamp = Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : Date.now();
+  const list = allExerciseRaw();
+  const idx = list.findIndex((e) => e.id === data.id);
+  if (idx !== -1 && (list[idx].updatedAt ?? 0) >= stamp) return; // local is newer — keep it
+  const row = { ...data, updatedAt: stamp };
+  if (idx === -1) list.push(row); else list[idx] = row;
+  saveExercise(list);
+}
+
+/** LWW merge of one remote favourite row. */
+export function applyRemoteFavorite(data, remoteUpdatedAt) {
+  if (!data || typeof data !== "object" || typeof data.id !== "string") return;
+  const stamp = Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : Date.now();
+  const list = allSavedFoodsRaw();
+  const idx = list.findIndex((f) => f.id === data.id);
+  if (idx !== -1 && (list[idx].updatedAt ?? list[idx].createdAt ?? 0) >= stamp) return;
+  const row = { ...data, updatedAt: stamp };
+  if (idx === -1) list.push(row); else list[idx] = row;
+  saveSavedFoods(list);
 }
 
 // ---------------------------------------------------------------------------

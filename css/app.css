@@ -1201,3 +1201,163 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* --- Favourites sheet (js/ui/favourites.js) --- */
+.fav-tabs { display: flex; gap: 2px; margin: 4px 16px 10px; padding: 3px; background: var(--sc-secondary-15); border-radius: 12px; }
+.fav-tabs button { flex: 1; font: inherit; font-size: 13px; font-weight: 600; padding: 7px 0; border: 0; border-radius: 9px; background: transparent; color: var(--sc-secondary); }
+.fav-tabs button[aria-pressed="true"] { background: #fff; color: var(--sc-primary-text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.fav-list { background: #fff; border-radius: 16px; margin: 0 16px 16px; overflow: hidden; }
+.fav-row { display: flex; gap: 12px; padding: 13px 14px; align-items: flex-start; }
+.fav-row + .fav-row { border-top: 1px solid var(--sc-secondary-14); }
+.fav-thumb { width: 54px; height: 54px; border-radius: 14px; background: var(--sc-secondary-15); flex: none; object-fit: cover; }
+.fav-text { flex: 1; min-width: 0; }
+.fav-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fav-macros { font-size: 12px; color: var(--sc-secondary); margin-top: 2px; }
+.fav-ctrl { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+.fav-stepper { display: flex; align-items: center; background: var(--sc-secondary-15); border-radius: 13px; overflow: hidden; }
+.fav-stepper button { font: inherit; font-size: 17px; font-weight: 700; width: 32px; height: 32px; border: 0; background: transparent; color: var(--sc-primary-text); }
+.fav-count { min-width: 26px; text-align: center; font-size: 14px; font-weight: 700; }
+.fav-log { font: inherit; font-size: 12px; font-weight: 700; padding: 8px 13px; border: 0; border-radius: 11px; background: var(--sc-primary-text); color: #fff; }
+.fav-heart { font: inherit; font-size: 16px; border: 0; background: none; color: var(--sc-red); margin-left: auto; }
+
+/* --- Servings stepper on the meal screen (js/ui/results.js) --- */
+.servings-card { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 16px; margin: 12px 16px; padding: 12px 14px; }
+.servings-label { flex: 1; min-width: 0; }
+.servings-title { font-size: 16px; font-weight: 600; }
+.servings-hint { font-size: 12px; color: var(--sc-secondary); margin-top: 2px; }
+.servings-stepper { display: flex; align-items: center; background: var(--sc-secondary-15); border-radius: 15px; overflow: hidden; }
+.servings-stepper button { font: inherit; font-size: 20px; font-weight: 700; width: 42px; height: 42px; border: 0; background: transparent; color: var(--sc-primary-text); }
+.servings-stepper span { min-width: 34px; text-align: center; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.servings-card.is-multiple .servings-stepper { background: var(--sc-primary-text); }
+.servings-card.is-multiple .servings-stepper button, .servings-card.is-multiple .servings-stepper span { color: #fff; }
+.servings-heart { font: inherit; font-size: 20px; border: 0; background: none; color: var(--sc-secondary); padding: 4px; }
+.servings-heart.is-on { color: var(--sc-red); }
+
+/* --- Exercise sheet (js/ui/exercise.js) --- */
+.ex-card { background: #fff; border-radius: 16px; margin: 8px 16px; padding: 14px; }
+.ex-card-label { font-size: 12px; font-weight: 600; color: var(--sc-secondary); margin-bottom: 8px; }
+.ex-describe-row { display: flex; gap: 8px; align-items: center; }
+.ex-input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 12px 13px; border: 0; border-radius: 13px; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.ex-parse { border: 0; border-radius: 13px; width: 44px; height: 44px; background: var(--sc-primary-text); color: #fff; display: grid; place-items: center; }
+.ex-parse:disabled { opacity: .5; }
+.ex-card-hint { font-size: 12px; color: var(--sc-secondary); margin-top: 8px; }
+.ex-card-hint.is-error { color: var(--sc-red); }
+.ex-section-header { font-size: 17px; font-weight: 700; margin: 18px 16px 8px; }
+.ex-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 16px; }
+.ex-chip { font: inherit; font-size: 13px; font-weight: 600; padding: 8px 12px; border: 0; border-radius: 13px; background: var(--sc-secondary-15); color: var(--sc-secondary); }
+.ex-chip.is-on { background: var(--sc-primary-text); color: #fff; }
+.ex-duration { display: flex; align-items: baseline; gap: 6px; }
+.ex-duration span { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ex-duration small { font-size: 14px; font-weight: 600; color: var(--sc-secondary); }
+.ex-slider { width: 100%; margin-top: 12px; accent-color: var(--sc-primary-text); }
+.ex-burn { background: var(--sc-primary-text); color: #fff; border-radius: 18px; margin: 18px 16px 8px; padding: 16px; }
+.ex-burn-top { display: flex; align-items: baseline; gap: 8px; }
+.ex-burn-num { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ex-burn-unit { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.7); }
+.ex-burn-note { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 6px; line-height: 1.45; }
+.ex-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-top: 10px; }
+.ex-row-icon { width: 36px; height: 36px; border-radius: 18px; background: var(--sc-secondary-15); display: grid; place-items: center; font-size: 17px; flex: none; }
+.ex-row-text { flex: 1; min-width: 0; }
+.ex-row-name { font-size: 15px; font-weight: 600; }
+.ex-row-sub { font-size: 12px; color: var(--sc-secondary); margin-top: 2px; }
+.ex-row-del { border: 0; background: none; color: var(--sc-secondary); padding: 6px; }
+
+/* --- Recipe ideas sheet (js/ui/recipes.js) --- */
+.rec-header { display: flex; align-items: center; gap: 20px; background: var(--sc-primary-text); color: #fff; border-radius: 18px; margin: 8px 16px 14px; padding: 16px; }
+.rec-figure { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rec-figure-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.7); margin-top: 2px; }
+.rec-refresh { margin-left: auto; font: inherit; font-size: 12px; font-weight: 700; padding: 8px 12px; border: 0; border-radius: 12px; background: rgba(255,255,255,.16); color: #fff; }
+.rec-loading { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 46px 20px; color: var(--sc-secondary); font-size: 14px; }
+.rec-card { margin: 0 16px 12px; padding: 14px; }
+.rec-name { font-size: 16px; font-weight: 700; }
+.rec-macros { font-size: 12px; color: var(--sc-secondary); margin: 6px 0 10px; }
+.rec-actions { display: flex; gap: 8px; }
+.rec-btn { font: inherit; font-size: 12px; font-weight: 700; padding: 8px 13px; border: 0; border-radius: 12px; background: var(--sc-secondary-15); color: var(--sc-secondary); }
+.rec-btn.is-primary { background: var(--sc-primary-text); color: #fff; }
+.rec-detail { margin-top: 12px; border-top: 1px solid var(--sc-secondary-14); padding-top: 12px; }
+.rec-detail-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--sc-secondary); margin-bottom: 6px; }
+.rec-detail ul, .rec-detail ol { margin: 0 0 12px; padding-left: 20px; }
+.rec-detail li { font-size: 14px; line-height: 1.5; margin-bottom: 3px; }
+
+/* --- Exercise + ideas on the Home tab --- */
+.calorie-exercise { font-size: 11px; color: var(--sc-secondary); margin-top: 5px; line-height: 1.4; }
+.exercise-section { margin: 22px 16px 0; }
+.section-head-row { display: flex; align-items: center; justify-content: space-between; }
+.section-action { font: inherit; font-size: 14px; font-weight: 600; border: 0; background: none; color: var(--sc-blue); padding: 4px 0; }
+.exercise-empty { font-size: 13px; color: var(--sc-secondary); margin-top: 8px; }
+.ideas-card { display: flex; align-items: center; gap: 12px; background: var(--sc-primary-text); color: #fff; border-radius: 18px; margin: 18px 16px 0; padding: 15px 16px; }
+.ideas-text { flex: 1; min-width: 0; }
+.ideas-title { font-size: 14px; font-weight: 700; }
+.ideas-sub { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 3px; }
+.ideas-btn { font: inherit; font-size: 12px; font-weight: 700; padding: 9px 14px; border: 0; border-radius: 13px; background: #fff; color: var(--sc-primary-text); }
+
+/* --- Viewing a past day --- */
+.viewing-day { display: flex; align-items: center; gap: 10px; margin: 6px 16px 0; padding: 9px 13px; border-radius: 14px; background: var(--sc-secondary-15); font-size: 13px; font-weight: 600; }
+.viewing-day span { flex: 1; min-width: 0; }
+.viewing-day button { font: inherit; font-size: 13px; font-weight: 700; border: 0; background: none; color: var(--sc-blue); }
+.week-day-col { cursor: pointer; }
+.week-day-col.future { cursor: default; }
+.week-day-col.selected .week-day-circle { border: 2px solid var(--sc-primary-text); }
+
+/* --- Language picker (Profile) --- */
+.lang-row { display: flex; gap: 8px; padding: 12px 14px; }
+.lang-btn { flex: 1; font: inherit; font-size: 15px; font-weight: 600; padding: 11px 0; border: 0; border-radius: 13px; background: var(--sc-secondary-15); color: var(--sc-secondary); }
+.lang-btn.is-on { background: var(--sc-primary-text); color: #fff; }
+
+/* ===========================================================================
+   Redesign pass — rounder cards, calmer type, more air. Matches the Figma
+   screens (SnapCal — redesign). Only visual: no markup or logic depends on it.
+   =========================================================================== */
+
+.today-content { padding-top: 4px; }
+
+/* Cards get the softer radius and shadow from the mockups */
+.card { border-radius: 22px !important; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important; }
+
+/* Calorie card: bigger number, ring on the right, exercise note underneath */
+.calorie-card { padding: 20px 20px 18px !important; align-items: center; }
+.calorie-remaining { font-size: 44px !important; font-weight: 800 !important; letter-spacing: -0.03em; line-height: 1; }
+.calorie-caption { font-size: 14px !important; font-weight: 600; color: var(--sc-secondary); margin-top: 6px; }
+
+/* Macro tiles: label above the ring, tabular numbers */
+.macro-tile { padding: 14px 12px !important; }
+.macro-value { font-size: 20px !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+.macro-caption { font-size: 12px !important; color: var(--sc-secondary); margin-top: 2px; }
+
+/* Week strip: pill for the selected day, like the mockup */
+.week-strip { padding: 10px 12px 2px !important; }
+.week-day-circle { transition: background-color .18s ease, border-color .18s ease; }
+.week-day-col.selected .week-day-circle { border-width: 2px; }
+
+/* Section headings */
+.section-title { font-size: 19px !important; font-weight: 700 !important; letter-spacing: -0.01em; }
+
+/* Meal rows: photo thumbnail, rounder, more breathing room */
+.recent-list .entry-row, .entry-row { border-radius: 20px !important; }
+
+/* Nothing should hide behind the floating + button */
+.bottom-safe-spacer { height: 148px; }
+.ideas-card { margin-bottom: 4px; }
+
+/* Buttons and chips share one radius language */
+.btn-prominent, .btn-bordered { border-radius: 16px !important; font-weight: 700 !important; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .calorie-card, .macro-tile, .ex-row { transition: transform .18s ease; }
+}
+
+/* --- Doodle character (js/ui/doodle.js) --- */
+.doodle { display: block; }
+.doodle-card { display: flex; align-items: center; gap: 14px; background: #fff; border-radius: 22px; margin: 14px 16px 0; padding: 12px 16px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.doodle-card .doodle { flex: none; }
+.doodle-text { flex: 1; min-width: 0; }
+.doodle-title { font-size: 15px; font-weight: 700; }
+.doodle-sub { font-size: 12px; color: var(--sc-secondary); margin-top: 3px; line-height: 1.45; }
+@media (prefers-reduced-motion: no-preference) {
+  .doodle-animate { animation: doodle-pop .55s cubic-bezier(.2,.8,.3,1.2); transform-origin: 50% 100%; }
+  @keyframes doodle-pop {
+    0% { transform: scale(.82) translateY(6px); opacity: .4; }
+    60% { transform: scale(1.06) translateY(-2px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); }
+  }
+}
