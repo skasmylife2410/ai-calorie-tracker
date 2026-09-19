@@ -63,9 +63,14 @@ async function boot() {
   await initI18n({ stored: store.getProfile().language });
   onLanguageChange(() => renderShell());
   // Accounts: no valid session -> the login screen owns the app until they sign in.
-  if (!(await hasValidSession())) {
-    const root = document.getElementById("app");
-    await renderLogin(root);
+  // Anything that throws in here must NOT leave a blank page, so the whole thing is guarded:
+  // a broken login is still better than an app that won't start.
+  try {
+    if (!(await hasValidSession())) {
+      await renderLogin(appRoot);
+    }
+  } catch (err) {
+    console.error("app.js: login failed, continuing unauthenticated", err);
   }
 
   initSync();
