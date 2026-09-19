@@ -81,8 +81,19 @@ export default async function handler(req, res) {
   let from = typeof body.from === "string" && DAY_RE.test(body.from) ? body.from : earliest;
   if (from < earliest) from = earliest;
 
-  const configured = [...new Set(parseUsers(process.env.APP_USERS).values())];
-  const owners = configured.length > 0 ? configured : [DEFAULT_OWNER];
+  // Who appears on this dashboard: every account in snapcal_users, so a person who signs up with
+  // the invite code shows up here too. APP_USERS is only a fallback for the changeover period.
+  let owners = [];
+  try {
+    const rows = await select("snapcal_users", { select: "username", order: "created_at.asc", limit: "50" });
+    owners = rows.map((r) => r.username).filter((u) => typeof u === "string" && u !== "");
+  } catch {
+    owners = [];
+  }
+  if (owners.length === 0) {
+    const configured = [...new Set(parseUsers(process.env.APP_USERS).values())];
+    owners = configured.length > 0 ? configured : [DEFAULT_OWNER];
+  }
   const ownerFilter = `in.(${owners.join(",")})`;
 
   let entries, water, exercise, profiles;
