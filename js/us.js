@@ -11,6 +11,8 @@ const body = document.getElementById("tg-body");
 const COLORS = [
   { solid: "var(--tg-a)", soft: "var(--tg-a-soft)" },
   { solid: "var(--tg-b)", soft: "var(--tg-b-soft)" },
+  { solid: "var(--tg-c)", soft: "var(--tg-c-soft)" },
+  { solid: "var(--tg-d)", soft: "var(--tg-d-soft)" },
 ];
 let range = 7;
 let data = null;
@@ -90,7 +92,50 @@ function todayHtml(people) {
         <div class="tg-extra">${t("us.mealsCount", { n: d.meals })}${d.sessions ? ` · ${t("us.sessionsCount", { n: d.sessions })}` : ` · ${t("us.noExercise")}`}<br>${t("us.glassesOfWater", { n: d.water })}</div>
       </div>`;
   });
-  return `<section class="tg-section"><h2 class="tg-h2">${t("us.today")}</h2><div class="tg-today">${cols.join("")}</div></section>`;
+  return `<section class="tg-section"><h2 class="tg-h2">${t("us.today")}</h2><div class="tg-today${people.length > 2 ? " is-scroll" : ""}">${cols.join("")}</div></section>`;
+}
+
+/**
+ * With three or more people a left/right mirror has nowhere to put the third, so each day
+ * becomes a small group of horizontal bars, one per person, sharing one scale.
+ */
+function groupedHtml(people, days) {
+  const vals = days.flatMap((d) => people.map((p) => (p.days[d.key] || EMPTY_DAY).calories));
+  const goals = people.map((p) => p.goals?.calories || 0);
+  const max = Math.max(1, ...vals, ...goals) * 1.08;
+
+  const rows = days.map(({ ts, key }) => {
+    const dt = new Date(ts);
+    const label = key === localDateString(Date.now())
+      ? t("us.today")
+      : `${formatDate(ts, { weekday: "short" })} ${dt.getMonth() + 1}/${dt.getDate()}`;
+
+    const bars = people.map((p, i) => {
+      const c = COLORS[i % COLORS.length];
+      const kcal = (p.days[key] || EMPTY_DAY).calories;
+      const w = (kcal / max) * 100;
+      const goal = p.goals?.calories;
+      return `
+        <div class="tg-gbar">
+          <div class="tg-gtrack" style="background:${c.soft}">
+            <div class="tg-gfill" style="width:${w}%;background:${c.solid}"></div>
+            ${goal ? `<div class="tg-ggoal" style="left:calc(${(goal / max) * 100}% - 1px)"></div>` : ""}
+          </div>
+          <span class="tg-gnum">${kcal > 0 ? fmt(kcal) : "–"}</span>
+        </div>`;
+    }).join("");
+
+    return `<div class="tg-grow"><div class="tg-gday">${escHtml(label)}</div><div class="tg-gbars">${bars}</div></div>`;
+  });
+
+  return `<section class="tg-section">
+    <h2 class="tg-h2">${t("us.caloriesByDay")}</h2>
+    <div class="tg-mirror">
+      <div class="tg-glegend">${people.map((p, i) => `<span><i style="background:${COLORS[i % COLORS.length].solid}"></i>${escHtml(titleCase(p.owner))}</span>`).join("")}</div>
+      ${rows.join("")}
+      <div class="tg-legend"><i></i> ${t("us.goalLine")}</div>
+    </div>
+  </section>`;
 }
 
 function mirrorHtml(people, days) {
@@ -184,8 +229,11 @@ function render() {
     body.innerHTML = `<p class="tg-note">No one is set up yet. Add people to APP_USERS in Vercel.</p>`;
     return;
   }
+  // The layout is designed for up to about 5 people; beyond that the bars get unreadable.
+  if (people.length > 5) people.length = 5;
   const days = dayList(range);
-  body.innerHTML = todayHtml(people) + mirrorHtml(people, days) + summaryHtml(people, days) +
+  const chart = people.length > 2 ? groupedHtml(people, days) : mirrorHtml(people, days);
+  body.innerHTML = todayHtml(people) + chart + summaryHtml(people, days) +
     (people.length === 1 ? `<p class="tg-note">Only one person is set up. Add a second name and passcode to APP_USERS in Vercel to compare.</p>` : "");
 }
 
