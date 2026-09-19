@@ -168,5 +168,42 @@
     "idleTitle": "Where'd you go?",
     "idleSub": "Nothing logged in {days} days. The streak stopped.",
     "bigMeal": "+{calories} kcal · {protein}g protein"
+  },
+  "list": {
+    "edit": "Edit",
+    "done": "Done",
+    "showAll": "Show all {n}",
+    "showLess": "Show less",
+    "removeMeal": "Remove",
+    "confirmRemove": "Remove “{name}”?",
+    "cancel": "Cancel",
+    "emptyToday": "Tap + to add your first meal of the day"
+  },
+  "undo": {
+    "removed": "Removed “{name}”",
+    "action": "Undo"
+  },
+  "auth": {
+    "signInTitle": "Sign in",
+    "createTitle": "Create account",
+    "username": "Username",
+    "password": "Password",
+    "invite": "Invite code",
+    "inviteHint": "Ask whoever set up the app for this.",
+    "signInButton": "Sign in",
+    "createButton": "Create account",
+    "working": "One moment…",
+    "noAccount": "No account? Create one",
+    "haveAccount": "Already have an account? Sign in",
+    "forgot": "Forgotten your password? Whoever set up the app can reset it for you.",
+    "fillBoth": "Enter a username and a password.",
+    "account": "Account",
+    "signedInAs": "Signed in as",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "changed": "Password changed.",
+    "signOut": "Sign out",
+    "signOutConfirm": "Sign out on this phone? Your meals stay in the cloud."
   }
 }

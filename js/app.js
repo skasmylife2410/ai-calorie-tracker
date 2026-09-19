@@ -18,6 +18,7 @@ import { openDescribeMealSheet } from "./ui/describe.js";
 import { openFavouritesSheet } from "./ui/favourites.js";
 import { openExerciseSheet } from "./ui/exercise.js";
 import { viewedTimestamp } from "./ui/today.js";
+import { renderLogin, hasValidSession } from "./ui/login.js";
 import { openRecipesSheet } from "./ui/recipes.js";
 import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
@@ -61,6 +62,12 @@ async function boot() {
   // Language comes from the profile (so it travels between this person's devices), else the phone.
   await initI18n({ stored: store.getProfile().language });
   onLanguageChange(() => renderShell());
+  // Accounts: no valid session -> the login screen owns the app until they sign in.
+  if (!(await hasValidSession())) {
+    const root = document.getElementById("app");
+    await renderLogin(root);
+  }
+
   initSync();
   hasProfile = profileExists();
 

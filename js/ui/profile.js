@@ -3,6 +3,8 @@
 import * as store from "../store.js";
 import * as sync from "../sync.js";
 import { t, currentLanguage, setLanguage, supportedLanguages } from "../i18n.js";
+import { postAuth } from "./login.js";
+import { setStoredToken } from "../net.js";
 import { roundDisplay } from "../nutrition.js";
 import { wireNumericInput } from "./numeric-field.js";
 import {
@@ -20,6 +22,15 @@ const GOAL_FIELDS = [
   { key: "customFatG", derivedKey: "fatTargetG", id: "fat", label: "Fat", unit: "g", decimal: true },
 ];
 
+let currentUsername = "";
+postAuth({ op: "whoami" }).then((out) => {
+  if (out.ok && out.username !== currentUsername) {
+    currentUsername = out.username;
+    const el = document.querySelector("#tab-content");
+    if (el && el.querySelector("#acct-change")) render(el);
+  }
+});
+
 export function render(container) {
   const profile = store.getProfile();
   const goals = store.computeGoals();
@@ -33,6 +44,7 @@ export function render(container) {
       ${activityLevelSectionHtml(profile)}
       ${goalSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
+      ${accountSectionHtml(currentUsername)}
       ${languageSectionHtml()}
       ${syncSectionHtml()}
       <div class="bottom-safe-spacer"></div>
@@ -44,6 +56,7 @@ export function render(container) {
   wireCalculatorSection(container, goals);
   wireSyncSection(container);
   wireLanguage(container);
+  wireAccount(container, currentUsername);
 }
 
 function syncStatusLabel({ state, lastSyncAt }) {
@@ -56,6 +69,56 @@ function syncStatusLabel({ state, lastSyncAt }) {
     return `Synced ${hh}:${mm}`;
   }
   return "Off";
+}
+
+/** Account: who you are, change password, sign out. */
+function accountSectionHtml(username) {
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("auth.account")}</div>
+      <div class="ios-section-body">
+        <div class="ios-row"><div class="ios-row-label">${t("auth.signedInAs")}</div><div class="ios-row-value">${username || "—"}</div></div>
+        <div class="acct-actions">
+          <button type="button" class="acct-btn" id="acct-change">${t("auth.changePassword")}</button>
+          <button type="button" class="acct-btn is-danger" id="acct-signout">${t("auth.signOut")}</button>
+        </div>
+        <div class="acct-form hidden" id="acct-form">
+          <input id="acct-current" class="auth-input" type="password" placeholder="${t("auth.currentPassword")}" autocomplete="current-password" />
+          <input id="acct-new" class="auth-input" type="password" placeholder="${t("auth.newPassword")}" autocomplete="new-password" />
+          <button type="button" class="auth-submit" id="acct-save">${t("app.save")}</button>
+          <div class="acct-msg" id="acct-msg"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function wireAccount(container, username) {
+  const form = container.querySelector("#acct-form");
+  container.querySelector("#acct-change")?.addEventListener("click", () => form?.classList.toggle("hidden"));
+
+  container.querySelector("#acct-save")?.addEventListener("click", async () => {
+    const msg = container.querySelector("#acct-msg");
+    const password = container.querySelector("#acct-current").value;
+    const newPassword = container.querySelector("#acct-new").value;
+    msg.textContent = t("auth.working");
+    const out = await postAuth({ op: "change", username, password, newPassword });
+    if (out.ok) {
+      setStoredToken(out.token);
+      msg.textContent = t("auth.changed");
+      msg.classList.remove("is-error");
+      container.querySelector("#acct-current").value = "";
+      container.querySelector("#acct-new").value = "";
+    } else {
+      msg.textContent = out.message || t("errors.generic");
+      msg.classList.add("is-error");
+    }
+  });
+
+  container.querySelector("#acct-signout")?.addEventListener("click", () => {
+    if (globalThis.confirm && !globalThis.confirm(t("auth.signOutConfirm"))) return;
+    setStoredToken("");
+    location.reload();
+  });
 }
 
 /** Language picker — per person, stored on the profile so it follows them between devices. */

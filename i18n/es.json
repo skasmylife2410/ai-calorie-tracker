@@ -168,5 +168,42 @@
     "idleTitle": "¿Dónde te metiste?",
     "idleSub": "Llevas {days} días sin registrar nada. Se cortó la racha.",
     "bigMeal": "+{calories} kcal · {protein} g de proteína"
+  },
+  "list": {
+    "edit": "Editar",
+    "done": "Listo",
+    "showAll": "Ver los {n}",
+    "showLess": "Ver menos",
+    "removeMeal": "Quitar",
+    "confirmRemove": "¿Quitar «{name}»?",
+    "cancel": "Cancelar",
+    "emptyToday": "Toca + para añadir tu primera comida del día"
+  },
+  "undo": {
+    "removed": "Se quitó «{name}»",
+    "action": "Deshacer"
+  },
+  "auth": {
+    "signInTitle": "Iniciar sesión",
+    "createTitle": "Crear cuenta",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "invite": "Código de invitación",
+    "inviteHint": "Pídeselo a quien configuró la app.",
+    "signInButton": "Entrar",
+    "createButton": "Crear cuenta",
+    "working": "Un momento…",
+    "noAccount": "¿No tienes cuenta? Crea una",
+    "haveAccount": "¿Ya tienes cuenta? Entra",
+    "forgot": "¿Olvidaste la contraseña? Quien configuró la app puede restablecerla.",
+    "fillBoth": "Escribe un usuario y una contraseña.",
+    "account": "Cuenta",
+    "signedInAs": "Sesión iniciada como",
+    "changePassword": "Cambiar contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Contraseña nueva",
+    "changed": "Contraseña cambiada.",
+    "signOut": "Cerrar sesión",
+    "signOutConfirm": "¿Cerrar sesión en este teléfono? Tus comidas siguen en la nube."
   }
 }

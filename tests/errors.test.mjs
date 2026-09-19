@@ -3,6 +3,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+// These tests exercise /api/gemini's error handling, not its auth gate, so open the gate the
+// same way the local dev server does.
+process.env.ALLOW_ANONYMOUS = "1";
+delete process.env.APP_USERS;
+delete process.env.APP_TOKEN;
+
 class MemoryStorage {
   constructor() { this._d = new Map(); }
   getItem(k) { return this._d.has(k) ? this._d.get(k) : null; }

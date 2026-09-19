@@ -9,6 +9,8 @@
 //
 // Returns the owner name (a non-empty string, so it is truthy) or false after sending a 401.
 
+import { readSession } from "./_accounts.js";
+
 export const DEFAULT_OWNER = (process.env.APP_DEFAULT_USER || "aelson").trim().toLowerCase();
 
 const NAME_RE = /^[a-z0-9_-]{1,40}$/;
@@ -30,6 +32,12 @@ export function parseUsers(raw) {
 export function checkAuth(req, res) {
   const provided = String(req.headers["x-snapcal-token"] || "").trim();
 
+  // 1. Signed session from api/auth.js — the current scheme.
+  const session = readSession(provided);
+  if (session) return session;
+
+  // 2. APP_USERS passcodes — kept so phones that haven't signed in yet keep working during the
+  //    changeover. Remove the variable once everyone has an account.
   const users = parseUsers(process.env.APP_USERS);
   if (users.size > 0) {
     const owner = provided !== "" ? users.get(provided) : undefined;
@@ -38,9 +46,17 @@ export function checkAuth(req, res) {
     return false;
   }
 
+  // 3. Legacy single passcode.
   const required = (process.env.APP_TOKEN || "").trim();
-  if (required === "") return DEFAULT_OWNER; // no gate configured -> allow (local dev)
-  if (provided === required) return DEFAULT_OWNER;
+  if (required !== "" && provided === required) return DEFAULT_OWNER;
+
+  // 4. Wide open, for `node dev-server.mjs` on a laptop only. This used to be the behaviour
+  //    whenever APP_TOKEN happened to be unset, which meant that deleting APP_USERS in Vercel
+  //    silently published everyone's food log to the internet as DEFAULT_OWNER. It now takes a
+  //    deliberate ALLOW_ANONYMOUS=1.
+  if (process.env.ALLOW_ANONYMOUS === "1" && required === "" && users.size === 0) {
+    return DEFAULT_OWNER;
+  }
 
   res.status(401).json({ errorType: "unauthorized", message: "Invalid or missing passcode." });
   return false;

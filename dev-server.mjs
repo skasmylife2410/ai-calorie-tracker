@@ -12,6 +12,9 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
+// Local dev has no accounts database, so the API gate is opened explicitly here (see api/_auth.js).
+process.env.ALLOW_ANONYMOUS = process.env.ALLOW_ANONYMOUS ?? "1";
+
 const PORT = Number(process.env.PORT || 3000);
 
 // Load ./.env into process.env (no override of pre-set vars).
