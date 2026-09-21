@@ -40,3 +40,12 @@ APP_USERS can be deleted once all three of you have signed in with a username.
 - Onboarding screens are still English only
 - No rate limit on login attempts yet
 - Meal photos live in the database rather than storage
+
+## New in this build
+
+- Tabs are now Home · Today | + | Us · Weight. Profile opens from your photo, top right of Home.
+- Today tab: only what you've eaten today, with a running total and macro bars.
+- Edit a food by grams, ml or servings, and every number rescales. Quick ×0.5 … ×2 buttons.
+- Us is a tab inside the app. Tap your own circle to set a profile photo; it syncs to the others.
+- Weight: goal weight with a progress bar, change / per-week / lowest tiles, area chart with
+  gridlines and the goal marked.

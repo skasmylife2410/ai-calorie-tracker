@@ -1,0 +1,311 @@
+// app.js — boot + root shell (ContentView.swift), SPEC-UI.md §2.
+// Onboarding gate, custom bottom bar + FAB with the 2x2 popup, tab routing, root-owned
+// sheets/covers (camera, food database, describe, saved foods, barcode flow), SW registration.
+
+import * as store from "./store.js";
+import { t as translate, initI18n, onLanguageChange } from "./i18n.js";
+import * as queue from "./queue.js";
+import { initSync } from "./sync.js";
+import { foodLookup } from "./api.js";
+import { icon } from "./ui/icons.js";
+import { render as renderToday } from "./ui/today.js";
+import { render as renderHistory } from "./ui/history.js";
+import { render as renderProfile } from "./ui/profile.js";
+import { render as renderOnboarding } from "./ui/onboarding.js";
+import { openCameraScan } from "./ui/scan.js";
+import { openFoodSearchSheet } from "./ui/search.js";
+import { openDescribeMealSheet } from "./ui/describe.js";
+import { openFavouritesSheet } from "./ui/favourites.js";
+import { openExerciseSheet } from "./ui/exercise.js";
+import { viewedTimestamp } from "./ui/today.js";
+import { renderLogin, hasValidSession } from "./ui/login.js";
+import { render as renderWeight } from "./ui/weight.js";
+import { render as renderTodayMeals } from "./ui/today-meals.js";
+import { renderUsTab } from "./us.js";
+import { openRecipesSheet } from "./ui/recipes.js";
+import { openAddFoodSheet } from "./ui/addfood.js";
+import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
+
+const TABS = [
+  { id: "home", labelKey: "tabs.home", icon: "houseFill" },
+  { id: "today", labelKey: "todayTab.tab", icon: "forkKnife" },
+  { id: "us", labelKey: "us.tab", icon: "personFill" },
+  { id: "weight", labelKey: "weight.tab", icon: "scale" },
+];
+// Profile has no tab of its own any more; it opens from the avatar at the top of Home.
+
+// Popup tile grid — exact 2x2 order (§2.2): row 1 = look something up, row 2 = capture new.
+const POPUP_TILES = [
+  { id: "saved", icon: "bookmarkFill", labelKey: "menu.favourites" },
+  { id: "search", icon: "magnifyingglass", labelKey: "menu.database" },
+  { id: "scan", icon: "cameraViewfinder", labelKey: "menu.scan" },
+  { id: "describe", icon: "textBubbleFill", labelKey: "menu.describe" },
+  { id: "exercise", icon: "boltFill", labelKey: "menu.exercise" },
+  { id: "recipes", icon: "wandAndStars", labelKey: "menu.ideas" },
+];
+
+let selectedTab = "home";
+let popupOpen = false;
+let hasProfile = false;
+
+const appRoot = document.getElementById("app-root");
+
+function profileExists() {
+  try {
+    return localStorage.getItem("snapcal.userProfile") !== null;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+
+async function boot() {
+  queue.sweepIfNeeded(); // reload mid-analysis -> orphaned pendings become retryable-failed
+  // Language comes from the profile (so it travels between this person's devices), else the phone.
+  await initI18n({ stored: store.getProfile().language });
+  onLanguageChange(() => renderShell());
+  // Accounts: no valid session -> the login screen owns the app until they sign in.
+  // Anything that throws in here must NOT leave a blank page, so the whole thing is guarded:
+  // a broken login is still better than an app that won't start.
+  try {
+    if (!(await hasValidSession())) {
+      await renderLogin(appRoot);
+    }
+  } catch (err) {
+    console.error("app.js: login failed, continuing unauthenticated", err);
+  }
+
+  initSync();
+  hasProfile = profileExists();
+
+  store.subscribe(() => {
+    renderCurrentTab();
+  });
+
+  renderShell();
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.warn("app.js: service worker registration failed", err);
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shell rendering
+// ---------------------------------------------------------------------------
+
+function renderShell() {
+  if (!hasProfile) {
+    appRoot.innerHTML = `<div class="screen scroll-view" id="onboarding-screen"></div>`;
+    renderOnboarding(document.getElementById("onboarding-screen"), () => {
+      hasProfile = true;
+      renderShell();
+    });
+    return;
+  }
+
+  appRoot.innerHTML = `
+    <div class="scroll-view" id="tab-content"></div>
+    <div class="fab-scrim hidden" id="fab-scrim"></div>
+    <div class="fab-popup-grid hidden" id="fab-popup">
+      ${POPUP_TILES.map(
+        (t) => `
+        <button class="fab-tile" data-tile="${t.id}">
+          ${icon(t.icon, { size: 26 })}
+          <span class="fab-tile-label">${translate(t.labelKey)}</span>
+        </button>`
+      ).join("")}
+    </div>
+    <div class="bottom-bar-wrap">
+      <div class="bottom-bar">
+        <div class="bottom-bar-backdrop"></div>
+        <div class="bottom-bar-bump"></div>
+        <div class="bottom-bar-row">
+          <div class="bottom-bar-half">${TABS.slice(0, 2).map(tabButtonHtml).join("")}</div>
+          <div class="fab-slot"></div>
+          <div class="bottom-bar-half right">${TABS.slice(2).map(tabButtonHtml).join("")}</div>
+        </div>
+        <button class="fab-btn" id="fab-btn">${icon("plus", { size: 24 })}</button>
+      </div>
+    </div>
+  `;
+
+  wireShell();
+  renderCurrentTab();
+}
+
+function tabButtonHtml(tab) {
+  const active = tab.id === selectedTab;
+  return `
+    <button class="tab-btn${active ? " active" : ""}" data-tab="${tab.id}">
+      <span class="tab-icon-pill">${icon(tab.icon, { size: 19 })}</span>
+      <span class="tab-label">${translate(tab.labelKey)}</span>
+    </button>
+  `;
+}
+
+function wireShell() {
+  appRoot.querySelectorAll("[data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (popupOpen) setPopupOpen(false);
+      if (btn.dataset.tab === selectedTab) return;
+      selectedTab = btn.dataset.tab;
+      appRoot.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("active", b.dataset.tab === selectedTab));
+      renderCurrentTab();
+    });
+  });
+
+  const fabBtn = appRoot.querySelector("#fab-btn");
+  fabBtn.addEventListener("click", () => setPopupOpen(!popupOpen));
+
+  appRoot.querySelector("#fab-scrim").addEventListener("click", () => setPopupOpen(false));
+
+  appRoot.querySelectorAll("[data-tile]").forEach((tile) => {
+    tile.addEventListener("click", () => {
+      setPopupOpen(false);
+      handleTileAction(tile.dataset.tile);
+    });
+  });
+}
+
+function setPopupOpen(open) {
+  popupOpen = open;
+  const scrim = appRoot.querySelector("#fab-scrim");
+  const popup = appRoot.querySelector("#fab-popup");
+  const fabBtn = appRoot.querySelector("#fab-btn");
+  if (!scrim || !popup || !fabBtn) return;
+
+  fabBtn.classList.toggle("open", open);
+  if (open) {
+    scrim.classList.remove("hidden");
+    popup.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      scrim.classList.add("visible");
+      popup.classList.add("visible");
+    });
+  } else {
+    scrim.classList.remove("visible");
+    popup.classList.remove("visible");
+    setTimeout(() => {
+      if (!popupOpen) {
+        scrim.classList.add("hidden");
+        popup.classList.add("hidden");
+      }
+    }, 350);
+  }
+}
+
+function handleTileAction(tileId) {
+  switch (tileId) {
+    case "saved":
+      openFavouritesSheet({ timestamp: viewedTimestamp() });
+      break;
+    case "search":
+      openFoodSearchSheet();
+      break;
+    case "scan":
+      openCameraScan({ onResult: handleCameraResult });
+      break;
+    case "describe":
+      openDescribeMealSheet();
+      break;
+    case "exercise":
+      openExerciseSheet({ onSaved: () => renderCurrentTab() });
+      break;
+    case "recipes":
+      openRecipesSheet();
+      break;
+  }
+}
+
+/** Lets a screen move to another tab, e.g. Home's avatar opening Profile. */
+globalThis.snapcalGoTo = (tab) => {
+  selectedTab = tab;
+  renderShell();
+};
+
+function renderCurrentTab() {
+  const content = document.getElementById("tab-content");
+  if (!content) return;
+  if (selectedTab === "home") renderToday(content);
+  else if (selectedTab === "today") renderTodayMeals(content);
+  else if (selectedTab === "us") renderUsTab(content);
+  else if (selectedTab === "weight") renderWeight(content);
+  else if (selectedTab === "progress") renderHistory(content);
+  else renderProfile(content);
+}
+
+// ---------------------------------------------------------------------------
+// Camera result routing (§2.4): photos -> analysis queue; barcode -> lookup flow
+// ---------------------------------------------------------------------------
+
+function handleCameraResult(result) {
+  if (result.type === "foodPhoto") {
+    queue.enqueuePhoto(result.dataUrl, "meal");
+    selectedTab = "home";
+    renderShell();
+  } else if (result.type === "labelPhoto") {
+    queue.enqueuePhoto(result.dataUrl, "label");
+    selectedTab = "home";
+    renderShell();
+  } else if (result.type === "barcode") {
+    startBarcodeFlow(result.code);
+  }
+}
+
+/** BarcodeLookupProgressView (§5.5) -> AddFood prefill variants (§7.2). */
+function startBarcodeFlow(barcode) {
+  let cancelled = false;
+  let progressClose = null;
+
+  openSheet({
+    render(panel, close) {
+      progressClose = close;
+      panel.innerHTML = `
+        ${navBar({ title: "", leading: { label: "Cancel" } })}
+        <div class="sheet-panel-body">
+          <div class="barcode-progress-body">
+            <div class="spinner"></div>
+            <div class="barcode-progress-text">Looking up ${escapeHtml(barcode)}…</div>
+          </div>
+        </div>
+      `;
+      wireNavBar(panel, {
+        onLeading: () => {
+          cancelled = true;
+          close();
+        },
+      });
+    },
+    onClosed: () => {
+      cancelled = true;
+    },
+  });
+
+  foodLookup(barcode).then((outcome) => {
+    if (cancelled) return;
+    cancelled = true; // consume the flow exactly once
+    if (progressClose) progressClose();
+    setTimeout(() => {
+      if (outcome.status === "found") {
+        openAddFoodSheet({ prefill: outcome.product, timestamp: viewedTimestamp() });
+      } else if (outcome.status === "notFound") {
+        openAddFoodSheet({ prefillBarcode: barcode, timestamp: viewedTimestamp() });
+      } else {
+        openAddFoodSheet({ prefillBarcode: barcode, failureReason: outcome.message, timestamp: viewedTimestamp() });
+      }
+    }, 340);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+boot();
