@@ -1,5 +1,9 @@
-// sky.js — a soft, glowing, slowly drifting colour field behind the whole app that follows
-// the time of day. No numbers: the colour is the clock.
+// sky.js — "the day fills up": a soft, glowing band of colour rises from the bottom of the screen
+// as the day passes, like a very slow progress bar. No numbers: how high the light has climbed
+// is how much of the day has gone. The colour of the light also shifts through the day.
+//
+// Fixed hours: the day runs 6:00 → 23:00. Overnight the light sinks back to a low indigo glow,
+// so each morning starts from the bottom again.
 //
 // Fixed hours, the same on every phone (no location needed). Colours blend continuously
 // between the moments below, so 4:30 pm sits between afternoon gold and sunset orange rather
@@ -38,6 +42,19 @@ export function skyAt(date = new Date()) {
   };
 }
 
+const DAY_START = 6;
+const DAY_END = 23;
+
+/**
+ * Share of the waking day that has passed, 0 → 1. Null overnight (23:00–6:00).
+ */
+export function dayProgress(date = new Date()) {
+  const hour = date.getHours() + date.getMinutes() / 60;
+  if (hour < DAY_START || hour >= DAY_END) return null;
+  // linear on purpose: every hour of the day moves the light the same distance
+  return (hour - DAY_START) / (DAY_END - DAY_START);
+}
+
 /** Test/preview hook: ?sky=19.5 forces a time of day. */
 function overrideDate() {
   const q = new URLSearchParams(location.search).get("sky");
@@ -53,12 +70,25 @@ export function mountSky(root = document.body) {
   if (document.getElementById("sky")) return;
   const sky = document.createElement("div");
   sky.id = "sky";
+  // Start already in place: the 60s transition is for the slow climb during the day, not for
+  // sliding up from nowhere every time the app opens.
+  sky.className = "sky-settling";
   sky.setAttribute("aria-hidden", "true");
-  sky.innerHTML = `<i class="sky-blob b1"></i><i class="sky-blob b2"></i><i class="sky-blob b3"></i><i class="sky-edge"></i><i class="sky-veil"></i>`;
+  sky.innerHTML = `
+    <div class="sky-fill">
+      <i class="sky-blob b1"></i><i class="sky-blob b2"></i>
+      <i class="sky-crest"></i>
+    </div>
+    <i class="sky-veil"></i>`;
   root.prepend(sky);
 
   const paint = () => {
-    const { glow, base } = skyAt(overrideDate() ?? new Date());
+    const now = overrideDate() ?? new Date();
+    const { glow, base } = skyAt(now);
+    // How far the light has climbed: 12% of the screen at 6 am, 92% by 11 pm, a low 9% glow overnight.
+    const p = dayProgress(now);
+    const height = p === null ? 9 : 12 + p * 80;
+    document.documentElement.style.setProperty("--sky-level", `${height.toFixed(2)}vh`);
     const s = document.documentElement.style;
     s.setProperty("--sky-base", rgb(base));
     s.setProperty("--sky-1", rgb(glow[0], 0.78));
@@ -72,6 +102,7 @@ export function mountSky(root = document.body) {
     if (meta) meta.setAttribute("content", rgb(base));
   };
   paint();
+  requestAnimationFrame(() => requestAnimationFrame(() => sky.classList.remove("sky-settling")));
   setInterval(paint, 60 * 1000); // a minute is plenty; the change is slow by design
   document.addEventListener("visibilitychange", () => { if (!document.hidden) paint(); });
 }

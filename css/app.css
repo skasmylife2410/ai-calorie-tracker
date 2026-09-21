@@ -1680,3 +1680,37 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
   .sky-edge { animation: sky-edge-flow 18s ease-in-out infinite alternate; }
   @keyframes sky-edge-flow { from { background-position: 0% 0; } to { background-position: 100% 0; } }
 }
+
+/* ===========================================================================
+   Idea B — the day fills up. Replaces the all-over glow: now the light lives in a
+   band that rises from the bottom. --sky-level (set by sky.js) is its height.
+   =========================================================================== */
+.sky-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; height: var(--sky-level, 40vh);
+  transition: height 60s linear;           /* moves a little every minute, never jumps */
+  overflow: visible;
+}
+/* the body of the light: colour at the bottom, fading out towards the rising edge */
+.sky-fill::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to top, var(--sky-e1) 0%, var(--sky-e2) 45%, var(--sky-e3) 80%, transparent 100%);
+  opacity: .5;
+}
+/* the glowing blobs now live inside the rising band */
+.sky-fill .sky-blob.b1 { width: 110vw; height: 60vh; left: -40vw; bottom: -26vh; top: auto; }
+.sky-fill .sky-blob.b2 { width: 110vw; height: 55vh; right: -40vw; bottom: -22vh; top: auto; }
+/* the crest: a soft bright line of light right at the top of the band, flowing sideways */
+.sky-crest {
+  position: absolute; left: -15vw; right: -15vw; top: -9vh; height: 18vh;
+  background: linear-gradient(90deg, var(--sky-e1), var(--sky-e2) 35%, var(--sky-e3) 65%, var(--sky-e1));
+  background-size: 200% 100%;
+  -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, #000 0%, rgba(0,0,0,.4) 55%, transparent 100%);
+          mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, #000 0%, rgba(0,0,0,.4) 55%, transparent 100%);
+  opacity: .55;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sky-crest { animation: sky-edge-flow 16s ease-in-out infinite alternate; }
+}
+/* retire idea A's pieces */
+.sky-blob.b3, .sky-edge { display: none !important; }
+#sky.sky-settling .sky-fill { transition: none !important; }

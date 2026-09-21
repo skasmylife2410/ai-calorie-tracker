@@ -315,3 +315,21 @@ test("doodle messages are personal, match the doodle, and hold for 12 hours", as
     doodleMessage(base, { username: "baby", now: t0 + i * 12 * 3600e3 })).filter(Boolean).length;
   assert.ok(differ >= 8, `people should mostly see different messages (${differ}/20)`);
 });
+
+// --- sky (idea B) ----------------------------------------------------------------
+
+test("the day's light rises steadily from 6:00 to 23:00 and resets overnight", async () => {
+  globalThis.location = { search: "" };
+  const { dayProgress, skyAt } = await import("../js/ui/sky.js");
+  const at = (h, m = 0) => { const d = new Date(2026, 8, 21, h, m); return dayProgress(d); };
+  assert.equal(at(6), 0);
+  assert.ok(Math.abs(at(14, 30) - 0.5) < 1e-9, "halfway through the waking day is 14:30");
+  assert.ok(at(22, 59) > 0.99);
+  assert.equal(at(23), null, "overnight: no fill, it resets");
+  assert.equal(at(3), null);
+  assert.ok(at(9) < at(12) && at(12) < at(18), "always rising during the day");
+  // colours blend smoothly: no jump across a keyframe
+  const before = skyAt(new Date(2026, 8, 21, 11, 59)).glow[0];
+  const after = skyAt(new Date(2026, 8, 21, 12, 1)).glow[0];
+  assert.ok(before.every((v, i) => Math.abs(v - after[i]) < 6), "no visible jump at noon");
+});
