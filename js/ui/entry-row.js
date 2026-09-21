@@ -110,18 +110,25 @@ export function mountEntryRow(container, entry, { onTap, onDelete }) {
   const state = entryState(entry);
   const wrap = document.createElement("div");
   wrap.className = "entry-row";
+  // No swipe gestures on rows any more: sideways swipes now move between tabs, and a visible
+  // bin is quicker than any gesture anyway. Tap the row to edit, tap the bin to remove.
   wrap.innerHTML = `
-    <div class="entry-row-swipe-bg">${icon("trashFill", { size: 20, color: "#fff" })}</div>
     <div class="entry-row-fg${state === "failed" ? " failed" : ""}">
       ${state === "pending" ? pendingRowHtml(entry) : state === "failed" ? failedRowHtml(entry) : completedRowHtml(entry)}
     </div>
+    ${state === "pending" ? "" : `<button type="button" class="entry-row-bin" aria-label="Remove">${icon("trashFill", { size: 17 })}</button>`}
   `;
   container.appendChild(wrap);
 
-  const fg = wrap.querySelector(".entry-row-fg");
-  wireSwipe(wrap, fg, {
-    onTap: () => onTap(entry),
-    onDelete: () => onDelete(entry),
+  wrap.addEventListener("click", (e) => {
+    if (e.target.closest(".entry-row-bin")) return;
+    onTap(entry);
+  });
+  wrap.querySelector(".entry-row-bin")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    wrap.classList.add("is-removing");
+    // let the fade play before the list re-renders without this row
+    setTimeout(() => onDelete(entry), 180);
   });
 
   let intervalId = null;
@@ -143,115 +150,4 @@ export function mountEntryRow(container, entry, { onTap, onDelete }) {
   return () => {
     if (intervalId) clearInterval(intervalId);
   };
-}
-
-function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
-  let startX = 0;
-  let startY = 0;
-  let dx = 0;
-  let dragging = false;
-  let decided = false; // whether we've decided this gesture is horizontal
-  let horizontal = false;
-  let swipedAt = 0;
-
-  // A full 80px throw was more commitment than this deserves. 52px deletes outright; anything
-  // past 24px parks the row open so the trash button can simply be tapped instead.
-  const DELETE_THRESHOLD = -52;
-  const OPEN_OFFSET = -76;
-
-  const onPointerDown = (e) => {
-    const point = e.touches ? e.touches[0] : e;
-    startX = point.clientX;
-    startY = point.clientY;
-    dx = 0;
-    dragging = true;
-    decided = false;
-    horizontal = false;
-    fgEl.style.transition = "none";
-  };
-
-  const onPointerMove = (e) => {
-    if (!dragging) return;
-    const point = e.touches ? e.touches[0] : e;
-    const moveX = point.clientX - startX;
-    const moveY = point.clientY - startY;
-    if (!decided) {
-      if (Math.abs(moveX) > 10 || Math.abs(moveY) > 10) {
-        decided = true;
-        horizontal = Math.abs(moveX) > Math.abs(moveY);
-      }
-    }
-    if (decided && horizontal) {
-      if (e.cancelable) e.preventDefault();
-      rowEl.classList.add("dragging");
-      dx = Math.min(0, moveX);
-      fgEl.style.transform = `translateX(${dx}px)`;
-    }
-  };
-
-  const endDrag = () => {
-    if (!dragging) return;
-    dragging = false;
-    fgEl.style.transition = "";
-    // Taps are NOT handled here. This used to call onTap() only when the finger moved under
-    // 6px, and an ordinary quick tap jitters more than that — so taps were read as the start of
-    // a scroll and ignored, and holding still was the only way to open a meal. Taps now come
-    // from the browser's click event (below), which has proper tap tolerance built in.
-    if (!decided || !horizontal) {
-      if (decided && !horizontal) fgEl.style.transform = "";
-      return;
-    }
-    swipedAt = Date.now(); // a real swipe happened: swallow the click the browser may send next
-    if (dx < DELETE_THRESHOLD) {
-      fgEl.style.transition = "transform 0.2s ease-out";
-      fgEl.style.transform = "translateX(-400px)";
-      setTimeout(onDelete, 200);
-    } else if (dx < -24) {
-      // parked open: the red panel stays put, one tap on it removes the meal
-      fgEl.style.transition = "transform 0.22s cubic-bezier(0.2,0.8,0.3,1)";
-      fgEl.style.transform = `translateX(${OPEN_OFFSET}px)`;
-      rowEl.classList.add("is-open");
-    } else {
-      fgEl.style.transition = "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)";
-      fgEl.style.transform = "";
-      rowEl.classList.remove("is-open");
-      setTimeout(() => rowEl.classList.remove("dragging"), 300);
-    }
-  };
-
-  // One tap opens the meal. If the row is parked open, a tap closes it instead.
-  rowEl.addEventListener("click", (e) => {
-    if (Date.now() - swipedAt < 400) return; // this click is the tail end of a swipe
-    if (e.target.closest(".entry-row-swipe-bg") && rowEl.classList.contains("is-open")) return; // delete panel handles itself
-    if (rowEl.classList.contains("is-open")) {
-      fgEl.style.transition = "transform 0.22s ease-out";
-      fgEl.style.transform = "";
-      rowEl.classList.remove("is-open", "dragging");
-      return;
-    }
-    onTap();
-  });
-
-  const bg = rowEl.querySelector(".entry-row-swipe-bg");
-  bg?.addEventListener("click", (e) => {
-    if (!rowEl.classList.contains("is-open")) return;
-    e.stopPropagation();
-    fgEl.style.transition = "transform 0.2s ease-out";
-    fgEl.style.transform = "translateX(-400px)";
-    setTimeout(onDelete, 200);
-  });
-
-  rowEl.addEventListener("touchstart", onPointerDown, { passive: true });
-  rowEl.addEventListener("touchmove", onPointerMove, { passive: false });
-  rowEl.addEventListener("touchend", endDrag);
-  rowEl.addEventListener("touchcancel", endDrag);
-
-  // Mouse fallback for desktop testing.
-  rowEl.addEventListener("mousedown", onPointerDown);
-  window.addEventListener("mousemove", (e) => {
-    if (dragging) onPointerMove(e);
-  });
-  window.addEventListener("mouseup", () => {
-    if (dragging) endDrag();
-  });
 }

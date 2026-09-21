@@ -267,5 +267,18 @@
     "goalTitle": "Peso meta",
     "goalHint": "Déjalo vacío para quitar la meta.",
     "noChange": "estable"
+  },
+  "myth": {
+    "label": "¿Mito o realidad?",
+    "tapToReveal": "Toca para ver qué dice la evidencia",
+    "verdict": "Mito",
+    "again": "Mañana hay otro",
+    "cats": {
+      "body": "Cuerpo",
+      "nutrition": "Nutrición",
+      "training": "Entrenamiento",
+      "diets": "Dietas",
+      "supplements": "Suplementos"
+    }
   }
 }

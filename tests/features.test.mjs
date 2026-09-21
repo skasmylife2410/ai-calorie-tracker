@@ -255,3 +255,31 @@ test("an entry keeps how much was eaten, and rejects nonsense amounts", () => {
   const updated = store.updateFoodEntry(e.id, { amount: 240, amountUnit: "g", calories: 620 });
   assert.equal(updated.amount, 240);
 });
+
+// --- daily myths --------------------------------------------------------------
+
+test("100 myths, complete in both languages, and one per day rotating", async () => {
+  const { MYTHS, mythForDay } = await import("../js/myths.js");
+  assert.equal(MYTHS.length, 100);
+  const ids = new Set(MYTHS.map((m) => m.id));
+  assert.equal(ids.size, 100, "ids are unique");
+  for (const m of MYTHS) {
+    for (const lang of ["en", "es"]) {
+      assert.ok(m[lang].myth.length > 10, `myth ${m.id} ${lang} claim`);
+      assert.ok(m[lang].truth.length > 40, `myth ${m.id} ${lang} answer`);
+    }
+    assert.ok(["body", "nutrition", "training", "diets", "supplements"].includes(m.cat));
+  }
+  // same day -> same myth; next day -> a different one; wraps after 100 days
+  const d = new Date(2026, 8, 21);
+  assert.equal(mythForDay(d).id, mythForDay(new Date(2026, 8, 21, 23, 59)).id);
+  assert.notEqual(mythForDay(d).id, mythForDay(new Date(2026, 8, 22)).id);
+  assert.equal(mythForDay(d).id, mythForDay(new Date(d.getTime() + 100 * 86400000)).id);
+  // a week never repeats a category three days running
+  for (let i = 0; i < 98; i++) {
+    const a = mythForDay(new Date(d.getTime() + i * 86400000)).cat;
+    const b = mythForDay(new Date(d.getTime() + (i + 1) * 86400000)).cat;
+    const c = mythForDay(new Date(d.getTime() + (i + 2) * 86400000)).cat;
+    assert.ok(!(a === b && b === c), `three ${a} myths in a row starting day ${i}`);
+  }
+});

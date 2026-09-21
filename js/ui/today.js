@@ -12,6 +12,8 @@ import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
 import { openRecipesSheet } from "./recipes.js";
 import { openDayMealsSheet } from "./day-meals.js";
+import { mythForDay } from "../myths.js";
+import { currentLanguage } from "../i18n.js";
 import { doodleSvg, doodleState } from "./doodle.js";
 
 const MACRO_DEFS = [
@@ -87,7 +89,7 @@ export function render(container) {
           <button type="button" id="back-to-today">${t("home.backToToday")}</button>
         </div>`}
 
-      <div class="swiper">
+      <div data-own-swipe class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
           <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount)}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
@@ -111,6 +113,7 @@ export function render(container) {
         <button type="button" class="ideas-btn" id="ideas-btn">${t("home.ideasButton")}</button>
       </div>` : ""}
 
+      ${viewingToday ? mythCardHtml() : ""}
       <div class="bottom-safe-spacer"></div>
     </div>
   `;
@@ -119,6 +122,7 @@ export function render(container) {
   wireWaterButtons(container);
   wireExercise(container, date);
   wireDaySelection(container);
+  wireMythCard(container);
   container.querySelector("#home-avatar")?.addEventListener("click", () => globalThis.snapcalGoTo?.("profile"));
   container.querySelector("#see-meals")?.addEventListener("click", () =>
     openDayMealsSheet({ date: viewedDate(), onChange: () => render(container) })
@@ -485,4 +489,41 @@ function weekRangeLabel(week) {
   const sameMonth = first.getMonth() === last.getMonth();
   const f = (d, withMonth) => formatDate(d, withMonth ? { month: "short", day: "numeric" } : { day: "numeric" });
   return `${f(first, true)} – ${f(last, !sameMonth)}`;
+}
+
+
+/** Daily myth: the claim first, the evidence behind a tap — so it reads like a quiz, not a lecture. */
+let mythRevealed = false;
+let mythDay = "";
+
+function mythCardHtml() {
+  const today = new Date().toDateString();
+  if (mythDay !== today) { mythDay = today; mythRevealed = false; }
+  const m = mythForDay(new Date());
+  const lang = currentLanguage() === "es" ? "es" : "en";
+  const text = m[lang];
+  return `
+    <button type="button" class="myth-card${mythRevealed ? " is-open" : ""}" id="myth-card" aria-expanded="${mythRevealed}">
+      <div class="myth-top">
+        <span class="myth-q">?</span>
+        <span class="myth-label">${t("myth.label")}</span>
+        <span class="myth-cat">${t(`myth.cats.${m.cat}`)}</span>
+      </div>
+      <div class="myth-claim">“${text.myth}”</div>
+      ${mythRevealed
+        ? `<div class="myth-answer">
+             <span class="myth-verdict">${t("myth.verdict")}</span>
+             <p>${text.truth}</p>
+             <span class="myth-again">${t("myth.again")}</span>
+           </div>`
+        : `<div class="myth-hint">${t("myth.tapToReveal")} ›</div>`}
+    </button>`;
+}
+
+function wireMythCard(container) {
+  container.querySelector("#myth-card")?.addEventListener("click", () => {
+    mythRevealed = !mythRevealed;
+    render(container);
+    container.querySelector("#myth-card")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
 }

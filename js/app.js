@@ -22,6 +22,7 @@ import { renderLogin, hasValidSession } from "./ui/login.js";
 import { render as renderWeight } from "./ui/weight.js";
 import { render as renderTodayMeals } from "./ui/today-meals.js";
 import { renderUsTab } from "./us.js";
+import { wireTabSwipe } from "./ui/tab-swipe.js";
 import { openRecipesSheet } from "./ui/recipes.js";
 import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
@@ -163,6 +164,24 @@ function wireShell() {
   fabBtn.addEventListener("click", () => setPopupOpen(!popupOpen));
 
   appRoot.querySelector("#fab-scrim").addEventListener("click", () => setPopupOpen(false));
+
+  // Swipe between tabs. Profile isn't in the bar, so it isn't part of the swipe order.
+  const content = appRoot.querySelector("#tab-content");
+  if (content && !content.dataset.swipeWired) {
+    content.dataset.swipeWired = "1";
+    const order = TABS.map((t) => t.id);
+    wireTabSwipe({
+      surface: content,
+      count: () => order.length,
+      getIndex: () => Math.max(0, order.indexOf(selectedTab)),
+      onChange: (i) => {
+        selectedTab = order[i];
+        appRoot.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === selectedTab));
+        renderCurrentTab();
+        content.scrollTop = 0;
+      },
+    });
+  }
 
   appRoot.querySelectorAll("[data-tile]").forEach((tile) => {
     tile.addEventListener("click", () => {

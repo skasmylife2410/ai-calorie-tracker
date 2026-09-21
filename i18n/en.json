@@ -267,5 +267,18 @@
     "goalTitle": "Goal weight",
     "goalHint": "Leave empty to remove the goal.",
     "noChange": "steady"
+  },
+  "myth": {
+    "label": "Myth or fact?",
+    "tapToReveal": "Tap to see what the evidence says",
+    "verdict": "Myth",
+    "again": "A new one tomorrow",
+    "cats": {
+      "body": "Body",
+      "nutrition": "Nutrition",
+      "training": "Training",
+      "diets": "Diets",
+      "supplements": "Supplements"
+    }
   }
 }
