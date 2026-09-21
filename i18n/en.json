@@ -123,7 +123,8 @@
     "glassesOfWater": "{n} glass of water|{n} glasses of water",
     "mealsCount": "{n} meal|{n} meals",
     "noExercise": "no exercise",
-    "sessionsCount": "{n} session|{n} sessions"
+    "sessionsCount": "{n} session|{n} sessions",
+    "tab": "Us"
   },
   "profile": {
     "language": "Language",
@@ -205,5 +206,66 @@
     "changed": "Password changed.",
     "signOut": "Sign out",
     "signOutConfirm": "Sign out on this phone? Your meals stay in the cloud."
+  },
+  "day": {
+    "meals": "Meals",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "mealsFor": "Meals · {day}",
+    "noMeals": "Nothing logged this day",
+    "tapToSee": "See meals"
+  },
+  "weight": {
+    "title": "Weight",
+    "avgLabel": "7-day average",
+    "addToday": "Add today's weight",
+    "addTitle": "Weight",
+    "hint": "One reading a day. Same time, same conditions works best — first thing in the morning is the usual choice.",
+    "lastReading": "Last reading {value} on {day}",
+    "overDays": "over {n} days",
+    "rangeDays": "{n} days",
+    "history": "Readings",
+    "legend": "line = 7-day average",
+    "emptyTitle": "No weight logged yet",
+    "emptyBody": "Add a reading and the trend builds from there.",
+    "tab": "Weight"
+  },
+  "edit": {
+    "amount": "Amount",
+    "amountHint": "Change the amount and every number below rescales with it.",
+    "amountHintFirst": "How much was this? Enter it once, then changing it rescales the numbers below.",
+    "g": "g",
+    "ml": "ml",
+    "serving": "serving",
+    "nutrition": "Nutrition",
+    "food": "Food",
+    "name": "Name",
+    "titleEdit": "Edit Food",
+    "titleAdd": "Add Food"
+  },
+  "todayTab": {
+    "title": "Today",
+    "tab": "Today",
+    "eatenOf": "eaten of {goal} kcal",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "emptyTitle": "Nothing eaten yet today",
+    "emptyBody": "Tap + to log your first meal."
+  },
+  "weight2": {
+    "goal": "Goal",
+    "setGoal": "Set a goal weight",
+    "toGo": "{value} to go",
+    "reached": "Goal reached",
+    "startedAt": "Started at {value}",
+    "thisWeek": "This week",
+    "perWeek": "per week",
+    "readings": "Readings",
+    "change": "Change",
+    "lowest": "Lowest",
+    "goalTitle": "Goal weight",
+    "goalHint": "Leave empty to remove the goal.",
+    "noChange": "steady"
   }
 }

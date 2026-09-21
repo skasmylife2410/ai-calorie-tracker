@@ -152,6 +152,7 @@ function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
   let dragging = false;
   let decided = false; // whether we've decided this gesture is horizontal
   let horizontal = false;
+  let swipedAt = 0;
 
   // A full 80px throw was more commitment than this deserves. 52px deletes outright; anything
   // past 24px parks the row open so the trash button can simply be tapped instead.
@@ -175,7 +176,7 @@ function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
     const moveX = point.clientX - startX;
     const moveY = point.clientY - startY;
     if (!decided) {
-      if (Math.abs(moveX) > 6 || Math.abs(moveY) > 6) {
+      if (Math.abs(moveX) > 10 || Math.abs(moveY) > 10) {
         decided = true;
         horizontal = Math.abs(moveX) > Math.abs(moveY);
       }
@@ -192,20 +193,15 @@ function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
     if (!dragging) return;
     dragging = false;
     fgEl.style.transition = "";
-    if (!decided) {
-      if (rowEl.classList.contains("is-open")) {
-        fgEl.style.transition = "transform 0.22s ease-out";
-        fgEl.style.transform = "";
-        rowEl.classList.remove("is-open", "dragging");
-      } else {
-        onTap();
-      }
+    // Taps are NOT handled here. This used to call onTap() only when the finger moved under
+    // 6px, and an ordinary quick tap jitters more than that — so taps were read as the start of
+    // a scroll and ignored, and holding still was the only way to open a meal. Taps now come
+    // from the browser's click event (below), which has proper tap tolerance built in.
+    if (!decided || !horizontal) {
+      if (decided && !horizontal) fgEl.style.transform = "";
       return;
     }
-    if (!horizontal) {
-      fgEl.style.transform = "";
-      return;
-    }
+    swipedAt = Date.now(); // a real swipe happened: swallow the click the browser may send next
     if (dx < DELETE_THRESHOLD) {
       fgEl.style.transition = "transform 0.2s ease-out";
       fgEl.style.transform = "translateX(-400px)";
@@ -222,6 +218,19 @@ function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
       setTimeout(() => rowEl.classList.remove("dragging"), 300);
     }
   };
+
+  // One tap opens the meal. If the row is parked open, a tap closes it instead.
+  rowEl.addEventListener("click", (e) => {
+    if (Date.now() - swipedAt < 400) return; // this click is the tail end of a swipe
+    if (e.target.closest(".entry-row-swipe-bg") && rowEl.classList.contains("is-open")) return; // delete panel handles itself
+    if (rowEl.classList.contains("is-open")) {
+      fgEl.style.transition = "transform 0.22s ease-out";
+      fgEl.style.transform = "";
+      rowEl.classList.remove("is-open", "dragging");
+      return;
+    }
+    onTap();
+  });
 
   const bg = rowEl.querySelector(".entry-row-swipe-bg");
   bg?.addEventListener("click", (e) => {

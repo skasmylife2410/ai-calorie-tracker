@@ -77,3 +77,39 @@ test("an unsupported language is ignored rather than breaking the app", async ()
   assert.equal(i18n.currentLanguage(), "es", "stays on the last valid language");
   assert.ok(i18n.supportedLanguages().includes("en"));
 });
+
+test("every translation key the code uses exists in both languages", async () => {
+  // The Today and Weight tabs once shipped showing "todayTab.tab" and "weight.tab" on the tab bar,
+  // because the language files never reached the server. This catches a missing key before it
+  // ships, whatever the cause.
+  const { readdirSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const root = new URL("../js/", import.meta.url).pathname;
+  const files = [];
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (name.endsWith(".js")) files.push(full);
+    }
+  };
+  walk(root);
+
+  const used = new Set();
+  const pattern = /\b(?:t|translate)\(\s*["'`]([a-zA-Z0-9]+\.[a-zA-Z0-9.]+)["'`]/g;
+  for (const file of files) {
+    const src = readFileSync(file, "utf8");
+    for (const m of src.matchAll(pattern)) used.add(m[1]);
+  }
+  // labelKey fields on tab/menu definitions are looked up with t() indirectly
+  for (const file of files) {
+    for (const m of readFileSync(file, "utf8").matchAll(/labelKey:\s*["']([a-zA-Z0-9.]+)["']/g)) used.add(m[1]);
+  }
+
+  const has = (bundle, key) => key.split(".").reduce((node, part) => (node && typeof node === "object" ? node[part] : undefined), bundle);
+  const missingEn = [...used].filter((k) => typeof has(en, k) !== "string").sort();
+  const missingEs = [...used].filter((k) => typeof has(es, k) !== "string").sort();
+  assert.ok(used.size > 50, `expected to find the app's keys, found ${used.size}`);
+  assert.deepEqual(missingEn, [], "keys used in code but missing from en.json");
+  assert.deepEqual(missingEs, [], "keys used in code but missing from es.json");
+});

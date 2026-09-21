@@ -87,7 +87,7 @@ export function setBundles(next) {
 
 /**
  * t("home.caloriesLeft") -> "Calories left"
- * t("meal.servingsCount", { n: 2 }) -> "2 servings"  (plural rules via |, see below)
+ * t("us.mealsCount", { n: 2 }) -> "2 meals"  (plural rules via |, see below)
  *
  * A value may contain {placeholders}. For plurals write "one form|other form" and pass {n};
  * the first form is used when n === 1.

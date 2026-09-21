@@ -123,7 +123,8 @@
     "glassesOfWater": "{n} vaso de agua|{n} vasos de agua",
     "mealsCount": "{n} comida|{n} comidas",
     "noExercise": "sin ejercicio",
-    "sessionsCount": "{n} sesión|{n} sesiones"
+    "sessionsCount": "{n} sesión|{n} sesiones",
+    "tab": "Nosotros"
   },
   "profile": {
     "language": "Idioma",
@@ -205,5 +206,66 @@
     "changed": "Contraseña cambiada.",
     "signOut": "Cerrar sesión",
     "signOutConfirm": "¿Cerrar sesión en este teléfono? Tus comidas siguen en la nube."
+  },
+  "day": {
+    "meals": "Comidas",
+    "prevWeek": "Semana anterior",
+    "nextWeek": "Semana siguiente",
+    "mealsFor": "Comidas · {day}",
+    "noMeals": "Nada registrado ese día",
+    "tapToSee": "Ver comidas"
+  },
+  "weight": {
+    "title": "Peso",
+    "avgLabel": "promedio de 7 días",
+    "addToday": "Añadir peso de hoy",
+    "addTitle": "Peso",
+    "hint": "Una lectura al día. Funciona mejor a la misma hora y en las mismas condiciones; lo normal es al levantarse.",
+    "lastReading": "Última lectura {value} el {day}",
+    "overDays": "en {n} días",
+    "rangeDays": "{n} días",
+    "history": "Lecturas",
+    "legend": "línea = promedio de 7 días",
+    "emptyTitle": "Aún no hay peso registrado",
+    "emptyBody": "Añade una lectura y la tendencia se arma sola.",
+    "tab": "Peso"
+  },
+  "edit": {
+    "amount": "Cantidad",
+    "amountHint": "Cambia la cantidad y todos los números de abajo se ajustan.",
+    "amountHintFirst": "¿Cuánto era? Escríbelo una vez y luego, al cambiarlo, los números se ajustan.",
+    "g": "g",
+    "ml": "ml",
+    "serving": "porción",
+    "nutrition": "Nutrición",
+    "food": "Alimento",
+    "name": "Nombre",
+    "titleEdit": "Editar alimento",
+    "titleAdd": "Añadir alimento"
+  },
+  "todayTab": {
+    "title": "Hoy",
+    "tab": "Hoy",
+    "eatenOf": "consumidas de {goal} kcal",
+    "protein": "Proteína",
+    "carbs": "Carbohidratos",
+    "fat": "Grasa",
+    "emptyTitle": "Aún no has comido nada hoy",
+    "emptyBody": "Toca + para registrar tu primera comida."
+  },
+  "weight2": {
+    "goal": "Meta",
+    "setGoal": "Fijar un peso meta",
+    "toGo": "faltan {value}",
+    "reached": "Meta alcanzada",
+    "startedAt": "Empezaste en {value}",
+    "thisWeek": "Esta semana",
+    "perWeek": "por semana",
+    "readings": "Lecturas",
+    "change": "Cambio",
+    "lowest": "Mínimo",
+    "goalTitle": "Peso meta",
+    "goalHint": "Déjalo vacío para quitar la meta.",
+    "noChange": "estable"
   }
 }
