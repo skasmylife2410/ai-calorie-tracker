@@ -117,7 +117,11 @@ export default async function handler(req, res) {
 
   const people = owners.map((owner) => {
     const profile = profiles.find((p) => p.owner === owner);
-    return { owner, goals: goalsFrom(profile?.data), days: {} };
+    // Only accept a small JPEG/PNG data URL — never an arbitrary URL, which could be used to
+    // make everyone's phone fetch something from elsewhere.
+    const raw = profile?.data?.avatar;
+    const avatar = typeof raw === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(raw) && raw.length < 120000 ? raw : null;
+    return { owner, avatar, goals: goalsFrom(profile?.data), days: {} };
   });
   const byOwner = Object.fromEntries(people.map((p) => [p.owner, p]));
   const dayOf = (person, day) =>

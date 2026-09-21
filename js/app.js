@@ -20,16 +20,19 @@ import { openExerciseSheet } from "./ui/exercise.js";
 import { viewedTimestamp } from "./ui/today.js";
 import { renderLogin, hasValidSession } from "./ui/login.js";
 import { render as renderWeight } from "./ui/weight.js";
+import { render as renderTodayMeals } from "./ui/today-meals.js";
+import { renderUsTab } from "./us.js";
 import { openRecipesSheet } from "./ui/recipes.js";
 import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
 
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
-  { id: "progress", labelKey: "tabs.progress", icon: "chartBarFill" },
+  { id: "today", labelKey: "todayTab.tab", icon: "forkKnife" },
+  { id: "us", labelKey: "us.tab", icon: "personFill" },
   { id: "weight", labelKey: "weight.tab", icon: "scale" },
-  { id: "profile", labelKey: "tabs.profile", icon: "personFill" },
 ];
+// Profile has no tab of its own any more; it opens from the avatar at the top of Home.
 
 // Popup tile grid — exact 2x2 order (§2.2): row 1 = look something up, row 2 = capture new.
 const POPUP_TILES = [
@@ -219,12 +222,20 @@ function handleTileAction(tileId) {
   }
 }
 
+/** Lets a screen move to another tab, e.g. Home's avatar opening Profile. */
+globalThis.snapcalGoTo = (tab) => {
+  selectedTab = tab;
+  renderShell();
+};
+
 function renderCurrentTab() {
   const content = document.getElementById("tab-content");
   if (!content) return;
   if (selectedTab === "home") renderToday(content);
-  else if (selectedTab === "progress") renderHistory(content);
+  else if (selectedTab === "today") renderTodayMeals(content);
+  else if (selectedTab === "us") renderUsTab(content);
   else if (selectedTab === "weight") renderWeight(content);
+  else if (selectedTab === "progress") renderHistory(content);
   else renderProfile(content);
 }
 

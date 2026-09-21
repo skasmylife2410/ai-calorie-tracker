@@ -72,7 +72,12 @@ export function render(container) {
     <div class="today-content">
       <div class="today-header">
         <div class="wordmark">${icon("forkKnife", { size: 24 })}<span class="wordmark-text">SnapCal</span></div>
-        <div class="streak-pill">${icon("flameFill", { size: 18, color: "var(--sc-streak-flame)" })}<span class="streak-count">${streakCount}</span></div>
+        <div class="today-header-right">
+          <div class="streak-pill">${icon("flameFill", { size: 18, color: "var(--sc-streak-flame)" })}<span class="streak-count">${streakCount}</span></div>
+          <button type="button" class="home-avatar" id="home-avatar" aria-label="${t("tabs.profile")}">
+            ${store.getProfile().avatar ? `<img src="${store.getProfile().avatar}" alt="" />` : icon("personFill", { size: 18 })}
+          </button>
+        </div>
       </div>
 
       ${weekStripHtml(week)}
@@ -114,6 +119,7 @@ export function render(container) {
   wireWaterButtons(container);
   wireExercise(container, date);
   wireDaySelection(container);
+  container.querySelector("#home-avatar")?.addEventListener("click", () => globalThis.snapcalGoTo?.("profile"));
   container.querySelector("#see-meals")?.addEventListener("click", () =>
     openDayMealsSheet({ date: viewedDate(), onChange: () => render(container) })
   );

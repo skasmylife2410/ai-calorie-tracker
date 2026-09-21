@@ -1536,3 +1536,75 @@
 /* Four tabs need a little less room each */
 .bottom-bar-half { gap: 4px; }
 .tab-btn { padding-left: 10px; padding-right: 10px; }
+
+/* --- Amount editing (js/ui/addfood.js) --- */
+.amount-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+.amount-input { flex: 1; min-width: 0; font: inherit; font-size: 28px; font-weight: 800; border: 0; background: none; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
+.amount-input:focus { outline: none; }
+.amount-units { display: inline-flex; background: var(--sc-secondary-15); border-radius: 12px; padding: 3px; flex: none; }
+.amount-units button { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 11px; border: 0; border-radius: 9px; background: transparent; color: var(--sc-secondary); }
+.amount-units button[aria-pressed="true"] { background: #fff; color: var(--sc-accent-calories); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.amount-quick { display: flex; gap: 6px; padding: 0 14px 12px; }
+.amount-quick button { flex: 1; font: inherit; font-size: 12px; font-weight: 700; padding: 7px 0; border: 0; border-radius: 10px; background: var(--sc-tint-calories); color: var(--sc-accent-calories); }
+
+/* --- Today tab (js/ui/today-meals.js) --- */
+.tm-screen { padding-top: 52px; }
+.tm-head { padding: 0 16px 14px; }
+.tm-title { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+.tm-date { font-size: 14px; font-weight: 600; color: var(--sc-secondary); margin-top: 3px; text-transform: capitalize; }
+.tm-summary { display: flex; gap: 16px; align-items: center; margin: 0 16px 18px; padding: 18px; border-radius: 22px;
+  background: linear-gradient(140deg, #FFF 45%, var(--sc-tint-calories) 100%); box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.tm-sum-main { flex: none; }
+.tm-sum-num { font-size: 38px; font-weight: 800; letter-spacing: -.03em; line-height: 1; color: var(--sc-accent-calories); font-variant-numeric: tabular-nums; }
+.tm-sum-label { font-size: 12px; color: var(--sc-secondary); margin-top: 5px; max-width: 110px; line-height: 1.35; }
+.tm-sum-macros { flex: 1; min-width: 0; display: grid; gap: 9px; }
+.tm-macro-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--sc-secondary); }
+.tm-macro-top b { color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
+.tm-macro-bar { height: 6px; border-radius: 3px; background: var(--sc-secondary-15); margin-top: 4px; overflow: hidden; }
+.tm-macro-bar span { display: block; height: 100%; border-radius: 3px; }
+.tm-count { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--sc-secondary); margin: 0 16px 10px; }
+.tm-list { padding: 0 16px; display: grid; gap: 10px; }
+.tm-empty { text-align: center; padding: 40px 20px; color: var(--sc-secondary); }
+.tm-empty-title { font-size: 17px; font-weight: 700; color: var(--sc-primary-text); margin-top: 12px; }
+.tm-empty-body { font-size: 13px; margin-top: 6px; }
+
+/* --- Home avatar (opens Profile) --- */
+.today-header-right { display: flex; align-items: center; gap: 10px; }
+.home-avatar { width: 38px; height: 38px; border-radius: 50%; border: 0; padding: 0; overflow: hidden; display: grid; place-items: center;
+  background: var(--sc-secondary-15); color: var(--sc-secondary); box-shadow: 0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,.12); }
+.home-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* --- Us as a tab --- */
+.us-tab { padding: 52px 16px 0; }
+.us-tab-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.us-avatar { position: relative; flex: none; border-radius: 50%; border: 0; padding: 0; overflow: visible; display: grid; place-items: center;
+  background: var(--av-soft); color: var(--av); font-weight: 800; font-size: 16px; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--av-soft); }
+.us-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.us-avatar-edit { position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+  font-style: normal; font-size: 13px; font-weight: 800; background: var(--av); color: #fff; box-shadow: 0 0 0 2px #fff; }
+.us-avatar:disabled { cursor: default; }
+
+/* --- Weight tab v2 --- */
+.wt-hero-v2 { text-align: center; margin: 0 16px 14px; padding: 24px 18px 18px; border-radius: 26px; color: #fff;
+  background: radial-gradient(120% 90% at 0% 0%, #9A7CF0 0%, var(--sc-accent-weight) 45%, #4F32B0 100%);
+  box-shadow: 0 14px 30px -14px rgba(91,63,191,.6); }
+.wt-hero-v2 .wt-big { color: #fff; }
+.wt-hero-v2 .wt-big span { color: rgba(255,255,255,.75); }
+.wt-hero-v2 .wt-sub, .wt-hero-v2 .wt-latest { color: rgba(255,255,255,.78); }
+.wt-hero-v2 .wt-add { background: #fff; color: #4F32B0; }
+.wt-hero-v2 .wt-empty, .wt-hero-v2 .wt-empty-title { color: #fff; }
+.wt-goal-set { margin-top: 14px; font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 12px; border: 1px dashed rgba(255,255,255,.55); background: transparent; color: #fff; }
+.wt-goal-card { display: block; width: 100%; margin-top: 16px; padding: 12px 14px; border: 0; border-radius: 16px; background: rgba(255,255,255,.14); color: #fff; font: inherit; text-align: left; }
+.wt-goal-top { display: flex; justify-content: space-between; font-size: 12px; opacity: .9; }
+.wt-goal-top b { font-weight: 700; opacity: 1; }
+.wt-goal-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.22); margin: 9px 0 7px; overflow: hidden; }
+.wt-goal-bar span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #B8F0CF, #fff); }
+.wt-goal-foot { font-size: 12px; font-weight: 700; }
+.wt-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 16px 14px; }
+.wt-stat { background: #fff; border-radius: 18px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.wt-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--sc-secondary); }
+.wt-stat-value { font-size: 20px; font-weight: 800; margin-top: 5px; font-variant-numeric: tabular-nums; color: var(--sc-accent-weight); }
+.wt-stat-value small { font-size: 11px; font-weight: 700; color: var(--sc-secondary); margin-left: 3px; }
+.wt-chart { height: 170px; }
+.wt-tick { font-size: 9px; fill: var(--sc-secondary); font-variant-numeric: tabular-nums; }
+.wt-goal-tick { fill: #2AA66B; font-weight: 700; }

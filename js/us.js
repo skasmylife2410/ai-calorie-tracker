@@ -7,7 +7,9 @@ import { t, initI18n, formatNumber, formatDate, currentLanguage } from "./i18n.j
 import { doodleSvg } from "./ui/doodle.js";
 import { localDateString, addDays, startOfDay } from "./nutrition.js";
 
-const body = document.getElementById("tg-body");
+// The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
+// container when mounted inside the app.
+let body = typeof document !== "undefined" ? document.getElementById("tg-body") : null;
 const COLORS = [
   { solid: "var(--tg-a)", soft: "var(--tg-a-soft)" },
   { solid: "var(--tg-b)", soft: "var(--tg-b-soft)" },
@@ -68,6 +70,20 @@ function personHead(p, i) {
   }`;
 }
 
+function avatarHtml(p, i, size = 40) {
+  const c = COLORS[i % COLORS.length];
+  const mine = p.owner === data.me;
+  const inner = p.avatar
+    ? `<img src="${p.avatar}" alt="" />`
+    : `<span>${escHtml(titleCase(p.owner).slice(0, 1))}</span>`;
+  return `
+    <button type="button" class="us-avatar${mine ? " is-mine" : ""}" ${mine ? 'data-edit-avatar="1"' : "disabled"}
+            style="--av:${c.solid};--av-soft:${c.soft};width:${size}px;height:${size}px" aria-label="${escHtml(titleCase(p.owner))}">
+      ${inner}
+      ${mine ? `<i class="us-avatar-edit">+</i>` : ""}
+    </button>`;
+}
+
 function todayHtml(people) {
   const key = localDateString(Date.now());
 
@@ -85,7 +101,7 @@ function todayHtml(people) {
     return `
       <div class="us-row">
         <div class="us-row-top">
-          <span class="tg-dot" style="background:${c.solid}"></span>
+          ${avatarHtml(p, i)}
           <span class="us-name">${escHtml(titleCase(p.owner))}</span>
           ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : ""}
           <span class="us-spacer"></span>
@@ -281,6 +297,54 @@ function doodleFor(person, i) {
   return doodleSvg({ state, streak, variant: i === 0 ? "a" : "b", size: 64 });
 }
 
+function wireAvatar() {
+  body.querySelectorAll("[data-edit-avatar]").forEach((btn) => {
+    btn.addEventListener("click", () => pickAvatar());
+  });
+}
+
+/** Choose a photo, crop it square, shrink it to 192px JPEG, save it on the profile. */
+function pickAvatar() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await squareThumb(file, 192);
+      const store = await import("./store.js");
+      store.setProfile({ avatar: dataUrl }); // syncs to the other phones with the profile
+      const sync = await import("./sync.js");
+      await sync.syncNow?.();
+      data = null;
+      start();
+    } catch (err) {
+      console.warn("avatar upload failed", err);
+    }
+  });
+  input.click();
+}
+
+function squareThumb(file, size) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight);
+      const sx = (img.naturalWidth - side) / 2;
+      const sy = (img.naturalHeight - side) / 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      URL.revokeObjectURL(img.src);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 function render() {
   const people = data.people || [];
   if (people.length === 0) {
@@ -295,6 +359,7 @@ function render() {
   const chart = people.length > 2 ? trendHtml(people, days) : mirrorHtml(people, days);
   body.innerHTML = todayHtml(people) + chart + summaryHtml(people, days) +
     (people.length === 1 ? `<p class="tg-note">Only one person is set up. Add a second name and passcode to APP_USERS in Vercel to compare.</p>` : "");
+  wireAvatar();
 }
 
 async function start(afterPin = false) {
@@ -315,18 +380,46 @@ async function start(afterPin = false) {
   render();
 }
 
-document.querySelectorAll("[data-range]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    range = Number(btn.dataset.range);
-    document.querySelectorAll("[data-range]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
-    if (data) render();
+function wireRange(root) {
+  root.querySelectorAll("[data-range]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      range = Number(btn.dataset.range);
+      root.querySelectorAll("[data-range]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+      if (data) render();
+    });
   });
-});
+}
 
-(async () => {
-  await initI18n();
-  document.title = `${t("us.title")} · SnapCal`;
-  document.getElementById("tg-title").textContent = t("us.title");
-  document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+/**
+ * Mounts the dashboard as a tab inside the app. The app has already signed in and loaded the
+ * language bundles, so this only draws the header and fetches the numbers.
+ */
+export function renderUsTab(container) {
+  container.innerHTML = `
+    <div class="us-tab">
+      <div class="us-tab-head">
+        <h1 class="tg-title">${t("us.title")}</h1>
+        <div class="tg-range" role="group">
+          <button type="button" data-range="7" aria-pressed="${range === 7}">${t("us.days7")}</button>
+          <button type="button" data-range="30" aria-pressed="${range === 30}">${t("us.days30")}</button>
+        </div>
+      </div>
+      <div id="us-tab-body" aria-live="polite"><p class="tg-note">…</p></div>
+      <div class="bottom-safe-spacer"></div>
+    </div>`;
+  body = container.querySelector("#us-tab-body");
+  wireRange(container);
   start();
-})();
+}
+
+// Standalone page (us.html) — only when that page's markup is present.
+if (typeof document !== "undefined" && document.getElementById("tg-body")) {
+  wireRange(document);
+  (async () => {
+    await initI18n();
+    document.title = `${t("us.title")} · SnapCal`;
+    document.getElementById("tg-title").textContent = t("us.title");
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    start();
+  })();
+}

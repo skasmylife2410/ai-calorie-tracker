@@ -238,3 +238,20 @@ test("growth is clamped and drives the strong pose", async () => {
   // unknown states fall back to the strong pose rather than rendering nothing
   assert.match(doodleSvg({ state: "nonsense" }), /<svg/);
 });
+
+// --- amount (grams / ml) -----------------------------------------------------
+
+test("an entry keeps how much was eaten, and rejects nonsense amounts", () => {
+  localStorage.clear();
+  const e = store.addFoodEntry({ name: "Arepa", calories: 310, amount: 120, amountUnit: "g" });
+  assert.equal(e.amount, 120);
+  assert.equal(e.amountUnit, "g");
+  assert.equal(store.getFoodEntry(e.id).amount, 120, "survives the round trip through storage");
+
+  const bad = store.addFoodEntry({ name: "X", calories: 1, amount: -5, amountUnit: "cups" });
+  assert.equal(bad.amount, null);
+  assert.equal(bad.amountUnit, null);
+
+  const updated = store.updateFoodEntry(e.id, { amount: 240, amountUnit: "g", calories: 620 });
+  assert.equal(updated.amount, 240);
+});

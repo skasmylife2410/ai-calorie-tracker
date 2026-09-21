@@ -121,6 +121,9 @@ export function makeFoodEntry(fields) {
     analysisFailureReason: fields.analysisFailureReason ?? null,
     analysisMode: fields.analysisMode ?? null,
     analysisDescription: fields.analysisDescription ?? null,
+    // How much was eaten, so the edit screen can rescale by grams/ml rather than only by kcal.
+    amount: Number.isFinite(Number(fields.amount)) && Number(fields.amount) > 0 ? Number(fields.amount) : null,
+    amountUnit: ["g", "ml", "serving"].includes(fields.amountUnit) ? fields.amountUnit : null,
     servings: normalizeServings(fields.servings),
     base: fields.base ?? {
       calories: fields.calories ?? 0,

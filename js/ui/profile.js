@@ -36,7 +36,11 @@ export function render(container) {
   const goals = store.computeGoals();
 
   container.innerHTML = `
-    <div class="navbar"><span class="navbar-spacer"></span><div class="navbar-title">Profile</div><span class="navbar-spacer"></span></div>
+    <div class="navbar">
+      <button type="button" class="navbar-btn" id="profile-back">‹ ${t("tabs.home")}</button>
+      <div class="navbar-title">${t("tabs.profile")}</div>
+      <span class="navbar-spacer"></span>
+    </div>
     <div class="ios-form">
       ${dailyGoalsSectionHtml(profile, goals)}
       <div class="ios-caption-block">These aren't required — only used if you want SnapCal to estimate your target for you.</div>
@@ -56,6 +60,7 @@ export function render(container) {
   wireCalculatorSection(container, goals);
   wireSyncSection(container);
   wireLanguage(container);
+  container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
 }
 
