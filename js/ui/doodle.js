@@ -53,7 +53,7 @@ const GOOD = "#2AA66B";
 function hair(variant) {
   // variant "b" gets longer hair; both are doodles, not portraits.
   return variant === "b"
-    ? `<path d="M45 24c0-10 7-16 15-16s15 6 15 16c0 6-3 9-3 9" /><path d="M75 20c6 5 7 14 4 22" />`
+    ? `<g class="hair"><path d="M45 24c0-10 7-16 15-16s15 6 15 16c0 6-3 9-3 9" /><path d="M75 20c6 5 7 14 4 22" /></g>`
     : "";
 }
 
@@ -81,7 +81,7 @@ function wellFedSvg(variant) {
       <path d="M22 96h76"/>
       <path d="M26 96V80c0-5 4-9 9-9h50c5 0 9 4 9 9v16" stroke="${MUTED}"/>
       <circle cx="52" cy="58" r="14"/>
-      ${variant === "b" ? `<path d="M38 56c0-10 6-16 14-16s14 6 14 16"/>` : ""}
+      ${variant === "b" ? `<g class="hair"><path d="M38 56c0-10 6-16 14-16s14 6 14 16"/></g>` : ""}
       <path d="M45 56h6M55 56h6" stroke-width="3"/>
       <path d="M47 65c3 2.5 7 2.5 10 0" stroke-width="3"/>
       <path d="M40 84c0-8 6-13 16-13s20 5 20 13v6H40z"/>
@@ -112,13 +112,49 @@ function idleSvg(variant) {
  * @param {number} [opts.size] px
  * @param {boolean} [opts.animate] play the celebrate/settle animation once
  */
-export function doodleSvg({ state = "strong", streak = 0, variant = "a", size = 120, animate = false } = {}) {
-  const body =
+export function doodleSvg({ state = "strong", streak = 0, variant = "a", size = 120, animate = false, face = null } = {}) {
+  let body =
     state === "wellFed" ? wellFedSvg(variant) : state === "idle" ? idleSvg(variant) : strongSvg(variant, growth(streak));
+  if (face) body = withFace(body, state, face);
   return `
     <svg class="doodle${animate ? " doodle-animate" : ""}" data-state="${state}" width="${size}" height="${Math.round(size * 1.08)}"
-         viewBox="0 0 120 130" fill="none" stroke="${INK}" stroke-width="3.4"
+         viewBox="${face ? "0 -16 120 146" : "0 0 120 130"}" fill="none" stroke="${INK}" stroke-width="3.4"
          stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="doodle">
       ${body}
     </svg>`;
+}
+
+
+/**
+ * Swaps the drawn eyes and mouth for a sketch of the person's photo, clipped to the head circle.
+ * The head's outline and the hair stay, so it still reads as the same character.
+ */
+const HEAD = { strong: [60, 26, 15], wellFed: [52, 58, 14], idle: [60, 28, 15] };
+let faceSeq = 0;
+
+function withFace(body, state, face) {
+  const [cx, cy, r] = HEAD[state] ?? HEAD.strong;
+  // Bobblehead: the photo face is drawn much larger than the stick-figure head so it's actually
+  // recognisable, with its bottom edge where the old head met the body.
+  const R = Math.round(r * 1.75);
+  const fy = cy + r - R;
+  const id = `face${++faceSeq}`;
+  const stripped = body
+    .replace(/<g class="hair">[\s\S]*?<\/g>/g, "")                           // the photo has its own hair
+    .replace(new RegExp(`<circle cx="${cx}" cy="${cy}" r="${r}"\\/>`), "")   // the old small head
+    .replace(/<path d="[^"]*" stroke-width="3"\/>/g, (m) => (isFaceStroke(m, cx, cy, r) ? "" : m)); // old eyes & mouth
+  return `
+    <defs><clipPath id="${id}"><circle cx="${cx}" cy="${fy}" r="${R - 1.5}"/></clipPath></defs>
+    ${stripped}
+    <circle cx="${cx}" cy="${fy}" r="${R}" fill="#fff"/>
+    <image href="${face}" x="${cx - R}" y="${fy - R}" width="${R * 2}" height="${R * 2}" clip-path="url(#${id})" preserveAspectRatio="xMidYMid slice"/>
+    <circle cx="${cx}" cy="${fy}" r="${R}"/>`;
+}
+
+/** True if a thin path starts inside the original head — i.e. it's an eye or the mouth. */
+function isFaceStroke(pathTag, cx, cy, r) {
+  const m = pathTag.match(/d="M\s?([\d.]+)\s?([\d.]+)/);
+  if (!m) return false;
+  const x = Number(m[1]), y = Number(m[2]);
+  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
 }

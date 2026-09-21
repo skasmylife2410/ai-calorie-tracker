@@ -1632,3 +1632,4 @@
 .myth-answer p { font-size: 14px; line-height: 1.55; margin: 9px 0 8px; color: var(--sc-primary-text); }
 .myth-again { font-size: 12px; color: var(--sc-secondary); }
 @media (prefers-reduced-motion: no-preference) { .myth-answer { animation: myth-in .25s ease-out; } @keyframes myth-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } } }
+.doodle-card .doodle { overflow: visible; }

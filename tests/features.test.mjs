@@ -283,3 +283,35 @@ test("100 myths, complete in both languages, and one per day rotating", async ()
     assert.ok(!(a === b && b === c), `three ${a} myths in a row starting day ${i}`);
   }
 });
+
+// --- doodle messages ------------------------------------------------------------
+
+test("doodle messages are personal, match the doodle, and hold for 12 hours", async () => {
+  const { doodleMessage, _MESSAGES_FOR_TESTS } = await import("../js/ui/doodle-messages.js");
+  const base = { name: "Baby", variant: "b", state: "strong", streak: 4, eaten: 1200, target: 1650, remaining: 450,
+    proteinLeft: 30, proteinHit: false, meals: 2, exerciseMin: 40, burned: 300, weightDelta30: -1, goalLeft: 2, hour: 16, daysSinceLog: 0 };
+  const t0 = Date.UTC(2026, 8, 21, 0, 30);
+
+  // every message renders in both languages without throwing or leaking a template
+  for (const m of _MESSAGES_FOR_TESTS) {
+    for (const lang of ["en", "es"]) {
+      const text = m[lang]({ ...base, he: "she", He: "She", him: "her", el: "ella", El: "Ella", state: m.state }, lang);
+      assert.ok(text.length > 10 && !text.includes("undefined") && !text.includes("${"), `${lang}: ${text}`);
+    }
+  }
+  // same 12h window -> same message; a later window can change it
+  const a = doodleMessage(base, { lang: "en", username: "baby", now: t0 });
+  assert.equal(a, doodleMessage(base, { lang: "en", username: "baby", now: t0 + 11 * 3600e3 }));
+  // her doodle is "she"; his is "he"
+  const all = Array.from({ length: 30 }, (_, i) => doodleMessage(base, { lang: "en", username: "baby", now: t0 + i * 12 * 3600e3 })).join(" ");
+  assert.ok(!/\bhe's\b|\bHe's\b|\bhim\b/.test(all), "her doodle must never be called he/him");
+  const allEs = Array.from({ length: 30 }, (_, i) => doodleMessage(base, { lang: "es", username: "baby", now: t0 + i * 12 * 3600e3 })).join(" ");
+  assert.ok(!/\bél\b|\bÉl\b/.test(allEs), "her doodle must never be called él");
+  // the person's name appears
+  assert.match(a, /Baby/);
+  // different people get different messages in the same window more often than not
+  const differ = Array.from({ length: 20 }, (_, i) =>
+    doodleMessage(base, { username: "aelson", now: t0 + i * 12 * 3600e3 }) !==
+    doodleMessage(base, { username: "baby", now: t0 + i * 12 * 3600e3 })).filter(Boolean).length;
+  assert.ok(differ >= 8, `people should mostly see different messages (${differ}/20)`);
+});

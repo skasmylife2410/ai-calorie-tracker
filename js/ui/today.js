@@ -14,7 +14,9 @@ import { openRecipesSheet } from "./recipes.js";
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
 import { currentLanguage } from "../i18n.js";
-import { doodleSvg, doodleState } from "./doodle.js";
+import { doodleSvg, doodleState, daysSinceLastLog } from "./doodle.js";
+import { doodleMessage } from "./doodle-messages.js";
+import { cachedFaceDoodle, makeFaceDoodle } from "./photo-doodle.js";
 
 const MACRO_DEFS = [
   { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", color: "var(--sc-protein)", track: "rgba(232,93,93,0.18)", icon: "fishFill" },
@@ -458,26 +460,57 @@ function formatViewedDay(date) {
 }
 
 
-/** The doodle card: character on the left, one line about why it looks like that. */
+/** The doodle card: the character, drawn with your face if you've set a photo, and a message
+ *  written for you from your own numbers. A new message every 12 hours. */
 function doodleCardHtml() {
-  const { state, streak, daysSinceLog } = doodleState();
-  const variant = store.getProfile().doodleVariant === "b" ? "b" : "a";
-  const title = t(`doodle.${state}Title`);
-  const sub =
-    state === "strong"
-      ? streak > 0
-        ? t("doodle.strongSub", { streak, n: streak })
-        : t("doodle.strongSubNew")
-      : state === "idle"
-      ? t("doodle.idleSub", { days: Number.isFinite(daysSinceLog) ? daysSinceLog : 2 })
-      : t("doodle.wellFedSub");
+  const { state, streak } = doodleState();
+  const profile = store.getProfile();
+  const variant = profile.doodleVariant === "b" ? "b" : "a";
+
+  const face = profile.avatar ? cachedFaceDoodle(profile.avatar) : null;
+  if (profile.avatar && !face) {
+    // first time with this photo: sketch it in the background, then redraw just the doodle
+    makeFaceDoodle(profile.avatar).then((sketchUrl) => {
+      const holder = document.getElementById("doodle-figure");
+      if (sketchUrl && holder) holder.innerHTML = doodleSvg({ state, streak, variant, size: 100, face: sketchUrl });
+    });
+  }
+
+  const totals = store.totalsForDay();
+  const goals = store.computeGoals();
+  const energy = store.dayEnergy();
+  const exercise = store.exerciseForDay();
+  const change = store.weightChange(30);
+  const latest = store.weightSeries(14).slice(-1)[0];
+  const goalKg = Number(profile.goalWeightKg) || null;
+  const username = (typeof localStorage !== "undefined" && localStorage.getItem("snapcal.username")) || "";
+  const name = username ? username.replace(/[-_]\d*$/, "").replace(/^./, (c) => c.toUpperCase()).replace(/\d+$/, "") : "";
+
+  const text = doodleMessage({
+    name: name || (currentLanguage() === "es" ? "tú" : "you"),
+    variant,
+    state,
+    streak,
+    eaten: Math.round(totals.calories),
+    target: energy.adjustedTarget,
+    remaining: energy.remaining,
+    proteinLeft: Math.max(0, Math.round(goals.proteinTargetG - totals.proteinG)),
+    proteinHit: totals.proteinG >= goals.proteinTargetG * 0.95,
+    meals: store.entriesForDay(new Date()).filter((e) => e.isPending !== true).length,
+    exerciseMin: exercise.reduce((n, e) => n + (e.minutes || 0), 0),
+    burned: energy.burned,
+    weightDelta30: change ? change.delta : null,
+    goalLeft: goalKg && latest ? Math.round(Math.abs(latest.avg - goalKg) * 10) / 10 : null,
+    hour: new Date().getHours(),
+    daysSinceLog: Number.isFinite(daysSinceLastLog()) ? daysSinceLastLog() : 2,
+  }, { lang: currentLanguage() === "es" ? "es" : "en", username });
 
   return `
     <div class="doodle-card">
-      ${doodleSvg({ state, streak, variant, size: 86 })}
+      <div id="doodle-figure">${doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
       <div class="doodle-text">
-        <div class="doodle-title">${title}</div>
-        <div class="doodle-sub">${sub}</div>
+        <div class="doodle-title">${t(`doodle.${state}Title`)}</div>
+        <div class="doodle-sub">${text}</div>
       </div>
     </div>`;
 }

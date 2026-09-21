@@ -280,5 +280,11 @@
       "diets": "Diets",
       "supplements": "Supplements"
     }
+  },
+  "doodlePick": {
+    "title": "Your doodle",
+    "boy": "Him",
+    "girl": "Her",
+    "hint": "The doodle on Home uses your profile photo as its face once you set one on the Us tab."
   }
 }

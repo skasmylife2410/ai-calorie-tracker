@@ -280,5 +280,11 @@
       "diets": "Dietas",
       "supplements": "Suplementos"
     }
+  },
+  "doodlePick": {
+    "title": "Tu dibujito",
+    "boy": "Él",
+    "girl": "Ella",
+    "hint": "El dibujito de Inicio usa tu foto de perfil como cara cuando la pongas en la pestaña Nosotros."
   }
 }

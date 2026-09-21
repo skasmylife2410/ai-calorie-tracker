@@ -49,6 +49,7 @@ export function render(container) {
       ${goalSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
       ${accountSectionHtml(currentUsername)}
+      ${doodlePickHtml()}
       ${languageSectionHtml()}
       ${syncSectionHtml()}
       <div class="bottom-safe-spacer"></div>
@@ -62,6 +63,9 @@ export function render(container) {
   wireLanguage(container);
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
+  container.querySelectorAll("[data-doodle]").forEach((b) =>
+    b.addEventListener("click", () => { store.setProfile({ doodleVariant: b.dataset.doodle }); render(container); })
+  );
 }
 
 function syncStatusLabel({ state, lastSyncAt }) {
@@ -124,6 +128,22 @@ function wireAccount(container, username) {
     setStoredToken("");
     location.reload();
   });
+}
+
+/** Which doodle: sets the drawing (hair) and the pronoun in its messages. */
+function doodlePickHtml() {
+  const v = store.getProfile().doodleVariant === "b" ? "b" : "a";
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("doodlePick.title")}</div>
+      <div class="ios-section-body">
+        <div class="lang-row">
+          <button type="button" class="lang-btn${v === "a" ? " is-on" : ""}" data-doodle="a">${t("doodlePick.boy")}</button>
+          <button type="button" class="lang-btn${v === "b" ? " is-on" : ""}" data-doodle="b">${t("doodlePick.girl")}</button>
+        </div>
+      </div>
+      <div class="ios-section-footer">${t("doodlePick.hint")}</div>
+    </div>`;
 }
 
 /** Language picker — per person, stored on the profile so it follows them between devices. */

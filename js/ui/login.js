@@ -28,6 +28,9 @@ export async function postAuth(payload) {
 export async function hasValidSession() {
   if (!getStoredToken()) return false;
   const out = await postAuth({ op: "whoami" });
+  if (out.ok && out.username) {
+    try { localStorage.setItem("snapcal.username", out.username); } catch { /* private mode */ }
+  }
   return out.ok === true;
 }
 
@@ -107,6 +110,7 @@ export function renderLogin(container, { mode = "login" } = {}) {
           return;
         }
         setStoredToken(out.token);
+        try { localStorage.setItem("snapcal.username", username); } catch { /* private mode */ }
         resolve({ username, mustChange: out.mustChange === true });
       };
 

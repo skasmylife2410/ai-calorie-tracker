@@ -10,12 +10,14 @@
 // Up/down scrolling is untouched: direction is decided in the first ~12px of movement.
 
 const EDGE = 20;
-const DECIDE = 12;
-const COMMIT = 0.32; // share of the width that commits a change
+const DECIDE = 8;      // px of movement before deciding sideways vs scroll
+const COMMIT = 0.16;   // share of the width that commits — half the old 0.32, which felt like a haul
+const FLICK = 0.45;    // px per ms: a quick flick commits even if it's short
 
 export function wireTabSwipe({ surface, getIndex, count, onChange }) {
   let startX = 0, startY = 0, dx = 0;
   let tracking = false, decided = false, horizontal = false;
+  let startT = 0;
   let width = 1;
 
   const ownsSwipe = (target) => {
@@ -41,7 +43,7 @@ export function wireTabSwipe({ surface, getIndex, count, onChange }) {
     width = surface.clientWidth || window.innerWidth;
     if (t.clientX < EDGE || t.clientX > width - EDGE) return; // leave the edges to the system
     if (ownsSwipe(e.target)) return;
-    startX = t.clientX; startY = t.clientY; dx = 0;
+    startX = t.clientX; startY = t.clientY; dx = 0; startT = performance.now();
     tracking = true; decided = false; horizontal = false;
     surface.style.transition = "none";
   }, { passive: true });
@@ -59,7 +61,7 @@ export function wireTabSwipe({ surface, getIndex, count, onChange }) {
     }
     if (e.cancelable) e.preventDefault();
     const i = getIndex();
-    dx = mx;
+    dx = mx * 1.15; // page moves slightly ahead of the finger, so short drags feel like enough
     // resist dragging past the first or last tab
     if ((i === 0 && dx > 0) || (i === count() - 1 && dx < 0)) dx = dx / 3.5;
     surface.style.transform = `translateX(${dx}px)`;
@@ -72,7 +74,10 @@ export function wireTabSwipe({ surface, getIndex, count, onChange }) {
 
     const i = getIndex();
     const next = dx < 0 ? i + 1 : i - 1;
-    if (Math.abs(dx) > width * COMMIT && next >= 0 && next < count()) {
+    const speed = Math.abs(dx) / Math.max(1, performance.now() - startT);
+    const farEnough = Math.abs(dx) > width * COMMIT;
+    const flicked = speed > FLICK && Math.abs(dx) > 30;
+    if ((farEnough || flicked) && next >= 0 && next < count()) {
       // slide the old page out, swap content, slide the new one in from the other side
       const dir = dx < 0 ? -1 : 1;
       surface.style.transition = "transform .16s ease-in";
