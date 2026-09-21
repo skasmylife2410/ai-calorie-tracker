@@ -1633,3 +1633,50 @@
 .myth-again { font-size: 12px; color: var(--sc-secondary); }
 @media (prefers-reduced-motion: no-preference) { .myth-answer { animation: myth-in .25s ease-out; } @keyframes myth-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } } }
 .doodle-card .doodle { overflow: visible; }
+
+/* ===========================================================================
+   Sky: time-of-day glow behind the whole app (js/ui/sky.js).
+   Big soft blobs of light, heaviest along the bottom edge, drifting slowly.
+   Built from radial gradients rather than blur filters so it's cheap on phones.
+   =========================================================================== */
+html, body { background: var(--sky-base, var(--sc-background)) !important; transition: background-color 2s linear; }
+#sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+#app-root { position: relative; z-index: 1; }
+.sky-blob { position: absolute; border-radius: 50%; will-change: transform; }
+.sky-blob.b1 { width: 120vw; height: 70vh; left: -45vw; bottom: -28vh; background: radial-gradient(closest-side, var(--sky-1), transparent); }
+.sky-blob.b2 { width: 115vw; height: 65vh; right: -45vw; bottom: -24vh; background: radial-gradient(closest-side, var(--sky-2), transparent); }
+.sky-blob.b3 { width: 110vw; height: 55vh; left: -5vw; top: -30vh; background: radial-gradient(closest-side, var(--sky-3), transparent); }
+/* a faint haze so the glow reads as light, not paint */
+.sky-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 40%, rgba(255,255,255,.12)); }
+@media (prefers-reduced-motion: no-preference) {
+  .sky-blob.b1 { animation: sky-drift-a 22s ease-in-out infinite alternate; }
+  .sky-blob.b2 { animation: sky-drift-b 26s ease-in-out infinite alternate; }
+  .sky-blob.b3 { animation: sky-drift-c 30s ease-in-out infinite alternate; }
+  @keyframes sky-drift-a { from { transform: translate(0, 0) scale(1); } to { transform: translate(14vw, -6vh) scale(1.12); } }
+  @keyframes sky-drift-b { from { transform: translate(0, 0) scale(1.05); } to { transform: translate(-16vw, -4vh) scale(.94); } }
+  @keyframes sky-drift-c { from { transform: translate(0, 0) scale(1); } to { transform: translate(10vw, 5vh) scale(1.1); } }
+}
+/* the app's own surfaces must let the sky through */
+.scroll-view, #tab-content, .today-content, .tm-screen, .wt-screen, .us-tab { background: transparent !important; }
+/* cards get a touch of glass so they sit on the light rather than cutting holes in it */
+.calorie-card, .macro-tile, .doodle-card, .myth-card, .us-card, .wt-stat, .wt-card, .tm-summary, .ex-row {
+  background-color: rgba(255,255,255,.82) !important;
+  -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px);
+}
+/* #app-root had its own cream background, which sat on top of the sky and hid it */
+#app-root { background: transparent !important; }
+
+/* The bright band of colour along the bottom edge — the part that makes it read as glowing light.
+   A sideways gradient through the three colours, faded upward with a mask, shifting slowly. */
+.sky-edge {
+  position: absolute; left: -20vw; right: -20vw; bottom: 0; height: 34vh;
+  background: linear-gradient(90deg, var(--sky-e1), var(--sky-e2) 35%, var(--sky-e3) 65%, var(--sky-e1));
+  background-size: 200% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0,0,0,.55) 30%, transparent 100%);
+          mask-image: linear-gradient(to top, #000 0%, rgba(0,0,0,.55) 30%, transparent 100%);
+  opacity: .62;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sky-edge { animation: sky-edge-flow 18s ease-in-out infinite alternate; }
+  @keyframes sky-edge-flow { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+}
