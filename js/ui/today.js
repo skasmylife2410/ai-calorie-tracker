@@ -6,12 +6,12 @@ import * as queue from "../queue.js";
 import { roundDisplay, startOfDay } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { ringGauge } from "./ring.js";
-import { mountEntryRow } from "./entry-row.js";
 import { openActionSheet } from "./action-sheet.js";
 import { openResultsSheet } from "./results.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
 import { openRecipesSheet } from "./recipes.js";
+import { openDayMealsSheet } from "./day-meals.js";
 import { doodleSvg, doodleState } from "./doodle.js";
 
 const MACRO_DEFS = [
@@ -26,6 +26,10 @@ let swiperPage = 0;
 let rowCleanups = [];
 // The day the Home tab is showing. null = today (and it snaps back to today on a fresh launch).
 let selectedDayStart = null;
+// Which week the strip is showing: 0 = this week, -1 = last week, and so on. Without this the
+// strip could only ever reach back to Monday, so "edit a prior day" stopped at the week boundary.
+let weekOffset = 0;
+// The meal list gets long fast, so it shows a few and hides the rest behind "Show all".
 
 function viewedDate() {
   return selectedDayStart === null ? new Date() : new Date(selectedDayStart);
@@ -49,7 +53,7 @@ export function render(container) {
   const viewingToday = isViewingToday();
   const totals = store.totalsForDay(date);
   const goals = store.computeGoals();
-  const week = store.weekStrip(date);
+  const week = store.weekStrip(new Date(startOfDay(new Date()) + weekOffset * 7 * 86400000));
   const streakCount = store.streak();
   const water = store.getWaterEntryForDay(date);
   const recent = viewingToday
@@ -60,6 +64,7 @@ export function render(container) {
 
   // dayEnergy folds in the credited share of exercise (see nutrition.EXERCISE_CREDIT_RATIO).
   const energy = store.dayEnergy(date);
+  const mealCount = store.entriesForDay(date).filter((e) => e.isPending !== true).length;
   const remaining = energy.remaining;
   const overBudget = remaining < 0;
 
@@ -79,7 +84,7 @@ export function render(container) {
 
       <div class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
-          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy)}</div>
+          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount)}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
         </div>
       </div>
@@ -101,11 +106,6 @@ export function render(container) {
         <button type="button" class="ideas-btn" id="ideas-btn">${t("home.ideasButton")}</button>
       </div>` : ""}
 
-      <div class="recent-section">
-        <h2 class="section-title">${viewingToday ? t("home.recentlyUploaded") : t("home.mealsThatDay")}</h2>
-        ${showNotifyBanner ? notifyBannerHtml() : ""}
-        <div class="recent-list" id="recent-list"></div>
-      </div>
       <div class="bottom-safe-spacer"></div>
     </div>
   `;
@@ -114,31 +114,59 @@ export function render(container) {
   wireWaterButtons(container);
   wireExercise(container, date);
   wireDaySelection(container);
+  container.querySelector("#see-meals")?.addEventListener("click", () =>
+    openDayMealsSheet({ date: viewedDate(), onChange: () => render(container) })
+  );
   container.querySelector("#ideas-btn")?.addEventListener("click", () => openRecipesSheet());
   wireNotifyBanner(container);
 
-  const recentList = container.querySelector("#recent-list");
-  if (recent.length === 0) {
-    recentList.innerHTML = `
-      <div class="empty-recent">
-        <div class="empty-recent-box"></div>
-        <div class="empty-recent-caption">Tap + to add your first meal of the day</div>
-      </div>
-    `;
-  } else {
-    for (const entry of recent) {
-      const cleanup = mountEntryRow(recentList, entry, {
-        onTap: (e) => handleRowTap(e, container),
-        onDelete: (e) => store.deleteFoodEntry(e.id),
-      });
-      rowCleanups.push(cleanup);
-    }
-  }
+}
+
+
+/**
+ * Swipe removes the meal straight away — no dialog, no edit mode. A toast offers Undo for a few
+ * seconds, which is friendlier than a confirm box and much faster when clearing several rows.
+ */
+let undoTimer = null;
+function removeWithUndo(entry, container) {
+  const snapshot = { ...entry };
+  store.deleteFoodEntry(entry.id);
+  render(container);
+  showUndoToast(snapshot, container);
+}
+
+function showUndoToast(snapshot, container) {
+  document.getElementById("undo-toast")?.remove();
+  clearTimeout(undoTimer);
+
+  const toast = document.createElement("div");
+  toast.id = "undo-toast";
+  toast.className = "undo-toast";
+  toast.innerHTML = `
+    <span class="undo-text">${t("undo.removed", { name: snapshot.name ?? "" })}</span>
+    <button type="button" class="undo-btn">${t("undo.action")}</button>`;
+  document.body.appendChild(toast);
+
+  toast.querySelector(".undo-btn").addEventListener("click", () => {
+    // Re-add with the original timestamp so it lands back on the same day, not today.
+    store.addFoodEntry({ ...snapshot, id: undefined });
+    toast.remove();
+    clearTimeout(undoTimer);
+    render(container);
+  });
+
+  undoTimer = setTimeout(() => toast.remove(), 5000);
 }
 
 function weekStripHtml(week) {
   const todayStart = startOfDay(new Date());
+  const canGoForward = week.some((d) => d.dayStart < todayStart - 6 * 86400000) || weekOffset < 0;
   return `
+    <div class="week-nav">
+      <button type="button" class="week-arrow" id="week-prev" aria-label="${t("day.prevWeek")}">‹</button>
+      <span class="week-range">${weekRangeLabel(week)}</span>
+      <button type="button" class="week-arrow${canGoForward ? "" : " is-hidden"}" id="week-next" aria-label="${t("day.nextWeek")}">›</button>
+    </div>
     <div class="week-strip">
       ${week
         .map((day, i) => {
@@ -175,7 +203,7 @@ function weekStripHtml(week) {
   `;
 }
 
-function caloriesPageHtml(totals, goals, remaining, overBudget, energy) {
+function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount) {
   const ringProgress = energy.adjustedTarget > 0 ? totals.calories / energy.adjustedTarget : 0;
   const ring = ringGauge({
     size: 96,
@@ -215,6 +243,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy) {
         <div class="calorie-left">
           <div class="calorie-remaining${overBudget ? " over" : ""}">${roundDisplay(Math.abs(remaining))}</div>
           <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>
+          <button type="button" class="calorie-meals" id="see-meals">${t("us.mealsCount", { n: mealCount })} · ${t("day.tapToSee")} ›</button>
           ${energy.credit > 0 ? `<div class="calorie-exercise">${t("home.exerciseNote", { goal: energy.baseTarget, credit: energy.credit, burned: energy.burned })}</div>` : ""}
         </div>
         ${ring}
@@ -401,6 +430,15 @@ function wireDaySelection(container) {
   });
   container.querySelector("#back-to-today")?.addEventListener("click", () => {
     selectedDayStart = null;
+    weekOffset = 0;
+    render(container);
+  });
+  container.querySelector("#week-prev")?.addEventListener("click", () => {
+    weekOffset -= 1;
+    render(container);
+  });
+  container.querySelector("#week-next")?.addEventListener("click", () => {
+    if (weekOffset < 0) weekOffset += 1;
     render(container);
   });
 }
@@ -432,4 +470,13 @@ function doodleCardHtml() {
         <div class="doodle-sub">${sub}</div>
       </div>
     </div>`;
+}
+
+
+function weekRangeLabel(week) {
+  const first = new Date(week[0].dayStart);
+  const last = new Date(week[week.length - 1].dayStart);
+  const sameMonth = first.getMonth() === last.getMonth();
+  const f = (d, withMonth) => formatDate(d, withMonth ? { month: "short", day: "numeric" } : { day: "numeric" });
+  return `${f(first, true)} – ${f(last, !sameMonth)}`;
 }

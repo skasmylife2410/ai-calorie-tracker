@@ -225,3 +225,118 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .tg-kcal { font-size: 30px; }
 .tg-extra { line-height: 1.55; }
 .tg-h2 { font-size: 19px; }
+
+/* --- three or more people --- */
+:root { --tg-c: #2E9E76; --tg-c-soft: rgba(46,158,118,.16); --tg-d: #B2701F; --tg-d-soft: rgba(178,112,31,.16); }
+
+.tg-today.is-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.tg-today.is-scroll .tg-person { min-width: 62%; scroll-snap-align: start; }
+.tg-today.is-scroll .tg-person + .tg-person { border-left: 1px solid var(--tg-line); }
+
+.tg-glegend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 2px 10px; font-size: 12px; font-weight: 700; }
+.tg-glegend span { display: inline-flex; align-items: center; gap: 5px; }
+.tg-glegend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.tg-grow { display: flex; gap: 10px; padding: 9px 0; align-items: center; }
+.tg-grow + .tg-grow { border-top: 1px solid var(--tg-line); }
+.tg-gday { width: 62px; flex: none; font-size: 12px; font-weight: 700; }
+.tg-gbars { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.tg-gbar { display: flex; align-items: center; gap: 7px; }
+.tg-gtrack { position: relative; flex: 1; min-width: 0; height: 12px; border-radius: 4px; }
+.tg-gfill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+.tg-ggoal { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--tg-ink); opacity: .5; }
+.tg-gnum { width: 42px; text-align: right; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--sc-secondary, #6B6B73); }
+
+/* --- Us v2: leaderboard rows + sparklines (scales to five people) --- */
+:root { --tg-over: #D8487A; }
+.us-card { background: #fff; border-radius: 22px; box-shadow: 0 2px 10px rgba(0,0,0,.06); overflow: hidden; }
+.us-row { padding: 14px 16px; display: grid; gap: 9px; }
+.us-row + .us-row, .us-trend + .us-trend { border-top: 1px solid var(--tg-line); }
+.us-row-top { display: flex; align-items: center; gap: 7px; }
+.us-name { font-size: 16px; font-weight: 700; }
+.us-spacer { flex: 1; }
+.us-eaten { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.us-goal { font-size: 12px; font-weight: 600; color: var(--sc-secondary, #6B6B73); }
+.us-bar { position: relative; height: 10px; border-radius: 5px; overflow: hidden; }
+.us-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 5px; transition: width .4s ease-out; }
+.us-row-foot { display: flex; align-items: baseline; gap: 10px; font-size: 12px; color: var(--sc-secondary, #6B6B73); }
+.us-extra { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.us-left { font-weight: 700; font-variant-numeric: tabular-nums; }
+.us-trend { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+.us-trend-label { width: 104px; flex: none; }
+.us-trend-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.us-trend-avg { font-size: 11px; color: var(--sc-secondary, #6B6B73); margin-top: 3px; }
+.us-spark { flex: 1; min-width: 0; height: 44px; color: var(--tg-ink); overflow: visible; }
+@media (max-width: 360px) { .us-trend-label { width: 88px; } }
+
+/* summary table: with three columns the labels were wrapping to two lines */
+.tg-table { font-size: 14px; table-layout: fixed; }
+.tg-table th, .tg-table td { padding: 11px 10px; white-space: nowrap; }
+.tg-table th:first-child, .tg-table td:first-child { width: 38%; font-size: 13px; white-space: normal; }
+.tg-table thead th { font-size: 13px; }
+.tg-note { margin-top: 10px; }
+
+/* ===========================================================================
+   Us — polish pass. The page read as raw data: flat rows, hard edges, numbers
+   with no hierarchy. This adds depth, rhythm and a clear first thing to look at.
+   =========================================================================== */
+
+body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F6F3) 260px); }
+
+.tg { padding-top: max(18px, env(safe-area-inset-top)); }
+.tg-title { font-size: 34px; letter-spacing: -.03em; }
+.tg-h2 { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--sc-secondary, #6B6B73); margin-bottom: 10px; }
+.tg-section { margin-top: 26px; }
+
+/* cards lift off the page rather than sitting flat on it */
+.us-card, .tg-mirror, .tg-table, .tg-today {
+  border-radius: 24px;
+  box-shadow: 0 1px 2px rgba(16,16,20,.04), 0 8px 24px -12px rgba(16,16,20,.18);
+  border: 1px solid rgba(16,16,20,.04);
+}
+
+/* today rows: the person's colour tints their whole row, so the eye groups by person */
+.us-row { position: relative; padding: 16px 16px 15px; }
+.us-row::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: currentColor; opacity: .55; }
+.us-row:nth-child(1) { color: var(--tg-a); }
+.us-row:nth-child(2) { color: var(--tg-b); }
+.us-row:nth-child(3) { color: var(--tg-c); }
+.us-row:nth-child(4) { color: var(--tg-d); }
+.us-name { letter-spacing: -.01em; color: var(--tg-ink); }
+.us-eaten { font-size: 19px; letter-spacing: -.02em; color: var(--tg-ink); }
+.us-goal { font-size: 11px; }
+.us-bar { height: 9px; border-radius: 6px; box-shadow: inset 0 1px 2px rgba(16,16,20,.06); }
+.us-bar > span { box-shadow: 0 1px 3px rgba(16,16,20,.18); }
+.us-row-foot { font-size: 11.5px; margin-top: 1px; }
+.us-left { font-size: 12px; }
+.tg-you { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 2px 6px; border-radius: 6px; background: rgba(16,16,20,.06); color: var(--sc-secondary, #6B6B73); }
+
+/* sparklines get room to breathe and a soft fill under the line */
+.us-trend { padding: 16px; gap: 16px; }
+.us-trend-name { font-size: 13.5px; }
+.us-trend-avg { font-size: 11px; opacity: .85; }
+.us-spark { height: 48px; }
+
+/* the mirror chart, softened */
+.tg-mirror { padding: 16px 16px 12px; }
+.tg-row { height: 34px; }
+.tg-side .fill { border-radius: 5px; box-shadow: 0 1px 3px rgba(16,16,20,.14); }
+.tg-mirror-head { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; padding-bottom: 10px; }
+
+/* summary table reads as a table, not a wall */
+.tg-table thead th { padding-top: 15px; padding-bottom: 12px; }
+.tg-table tbody tr:nth-child(odd) { background: rgba(16,16,20,.015); }
+.tg-table td:first-child { color: var(--sc-secondary, #6B6B73); }
+.tg-note { font-size: 12px; line-height: 1.55; opacity: .9; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .us-card, .tg-mirror, .tg-table { animation: us-rise .3s ease-out both; }
+  .tg-section:nth-of-type(2) .us-card { animation-delay: .04s; }
+  .tg-section:nth-of-type(3) .tg-table { animation-delay: .08s; }
+  @keyframes us-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+
+/* table header: names only, no badges — three columns were colliding */
+.tg-th-name { display: inline-flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.tg-th-name i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.tg-table th:not(:first-child), .tg-table td:not(:first-child) { width: 31%; }
+@media (max-width: 380px) { .tg-th-name { font-size: 12px; } .tg-table { font-size: 13px; } }

@@ -12,6 +12,7 @@ const RAW = {
   dropFill: `<path d="M12 2.4c-3 3.9-6.5 8.6-6.5 12.3 0 3.6 2.9 6.8 6.5 6.8s6.5-3.2 6.5-6.8c0-3.7-3.5-8.4-6.5-12.3Z"/>`,
   bookmarkFill: `<path d="M6.5 3A1.5 1.5 0 0 0 5 4.5v16l7-4.5 7 4.5v-16A1.5 1.5 0 0 0 17.5 3h-11Z"/>`,
   bookmark: `<path d="M6.5 3A1.5 1.5 0 0 0 5 4.5v16l7-4.5 7 4.5v-16A1.5 1.5 0 0 0 17.5 3h-11Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>`,
+  scale: `<path d="M12 3.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z"/><path d="M5.4 7.6h13.2a1 1 0 0 1 .98 1.2l-1.8 9.4a1.6 1.6 0 0 1-1.57 1.3H7.79a1.6 1.6 0 0 1-1.57-1.3l-1.8-9.4a1 1 0 0 1 .98-1.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.4 11.2 12 14.4l2.6-3.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`,
   houseFill: `<path d="M12 2.6 2.5 10.8c-.4.35-.15 1 .35 1h1.65v8.6c0 .55.45 1 1 1H9v-6.4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6.4h3.5c.55 0 1-.45 1-1v-8.6h1.65c.5 0 .75-.65.35-1L12 2.6Z"/>`,
   chartBarFill: `<rect x="4" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="16" y="3" width="4" height="18" rx="1"/>`,
   personFill: `<circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1Z"/>`,

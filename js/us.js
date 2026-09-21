@@ -70,35 +70,90 @@ function personHead(p, i) {
 
 function todayHtml(people) {
   const key = localDateString(Date.now());
-  const cols = people.map((p, i) => {
+
+  // One row per person rather than side-by-side cards: cards worked for two and broke at three,
+  // and the row puts the three numbers that matter (eaten, goal, protein) on one line.
+  const rows = people.map((p, i) => {
     const c = COLORS[i % COLORS.length];
     const d = p.days[key] || EMPTY_DAY;
-    const g = p.goals;
-    const macro = (label, val, goal, color) => `
-      <li class="tg-macro"><span>${label}</span><b>${fmt(val)}${goal ? ` / ${fmt(goal)}` : ""} g</b>
-        <div class="tg-bar"><span style="width:${pct(val, goal)}%;background:${color}"></span></div></li>`;
+    const goal = p.goals?.calories;
+    const pGoal = p.goals?.proteinG;
+    const ratio = goal > 0 ? Math.max(0, Math.min(1.15, d.calories / goal)) : 0;
+    const over = goal && d.calories > goal;
+    const left = goal ? Math.max(0, Math.round(goal - d.calories)) : null;
+
     return `
-      <div class="tg-person">
-        <div class="tg-name">${personHead(p, i)}</div>
-        <div class="tg-doodle">${doodleFor(p, i)}</div>
-        <div class="tg-kcal">${fmt(d.calories)}</div>
-        <div class="tg-of">${g ? `of ${fmt(g.calories)} kcal · ${fmt(Math.max(0, g.calories - d.calories))} left` : "kcal · no goal set yet"}</div>
-        <div class="tg-bar" style="background:${c.soft}"><span style="width:${pct(d.calories, g?.calories)}%;background:${c.solid}"></span></div>
-        <ul class="tg-macros">
-          ${macro("Protein", d.proteinG, g?.proteinG, "var(--sc-protein)")}
-          ${macro("Carbs", d.carbsG, g?.carbsG, "var(--sc-carbs)")}
-          ${macro("Fat", d.fatG, g?.fatG, "var(--sc-fat)")}
-        </ul>
-        <div class="tg-extra">${t("us.mealsCount", { n: d.meals })}${d.sessions ? ` · ${t("us.sessionsCount", { n: d.sessions })}` : ` · ${t("us.noExercise")}`}<br>${t("us.glassesOfWater", { n: d.water })}</div>
+      <div class="us-row">
+        <div class="us-row-top">
+          <span class="tg-dot" style="background:${c.solid}"></span>
+          <span class="us-name">${escHtml(titleCase(p.owner))}</span>
+          ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : ""}
+          <span class="us-spacer"></span>
+          <span class="us-eaten">${fmt(d.calories)}</span>
+          ${goal ? `<span class="us-goal">/ ${fmt(goal)}</span>` : ""}
+        </div>
+        <div class="us-bar" style="background:${c.soft}">
+          <span style="width:${ratio * 100}%;background:${c.solid}"></span>
+        </div>
+        <div class="us-row-foot">
+          <span>${pGoal ? `${fmt(d.proteinG)} / ${fmt(pGoal)} g` : `${fmt(d.proteinG)} g`}</span>
+          <span class="us-extra">${t("us.mealsCount", { n: d.meals })}${d.sessions ? ` · ${t("us.sessionsCount", { n: d.sessions })}` : ""} · ${t("us.glassesOfWater", { n: d.water })}</span>
+          ${left !== null ? `<span class="us-left" style="color:${over ? "var(--tg-over)" : c.solid}">${over ? `+${fmt(d.calories - goal)}` : `${fmt(left)} left`}</span>` : ""}
+        </div>
       </div>`;
   });
-  return `<section class="tg-section"><h2 class="tg-h2">${t("us.today")}</h2><div class="tg-today${people.length > 2 ? " is-scroll" : ""}">${cols.join("")}</div></section>`;
+
+  return `<section class="tg-section">
+    <h2 class="tg-h2">${t("us.today")}</h2>
+    <div class="us-card">${rows.join("")}</div>
+  </section>`;
 }
 
 /**
- * With three or more people a left/right mirror has nowhere to put the third, so each day
- * becomes a small group of horizontal bars, one per person, sharing one scale.
+ * One sparkline per person instead of a grid of bars: seven days times three people was 21 bars
+ * to compare by eye. The dashed line is that person's goal, the dot is today.
  */
+function trendHtml(people, days) {
+  const ordered = [...days].reverse(); // oldest -> newest, so the line reads left to right
+  const W = 180, H = 44;
+
+  const rows = people.map((p, i) => {
+    const c = COLORS[i % COLORS.length];
+    const values = ordered.map((d) => (p.days[d.key] || EMPTY_DAY).calories);
+    const goal = p.goals?.calories || 0;
+    const max = Math.max(1, ...values, goal) * 1.12;
+    const logged = values.filter((v) => v > 0);
+    const avg = logged.length ? Math.round(logged.reduce((a, b) => a + b, 0) / logged.length) : 0;
+
+    const pts = values.map((v, idx) => ({
+      x: (idx / Math.max(1, values.length - 1)) * W,
+      y: H - (v / max) * H,
+    }));
+    const path = pts.map((pt, idx) => `${idx === 0 ? "M" : "L"}${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" ");
+    const last = pts[pts.length - 1];
+    const goalY = goal ? H - (goal / max) * H : null;
+
+    return `
+      <div class="us-trend">
+        <div class="us-trend-label">
+          <div class="us-trend-name"><span class="tg-dot" style="background:${c.solid}"></span>${escHtml(titleCase(p.owner))}</div>
+          <div class="us-trend-avg">${t("us.avgCalories")} ${fmt(avg)}</div>
+        </div>
+        <svg class="us-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+          ${goalY !== null ? `<line x1="0" y1="${goalY.toFixed(1)}" x2="${W}" y2="${goalY.toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity=".45"/>` : ""}
+          <path d="${path}" fill="none" stroke="${c.solid}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="3.5" fill="${c.solid}" stroke="#fff" stroke-width="2"/>
+        </svg>
+      </div>`;
+  });
+
+  return `<section class="tg-section">
+    <h2 class="tg-h2">${t("us.caloriesByDay")}</h2>
+    <div class="us-card">${rows.join("")}</div>
+    <p class="tg-note">${t("us.goalLine")}</p>
+  </section>`;
+}
+
 function groupedHtml(people, days) {
   const vals = days.flatMap((d) => people.map((p) => (p.days[d.key] || EMPTY_DAY).calories));
   const goals = people.map((p) => p.goals?.calories || 0);
@@ -198,7 +253,10 @@ function summaryHtml(people, days) {
   return `<section class="tg-section">
     <h2 class="tg-h2">${t("us.lastNDays", { n: days.length })}</h2>
     <table class="tg-table">
-      <thead><tr><th></th>${people.map((p, i) => `<th><span class="tg-name" style="justify-content:flex-end">${personHead(p, i)}</span></th>`).join("")}</tr></thead>
+      <thead><tr><th></th>${people.map((p, i) => {
+        const c = COLORS[i % COLORS.length];
+        return `<th><span class="tg-th-name"><i style="background:${c.solid}"></i>${escHtml(titleCase(p.owner))}</span></th>`;
+      }).join("")}</tr></thead>
       <tbody>
         ${row(t("us.daysLogged"), (s) => `${s.logged} / ${days.length}`)}
         ${row(t("us.avgCalories"), (s) => (s.logged ? fmt(s.kcal) : "–"))}
@@ -232,7 +290,9 @@ function render() {
   // The layout is designed for up to about 5 people; beyond that the bars get unreadable.
   if (people.length > 5) people.length = 5;
   const days = dayList(range);
-  const chart = people.length > 2 ? groupedHtml(people, days) : mirrorHtml(people, days);
+  // Two people still get the mirror chart — it reads beautifully head to head. Three or more
+  // get sparklines, which stay legible however many rows there are.
+  const chart = people.length > 2 ? trendHtml(people, days) : mirrorHtml(people, days);
   body.innerHTML = todayHtml(people) + chart + summaryHtml(people, days) +
     (people.length === 1 ? `<p class="tg-note">Only one person is set up. Add a second name and passcode to APP_USERS in Vercel to compare.</p>` : "");
 }

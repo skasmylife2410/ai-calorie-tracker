@@ -20,6 +20,9 @@ globalThis.fetch = async (url, opts = {}) => {
   const u = new URL(url);
   const method = opts.method ?? "GET";
   if (method === "GET") {
+    if ((opts.headers ?? {}).Prefer === "count=exact") {
+      return { ok: true, headers: { get: () => `0-0/${USERS.length}` }, json: async () => [] };
+    }
     const eq = u.searchParams.get("username")?.replace("eq.", "");
     return { ok: true, json: async () => USERS.filter((r) => r.username === eq) };
   }
@@ -128,4 +131,35 @@ test("GET is rejected", async () => {
   const res = mockRes();
   await auth({ method: "GET", headers: {}, body: {} }, res);
   assert.equal(res.code, 405);
+});
+
+
+test("the account cap stops a leaked invite code letting in a fourth person", async () => {
+  USERS = [];
+  process.env.MAX_USERS = "3";
+  const signup = async (username) => {
+    const res = mockRes();
+    await auth(req({ op: "signup", username, password: "cumbia7431", invite: "arepa" }), res);
+    return res.body;
+  };
+
+  assert.equal((await signup("aelson")).ok, true);
+  assert.equal((await signup("baby")).ok, true);
+  assert.equal((await signup("thayra23")).ok, true);
+
+  const fourth = await signup("someone");
+  assert.equal(fourth.ok, false);
+  assert.equal(fourth.errorType, "full");
+  assert.match(fourth.message, /3 people/);
+  assert.equal(USERS.length, 3, "no row is written once the cap is reached");
+
+  // existing people can still sign in and change passwords when the app is full
+  const login = mockRes();
+  await auth(req({ op: "login", username: "baby", password: "cumbia7431" }), login);
+  assert.equal(login.body.ok, true);
+
+  // raising the cap opens a slot again
+  process.env.MAX_USERS = "4";
+  assert.equal((await signup("someone")).ok, true);
+  process.env.MAX_USERS = "3";
 });

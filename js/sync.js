@@ -111,6 +111,11 @@ export function buildPushPayload(sinceMs = 0) {
       updatedAt: new Date(e.updatedAt ?? Date.now()).toISOString(),
     }));
 
+  const dirtyWeight = store
+    .allWeightEntries()
+    .filter((w) => (w.updatedAt ?? 0) > sinceMs)
+    .map((w) => ({ id: w.id, day: w.day, data: w, updatedAt: new Date(w.updatedAt ?? Date.now()).toISOString() }));
+
   const dirtyFavorites = store
     .allSavedFoods()
     .filter((f) => (f.updatedAt ?? f.createdAt ?? 0) > sinceMs)
@@ -128,6 +133,7 @@ export function buildPushPayload(sinceMs = 0) {
     entries: [...dirtyEntries, ...tombstoneRows],
     water: dirtyWater,
     exercise: dirtyExercise,
+    weight: dirtyWeight,
     favorites: dirtyFavorites,
     profile: profilePayload,
     tombstoneIds: tombstones.map((t) => t.id),
@@ -135,8 +141,8 @@ export function buildPushPayload(sinceMs = 0) {
 }
 
 async function push(sinceMs) {
-  const { entries, water, exercise, favorites, profile, tombstoneIds } = buildPushPayload(sinceMs);
-  if (entries.length === 0 && water.length === 0 && exercise.length === 0 && favorites.length === 0 && !profile) {
+  const { entries, water, exercise, weight, favorites, profile, tombstoneIds } = buildPushPayload(sinceMs);
+  if (entries.length === 0 && water.length === 0 && exercise.length === 0 && weight.length === 0 && favorites.length === 0 && !profile) {
     return { ok: true };
   }
 
@@ -145,7 +151,7 @@ async function push(sinceMs) {
     res = await apiFetch("/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ op: "push", entries, water, exercise, favorites, profile }),
+      body: JSON.stringify({ op: "push", entries, water, exercise, weight, favorites, profile }),
     });
   } catch {
     return { ok: false };
@@ -199,6 +205,9 @@ async function pull(sinceIso) {
   }
   for (const row of body.exercise ?? []) {
     store.applyRemoteExercise(row.data ?? row, Date.parse(row.updatedAt));
+  }
+  for (const row of body.weight ?? []) {
+    store.applyRemoteWeight(row.data ?? row, Date.parse(row.updatedAt));
   }
   for (const row of body.favorites ?? []) {
     store.applyRemoteFavorite(row.data ?? row, Date.parse(row.updatedAt));

@@ -19,6 +19,7 @@ import { openFavouritesSheet } from "./ui/favourites.js";
 import { openExerciseSheet } from "./ui/exercise.js";
 import { viewedTimestamp } from "./ui/today.js";
 import { renderLogin, hasValidSession } from "./ui/login.js";
+import { render as renderWeight } from "./ui/weight.js";
 import { openRecipesSheet } from "./ui/recipes.js";
 import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
@@ -26,6 +27,7 @@ import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
   { id: "progress", labelKey: "tabs.progress", icon: "chartBarFill" },
+  { id: "weight", labelKey: "weight.tab", icon: "scale" },
   { id: "profile", labelKey: "tabs.profile", icon: "personFill" },
 ];
 
@@ -120,9 +122,9 @@ function renderShell() {
         <div class="bottom-bar-backdrop"></div>
         <div class="bottom-bar-bump"></div>
         <div class="bottom-bar-row">
-          <div class="bottom-bar-half">${tabButtonHtml(TABS[0])}</div>
+          <div class="bottom-bar-half">${TABS.slice(0, 2).map(tabButtonHtml).join("")}</div>
           <div class="fab-slot"></div>
-          <div class="bottom-bar-half right">${tabButtonHtml(TABS[1])}${tabButtonHtml(TABS[2])}</div>
+          <div class="bottom-bar-half right">${TABS.slice(2).map(tabButtonHtml).join("")}</div>
         </div>
         <button class="fab-btn" id="fab-btn">${icon("plus", { size: 24 })}</button>
       </div>
@@ -222,6 +224,7 @@ function renderCurrentTab() {
   if (!content) return;
   if (selectedTab === "home") renderToday(content);
   else if (selectedTab === "progress") renderHistory(content);
+  else if (selectedTab === "weight") renderWeight(content);
   else renderProfile(content);
 }
 

@@ -7,6 +7,10 @@
 //
 // Sign-up needs INVITE_CODE, because the app sits on a public URL: without it anyone who found
 // the address could create an account. Sharing the code with someone is how you invite them.
+//
+// There is also a hard cap on how many accounts can exist (MAX_USERS, default 3). The invite code
+// can leak — someone forwards it, it is overheard — and the cap means that even then nobody new
+// can get in. Raise it by setting MAX_USERS in Vercel; deleting an account frees a slot.
 
 import {
   USERNAME_RE, normalizeUsername, hashPassword, verifyPassword,
@@ -22,6 +26,22 @@ function restHeaders(extra = {}) {
   const headers = { apikey: key, "Content-Type": "application/json", ...extra };
   if (key.startsWith("eyJ")) headers.Authorization = `Bearer ${key}`;
   return headers;
+}
+
+function maxUsers() {
+  const n = Number(process.env.MAX_USERS);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3;
+}
+
+/** Number of accounts that exist. Uses PostgREST's exact count so no rows are transferred. */
+async function countUsers() {
+  const res = await fetch(`${restBase()}/rest/v1/snapcal_users?select=username`, {
+    headers: restHeaders({ Prefer: "count=exact", Range: "0-0" }),
+  });
+  if (!res.ok) throw new Error(`Supabase count failed (${res.status})`);
+  const range = res.headers.get("content-range") || "";
+  const total = Number(range.split("/")[1]);
+  return Number.isFinite(total) ? total : 0;
 }
 
 async function getUser(username) {
@@ -75,6 +95,11 @@ export default async function handler(req, res) {
       const problem = passwordProblem(password);
       if (problem) return fail(res, problem, "Password must be at least 8 characters.");
       if (await getUser(username)) return fail(res, "taken", "That username is already taken.");
+
+      const limit = maxUsers();
+      if ((await countUsers()) >= limit) {
+        return fail(res, "full", `This app is set up for ${limit} people and all ${limit} places are taken.`);
+      }
 
       const { salt, hash } = hashPassword(password);
       await writeUser({ username, salt, password_hash: hash, must_change: false, created_at: new Date().toISOString() });

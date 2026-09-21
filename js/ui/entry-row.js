@@ -153,7 +153,10 @@ function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
   let decided = false; // whether we've decided this gesture is horizontal
   let horizontal = false;
 
-  const DELETE_THRESHOLD = -80;
+  // A full 80px throw was more commitment than this deserves. 52px deletes outright; anything
+  // past 24px parks the row open so the trash button can simply be tapped instead.
+  const DELETE_THRESHOLD = -52;
+  const OPEN_OFFSET = -76;
 
   const onPointerDown = (e) => {
     const point = e.touches ? e.touches[0] : e;
@@ -190,7 +193,13 @@ function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
     dragging = false;
     fgEl.style.transition = "";
     if (!decided) {
-      onTap();
+      if (rowEl.classList.contains("is-open")) {
+        fgEl.style.transition = "transform 0.22s ease-out";
+        fgEl.style.transform = "";
+        rowEl.classList.remove("is-open", "dragging");
+      } else {
+        onTap();
+      }
       return;
     }
     if (!horizontal) {
@@ -201,12 +210,27 @@ function wireSwipe(rowEl, fgEl, { onTap, onDelete }) {
       fgEl.style.transition = "transform 0.2s ease-out";
       fgEl.style.transform = "translateX(-400px)";
       setTimeout(onDelete, 200);
+    } else if (dx < -24) {
+      // parked open: the red panel stays put, one tap on it removes the meal
+      fgEl.style.transition = "transform 0.22s cubic-bezier(0.2,0.8,0.3,1)";
+      fgEl.style.transform = `translateX(${OPEN_OFFSET}px)`;
+      rowEl.classList.add("is-open");
     } else {
       fgEl.style.transition = "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)";
       fgEl.style.transform = "";
+      rowEl.classList.remove("is-open");
       setTimeout(() => rowEl.classList.remove("dragging"), 300);
     }
   };
+
+  const bg = rowEl.querySelector(".entry-row-swipe-bg");
+  bg?.addEventListener("click", (e) => {
+    if (!rowEl.classList.contains("is-open")) return;
+    e.stopPropagation();
+    fgEl.style.transition = "transform 0.2s ease-out";
+    fgEl.style.transform = "translateX(-400px)";
+    setTimeout(onDelete, 200);
+  });
 
   rowEl.addEventListener("touchstart", onPointerDown, { passive: true });
   rowEl.addEventListener("touchmove", onPointerMove, { passive: false });

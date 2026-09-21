@@ -10,6 +10,7 @@ export const STORAGE_KEYS = Object.freeze({
   userProfile: "snapcal.userProfile",
   savedFoods: "snapcal.savedFoods",
   exerciseEntries: "snapcal.exerciseEntries",
+  weightEntries: "snapcal.weightEntries",
   notifyBannerDismissed: "snapcal.notifyBannerDismissed",
   deletedEntryTombstones: "snapcal.deletedEntryTombstones",
 });
@@ -705,6 +706,131 @@ export function applyRemoteFavorite(data, remoteUpdatedAt) {
   const row = { ...data, updatedAt: stamp };
   if (idx === -1) list.push(row); else list[idx] = row;
   saveSavedFoods(list);
+}
+
+// ---------------------------------------------------------------------------
+// WeightEntry
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {Object} WeightEntry
+ * @property {string} id
+ * @property {string} day - YYYY-MM-DD, one entry per day (a second entry replaces the first)
+ * @property {number} kg - always stored in kg; display units are a profile preference
+ * @property {string|null} note
+ * @property {number} timestamp
+ * @property {number} updatedAt
+ */
+
+export const LB_PER_KG = 2.2046226218;
+
+export const kgToLb = (kg) => (Number(kg) || 0) * LB_PER_KG;
+export const lbToKg = (lb) => (Number(lb) || 0) / LB_PER_KG;
+
+/** Display unit for weight — "kg" or "lb". Stored on the profile, so it follows the person. */
+export function weightUnit() {
+  return getProfile().weightUnit === "lb" ? "lb" : "kg";
+}
+
+export function setWeightUnit(unit) {
+  setProfile({ weightUnit: unit === "lb" ? "lb" : "kg" });
+}
+
+function allWeightRaw() {
+  return readJSON(STORAGE_KEYS.weightEntries, []);
+}
+
+function saveWeight(list) {
+  writeJSON(STORAGE_KEYS.weightEntries, list);
+  notify();
+}
+
+/** Newest first. */
+export function allWeightEntries() {
+  return allWeightRaw().sort((a, b) => b.timestamp - a.timestamp);
+}
+
+/**
+ * Records a weight for a day. One reading per day: logging twice replaces the earlier value,
+ * because two numbers for the same morning is noise, not data.
+ */
+export function addWeightEntry({ kg, timestamp = Date.now(), note = null } = {}) {
+  const value = Number(kg);
+  if (!Number.isFinite(value) || value <= 0 || value > 600) return null;
+
+  const day = localDateString(timestamp);
+  const list = allWeightRaw();
+  const idx = list.findIndex((w) => w.day === day);
+  const entry = {
+    id: idx === -1 ? generateId() : list[idx].id,
+    day,
+    kg: Math.round(value * 10) / 10,
+    note,
+    timestamp,
+    updatedAt: Date.now(),
+  };
+  if (idx === -1) list.push(entry); else list[idx] = entry;
+  saveWeight(list);
+  return entry;
+}
+
+export function deleteWeightEntry(id) {
+  const list = allWeightRaw();
+  const next = list.filter((w) => w.id !== id);
+  const changed = next.length !== list.length;
+  if (changed) saveWeight(next);
+  return changed;
+}
+
+export function latestWeight() {
+  return allWeightEntries()[0] ?? null;
+}
+
+/**
+ * A 7-day rolling average, which is what you actually want to look at: day-to-day weight swings
+ * by a kilo or two on water alone, and a raw line tempts people to read noise as progress.
+ * @returns {Array<{day:string, kg:number, avg:number|null, timestamp:number}>} oldest first
+ */
+export function weightSeries(days = 90) {
+  const cutoff = startOfDay(addDays(startOfDay(new Date()), -(days - 1)));
+  const entries = allWeightRaw()
+    .filter((w) => w.timestamp >= cutoff)
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  return entries.map((entry, i) => {
+    const window = entries.slice(Math.max(0, i - 6), i + 1);
+    const avg = window.reduce((sum, w) => sum + w.kg, 0) / window.length;
+    return { day: entry.day, kg: entry.kg, avg: Math.round(avg * 10) / 10, timestamp: entry.timestamp };
+  });
+}
+
+/**
+ * Change over a window, using the rolling average at each end rather than single readings.
+ * @returns {{from:number, to:number, delta:number, days:number}|null}
+ */
+export function weightChange(days = 30) {
+  const series = weightSeries(days);
+  if (series.length < 2) return null;
+  const first = series[0];
+  const last = series[series.length - 1];
+  return {
+    from: first.avg ?? first.kg,
+    to: last.avg ?? last.kg,
+    delta: Math.round(((last.avg ?? last.kg) - (first.avg ?? first.kg)) * 10) / 10,
+    days: Math.max(1, Math.round((last.timestamp - first.timestamp) / 86400000)),
+  };
+}
+
+/** LWW merge of a remote weight row (js/sync.js). */
+export function applyRemoteWeight(data, remoteUpdatedAt) {
+  if (!data || typeof data !== "object" || typeof data.id !== "string") return;
+  const stamp = Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : Date.now();
+  const list = allWeightRaw();
+  const idx = list.findIndex((w) => w.id === data.id);
+  if (idx !== -1 && (list[idx].updatedAt ?? 0) >= stamp) return;
+  const row = { ...data, updatedAt: stamp };
+  if (idx === -1) list.push(row); else list[idx] = row;
+  saveWeight(list);
 }
 
 // ---------------------------------------------------------------------------

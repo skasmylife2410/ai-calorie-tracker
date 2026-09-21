@@ -45,7 +45,7 @@ test("pull only reads the caller's rows", async () => {
   const res = mockRes();
   await sync({ method: "POST", headers: { "x-snapcal-token": "2222" }, body: { op: "pull" } }, res);
   // entries, water, exercise, favourites, profile — every table is owner-scoped
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 6);
   for (const c of calls) assert.equal(new URL(c.url).searchParams.get("owner"), "eq.maria");
   assert.equal(calls[0].opts.headers.apikey, "sb_secret_abc");
   assert.equal(calls[0].opts.headers.Authorization, undefined);

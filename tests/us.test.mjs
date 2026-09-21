@@ -19,6 +19,7 @@ globalThis.fetch = async (url) => {
     ],
     snapcal_water: [{ owner: "maria", day: "2026-09-15", glasses: 4 }],
     snapcal_exercise: [{ owner: "aelson", day: "2026-09-15", data: { caloriesBurned: 420, activity: "soccer" } }],
+    snapcal_users: [{ username: "aelson" }, { username: "maria" }],
     snapcal_profile: [
       { owner: "aelson", data: { weightKg: 80, heightCm: 178, age: 35, sex: "male", activityLevel: "moderate", targetDeltaKcal: -500, customTargetKcal: 2000 } },
       { owner: "maria", data: { weightKg: 60, heightCm: 165, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 0, customTargetKcal: null } },

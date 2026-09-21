@@ -1,35 +1,42 @@
-# SnapCal update — upload instructions
+# SnapCal — full update
 
-Everything in this folder goes into your repo, keeping the folder structure.
+Everything currently built, in one folder. Safe to upload over what is live: nothing here
+needs deleting first, and js/ui/saved.js is included so no file is ever missing mid-upload.
 
-## 1. Upload the code (2 minutes)
+## Upload
 
-1. Unzip this folder.
-2. Open https://github.com/skasmylife2410/ai-calorie-tracker/upload/main
-   (top level of the repo — the path above the drop area should read just `ai-calorie-tracker /`)
-3. Select everything INSIDE `snapcal-update` (api, css, i18n, js, supabase, tests, us.html)
-   and drag it onto the page. Do not drag the `snapcal-update` folder itself.
-4. Check the file list shows paths like `js/ui/exercise.js` and `i18n/es.json`, not bare names.
-5. Commit to main. Vercel redeploys on its own.
-6. Delete the old renamed files — see DELETE-THESE.txt.
+1. https://github.com/skasmylife2410/ai-calorie-tracker/upload/main
+   (path above the drop area must read just `ai-calorie-tracker /`)
+2. Open this folder in Finder, Cmd+A, drag the selection on.
+3. Check the list shows FOLDER PATHS (js/ui/weight.js, i18n/es.json). Bare names = Safari
+   flattened them; use Chrome.
+4. Commit to main. Vercel redeploys itself.
 
-## 2. Run the database migration (1 minute)
+## Database
 
-In Supabase → SQL Editor, paste and run `supabase/0004_snapcal_exercise_favorites.sql`.
-This creates the two tables that let exercise and favourites sync between phones.
-(0002 and 0003 are already applied — they're here only as a record.)
+Nothing to run. All six migrations are already applied to your Supabase project; the .sql
+files are here only as a record of what the schema is.
 
-Nothing else to change: no new environment variables, no Vercel settings.
+## Vercel variables (already set, listed for reference)
 
-## 3. What to check on your phone
+    APP_SECRET    signs sign-in sessions; changing it signs everyone out
+    INVITE_CODE   needed to create an account
+    MAX_USERS     optional, defaults to 3
 
-- The Home screen shows the doodle, an Exercise section and an Ideas card
-- Tap a past day in the week strip — you can add meals to it
-- Open a meal: servings stepper (− 1 +) and a heart
-- Profile → Language switches everything to Spanish
-- Progress → "Together" opens the Us page
+APP_USERS can be deleted once all three of you have signed in with a username.
+
+## What's new since the last zip
+
+- Week navigation: arrows above the day strip, so past weeks are reachable and editable
+- Meals moved off the dashboard into a sheet, opened from "See meals" on the calorie card
+- Weight tab: 7-day average, trend chart, kg/lb, history, syncs between phones
+- Profile tab restored (four tabs, two either side of +) and a proper scale icon
+- Us: rebuilt for up to five people, sparklines for 3+, polish pass
+- Colour through the app: calories orange, exercise green, ideas amber, weight violet
+- Accounts: username + password, sign-up capped at 3, password change in Profile
 
 ## Known gaps
 
-- Sync carries exercise and favourites only after the migration in step 2.
-- Onboarding screens are still English-only.
+- Onboarding screens are still English only
+- No rate limit on login attempts yet
+- Meal photos live in the database rather than storage

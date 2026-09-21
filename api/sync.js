@@ -135,6 +135,10 @@ export default async function handler(req, res) {
       updated_at: x.updatedAt,
     }));
 
+    const weightRows = (Array.isArray(body.weight) ? body.weight : []).map((w) => ({
+      owner, id: w.id, day: w.day, data: w.data ?? {}, updated_at: w.updatedAt,
+    }));
+
     const favoriteRows = (Array.isArray(body.favorites) ? body.favorites : []).map((f) => ({
       owner,
       id: f.id,
@@ -161,15 +165,16 @@ export default async function handler(req, res) {
     }
     const safeEntryRows = entryRows.filter((r) => !guard.ids.has(r.id));
 
-    const [entriesResult, waterResult, exerciseResult, favoritesResult, profileResult] = await Promise.all([
+    const [entriesResult, waterResult, exerciseResult, weightResult, favoritesResult, profileResult] = await Promise.all([
       upsert("snapcal_food_entries", safeEntryRows, "id"),
       upsert("snapcal_water", waterRows, "owner,day"),
       upsert("snapcal_exercise", exerciseRows, "id"),
+      upsert("snapcal_weight", weightRows, "id"),
       upsert("snapcal_favorites", favoriteRows, "id"),
       upsert("snapcal_profile", profileRows, "owner"),
     ]);
 
-    const failures = [entriesResult, waterResult, exerciseResult, favoritesResult, profileResult].filter((r) => !r.ok);
+    const failures = [entriesResult, waterResult, exerciseResult, weightResult, favoritesResult, profileResult].filter((r) => !r.ok);
     if (failures.length > 0) {
       res.status(200).json({ errorType: "other", message: failures.map((f) => f.message).join("; ") });
       return;
@@ -181,12 +186,13 @@ export default async function handler(req, res) {
   if (body.op === "pull") {
     const since = typeof body.since === "string" && body.since.trim() !== "" ? body.since.trim() : undefined;
     const serverTime = new Date().toISOString();
-    let entries, water, exercise, favorites, profile;
+    let entries, water, exercise, weight, favorites, profile;
     try {
-      [entries, water, exercise, favorites, profile] = await Promise.all([
+      [entries, water, exercise, weight, favorites, profile] = await Promise.all([
         selectSince("snapcal_food_entries", owner, since),
         selectSince("snapcal_water", owner, since),
         selectSince("snapcal_exercise", owner, since),
+        selectSince("snapcal_weight", owner, since),
         selectSince("snapcal_favorites", owner, since),
         selectSince("snapcal_profile", owner, since),
       ]);
@@ -212,6 +218,7 @@ export default async function handler(req, res) {
       })),
       water: water.map((r) => ({ day: r.day, glasses: r.glasses, updatedAt: r.updated_at })),
       exercise: exercise.map((r) => ({ id: r.id, day: r.day, data: r.data, updatedAt: r.updated_at })),
+      weight: weight.map((r) => ({ id: r.id, day: r.day, data: r.data, updatedAt: r.updated_at })),
       favorites: favorites.map((r) => ({ id: r.id, data: r.data, updatedAt: r.updated_at })),
       profile: profile[0] ? { data: profile[0].data, updatedAt: profile[0].updated_at } : null,
       serverTime,
