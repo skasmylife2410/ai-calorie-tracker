@@ -153,7 +153,7 @@ const MEAL_PROMPT_SECTION_1 =
 const MEAL_PROMPT_SECTION_3 = `Rules:
 - Identify each distinct food or drink as a separate item. Use short, generic, database-searchable names (e.g. "white rice, cooked", "grilled chicken breast", "caesar dressing") — no brand names unless certain.
 - Estimate the cooked/served weight in grams of each item as it appears. Judge portion size against the plate, bowl, cutlery, or hand visible in frame; typical dinner plates are 26–28 cm.
-- Assume standard preparation: dishes are cooked with oil or butter unless clearly not; when a fried or sautéed dish is present, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items.
+- Assume standard preparation: dishes are cooked with oil or butter unless clearly not; when a fried or sautéed dish is present, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items. Common hidden fat that looks plain: rice in Latin American cooking (arroz blanco, arroz con pollo) is usually made with oil; arepas are often buttered or griddled with fat; plantains (patacones, tajadas/maduros) are fried; restaurant and street food generally uses more oil than home cooking. Portion estimates from photos tend to come out low on generous plates — don't round down.
 - calories, protein_g, carbs_g, fat_g must be your estimate for the stated grams of that specific item.
 - confidence is 0–1: how sure you are of the item's identity AND portion size.
 - If the image contains no food or drink, return an empty items array.
@@ -182,7 +182,7 @@ Rules:
 - Identify each distinct food or drink as a separate item. Use short, generic, database-searchable names (e.g. "white rice, cooked", "grilled chicken breast", "whey protein powder") — no brand names unless the user named one.
 - Convert the quantities the user gave into grams ("two scoops" of protein powder ≈ 60 g, "a handful" of nuts ≈ 30 g, "a splash" of milk ≈ 30 g).
 - When the user gives NO quantity for an item, assume ONE typical serving and estimate grams from standard serving sizes (medium banana ≈ 118 g, scoop of whey ≈ 30 g, slice of bread ≈ 40 g, cup of cooked rice ≈ 160 g).
-- Assume standard preparation: dishes are cooked with oil or butter unless the user says otherwise; when a fried or sautéed dish is described, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items.
+- Assume standard preparation: dishes are cooked with oil or butter unless the user says otherwise; when a fried or sautéed dish is described, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items. Common hidden fat that looks plain: rice in Latin American cooking (arroz blanco, arroz con pollo) is usually made with oil; arepas are often buttered or griddled with fat; plantains (patacones, tajadas/maduros) are fried; restaurant and street food generally uses more oil than home cooking. Portion estimates from photos tend to come out low on generous plates — don't round down.
 - calories, protein_g, carbs_g, fat_g must be your estimate for the stated grams of that specific item.
 - confidence is 0–1: how sure you are of the item's identity AND portion size. Be honest — a precisely quantified item ("two scoops of whey") deserves high confidence, while an unquantified vague one ("some pasta") deserves LOW confidence.
 - If the text does not describe any food or drink, return an empty items array.

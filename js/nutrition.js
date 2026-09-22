@@ -92,7 +92,11 @@ export function macroTargets(targetCals) {
  *          targetDeltaKcal:number, customTargetKcal?:number|null, customProteinG?:number|null,
  *          customCarbsG?:number|null, customFatG?:number|null}} profile
  */
-export function resolveUserGoals(profile) {
+/** Protein floor for fat loss: 1.6 g per kg of body weight (the lower end of the 1.6–2.2 range
+ *  that preserves muscle in a deficit). Only applied when weight is known. */
+export const PROTEIN_G_PER_KG = 1.6;
+
+export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   const {
     weightKg,
     heightCm,
@@ -107,21 +111,105 @@ export function resolveUserGoals(profile) {
   } = profile;
 
   const bmr = mifflinStJeorBMR(weightKg, heightCm, age, normalizeSex(sex));
-  const tdeeValue = tdee(bmr, activityLevel);
+  const formulaTdee = tdee(bmr, activityLevel);
+  // Maintenance: learned from the person's own intake and weight trend when there's enough data,
+  // otherwise the formula. The learned number already includes their exercise and habits.
+  const useLearned = Number.isFinite(learnedTdee) && learnedTdee > 0;
+  const tdeeValue = useLearned ? learnedTdee : formulaTdee;
   const computedTargetCalories = targetCalories(tdeeValue, targetDeltaKcal);
   const effectiveTargetCalories =
     customTargetKcal !== null && customTargetKcal !== undefined ? customTargetKcal : computedTargetCalories;
   const macros = macroTargets(effectiveTargetCalories);
 
+  // Protein by body weight, not as a share of calories: in a deficit a share of fewer calories
+  // means less protein exactly when it matters most. Carbs give way to make room.
+  let proteinG = macros.proteinG;
+  let carbsG = macros.carbsG;
+  if (weightKg > 0 && (customProteinG === null || customProteinG === undefined)) {
+    const floor = Math.round(weightKg * PROTEIN_G_PER_KG);
+    if (floor > proteinG) {
+      carbsG = Math.max(0, Math.round(carbsG - ((floor - proteinG) * 4) / 4));
+      proteinG = floor;
+    }
+  }
+
   return {
     bmr,
     tdee: tdeeValue,
+    formulaTdee,
+    tdeeSource: useLearned ? "learned" : "formula",
     computedTargetCalories,
     targetCalories: effectiveTargetCalories,
-    proteinTargetG: customProteinG !== null && customProteinG !== undefined ? customProteinG : macros.proteinG,
-    carbsTargetG: customCarbsG !== null && customCarbsG !== undefined ? customCarbsG : macros.carbsG,
+    proteinTargetG: customProteinG !== null && customProteinG !== undefined ? customProteinG : proteinG,
+    carbsTargetG: customCarbsG !== null && customCarbsG !== undefined ? customCarbsG : carbsG,
     fatTargetG: customFatG !== null && customFatG !== undefined ? customFatG : macros.fatG,
     hasValidStats: weightKg > 0 && heightCm > 0 && age > 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Learned maintenance
+// ---------------------------------------------------------------------------
+
+/** Roughly how many kcal a kilo of body-weight change represents. A rule of thumb (the real
+ *  figure varies with how much is fat vs water vs muscle), which is why this works on a
+ *  multi-week trend rather than day to day. */
+export const KCAL_PER_KG = 7700;
+
+/**
+ * What someone's maintenance really is, measured from their own data:
+ *   maintenance ≈ average daily intake − (weight trend in kg/day × 7700)
+ * If you averaged 1,800 kcal and lost 0.3 kg a week, you burned about 1,800 + 330 = 2,130.
+ *
+ * It absorbs everything the formula can't know — exercise, daily movement, individual
+ * metabolism, and consistent logging habits (always forgetting the cooking oil shows up as a
+ * lower maintenance, so targets stay honest).
+ *
+ * @param {{days:Array<{calories:number}>, weights:Array<{t:number, kg:number}>, formulaTdee:number}} input
+ *   days: complete logged days in the window (already filtered); weights: one reading per day
+ * @returns {null|{tdee:number, raw:number, confidence:"low"|"medium"|"high", loggedDays:number,
+ *   weighIns:number, spanDays:number, kgPerWeek:number, avgIntake:number}}
+ */
+export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 }) {
+  if (days.length < 7 || weights.length < 4) return null;
+  const sorted = [...weights].sort((a, b) => a.t - b.t);
+  const t0 = sorted[0].t;
+  const xs = sorted.map((w) => (w.t - t0) / 86400000);
+  const ys = sorted.map((w) => w.kg);
+  const spanDays = xs[xs.length - 1];
+  if (spanDays < 7) return null;
+
+  // least-squares slope: robust to one odd morning, unlike first-vs-last
+  const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
+  const my = ys.reduce((a, b) => a + b, 0) / ys.length;
+  let num = 0, den = 0;
+  for (let i = 0; i < xs.length; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+  const slopePerDay = den > 0 ? num / den : 0;
+
+  const avgIntake = days.reduce((a, d) => a + d.calories, 0) / days.length;
+  const raw = avgIntake - slopePerDay * KCAL_PER_KG;
+
+  const loggedDays = days.length;
+  const weighIns = sorted.length;
+  let confidence = "low";
+  if (loggedDays >= 14 && weighIns >= 8 && spanDays >= 13) confidence = "medium";
+  if (loggedDays >= 21 && weighIns >= 14 && spanDays >= 20) confidence = "high";
+  // a result wildly different from the formula usually means incomplete logging, not a unicorn
+  // metabolism — say so rather than act on it
+  if (formulaTdee > 0 && (raw < formulaTdee * 0.6 || raw > formulaTdee * 1.5)) confidence = "low";
+
+  // lean on the formula while data is thin, fully on the measurement once there's plenty
+  const w = Math.min(1, loggedDays / 21) * Math.min(1, weighIns / 12);
+  const blended = formulaTdee > 0 ? w * raw + (1 - w) * formulaTdee : raw;
+  return {
+    tdee: Math.round(blended / 10) * 10,
+    raw: Math.round(raw),
+    confidence,
+    loggedDays,
+    weighIns,
+    spanDays: Math.round(spanDays),
+    kgPerWeek: Math.round(slopePerDay * 7 * 100) / 100,
+    avgIntake: Math.round(avgIntake),
   };
 }
 
@@ -135,7 +223,8 @@ export function resolveUserGoals(profile) {
  * formula burn estimates run high, and TDEE already includes some daily activity, so crediting
  * every burned calorie double-counts. The UI always shows the full burn AND the credited part.
  */
-export const EXERCISE_CREDIT_RATIO = 0.6;
+export const EXERCISE_CREDIT_RATIO = 0; // default: exercise is logged and shown, not eaten back
+export const EXERCISE_CREDIT_CHOICES = [0, 0.25, 0.5];
 
 /** Calories from exercise that count toward the day's budget (whole calories). */
 export function exerciseCredit(caloriesBurned, ratio = EXERCISE_CREDIT_RATIO) {

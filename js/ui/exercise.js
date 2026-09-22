@@ -97,10 +97,12 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
 
       const renderBurn = () => {
         const burned = estimateCaloriesBurned({ activity, minutes, intensity, weightKg });
-        const credit = exerciseCredit(burned);
+        const credit = exerciseCredit(burned, store.exerciseCreditRatio());
         els.burn.innerHTML = `
           <div class="ex-burn-top"><span class="ex-burn-num">−${formatNumber(burned)}</span><span class="ex-burn-unit">${t("exercise.burned")}</span></div>
-          <div class="ex-burn-note">${t("exercise.creditNote", { credit })}</div>`;
+          <div class="ex-burn-note">${credit > 0
+            ? t("accuracy.exNoteOn", { credit, pct: Math.round(store.exerciseCreditRatio() * 100) })
+            : t("accuracy.exNoteOff")}</div>`;
       };
 
       const setMinutes = (n) => {
@@ -182,7 +184,7 @@ export function exerciseRowsHtml(date = new Date()) {
           <div class="ex-row-icon">${label}</div>
           <div class="ex-row-text">
             <div class="ex-row-name">${escapeHtml(e.name || activityLabel(e.activity))}</div>
-            <div class="ex-row-sub">${t("exercise.rowSub", { minutes: e.minutes, burned: e.caloriesBurned || 0, credit: exerciseCredit(e.caloriesBurned || 0) })}</div>
+            <div class="ex-row-sub">${t("exercise.rowSub", { minutes: e.minutes, burned: e.caloriesBurned || 0, credit: exerciseCredit(e.caloriesBurned || 0, store.exerciseCreditRatio()) })}</div>
           </div>
           <button type="button" class="ex-row-del" data-delete-exercise="${e.id}" aria-label="Delete">${icon("trashFill", { size: 16 })}</button>
         </div>`;

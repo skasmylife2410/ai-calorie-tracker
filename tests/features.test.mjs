@@ -98,26 +98,33 @@ test("burn is estimated from MET, intensity, weight and duration", () => {
   assert.equal(estimateCaloriesBurned({ activity: "run", minutes: 0 }), 0);
 });
 
-test("only 60% of burned calories are credited to the budget", () => {
-  assert.equal(EXERCISE_CREDIT_RATIO, 0.6);
-  assert.equal(exerciseCredit(430), 258);
-  assert.equal(exerciseCredit(0), 0);
-  assert.equal(exerciseCredit(-100), 0);
+test("exercise isn't eaten back by default; 25% or 50% only if the person chooses it", () => {
+  assert.equal(EXERCISE_CREDIT_RATIO, 0);
+  assert.equal(exerciseCredit(430), 0, "default: logged and shown, not added to the budget");
+  assert.equal(exerciseCredit(430, 0.5), 215);
+  assert.equal(exerciseCredit(430, 0.25), 108);
+  assert.equal(exerciseCredit(-100, 0.5), 0);
 });
 
-test("dayEnergy reports the full burn and the credited share separately", () => {
+test("dayEnergy shows the full burn, and credits it only as far as the setting says", () => {
   localStorage.clear();
   store.setProfile(PROFILE);
   store.addFoodEntry({ name: "Lunch", calories: 800 });
   store.addExerciseEntry({ name: "Soccer", activity: "soccer", minutes: 45, intensity: "moderate" });
 
-  const day = store.dayEnergy();
-  assert.equal(day.baseTarget, 2000);
-  assert.equal(day.burned, 420); // 7.0 x 1.0 x 80 x 0.75
-  assert.equal(day.credit, 252); // 60%
-  assert.equal(day.adjustedTarget, 2252);
-  assert.equal(day.eaten, 800);
-  assert.equal(day.remaining, 1452);
+  let day = store.dayEnergy();
+  assert.equal(day.burned, 420, "the burn is still recorded and shown");
+  assert.equal(day.credit, 0, "but by default the budget doesn't grow");
+  assert.equal(day.adjustedTarget, 2000);
+  assert.equal(day.remaining, 1200);
+
+  store.setProfile({ exerciseCreditPct: 50 });
+  day = store.dayEnergy();
+  assert.equal(day.credit, 210);
+  assert.equal(day.adjustedTarget, 2210);
+
+  store.setProfile({ exerciseCreditPct: 60 }); // not one of the offered choices -> treated as 0
+  assert.equal(store.dayEnergy().credit, 0);
 });
 
 test("exercise entries are per day and can be removed", () => {
@@ -207,7 +214,8 @@ test("doodle reflects the day: strong, well fed, or idle after two silent days",
   store.addFoodEntry({ name: "Big dinner", calories: 1500 });
   assert.equal(doodleState().state, "wellFed");
 
-  // exercise credit can pull a day back under, since the budget itself grew
+  // with exercise credit turned on, a workout can pull the day back under, since the budget grew
+  store.setProfile({ exerciseCreditPct: 50 });
   store.addExerciseEntry({ name: "Run", activity: "run", minutes: 60, intensity: "hard" });
   assert.equal(doodleState().state, "strong");
 });
@@ -386,4 +394,93 @@ test("dishes are classified by their first-named food, and hand references are s
     const d = Math.hypot(centres[i][0] - centres[j][0], centres[i][1] - centres[j][1]);
     assert.ok(d > 40, `foods ${i + 1} and ${j + 1} are stacked (${d.toFixed(0)} units apart)`);
   }
+});
+
+
+// --- learned maintenance ---------------------------------------------------------------
+
+test("learned maintenance recovers someone's real burn from intake and weight trend", async () => {
+  const { learnedMaintenance } = await import("../js/nutrition.js");
+  // True maintenance 2,100. They eat ~1,800 → lose 300 kcal/day ≈ 0.039 kg/day.
+  const day = 86400000, t0 = Date.UTC(2026, 7, 1);
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5);
+  const days = Array.from({ length: 28 }, () => ({ calories: 1800 + rnd() * 400 }));
+  const weights = Array.from({ length: 28 }, (_, i) => ({ t: t0 + i * day, kg: 80 - (300 / 7700) * i + rnd() * 1.2 }));
+  const out = learnedMaintenance({ days, weights, formulaTdee: 2500 });
+  assert.equal(out.confidence, "high");
+  assert.ok(Math.abs(out.tdee - 2100) < 150, `expected ~2100, got ${out.tdee}`);
+  assert.ok(out.kgPerWeek < -0.15 && out.kgPerWeek > -0.4);
+});
+
+test("learned maintenance needs enough data, and distrusts implausible results", async () => {
+  const { learnedMaintenance } = await import("../js/nutrition.js");
+  const t0 = Date.UTC(2026, 7, 1), day = 86400000;
+  assert.equal(learnedMaintenance({ days: [{ calories: 2000 }], weights: [{ t: t0, kg: 80 }], formulaTdee: 2400 }), null);
+
+  // a week of data: computed, but low confidence, and leaning on the formula
+  const week = learnedMaintenance({
+    days: Array.from({ length: 8 }, () => ({ calories: 2000 })),
+    weights: Array.from({ length: 8 }, (_, i) => ({ t: t0 + i * day, kg: 80 })),
+    formulaTdee: 2400,
+  });
+  assert.equal(week.confidence, "low");
+  assert.ok(week.tdee > 2000 && week.tdee < 2400, "blended toward the formula while data is thin");
+
+  // "eats 900 kcal and holds weight" is almost always under-logging: flagged, not acted on
+  const odd = learnedMaintenance({
+    days: Array.from({ length: 28 }, () => ({ calories: 900 })),
+    weights: Array.from({ length: 28 }, (_, i) => ({ t: t0 + i * day, kg: 80 })),
+    formulaTdee: 2400,
+  });
+  assert.equal(odd.confidence, "low");
+});
+
+test("the app only switches to learned maintenance at medium confidence or better", () => {
+  localStorage.clear();
+  store.setProfile({ ...PROFILE, customTargetKcal: null, targetDeltaKcal: -400 });
+  const formulaTarget = store.computeGoals().targetCalories;
+  assert.equal(store.computeGoals().tdeeSource, "formula");
+
+  // four weeks of steady eating at 1,900 with weight dropping ~0.25 kg/week
+  const day = 86400000;
+  const today = new Date(); today.setHours(12, 0, 0, 0);
+  for (let i = 28; i >= 1; i--) {
+    store.addFoodEntry({ name: "Day", calories: 1900, timestamp: today.getTime() - i * day });
+    store.addWeightEntry({ kg: 80 - (0.25 / 7) * (28 - i), timestamp: today.getTime() - i * day });
+  }
+  const learned = store.learnedMaintenanceNow();
+  assert.notEqual(learned.confidence, "low");
+  const goals = store.computeGoals();
+  assert.equal(goals.tdeeSource, "learned");
+  assert.ok(Math.abs(goals.tdee - (1900 + 275)) < 120, `learned ~2175, got ${goals.tdee}`);
+  assert.notEqual(goals.targetCalories, formulaTarget, "the target follows the learned number");
+
+  // switched off in Profile -> back to the formula
+  store.setProfile({ useLearnedTdee: false });
+  assert.equal(store.computeGoals().tdeeSource, "formula");
+});
+
+test("a forgotten dinner doesn't drag learned maintenance down", () => {
+  localStorage.clear();
+  store.setProfile({ ...PROFILE, customTargetKcal: null });
+  const day = 86400000;
+  const today = new Date(); today.setHours(12, 0, 0, 0);
+  for (let i = 28; i >= 1; i--) {
+    // every 4th day only breakfast got logged
+    store.addFoodEntry({ name: "Day", calories: i % 4 === 0 ? 350 : 2200, timestamp: today.getTime() - i * day });
+    store.addWeightEntry({ kg: 80, timestamp: today.getTime() - i * day });
+  }
+  const learned = store.learnedMaintenanceNow();
+  assert.equal(learned.skippedDays, 7, "the half-logged days are left out");
+  assert.ok(Math.abs(learned.raw - 2200) < 60, `stable weight at 2,200 means maintenance ~2,200 (got ${learned.raw})`);
+});
+
+test("protein follows body weight, not a share of calories", async () => {
+  const { resolveUserGoals, PROTEIN_G_PER_KG } = await import("../js/nutrition.js");
+  const g = resolveUserGoals({ weightKg: 90, heightCm: 180, age: 35, sex: "male", activityLevel: "moderate", targetDeltaKcal: -500 });
+  assert.ok(g.proteinTargetG >= Math.round(90 * PROTEIN_G_PER_KG), `at least 1.6 g/kg (got ${g.proteinTargetG})`);
+  const kcal = g.proteinTargetG * 4 + g.carbsTargetG * 4 + g.fatTargetG * 9;
+  assert.ok(Math.abs(kcal - g.targetCalories) < 40, "carbs made room, so macros still add up to the target");
+  // a custom protein target is respected as set
+  assert.equal(resolveUserGoals({ weightKg: 90, heightCm: 180, age: 35, sex: "male", activityLevel: "moderate", targetDeltaKcal: 0, customProteinG: 120 }).proteinTargetG, 120);
 });

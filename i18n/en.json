@@ -352,5 +352,31 @@
     "exerciseMin": "{n} min",
     "ideas": "Ideas",
     "myth": "Myth"
+  },
+  "accuracy": {
+    "exTitle": "Exercise calories",
+    "ex0": "Don't add",
+    "ex25": "Add 25%",
+    "ex50": "Add 50%",
+    "exHint": "Burn estimates from apps and watches usually run high, and your target already allows for everyday activity. Exercise is still logged and shown either way.",
+    "learnTitle": "Learned maintenance",
+    "learnOn": "Use it",
+    "learnOff": "Formula only",
+    "learnHint": "After about two weeks of logging and weighing in, SnapCal works out what you really burn from your own data and sets your target from that.",
+    "cardTitle": "Your real maintenance",
+    "cardFormula": "The formula guessed {n} kcal",
+    "cardUsing": "Your target is based on this.",
+    "cardNotYet": "Not used yet — needs a bit more data.",
+    "cardBuilding": "Keep logging meals and weighing in. After about two weeks, SnapCal will show what you really burn here.",
+    "cardProgress": "{days} of 14 days logged · {weighIns} of 8 weigh-ins",
+    "cardHow": "Worked out from {days} days of eating (average {intake} kcal) and your weight trend ({rate} kg a week). It includes your exercise, daily movement and logging habits.",
+    "cardSkipped": "{n} days that looked only partly logged were left out.",
+    "conf": {
+      "low": "Early estimate",
+      "medium": "Good estimate",
+      "high": "Confident"
+    },
+    "exNoteOff": "Logged, not added to today's budget — burn estimates run high. You can change this in Profile.",
+    "exNoteOn": "{credit} kcal of that is added to today's budget ({pct}% setting in Profile)."
   }
 }

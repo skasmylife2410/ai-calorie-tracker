@@ -1890,3 +1890,19 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .nano-doodle { display: block; width: clamp(72px, 17vh, 170px); height: auto; mix-blend-mode: multiply; border-radius: 12px; }
 @media (max-height: 700px) { .nano-doodle { width: 70px; } }
 .nano-doodle { mix-blend-mode: normal; border-radius: 0; }
+
+/* --- Learned maintenance card (Weight tab) --- */
+.mt-card { padding: 16px !important; }
+.mt-row { display: flex; align-items: center; gap: 8px; }
+.mt-title { font-size: 16px; font-weight: 800; flex: 1; }
+.mt-conf { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 8px; }
+.mt-low { background: rgba(0,0,0,.06); color: var(--sc-secondary); }
+.mt-medium { background: rgba(0,122,255,.12); color: var(--sc-blue); }
+.mt-high { background: rgba(42,166,107,.14); color: #1E7A4C; }
+.mt-big { font-size: 34px; font-weight: 800; letter-spacing: -.02em; margin-top: 8px; color: var(--sc-accent-weight); font-variant-numeric: tabular-nums; }
+.mt-big small { font-size: 15px; color: var(--sc-secondary); font-weight: 700; }
+.mt-sub { font-size: 13px; color: var(--sc-secondary); margin-top: 4px; line-height: 1.45; }
+.mt-how { font-size: 12px; color: var(--sc-secondary); margin-top: 8px; line-height: 1.5; }
+.mt-progress { height: 8px; border-radius: 4px; background: var(--sc-secondary-15); margin-top: 12px; overflow: hidden; }
+.mt-progress span { display: block; height: 100%; border-radius: 4px; background: var(--sc-accent-weight); }
+.mt-foot { font-size: 12px; color: var(--sc-secondary); margin-top: 6px; }

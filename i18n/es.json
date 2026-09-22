@@ -352,5 +352,31 @@
     "exerciseMin": "{n} min",
     "ideas": "Ideas",
     "myth": "Mito"
+  },
+  "accuracy": {
+    "exTitle": "Calorías del ejercicio",
+    "ex0": "No sumar",
+    "ex25": "Sumar 25%",
+    "ex50": "Sumar 50%",
+    "exHint": "Las estimaciones de apps y relojes suelen quedarse altas, y tu meta ya considera la actividad diaria. El ejercicio se registra y se muestra igual.",
+    "learnTitle": "Mantenimiento aprendido",
+    "learnOn": "Usarlo",
+    "learnOff": "Solo fórmula",
+    "learnHint": "Tras unas dos semanas registrando comidas y peso, SnapCal calcula lo que de verdad gastas con tus propios datos y fija tu meta con eso.",
+    "cardTitle": "Tu mantenimiento real",
+    "cardFormula": "La fórmula calculaba {n} kcal",
+    "cardUsing": "Tu meta se basa en esto.",
+    "cardNotYet": "Aún no se usa: faltan algunos datos.",
+    "cardBuilding": "Sigue registrando comidas y pesándote. En unas dos semanas SnapCal mostrará aquí lo que de verdad gastas.",
+    "cardProgress": "{days} de 14 días registrados · {weighIns} de 8 pesajes",
+    "cardHow": "Calculado con {days} días de comidas (promedio {intake} kcal) y la tendencia de tu peso ({rate} kg por semana). Incluye tu ejercicio, tu movimiento diario y tu forma de registrar.",
+    "cardSkipped": "Se dejaron fuera {n} días que parecían registrados a medias.",
+    "conf": {
+      "low": "Estimación inicial",
+      "medium": "Buena estimación",
+      "high": "Confiable"
+    },
+    "exNoteOff": "Registrado, sin sumarlo al presupuesto de hoy: las estimaciones de gasto suelen quedarse altas. Puedes cambiarlo en Perfil.",
+    "exNoteOn": "{credit} kcal se suman al presupuesto de hoy (ajuste de {pct}% en Perfil)."
   }
 }

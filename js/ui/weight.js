@@ -50,6 +50,7 @@ export function render(container) {
       </div>
 
       ${avg !== null ? statsHtml(series, change) : ""}
+      ${maintenanceHtml()}
 
       <div class="wt-ranges">
         ${RANGES.map((r) => `<button type="button" data-range="${r}" aria-pressed="${r === range}">${t("weight.rangeDays", { n: r })}</button>`).join("")}
@@ -254,4 +255,39 @@ export function openWeightSheet({ timestamp = Date.now(), onSaved } = {}) {
       wireNavBar(panel, { onLeading: () => close() });
     },
   });
+}
+
+
+/** "Your real maintenance": what the data says you burn, next to what the formula guessed. */
+function maintenanceHtml() {
+  const m = store.learnedMaintenanceNow();
+  const goals = store.computeGoals();
+  const using = goals.tdeeSource === "learned";
+  if (!m || m.loggedDays < 7) {
+    const days = m?.loggedDays ?? countLoggedDays();
+    const weighIns = m?.weighIns ?? store.weightSeries(28).length;
+    return `
+      <div class="wt-card mt-card">
+        <div class="mt-title">${t("accuracy.cardTitle")}</div>
+        <div class="mt-sub">${t("accuracy.cardBuilding")}</div>
+        <div class="mt-progress"><span style="width:${Math.min(100, (Math.min(days, 14) / 14) * 50 + (Math.min(weighIns, 8) / 8) * 50)}%"></span></div>
+        <div class="mt-foot">${t("accuracy.cardProgress", { days: Math.min(days, 14), weighIns: Math.min(weighIns, 8) })}</div>
+      </div>`;
+  }
+  return `
+    <div class="wt-card mt-card">
+      <div class="mt-row">
+        <div class="mt-title">${t("accuracy.cardTitle")}</div>
+        <span class="mt-conf mt-${m.confidence}">${t(`accuracy.conf.${m.confidence}`)}</span>
+      </div>
+      <div class="mt-big">${formatNumber(m.tdee)}<small> kcal</small></div>
+      <div class="mt-sub">${t("accuracy.cardFormula", { n: formatNumber(m.formulaTdee) })} · ${using ? t("accuracy.cardUsing") : t("accuracy.cardNotYet")}</div>
+      <div class="mt-how">${t("accuracy.cardHow", { days: m.loggedDays, intake: formatNumber(m.avgIntake), rate: fmt1(m.kgPerWeek) })}</div>
+      ${m.skippedDays > 0 ? `<div class="mt-how">${t("accuracy.cardSkipped", { n: m.skippedDays })}</div>` : ""}
+    </div>`;
+}
+
+function countLoggedDays() {
+  const cutoff = Date.now() - 28 * 86400000;
+  return new Set(store.allFoodEntries().filter((e) => e.timestamp >= cutoff && !e.isPending).map((e) => new Date(e.timestamp).toDateString())).size;
 }

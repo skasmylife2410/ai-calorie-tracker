@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit } from "./nutrition.js";
+import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES } from "./nutrition.js";
 
 export const STORAGE_KEYS = Object.freeze({
   foodEntries: "snapcal.foodEntries",
@@ -459,7 +459,46 @@ export function setProfile(patch) {
 
 /** TDEE/goals helper — custom-first resolution per NutritionMath.resolveUserGoals. */
 export function computeGoals() {
-  return resolveUserGoals(getProfile());
+  const profile = getProfile();
+  const learned = profile.useLearnedTdee === false ? null : learnedMaintenanceNow();
+  const apply = learned && learned.confidence !== "low";
+  return resolveUserGoals(profile, { learnedTdee: apply ? learned.tdee : null });
+}
+
+/** Share of exercise burn added back to the day's budget: this person's setting, default 0. */
+export function exerciseCreditRatio() {
+  const v = Number(getProfile().exerciseCreditPct);
+  const ratio = Number.isFinite(v) ? v / 100 : 0;
+  return EXERCISE_CREDIT_CHOICES.includes(ratio) ? ratio : 0;
+}
+
+/**
+ * Learned maintenance from the last 28 complete days (today is excluded: it isn't over).
+ * Days logged at under half the formula maintenance are treated as incomplete and skipped,
+ * because a forgotten dinner would otherwise make maintenance look far lower than it is.
+ */
+export function learnedMaintenanceNow({ now = Date.now(), windowDays = 28 } = {}) {
+  const profile = getProfile();
+  const formula = resolveUserGoals(profile).formulaTdee;
+  if (!(formula > 0)) return null;
+
+  const todayStart = startOfDay(now);
+  const from = addDays(todayStart, -windowDays);
+  const perDay = new Map();
+  for (const e of allFoodEntries()) {
+    if (e.isPending === true || e.analysisFailed === true) continue;
+    if (e.timestamp < from || e.timestamp >= todayStart) continue;
+    const key = localDateString(e.timestamp);
+    perDay.set(key, (perDay.get(key) ?? 0) + (Number(e.calories) || 0));
+  }
+  const days = [...perDay.values()].filter((kcal) => kcal >= formula * 0.5).map((calories) => ({ calories }));
+
+  const weights = allWeightEntries()
+    .filter((w) => w.timestamp >= from && w.timestamp < todayStart + 86400000)
+    .map((w) => ({ t: w.timestamp, kg: w.kg }));
+
+  const out = learnedMaintenance({ days, weights, formulaTdee: formula });
+  return out ? { ...out, formulaTdee: Math.round(formula), skippedDays: perDay.size - days.length } : null;
 }
 
 /** Sync-only: merges a remote profile row (LWW on updatedAt, ms epoch). */
@@ -674,7 +713,7 @@ export function dayEnergy(date = new Date()) {
   const goals = computeGoals();
   const totals = totalsForDay(date);
   const burned = exerciseForDay(date).reduce((sum, e) => sum + (e.caloriesBurned || 0), 0);
-  const credit = exerciseCredit(burned);
+  const credit = exerciseCredit(burned, exerciseCreditRatio());
   const baseTarget = Math.round(goals.targetCalories);
   const adjustedTarget = baseTarget + credit;
   return {

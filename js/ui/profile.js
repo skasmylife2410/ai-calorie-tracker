@@ -50,6 +50,7 @@ export function render(container) {
       ${goalSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
       ${accountSectionHtml(currentUsername)}
+      ${accuracySectionHtml(profile)}
       ${doodlePickHtml()}
       ${languageSectionHtml()}
       ${syncSectionHtml()}
@@ -64,6 +65,12 @@ export function render(container) {
   wireLanguage(container);
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
+  container.querySelectorAll("[data-excredit]").forEach((b) =>
+    b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: Number(b.dataset.excredit) }); render(container); })
+  );
+  container.querySelectorAll("[data-learn]").forEach((b) =>
+    b.addEventListener("click", () => { store.setProfile({ useLearnedTdee: b.dataset.learn === "on" }); render(container); })
+  );
   container.querySelectorAll("[data-doodle]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ doodleVariant: b.dataset.doodle }); render(container); })
   );
@@ -129,6 +136,32 @@ function wireAccount(container, username) {
     setStoredToken("");
     location.reload();
   });
+}
+
+/** Accuracy settings: whether exercise is eaten back, and whether to use learned maintenance. */
+function accuracySectionHtml(profile) {
+  const pct = [0, 25, 50].includes(Number(profile.exerciseCreditPct)) ? Number(profile.exerciseCreditPct) : 0;
+  const learnOn = profile.useLearnedTdee !== false;
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("accuracy.exTitle")}</div>
+      <div class="ios-section-body">
+        <div class="lang-row">
+          ${[0, 25, 50].map((v) => `<button type="button" class="lang-btn${v === pct ? " is-on" : ""}" data-excredit="${v}">${t(`accuracy.ex${v}`)}</button>`).join("")}
+        </div>
+      </div>
+      <div class="ios-section-footer">${t("accuracy.exHint")}</div>
+    </div>
+    <div class="ios-section">
+      <div class="ios-section-header">${t("accuracy.learnTitle")}</div>
+      <div class="ios-section-body">
+        <div class="lang-row">
+          <button type="button" class="lang-btn${learnOn ? " is-on" : ""}" data-learn="on">${t("accuracy.learnOn")}</button>
+          <button type="button" class="lang-btn${!learnOn ? " is-on" : ""}" data-learn="off">${t("accuracy.learnOff")}</button>
+        </div>
+      </div>
+      <div class="ios-section-footer">${t("accuracy.learnHint")}</div>
+    </div>`;
 }
 
 /** Which doodle: sets the drawing (hair) and the pronoun in its messages. */
