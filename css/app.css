@@ -1794,3 +1794,99 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .fab-dot { --r: 165px; }
 @media (max-width: 360px) { .fab-dot { --r: 146px; } }
 .fab-arc-caption { top: -226px; padding: 6px 12px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px -4px rgba(0,0,0,.3); font-size: 14px; }
+.servings-share { font: inherit; font-size: 18px; font-weight: 700; border: 0; background: none; color: var(--sc-blue); padding: 4px 6px; }
+.share-row { display: block; width: calc(100% - 32px); margin: 4px 16px 20px; padding: 13px; border: 0; border-radius: 14px; font: inherit; font-size: 15px; font-weight: 700; background: rgba(0,122,255,.1); color: var(--sc-blue); }
+
+/* ===========================================================================
+   One-screen Home: everything above the tab bar without scrolling.
+   Compact week row, compact calorie card with the macros inside it, the doodle,
+   and a row of chips for Exercise / Ideas / Myth.
+   =========================================================================== */
+.today-content { display: flex; flex-direction: column; gap: 10px; min-height: 100%; padding-bottom: 112px; box-sizing: border-box; }
+.today-header { padding-top: max(10px, env(safe-area-inset-top)) !important; padding-bottom: 0 !important; }
+.wordmark-text { font-size: 24px !important; }
+
+/* week: one row, arrows at the ends, small day pills */
+.week-nav, .week-range { display: none !important; }
+.week-row { display: flex; align-items: center; gap: 2px; padding: 0 6px; }
+.week-row .week-arrow { width: 26px; height: 40px; font-size: 20px; flex: none; }
+.week-row .week-strip { flex: 1; padding: 0 !important; margin: 0 !important; }
+.week-day-label { font-size: 10px !important; margin-bottom: 3px !important; }
+.week-day-circle { width: 30px !important; height: 30px !important; }
+.week-day-num { font-size: 13px !important; }
+.week-day-today-backdrop { width: 38px !important; height: 44px !important; }
+
+/* calorie card: tighter, macros sit inside it as a row */
+.swiper { margin-top: 0 !important; }
+.calorie-card { padding: 14px 16px !important; margin: 0 14px !important; }
+.calorie-remaining { font-size: 38px !important; }
+.calorie-caption { margin-top: 2px !important; font-size: 13px !important; }
+.calorie-exercise { font-size: 11px !important; }
+.calorie-meals { padding-top: 5px !important; }
+.macro-tiles, .macro-row { gap: 8px !important; margin: 10px 14px 0 !important; }
+.macro-tile { padding: 9px 10px !important; border-radius: 16px !important; }
+.macro-tile .ring-gauge, .macro-tile svg { width: 34px !important; height: 34px !important; }
+.macro-value { font-size: 16px !important; }
+.macro-caption { font-size: 11px !important; }
+.swiper-dots { margin: 2px 0 0 !important; }
+
+/* doodle card: compact, the message gets the room */
+.doodle-card { margin: 0 14px !important; padding: 10px 14px !important; }
+.doodle-card .doodle { width: 64px !important; height: auto !important; }
+.doodle-title { font-size: 14px !important; }
+.doodle-sub { font-size: 13px !important; line-height: 1.4 !important; }
+
+/* chips */
+.home-chips { display: flex; gap: 8px; padding: 0 14px; }
+.home-chip { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 44px; border: 0; border-radius: 15px;
+  font: inherit; font-size: 13px; font-weight: 700; background: rgba(255,255,255,.85); box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.chip-ex { color: var(--sc-accent-exercise); }
+.chip-ideas { color: #B9761C; }
+.chip-myth { color: var(--sc-accent-water); }
+.chip-myth b { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--sc-accent-water); color: #fff; }
+.ex-day-list { padding: 4px 16px 24px; }
+.viewing-day { margin-top: 0 !important; }
+
+/* small phones: squeeze a little more */
+@media (max-height: 700px) {
+  .today-content { gap: 7px; }
+  .calorie-remaining { font-size: 32px !important; }
+  .doodle-card .doodle { width: 52px !important; }
+  .macro-tile { padding: 7px 9px !important; }
+  .home-chip { height: 40px; }
+}
+.swiper { transition: height .25s ease; overflow: hidden; }
+.swiper-track { align-items: flex-start; }
+.macro-tile { display: flex !important; align-items: center; justify-content: space-between; gap: 6px; min-height: 0 !important; }
+.macro-tile .macro-text { min-width: 0; }
+.macro-tile .macro-caption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px !important; }
+.calorie-card .calorie-left { min-width: 0; }
+/* Home gets no extra spacer at the bottom: the padding already clears the tab bar */
+.today-content .bottom-safe-spacer { display: none !important; }
+.today-content { padding-bottom: 104px; }
+.week-row { margin-top: -4px; }
+/* older rules forced every page to the swiper's full height and stacked tiles vertically */
+.swiper-page { height: auto !important; }
+.calories-page { padding-bottom: 4px !important; gap: 10px !important; }
+.macro-tile { flex-direction: row !important; align-items: center !important; }
+.calories-page .macro-row, .calories-page .macro-tiles { margin: 0 14px !important; }
+/* use the room on tall phones: the doodle card grows (to a limit), small phones keep it compact */
+.today-content { min-height: 100%; }
+.doodle-card { flex: 1 1 auto; min-height: 104px; max-height: 300px; align-items: center; }
+.doodle-card .doodle { width: clamp(56px, 13vh, 132px) !important; }
+.doodle-title { font-size: clamp(14px, 2.1vh, 18px) !important; }
+.doodle-sub { font-size: clamp(13px, 1.9vh, 16px) !important; }
+.home-chips { margin-top: 0; }
+.macro-caption { font-size: 10.5px !important; }
+/* leave a clear gap above the tab bar, and let the doodle card give way on small phones */
+.today-content { padding-bottom: 120px; }
+@media (max-height: 700px) { .doodle-card { min-height: 84px; } .today-content { gap: 6px; } }
+.doodle-card.has-note { background: linear-gradient(140deg, #FFF 45%, rgba(0,122,255,.10) 100%) !important; }
+.note-from { font-size: 12px; font-weight: 800; letter-spacing: .02em; color: var(--sc-blue); }
+.note-body { font-size: clamp(15px, 2.2vh, 19px); font-weight: 700; line-height: 1.35; margin-top: 5px; }
+.note-dismiss { margin-top: 10px; font: inherit; font-size: 12px; font-weight: 700; padding: 6px 12px; border: 0; border-radius: 10px; background: rgba(0,122,255,.12); color: var(--sc-blue); }
+/* Nano Banana doodle: white background melts into the card */
+.nano-doodle { display: block; width: clamp(72px, 17vh, 170px); height: auto; mix-blend-mode: multiply; border-radius: 12px; }
+@media (max-height: 700px) { .nano-doodle { width: 70px; } }
+.nano-doodle { mix-blend-mode: normal; border-radius: 0; }

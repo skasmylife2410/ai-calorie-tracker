@@ -4,6 +4,7 @@ import * as store from "../store.js";
 import * as sync from "../sync.js";
 import { t, currentLanguage, setLanguage, supportedLanguages } from "../i18n.js";
 import { postAuth } from "./login.js";
+import { nanoFailure } from "./nano-doodle.js";
 import { setStoredToken } from "../net.js";
 import { roundDisplay } from "../nutrition.js";
 import { wireNumericInput } from "./numeric-field.js";
@@ -142,7 +143,7 @@ function doodlePickHtml() {
           <button type="button" class="lang-btn${v === "b" ? " is-on" : ""}" data-doodle="b">${t("doodlePick.girl")}</button>
         </div>
       </div>
-      <div class="ios-section-footer">${t("doodlePick.hint")}</div>
+      <div class="ios-section-footer">${t("doodlePick.hint")}${nanoFailure()?.errorType === "billing" ? `<br><br>${t("doodlePick.needsBilling")}` : ""}</div>
     </div>`;
 }
 

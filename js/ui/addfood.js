@@ -88,6 +88,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               </div>
               ${footnote ? `<div class="ios-section-footer">${escapeAttr(footnote)}</div>` : ""}
             </div>
+            ${isEditing ? `<button type="button" class="share-row" id="share-food">↗︎ ${t("social.share")}</button>` : ""}
           </div>
         </div>
       `;
@@ -169,6 +170,14 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
           },
         });
       }
+
+      panel.querySelector("#share-food")?.addEventListener("click", async (ev) => {
+        const btn = ev.currentTarget;
+        btn.disabled = true;
+        const { shareMeal } = await import("../social.js");
+        const out = await shareMeal({ ...entry, name: draft.name, calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG });
+        btn.textContent = out.ok ? `✓ ${t("social.shareDone")}` : (out.message || t("errors.generic"));
+      });
 
       wireNavBar(panel, {
         onLeading: () => close(),

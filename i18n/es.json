@@ -28,7 +28,11 @@
     "water": "Agua",
     "ideasTitle": "Te quedan {calories} kcal y {protein} g de proteína",
     "ideasSub": "Ver tres ideas que encajan",
-    "ideasButton": "Sugerir"
+    "ideasButton": "Sugerir",
+    "proteinShort": "Proteína",
+    "carbsShort": "Carbos",
+    "fatShort": "Grasa",
+    "overShort": "{name} de más"
   },
   "menu": {
     "favourites": "Favoritos",
@@ -285,7 +289,8 @@
     "title": "Tu dibujito",
     "boy": "Él",
     "girl": "Ella",
-    "hint": "El dibujito de Inicio usa tu foto de perfil como cara cuando la pongas en la pestaña Nosotros."
+    "hint": "Tu dibujito lo dibuja Nano Banana, basado en tu foto de perfil si la pusiste en la pestaña Nosotros.",
+    "needsBilling": "Nano Banana no pudo dibujarlo: generar imágenes requiere activar la facturación en la clave de Gemini. Mientras tanto se usa el dibujito incluido; lo intentará de nuevo en una semana."
   },
   "voice": {
     "tile": "Voz",
@@ -313,5 +318,39 @@
     "light": "Un plato ligero.",
     "hands": "Con la mano",
     "approx": "Aproximado: los tamaños salen de densidades típicas, así que una ensalada esponjosa o una carne densa pueden verse algo distintas."
+  },
+  "social": {
+    "fromName": "De {name}",
+    "dismiss": "Listo",
+    "writeNote": "Nota",
+    "noteTo": "Nota para {name}",
+    "notePlaceholder": "Algo que anime…",
+    "send": "Enviar",
+    "sent": "Enviada a {name}",
+    "noteHint": "Aparece en su Inicio en lugar del mensaje de siempre.",
+    "shared": "Compartido",
+    "shareEmpty": "Aún no hay nada compartido. Comparte una comida desde su editor, o una idea desde Ideas.",
+    "share": "Compartir en Nosotros",
+    "shareIdea": "Compartir",
+    "shareDone": "Compartido",
+    "logThis": "Registrar",
+    "logged": "Registrado",
+    "remove": "Quitar",
+    "ago": {
+      "now": "ahora",
+      "m": "hace {n} min",
+      "h": "hace {n} h",
+      "d": "hace {n} d"
+    },
+    "recipe": "Receta",
+    "hideRecipe": "Ocultar receta",
+    "idea": "Idea",
+    "meal": "Comida"
+  },
+  "homeChips": {
+    "exercise": "Ejercicio",
+    "exerciseMin": "{n} min",
+    "ideas": "Ideas",
+    "myth": "Mito"
   }
 }

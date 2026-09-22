@@ -28,7 +28,11 @@
     "water": "Water",
     "ideasTitle": "{calories} kcal and {protein}g protein left",
     "ideasSub": "See three ideas that fit",
-    "ideasButton": "Suggest"
+    "ideasButton": "Suggest",
+    "proteinShort": "Protein",
+    "carbsShort": "Carbs",
+    "fatShort": "Fat",
+    "overShort": "{name} over"
   },
   "menu": {
     "favourites": "Favourites",
@@ -285,7 +289,8 @@
     "title": "Your doodle",
     "boy": "Him",
     "girl": "Her",
-    "hint": "The doodle on Home uses your profile photo as its face once you set one on the Us tab."
+    "hint": "Your doodle is drawn by Nano Banana, based on your profile photo if you've set one on the Us tab.",
+    "needsBilling": "Nano Banana couldn't draw it: image generation needs billing turned on for the Gemini key. The built-in doodle is used meanwhile; it'll try again in a week."
   },
   "voice": {
     "tile": "Voice",
@@ -313,5 +318,39 @@
     "light": "A light plate.",
     "hands": "By hand",
     "approx": "Approximate — sizes come from typical densities, so a fluffy salad or a dense steak can look a little off."
+  },
+  "social": {
+    "fromName": "From {name}",
+    "dismiss": "Got it",
+    "writeNote": "Note",
+    "noteTo": "Note to {name}",
+    "notePlaceholder": "Something encouraging…",
+    "send": "Send",
+    "sent": "Sent to {name}",
+    "noteHint": "It shows on their Home instead of the usual message.",
+    "shared": "Shared",
+    "shareEmpty": "Nothing shared yet. Share a meal from its editor, or an idea from Ideas.",
+    "share": "Share with Us",
+    "shareIdea": "Share",
+    "shareDone": "Shared",
+    "logThis": "Log this",
+    "logged": "Logged",
+    "remove": "Remove",
+    "ago": {
+      "now": "just now",
+      "m": "{n} min ago",
+      "h": "{n} h ago",
+      "d": "{n} d ago"
+    },
+    "recipe": "Recipe",
+    "hideRecipe": "Hide recipe",
+    "idea": "Idea",
+    "meal": "Meal"
+  },
+  "homeChips": {
+    "exercise": "Exercise",
+    "exerciseMin": "{n} min",
+    "ideas": "Ideas",
+    "myth": "Myth"
   }
 }

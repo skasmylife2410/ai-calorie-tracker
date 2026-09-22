@@ -13,10 +13,12 @@ import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
 import { openRecipesSheet } from "./recipes.js";
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
+import { inbox, noteToShow, markNoteSeen } from "../social.js";
 import { currentLanguage } from "../i18n.js";
 import { doodleSvg, doodleState, daysSinceLastLog } from "./doodle.js";
 import { doodleMessage } from "./doodle-messages.js";
 import { cachedFaceDoodle, makeFaceDoodle } from "./photo-doodle.js";
+import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 
 const MACRO_DEFS = [
   { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", color: "var(--sc-protein)", track: "rgba(232,93,93,0.18)", icon: "fishFill" },
@@ -104,32 +106,30 @@ export function render(container) {
 
       ${viewingToday ? doodleCardHtml() : ""}
 
-      ${exerciseSectionHtml(date)}
-
-      ${viewingToday && remaining > 150 ? `
-      <div class="ideas-card" id="ideas-card">
-        <div class="ideas-text">
-          <div class="ideas-title">${t("home.ideasTitle", { calories: roundDisplay(Math.abs(remaining)), protein: roundDisplay(Math.max(0, goals.proteinTargetG - totals.proteinG)) })}</div>
-          <div class="ideas-sub">${t("home.ideasSub")}</div>
-        </div>
-        <button type="button" class="ideas-btn" id="ideas-btn">${t("home.ideasButton")}</button>
-      </div>` : ""}
-
-      ${viewingToday ? mythCardHtml() : ""}
+      <div class="home-chips">
+        <button type="button" class="home-chip chip-ex" id="chip-exercise">
+          ${icon("boltFill", { size: 16 })}<span>${exerciseMinutes(date) > 0 ? t("homeChips.exerciseMin", { n: exerciseMinutes(date) }) : t("homeChips.exercise")}</span>
+        </button>
+        ${viewingToday ? `<button type="button" class="home-chip chip-ideas" id="chip-ideas">${icon("wandAndStars", { size: 16 })}<span>${t("homeChips.ideas")}</span></button>` : ""}
+        ${viewingToday ? `<button type="button" class="home-chip chip-myth" id="chip-myth"><b>?</b><span>${t("homeChips.myth")}</span></button>` : ""}
+      </div>
       <div class="bottom-safe-spacer"></div>
     </div>
   `;
 
   wireSwiper(container);
   wireWaterButtons(container);
-  wireExercise(container, date);
+  container.querySelector("#chip-exercise")?.addEventListener("click", () => openExerciseDaySheet(date, () => render(container)));
+  container.querySelector("#chip-ideas")?.addEventListener("click", () => openRecipesSheet());
+  container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
   wireDaySelection(container);
-  wireMythCard(container);
+  if (viewingToday) showNoteIfAny(container);
+
   container.querySelector("#home-avatar")?.addEventListener("click", () => globalThis.snapcalGoTo?.("profile"));
   container.querySelector("#see-meals")?.addEventListener("click", () =>
     openDayMealsSheet({ date: viewedDate(), onChange: () => render(container) })
   );
-  container.querySelector("#ideas-btn")?.addEventListener("click", () => openRecipesSheet());
+
   wireNotifyBanner(container);
 
 }
@@ -174,11 +174,8 @@ function weekStripHtml(week) {
   const todayStart = startOfDay(new Date());
   const canGoForward = week.some((d) => d.dayStart < todayStart - 6 * 86400000) || weekOffset < 0;
   return `
-    <div class="week-nav">
-      <button type="button" class="week-arrow" id="week-prev" aria-label="${t("day.prevWeek")}">‹</button>
-      <span class="week-range">${weekRangeLabel(week)}</span>
-      <button type="button" class="week-arrow${canGoForward ? "" : " is-hidden"}" id="week-next" aria-label="${t("day.nextWeek")}">›</button>
-    </div>
+    <div class="week-row">
+      <button type="button" class="week-arrow" id="week-prev" aria-label="${t("day.prevWeek")} (${weekRangeLabel(week)})">‹</button>
     <div class="week-strip">
       ${week
         .map((day, i) => {
@@ -212,13 +209,15 @@ function weekStripHtml(week) {
         })
         .join("")}
     </div>
+      <button type="button" class="week-arrow${canGoForward ? "" : " is-hidden"}" id="week-next" aria-label="${t("day.nextWeek")}">›</button>
+    </div>
   `;
 }
 
 function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount) {
   const ringProgress = energy.adjustedTarget > 0 ? totals.calories / energy.adjustedTarget : 0;
   const ring = ringGauge({
-    size: 96,
+    size: 78,
     strokeWidth: 12,
     progress: ringProgress,
     color: overBudget ? "var(--sc-red)" : "var(--sc-primary-text)",
@@ -233,8 +232,8 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
     const macroOver = macroRemaining < 0;
     const progress = target > 0 ? consumed / target : 0;
     const miniRing = ringGauge({
-      size: 40,
-      strokeWidth: 6,
+      size: 30,
+      strokeWidth: 5,
       progress,
       color: macroOver ? "var(--sc-red)" : m.color,
       trackColor: m.track,
@@ -242,8 +241,10 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
     });
     return `
       <div class="macro-tile card">
-        <div class="macro-value${macroOver ? " over" : ""}">${roundDisplay(Math.abs(macroRemaining))}g</div>
-        <div class="macro-caption">${t(`home.${m.nameKey}${macroOver ? "Over" : "Left"}`)}</div>
+        <div class="macro-text">
+          <div class="macro-value${macroOver ? " over" : ""}">${roundDisplay(Math.abs(macroRemaining))}g</div>
+          <div class="macro-caption">${macroOver ? t("home.overShort", { name: t(`home.${m.nameKey}Short`) }) : t(`home.${m.nameKey}Short`)}</div>
+        </div>
         ${miniRing}
       </div>
     `;
@@ -309,10 +310,17 @@ function notifyBannerHtml() {
 function wireSwiper(container) {
   const track = container.querySelector("#swiper-track");
   const dots = container.querySelectorAll(".swiper-dot");
+  const fitHeight = () => {
+    const page = track?.children[swiperPage];
+    if (page && track.parentElement) track.parentElement.style.height = `${page.offsetHeight}px`;
+  };
+  requestAnimationFrame(fitHeight);
+  track?.addEventListener("transitionend", fitHeight);
   dots.forEach((dot) => {
     dot.addEventListener("click", () => {
       swiperPage = Number(dot.dataset.dot);
       track.style.transform = `translateX(${-swiperPage * 100}%)`;
+      fitHeight();
       dots.forEach((d) => d.classList.toggle("active", Number(d.dataset.dot) === swiperPage));
     });
   });
@@ -341,6 +349,7 @@ function wireSwiper(container) {
     if (pct < -20 && swiperPage < 1) swiperPage = 1;
     else if (pct > 20 && swiperPage > 0) swiperPage = 0;
     track.style.transform = `translateX(${-swiperPage * 100}%)`;
+    fitHeight();
     dots.forEach((d) => d.classList.toggle("active", Number(d.dataset.dot) === swiperPage));
     dx = 0;
   };
@@ -467,8 +476,17 @@ function doodleCardHtml() {
   const profile = store.getProfile();
   const variant = profile.doodleVariant === "b" ? "b" : "a";
 
+  // Nano Banana's drawing when there is one; otherwise the app's own doodle while it's made.
+  const nano = cachedNanoDoodle(state, variant, profile.avatar ?? null);
+  if (!nano) {
+    ensureNanoDoodle(state, variant, profile.avatar ?? null).then((url) => {
+      const holder = document.getElementById("doodle-figure");
+      if (url && holder) holder.innerHTML = `<img class="nano-doodle" src="${url}" alt="" />`;
+    });
+  }
+
   const face = profile.avatar ? cachedFaceDoodle(profile.avatar) : null;
-  if (profile.avatar && !face) {
+  if (profile.avatar && !face && !nano) {
     // first time with this photo: sketch it in the background, then redraw just the doodle
     makeFaceDoodle(profile.avatar).then((sketchUrl) => {
       const holder = document.getElementById("doodle-figure");
@@ -507,8 +525,8 @@ function doodleCardHtml() {
 
   return `
     <div class="doodle-card">
-      <div id="doodle-figure">${doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
-      <div class="doodle-text">
+      <div id="doodle-figure">${nano ? `<img class="nano-doodle" src="${nano}" alt="" />` : doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
+      <div class="doodle-text" id="doodle-text">
         <div class="doodle-title">${t(`doodle.${state}Title`)}</div>
         <div class="doodle-sub">${text}</div>
       </div>
@@ -558,5 +576,75 @@ function wireMythCard(container) {
     mythRevealed = !mythRevealed;
     render(container);
     container.querySelector("#myth-card")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+}
+
+
+function exerciseMinutes(date) {
+  return store.exerciseForDay(date).reduce((n, e) => n + (e.minutes || 0), 0);
+}
+
+/** The day's exercise, in a sheet: the list, delete, and Add. */
+async function openExerciseDaySheet(date, onChange) {
+  const { openSheet, navBar, wireNavBar } = await import("./sheet.js");
+  openSheet({
+    render(panel, close) {
+      const draw = () => {
+        const rows = exerciseRowsHtml(date);
+        panel.innerHTML = `
+          ${navBar({ title: t("home.exercise"), leading: { label: t("app.close") }, trailing: { label: t("app.add"), bold: true } })}
+          <div class="sheet-panel-body"><div class="ex-day-list">${rows || `<div class="exercise-empty">${t("home.noExercise")}</div>`}</div></div>`;
+        panel.querySelectorAll("[data-delete-exercise]").forEach((b) => b.addEventListener("click", () => {
+          store.deleteExerciseEntry(b.dataset.deleteExercise);
+          draw();
+          onChange?.();
+        }));
+        wireNavBar(panel, {
+          onLeading: () => close(),
+          onTrailing: () => { close(); openExerciseSheet({ timestamp: viewedTimestamp(), onSaved: onChange }); },
+        });
+      };
+      draw();
+    },
+  });
+}
+
+/** Today's myth in a sheet: the claim, then the evidence behind a tap. */
+async function openMythSheet() {
+  const { openSheet, navBar, wireNavBar } = await import("./sheet.js");
+  openSheet({
+    render(panel, close) {
+      mythRevealed = false;
+      const draw = () => {
+        panel.innerHTML = `${navBar({ title: t("myth.label"), leading: { label: t("app.close") } })}
+          <div class="sheet-panel-body">${mythCardHtml()}</div>`;
+        panel.querySelector("#myth-card")?.addEventListener("click", () => { mythRevealed = !mythRevealed; draw(); });
+        wireNavBar(panel, { onLeading: () => close() });
+      };
+      draw();
+    },
+  });
+}
+
+
+/**
+ * A note from another member replaces the automatic message on the doodle card until it's
+ * dismissed (or two days pass). Checked on each Home render, at most once a minute.
+ */
+async function showNoteIfAny(container) {
+  const notes = await inbox();
+  const note = noteToShow(notes);
+  const host = container.querySelector("#doodle-text");
+  if (!note || !host) return;
+  const who = String(note.from_user).replace(/[-_]\d*$/, "").replace(/\d+$/, "").replace(/^./, (c) => c.toUpperCase());
+  const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  host.innerHTML = `
+    <div class="note-from">✉︎ ${t("social.fromName", { name: esc(who) })}</div>
+    <div class="note-body">${esc(note.body)}</div>
+    <button type="button" class="note-dismiss" id="note-dismiss">${t("social.dismiss")}</button>`;
+  host.closest(".doodle-card")?.classList.add("has-note");
+  host.querySelector("#note-dismiss")?.addEventListener("click", async () => {
+    await markNoteSeen(note.id);
+    render(container);
   });
 }

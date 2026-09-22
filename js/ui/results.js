@@ -49,6 +49,7 @@ export function openResultsSheet(entry) {
               <button type="button" data-serv="1" aria-label="More servings">+</button>
             </div>
             <button type="button" class="servings-heart" id="fav-toggle" aria-label="Favourite">♡</button>
+            <button type="button" class="servings-share" id="share-meal" aria-label="${t("social.share")}">↗︎</button>
           </div>
           <div class="results-items-section-header">${t("meal.items")}</div>
           <div class="ios-section" style="margin-bottom:0;">
@@ -94,6 +95,18 @@ export function openResultsSheet(entry) {
           renderTotals();
         });
       });
+      panel.querySelector("#share-meal")?.addEventListener("click", async (ev) => {
+        const btn = ev.currentTarget;
+        btn.disabled = true;
+        const { shareMeal } = await import("../social.js");
+        // share what's on screen now, including unsaved portion edits
+        const current = store.getFoodEntry(entry.id) ?? entry;
+        const total = (k) => items.reduce((a, i) => a + (i[k] ?? 0), 0) * servings;
+        const out = await shareMeal({ ...current, analysisItems: items, calories: total("calories"), proteinG: total("proteinG"), carbsG: total("carbsG"), fatG: total("fatG") });
+        btn.textContent = out.ok ? "✓" : "!";
+        btn.title = out.ok ? t("social.shareDone") : (out.message || "");
+      });
+
       favBtn.addEventListener("click", () => {
         store.toggleFavorite(entry.id);
         renderFav();

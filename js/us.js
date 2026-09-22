@@ -5,6 +5,7 @@
 import { getStoredToken, setStoredToken } from "./net.js";
 import { t, initI18n, formatNumber, formatDate, currentLanguage } from "./i18n.js";
 import { doodleSvg } from "./ui/doodle.js";
+import { openNoteSheet, renderFeed } from "./ui/us-social.js";
 import { localDateString, addDays, startOfDay } from "./nutrition.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
@@ -103,7 +104,7 @@ function todayHtml(people) {
         <div class="us-row-top">
           ${avatarHtml(p, i)}
           <span class="us-name">${escHtml(titleCase(p.owner))}</span>
-          ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : ""}
+          ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : `<button type="button" class="us-note-btn" data-note-to="${escHtml(p.owner)}" aria-label="${t("social.writeNote")}">✉︎</button>`}
           <span class="us-spacer"></span>
           <span class="us-eaten">${fmt(d.calories)}</span>
           ${goal ? `<span class="us-goal">/ ${fmt(goal)}</span>` : ""}
@@ -360,6 +361,11 @@ function render() {
   body.innerHTML = todayHtml(people) + chart + summaryHtml(people, days) +
     (people.length === 1 ? `<p class="tg-note">Only one person is set up. Add a second name and passcode to APP_USERS in Vercel to compare.</p>` : "");
   wireAvatar();
+  body.querySelectorAll("[data-note-to]").forEach((b) => b.addEventListener("click", () => openNoteSheet(b.dataset.noteTo)));
+  const feed = document.createElement("section");
+  feed.className = "tg-section us-feed";
+  body.appendChild(feed);
+  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid) });
 }
 
 async function start(afterPin = false) {
