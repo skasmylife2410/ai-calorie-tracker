@@ -39,6 +39,16 @@ export async function hasValidSession() {
  * @param {{mode?: "login"|"signup"}} opts
  */
 export function renderLogin(container, { mode = "login" } = {}) {
+  // Arriving from an invite link (?invite=CODE): go straight to sign-up with the code filled in.
+  const linkCode = new URLSearchParams(location.search).get("invite");
+  if (linkCode) mode = "signup";
+  let linkProblem = null;
+  if (linkCode) {
+    fetch("/api/invites", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "check", code: linkCode }) })
+      .then((r) => r.json())
+      .then((out) => { if (out.ok && !out.valid) { linkProblem = out.reason; const el = container.querySelector("#auth-link-msg"); if (el) el.textContent = t(`invite.bad.${out.reason}`); } })
+      .catch(() => {});
+  }
   return new Promise((resolve) => {
     let current = mode;
     let busy = false;
@@ -50,7 +60,8 @@ export function renderLogin(container, { mode = "login" } = {}) {
         <div class="auth-screen">
           <div class="auth-card">
             <div class="auth-brand">SnapCal</div>
-            <h1 class="auth-title">${isSignup ? t("auth.createTitle") : t("auth.signInTitle")}</h1>
+            <h1 class="auth-title">${isSignup && linkCode ? t("invite.joinTitle") : isSignup ? t("auth.createTitle") : t("auth.signInTitle")}</h1>
+            ${isSignup && linkCode ? `<div class="auth-sub">${t("invite.joinSub")}</div><div class="auth-error" id="auth-link-msg">${linkProblem ? t(`invite.bad.${linkProblem}`) : ""}</div>` : ""}
 
             <label class="auth-label" for="auth-user">${t("auth.username")}</label>
             <input id="auth-user" class="auth-input" type="text" autocapitalize="none" autocorrect="off"
@@ -60,7 +71,7 @@ export function renderLogin(container, { mode = "login" } = {}) {
             <input id="auth-pass" class="auth-input" type="password"
                    autocomplete="${isSignup ? "new-password" : "current-password"}" />
 
-            ${isSignup ? `
+            ${isSignup && !linkCode ? `
               <label class="auth-label" for="auth-invite">${t("auth.invite")}</label>
               <input id="auth-invite" class="auth-input" type="text" autocapitalize="none" autocorrect="off" />
               <div class="auth-hint">${t("auth.inviteHint")}</div>` : ""}
@@ -97,7 +108,7 @@ export function renderLogin(container, { mode = "login" } = {}) {
 
         const out = await postAuth(
           current === "signup"
-            ? { op: "signup", username, password, invite: inviteEl?.value.trim() }
+            ? { op: "signup", username, password, invite: linkCode || inviteEl?.value.trim() }
             : { op: "login", username, password }
         );
         busy = false;
@@ -111,6 +122,7 @@ export function renderLogin(container, { mode = "login" } = {}) {
         }
         setStoredToken(out.token);
         try { localStorage.setItem("snapcal.username", username); } catch { /* private mode */ }
+        if (linkCode) history.replaceState(null, "", location.pathname);
         resolve({ username, mustChange: out.mustChange === true });
       };
 

@@ -50,6 +50,7 @@ export function render(container) {
       ${goalSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
       ${accountSectionHtml(currentUsername)}
+      ${inviteSectionHtml()}
       ${accuracySectionHtml(profile)}
       ${doodlePickHtml()}
       ${languageSectionHtml()}
@@ -65,6 +66,7 @@ export function render(container) {
   wireLanguage(container);
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
+  wireInvites(container);
   container.querySelectorAll("[data-excredit]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: Number(b.dataset.excredit) }); render(container); })
   );
@@ -136,6 +138,66 @@ function wireAccount(container, username) {
     setStoredToken("");
     location.reload();
   });
+}
+
+/** Invite people (only shown to the owner): places used, a button to make a link, open links. */
+function inviteSectionHtml() {
+  return `<div class="ios-section" id="invite-section"></div>`;
+}
+
+async function wireInvites(container) {
+  const host = container.querySelector("#invite-section");
+  if (!host) return;
+  const { apiFetch } = await import("../net.js");
+  const call = async (body) => {
+    try {
+      const r = await apiFetch("/api/invites", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      return await r.json();
+    } catch { return { ok: false, message: t("errors.offline") }; }
+  };
+  const draw = async (msg = "") => {
+    const info = await call({ op: "list" });
+    if (!info.ok || !info.isAdmin) { host.remove(); return; }
+    const full = info.members + info.invites.length >= info.max;
+    host.innerHTML = `
+      <div class="ios-section-header">${t("invite.title")}</div>
+      <div class="ios-section-body">
+        <div class="ios-row"><div class="ios-row-label">${t("invite.places", { used: info.members, max: info.max })}</div></div>
+        <div class="acct-actions"><button type="button" class="acct-btn inv-create" id="inv-create" ${full ? "disabled" : ""}>＋ ${t("invite.create")}</button></div>
+        ${info.invites.length ? `
+          <div class="inv-head">${t("invite.open")}</div>
+          ${info.invites.map((i) => `
+            <div class="inv-row">
+              <span class="inv-code">…${i.code.slice(-6)}</span>
+              <span class="inv-exp">${t("invite.expires", { date: new Date(i.expires_at).toLocaleDateString() })}</span>
+              <button type="button" class="inv-copy" data-copy="${i.code}">⧉</button>
+              <button type="button" class="inv-cancel" data-revoke="${i.code}">${t("invite.cancel")}</button>
+            </div>`).join("")}` : ""}
+        ${msg ? `<div class="acct-msg">${msg}</div>` : ""}
+      </div>
+      <div class="ios-section-footer">${full ? t("invite.full") : t("invite.hint")}</div>`;
+
+    const linkFor = (code) => `${location.origin}/?invite=${code}`;
+    const hand = async (code) => {
+      const url = linkFor(code);
+      // the phone's share sheet (WhatsApp, Messages…) when there is one, else copy
+      if (navigator.share) {
+        try { await navigator.share({ text: `${t("invite.shareText")} ${url}` }); return ""; } catch { /* dismissed: fall through to copy */ }
+      }
+      try { await navigator.clipboard.writeText(url); } catch { /* old browsers */ }
+      return t("invite.copied");
+    };
+    host.querySelector("#inv-create")?.addEventListener("click", async (ev) => {
+      ev.currentTarget.disabled = true;
+      ev.currentTarget.textContent = t("invite.creating");
+      const made = await call({ op: "create" });
+      if (!made.ok) return draw(made.message || t("errors.generic"));
+      draw(await hand(made.code));
+    });
+    host.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => draw(await hand(b.dataset.copy))));
+    host.querySelectorAll("[data-revoke]").forEach((b) => b.addEventListener("click", async () => { await call({ op: "revoke", code: b.dataset.revoke }); draw(); }));
+  };
+  draw();
 }
 
 /** Accuracy settings: whether exercise is eaten back, and whether to use learned maintenance. */

@@ -16,6 +16,10 @@ const COLORS = [
   { solid: "var(--tg-b)", soft: "var(--tg-b-soft)" },
   { solid: "var(--tg-c)", soft: "var(--tg-c-soft)" },
   { solid: "var(--tg-d)", soft: "var(--tg-d-soft)" },
+  { solid: "var(--tg-e)", soft: "var(--tg-e-soft)" },
+  { solid: "var(--tg-f)", soft: "var(--tg-f-soft)" },
+  { solid: "var(--tg-g)", soft: "var(--tg-g-soft)" },
+  { solid: "var(--tg-h)", soft: "var(--tg-h-soft)" },
 ];
 let range = 7;
 let data = null;
@@ -269,7 +273,7 @@ function summaryHtml(people, days) {
   const row = (label, fn) => `<tr><td>${label}</td>${stats.map((s) => `<td>${fn(s)}</td>`).join("")}</tr>`;
   return `<section class="tg-section">
     <h2 class="tg-h2">${t("us.lastNDays", { n: days.length })}</h2>
-    <table class="tg-table">
+    <div class="tg-table-wrap${people.length > 3 ? " is-wide" : ""}" style="--cols:${people.length}"><table class="tg-table">
       <thead><tr><th></th>${people.map((p, i) => {
         const c = COLORS[i % COLORS.length];
         return `<th><span class="tg-th-name"><i style="background:${c.solid}"></i>${escHtml(titleCase(p.owner))}</span></th>`;
@@ -282,7 +286,7 @@ function summaryHtml(people, days) {
         ${row(t("us.exercise"), (s) => (s.sessions ? t("us.sessionsCount", { n: s.sessions }) : "–"))}
         ${row(t("us.waterPerDay"), (s) => s.water.toFixed(1))}
       </tbody>
-    </table>
+    </table></div>
     <p class="tg-note">${t("us.nearGoalNote")}</p>
   </section>`;
 }
@@ -352,8 +356,8 @@ function render() {
     body.innerHTML = `<p class="tg-note">No one is set up yet. Add people to APP_USERS in Vercel.</p>`;
     return;
   }
-  // The layout is designed for up to about 5 people; beyond that the bars get unreadable.
-  if (people.length > 5) people.length = 5;
+  // Up to eight people: the group's cap. Rows and sparklines stack; the table scrolls sideways.
+  if (people.length > 8) people.length = 8;
   const days = dayList(range);
   // Two people still get the mirror chart — it reads beautifully head to head. Three or more
   // get sparklines, which stay legible however many rows there are.

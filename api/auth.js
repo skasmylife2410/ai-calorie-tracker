@@ -16,6 +16,8 @@ import {
   USERNAME_RE, normalizeUsername, hashPassword, verifyPassword,
   createSession, readSession, passwordProblem,
 } from "./_accounts.js";
+import { maxUsers as memberCap } from "./_members.js";
+import { inviteProblem } from "./invites.js";
 
 function restBase() {
   return (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
@@ -28,10 +30,7 @@ function restHeaders(extra = {}) {
   return headers;
 }
 
-function maxUsers() {
-  const n = Number(process.env.MAX_USERS);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3;
-}
+const maxUsers = memberCap;
 
 /** Number of accounts that exist. Uses PostgREST's exact count so no rows are transferred. */
 async function countUsers() {
@@ -88,9 +87,17 @@ export default async function handler(req, res) {
 
   try {
     if (op === "signup") {
-      const required = (process.env.INVITE_CODE || "").trim();
-      if (required === "" || String(body.invite ?? "").trim() !== required) {
-        return fail(res, "badInvite", "That invite code isn't right.");
+      const invite = String(body.invite ?? "").trim();
+      const shared = (process.env.INVITE_CODE || "").trim();
+      const viaShared = shared !== "" && invite === shared;
+      const linkProblem = viaShared ? null : await inviteProblem(invite);
+      if (!viaShared && linkProblem) {
+        const why = {
+          used: "That invite link has already been used.",
+          expired: "That invite link has expired. Ask for a new one.",
+          revoked: "That invite link was cancelled.",
+        }[linkProblem] ?? "That invite code isn't right.";
+        return fail(res, linkProblem === "unknown" ? "badInvite" : `invite${linkProblem[0].toUpperCase()}${linkProblem.slice(1)}`, why);
       }
       const problem = passwordProblem(password);
       if (problem) return fail(res, problem, "Password must be at least 8 characters.");
@@ -101,6 +108,19 @@ export default async function handler(req, res) {
         return fail(res, "full", `This app is set up for ${limit} people and all ${limit} places are taken.`);
       }
 
+      if (!viaShared) {
+        // Claim the link BEFORE creating the account, in one conditional update: if two people
+        // open the same link at once, only one update matches "still unused", so only one gets in.
+        const claim = await fetch(`${restBase()}/rest/v1/snapcal_invites?code=eq.${encodeURIComponent(invite)}&used_by=is.null&revoked=eq.false`, {
+          method: "PATCH",
+          headers: restHeaders({ Prefer: "return=representation" }),
+          body: JSON.stringify({ used_by: username, used_at: new Date().toISOString() }),
+        });
+        const claimed = claim.ok ? await claim.json().catch(() => []) : [];
+        if (!Array.isArray(claimed) || claimed.length === 0) {
+          return fail(res, "inviteUsed", "That invite link has already been used.");
+        }
+      }
       const { salt, hash } = hashPassword(password);
       await writeUser({ username, salt, password_hash: hash, must_change: false, created_at: new Date().toISOString() });
       return res.status(200).json({ ok: true, token: createSession(username) });

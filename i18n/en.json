@@ -378,5 +378,26 @@
     },
     "exNoteOff": "Logged, not added to today's budget — burn estimates run high. You can change this in Profile.",
     "exNoteOn": "{credit} kcal of that is added to today's budget ({pct}% setting in Profile)."
+  },
+  "invite": {
+    "title": "Invite people",
+    "places": "{used} of {max} places used",
+    "create": "Create an invite link",
+    "creating": "Making a link…",
+    "copied": "Link copied — send it to the person you're inviting.",
+    "shareText": "Join me on SnapCal:",
+    "open": "Open invites",
+    "expires": "expires {date}",
+    "cancel": "Cancel",
+    "hint": "Each link lets one person create an account, and stops working after 7 days.",
+    "full": "All places are taken or already invited.",
+    "joinTitle": "You've been invited",
+    "joinSub": "Pick a username and password to join.",
+    "bad": {
+      "used": "This invite link has already been used.",
+      "expired": "This invite link has expired — ask for a new one.",
+      "revoked": "This invite link was cancelled.",
+      "unknown": "This invite link isn't valid."
+    }
   }
 }

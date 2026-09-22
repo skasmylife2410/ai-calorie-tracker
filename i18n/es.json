@@ -378,5 +378,26 @@
     },
     "exNoteOff": "Registrado, sin sumarlo al presupuesto de hoy: las estimaciones de gasto suelen quedarse altas. Puedes cambiarlo en Perfil.",
     "exNoteOn": "{credit} kcal se suman al presupuesto de hoy (ajuste de {pct}% en Perfil)."
+  },
+  "invite": {
+    "title": "Invitar personas",
+    "places": "{used} de {max} lugares usados",
+    "create": "Crear enlace de invitación",
+    "creating": "Creando enlace…",
+    "copied": "Enlace copiado: envíaselo a quien vas a invitar.",
+    "shareText": "Únete a SnapCal conmigo:",
+    "open": "Invitaciones abiertas",
+    "expires": "vence el {date}",
+    "cancel": "Cancelar",
+    "hint": "Cada enlace deja crear una cuenta a una persona y deja de funcionar a los 7 días.",
+    "full": "Todos los lugares están ocupados o ya invitados.",
+    "joinTitle": "Te invitaron",
+    "joinSub": "Elige un usuario y una contraseña para entrar.",
+    "bad": {
+      "used": "Este enlace ya se usó.",
+      "expired": "Este enlace venció: pide uno nuevo.",
+      "revoked": "Este enlace fue cancelado.",
+      "unknown": "Este enlace no es válido."
+    }
   }
 }
