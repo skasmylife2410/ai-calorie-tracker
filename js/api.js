@@ -615,6 +615,29 @@ export async function suggestRecipes({ caloriesLeft, proteinLeft, preferences = 
   return { ok: true, recipes };
 }
 
+/**
+ * Transcribes a recorded voice note (used when the phone can't transcribe on its own).
+ * @param {Blob} blob  what MediaRecorder produced
+ * @returns {Promise<{ok:true, text:string}|{ok:false, errorType:string, message:string}>}
+ */
+export async function transcribeAudio(blob, { lang = "en" } = {}) {
+  let audio;
+  try {
+    audio = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(",")[1] || "");
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    });
+  } catch (err) {
+    return { ok: false, errorType: "other", message: "Couldn't read the recording." };
+  }
+  const outcome = await geminiRequest({ mode: "transcribe", audio, audioMime: blob.type || "audio/webm", lang });
+  if (!outcome.ok) return outcome;
+  const text = outcome.items.map((i) => String(i?.text ?? "")).join(" ").trim();
+  return { ok: true, text };
+}
+
 /** Shared POST /api/gemini plumbing for the non-meal modes. */
 async function geminiRequest(payload) {
   let res;

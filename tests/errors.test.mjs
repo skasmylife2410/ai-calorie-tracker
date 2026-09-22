@@ -167,3 +167,43 @@ test("favouriting an entry that was deleted does nothing", () => {
   assert.equal(store.allSavedFoods().length, 0);
   assert.equal(store.logSavedFood("missing-id"), null);
 });
+
+// --- voice transcription -------------------------------------------------------------
+
+test("transcribe rejects missing, unknown-format and oversized audio before calling the model", async () => {
+  let called = false;
+  globalThis.fetch = async () => { called = true; return { ok: true, status: 200 }; };
+  process.env.GEMINI_API_KEY = "primary";
+
+  let res = mockRes();
+  await gemini(req({ mode: "transcribe", audio: "", audioMime: "audio/webm" }), res);
+  assert.equal(res.body.errorType, "other");
+
+  res = mockRes();
+  await gemini(req({ mode: "transcribe", audio: "AAAA", audioMime: "video/mp4" }), res);
+  assert.equal(res.body.errorType, "other", "only audio types are accepted");
+
+  res = mockRes();
+  await gemini(req({ mode: "transcribe", audio: "A".repeat(3_000_001), audioMime: "audio/mp4" }), res);
+  assert.match(res.body.message, /under a minute/);
+
+  assert.equal(called, false, "none of these may reach Gemini");
+});
+
+test("transcribe sends the audio inline with its real type and returns the text", async () => {
+  process.env.GEMINI_API_KEY = "primary";
+  let sent;
+  globalThis.fetch = async (url, opts) => {
+    sent = JSON.parse(opts.body);
+    return { ok: true, status: 200, json: async () => ({
+      candidates: [{ content: { parts: [{ text: '{"items":[{"text":"dos huevos y una arepa con queso"}]}' }] } }],
+    }) };
+  };
+  const res = mockRes();
+  // iPhone reports "audio/mp4;codecs=mp4a.40.2" — the codec suffix must be stripped
+  await gemini(req({ mode: "transcribe", audio: "QUJD", audioMime: "audio/mp4;codecs=mp4a.40.2", lang: "es" }), res);
+  const media = sent.contents[0].parts.find((p) => p.inline_data);
+  assert.equal(media.inline_data.mime_type, "audio/mp4");
+  assert.equal(media.inline_data.data, "QUJD");
+  assert.deepEqual(res.body.items, [{ text: "dos huevos y una arepa con queso" }]);
+});

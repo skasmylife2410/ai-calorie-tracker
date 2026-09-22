@@ -1714,3 +1714,22 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 /* retire idea A's pieces */
 .sky-blob.b3, .sky-edge { display: none !important; }
 #sky.sky-settling .sky-fill { transition: none !important; }
+
+/* --- Per-ingredient portion controls (results sheet) --- */
+.meal-item-portion { display: flex; gap: 5px; margin-top: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.meal-item-portion button { flex: none; font: inherit; font-size: 12px; font-weight: 700; padding: 7px 9px; border: 0; border-radius: 10px;
+  background: var(--sc-tint-calories); color: var(--sc-accent-calories); }
+.meal-item-portion button[data-step] { background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+
+/* --- Voice button (Describe meal) --- */
+.voice-btn { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 12px; padding: 12px 14px; border: 0; border-radius: 16px;
+  font: inherit; font-size: 15px; font-weight: 700; text-align: left; background: rgba(0,122,255,.10); color: var(--sc-blue); }
+.voice-icon { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--sc-blue); color: #fff; flex: none; }
+.voice-btn.is-active { background: rgba(255,59,48,.10); color: var(--sc-red); }
+.voice-btn.is-active .voice-icon { background: var(--sc-red); }
+@media (prefers-reduced-motion: no-preference) {
+  .voice-btn.is-active .voice-icon { animation: voice-pulse 1.3s ease-in-out infinite; }
+  @keyframes voice-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,.45); } 50% { box-shadow: 0 0 0 10px rgba(255,59,48,0); } }
+}
+.voice-msg { font-size: 13px; color: var(--sc-red); margin-top: 8px; line-height: 1.45; }
+.voice-msg:empty { display: none; }

@@ -7,6 +7,7 @@
 import * as store from "../store.js";
 import { mountEntryRow } from "./entry-row.js";
 import { openAddFoodSheet } from "./addfood.js";
+import { openResultsSheet } from "./results.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { icon } from "./icons.js";
 import { t, formatDate } from "../i18n.js";
@@ -39,7 +40,12 @@ export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
           for (const entry of meals) {
             cleanups.push(
               mountEntryRow(list, entry, {
-                onTap: (e) => openAddFoodSheet({ entry: store.getFoodEntry(e.id), onSaved: () => { draw(); onChange?.(); } }),
+                onTap: (e) => {
+                  const fresh = store.getFoodEntry(e.id);
+                  // Meals analysed from a photo, text or voice keep each ingredient: edit them one by one.
+                  if (Array.isArray(fresh?.analysisItems) && fresh.analysisItems.length > 0) openResultsSheet(fresh);
+                  else openAddFoodSheet({ entry: fresh, onSaved: () => { draw(); onChange?.(); } });
+                },
                 onDelete: (e) => {
                   store.deleteFoodEntry(e.id);
                   draw();

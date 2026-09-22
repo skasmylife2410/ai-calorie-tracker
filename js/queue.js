@@ -59,11 +59,13 @@ export function enqueuePhoto(imageDataUrl, mode, { description = null } = {}) {
  * @param {string} description
  * @returns {object|null} the pending FoodEntry, or null if nothing was inserted
  */
-export function enqueueText(description) {
+export function enqueueText(description, { timestamp } = {}) {
   const trimmed = (description ?? "").trim();
   if (trimmed === "") return null;
 
   const entry = store.addFoodEntry({
+    // lands on the day being viewed when logged from a past day; otherwise now
+    ...(Number.isFinite(timestamp) ? { timestamp } : {}),
     name: ANALYSIS_MODES.text.pendingTitle,
     calories: 0,
     proteinG: 0,

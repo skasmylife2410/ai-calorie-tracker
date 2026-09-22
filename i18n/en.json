@@ -286,5 +286,22 @@
     "boy": "Him",
     "girl": "Her",
     "hint": "The doodle on Home uses your profile photo as its face once you set one on the Us tab."
+  },
+  "voice": {
+    "tile": "Voice",
+    "title": "Describe Meal",
+    "start": "Tap to speak",
+    "listening": "Listening… tap to stop",
+    "recording": "Recording… tap to stop",
+    "transcribing": "Writing it down…",
+    "hint": "Say what you ate and how much — “two eggs, a slice of toast and a coffee with milk”. You can fix the text before analysing.",
+    "denied": "Microphone access is off. Allow it for this site in your browser settings, or type instead.",
+    "unsupported": "Voice isn't available in this browser. Type the meal instead.",
+    "failed": "Couldn't hear that. Try again, or type the meal.",
+    "empty": "Nothing came through. Try again a little closer to the phone.",
+    "subhead": "Describe what you ate and the AI will estimate the calories and macros.",
+    "placeholder": "e.g. banana smoothie with two scoops of protein powder and blueberries",
+    "tip": "Include quantities where you can — \"two scoops\", \"a handful\" — and the estimate gets a lot better.",
+    "analyze": "Analyze"
   }
 }

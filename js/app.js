@@ -42,6 +42,7 @@ const POPUP_TILES = [
   { id: "search", icon: "magnifyingglass", labelKey: "menu.database" },
   { id: "scan", icon: "cameraViewfinder", labelKey: "menu.scan" },
   { id: "describe", icon: "textBubbleFill", labelKey: "menu.describe" },
+  { id: "voice", icon: "mic", labelKey: "voice.tile" },
   { id: "exercise", icon: "boltFill", labelKey: "menu.exercise" },
   { id: "recipes", icon: "wandAndStars", labelKey: "menu.ideas" },
 ];
@@ -232,7 +233,10 @@ function handleTileAction(tileId) {
       openCameraScan({ onResult: handleCameraResult });
       break;
     case "describe":
-      openDescribeMealSheet();
+      openDescribeMealSheet({ timestamp: viewedTimestamp() });
+      break;
+    case "voice":
+      openDescribeMealSheet({ voice: true, timestamp: viewedTimestamp() });
       break;
     case "exercise":
       openExerciseSheet({ onSaved: () => renderCurrentTab() });

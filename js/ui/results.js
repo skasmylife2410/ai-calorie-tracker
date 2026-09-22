@@ -127,6 +127,27 @@ export function openResultsSheet(entry) {
             item.name = nameInput.value;
           });
 
+          /** Sets this ingredient to `grams`, rescaling its calories and macros proportionally. */
+          const setGrams = (grams) => {
+            const base = baselines[idx];
+            const g = Math.max(1, Math.round(grams));
+            if (base.gramsEstimate > 0) {
+              const factor = g / base.gramsEstimate;
+              item.calories = base.calories * factor;
+              item.proteinG = base.proteinG * factor;
+              item.carbsG = base.carbsG * factor;
+              item.fatG = base.fatG * factor;
+            }
+            item.gramsEstimate = g;
+            renderItems();
+          };
+          row.querySelectorAll("[data-mult]").forEach((b) =>
+            b.addEventListener("click", () => setGrams((item.gramsEstimate || 0) * Number(b.dataset.mult)))
+          );
+          row.querySelectorAll("[data-step]").forEach((b) =>
+            b.addEventListener("click", () => setGrams((item.gramsEstimate || 0) + Number(b.dataset.step)))
+          );
+
           row.querySelector("[data-item-delete]").addEventListener("click", () => {
             items.splice(idx, 1);
             baselines.splice(idx, 1);
@@ -258,6 +279,11 @@ function itemRowHtml(item, idx) {
             <div class="meal-field-unit">${f.unit}</div>
           </div>`
         ).join("")}
+      </div>
+      <div class="meal-item-portion" role="group" aria-label="Portion">
+        <button type="button" data-step="-10" aria-label="10 grams less">−10 g</button>
+        ${[0.5, 0.75, 1.25, 1.5, 2].map((m) => `<button type="button" data-mult="${m}">×${m}</button>`).join("")}
+        <button type="button" data-step="10" aria-label="10 grams more">+10 g</button>
       </div>
     </div>
   `;

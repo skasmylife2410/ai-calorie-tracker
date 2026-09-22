@@ -286,5 +286,22 @@
     "boy": "Él",
     "girl": "Ella",
     "hint": "El dibujito de Inicio usa tu foto de perfil como cara cuando la pongas en la pestaña Nosotros."
+  },
+  "voice": {
+    "tile": "Voz",
+    "title": "Describir comida",
+    "start": "Toca para hablar",
+    "listening": "Escuchando… toca para parar",
+    "recording": "Grabando… toca para parar",
+    "transcribing": "Escribiéndolo…",
+    "hint": "Di qué comiste y cuánto: «dos huevos, una tostada y un café con leche». Puedes corregir el texto antes de analizar.",
+    "denied": "El micrófono está desactivado. Permítelo para este sitio en los ajustes del navegador, o escribe.",
+    "unsupported": "La voz no está disponible en este navegador. Escribe la comida.",
+    "failed": "No se entendió. Inténtalo de nuevo o escribe la comida.",
+    "empty": "No se oyó nada. Inténtalo de nuevo un poco más cerca del teléfono.",
+    "subhead": "Describe lo que comiste y la IA calculará las calorías y los macros.",
+    "placeholder": "ej. batido de plátano con dos medidas de proteína y arándanos",
+    "tip": "Incluye cantidades cuando puedas —«dos medidas», «un puñado»— y el cálculo mejora mucho.",
+    "analyze": "Analizar"
   }
 }

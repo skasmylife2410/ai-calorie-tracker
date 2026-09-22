@@ -14,7 +14,7 @@ import { checkAuth } from "./_auth.js";
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
 const REQUEST_TIMEOUT_MS = 45_000;
-const REQUIRES_IMAGE = Object.freeze({ meal: true, label: true, text: false, exercise: false, recipes: false });
+const REQUIRES_IMAGE = Object.freeze({ meal: true, label: true, text: false, exercise: false, recipes: false, transcribe: false });
 
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
@@ -86,6 +86,26 @@ const RECIPE_SCHEMA = {
 };
 
 const LANGUAGE_NAMES = { en: "English", es: "Spanish" };
+
+const TRANSCRIBE_SCHEMA = {
+  type: "OBJECT",
+  properties: { items: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" } }, required: ["text"] } } },
+  required: ["items"],
+};
+
+// What phones actually record: iPhone -> audio/mp4 (AAC), Android Chrome -> audio/webm (Opus).
+const AUDIO_TYPES = ["audio/webm", "audio/mp4", "audio/aac", "audio/mpeg", "audio/mp3", "audio/ogg", "audio/wav", "audio/x-m4a", "audio/flac"];
+const MAX_AUDIO_BASE64 = 3_000_000; // ~2.2 MB of audio: about a minute at phone quality; under Vercel's body limit
+
+function buildTranscribePrompt(lang) {
+  return [
+    "Transcribe this voice note exactly as spoken. It is someone describing a meal they ate.",
+    "Keep quantities and food names as said (e.g. 'two eggs', 'una arepa con queso', 'half a cup').",
+    "Do not translate, summarise or add anything. If nothing intelligible was said, return an empty text.",
+    `The speaker most likely used ${LANGUAGE_NAMES[String(lang || "en").slice(0, 2)] || "English"}, but transcribe whatever language you hear.`,
+    'Return ONLY JSON: {"items":[{"text":"..."}]}',
+  ].join("\n");
+}
 
 function languageLine(lang) {
   const name = LANGUAGE_NAMES[String(lang || "en").slice(0, 2)] || "English";
@@ -192,10 +212,13 @@ function stripCodeFences(raw) {
 
 // --- Single Gemini call, classified into the GeminiFailureKind taxonomy ------------------------
 
-async function callGemini(apiKey, { image, promptText, schema = RESPONSE_SCHEMA }) {
+async function callGemini(apiKey, { image, audio, promptText, schema = RESPONSE_SCHEMA }) {
   const parts = [];
   if (image && image.length > 0) {
     parts.push({ inline_data: { mime_type: "image/jpeg", data: image } });
+  }
+  if (audio && audio.data) {
+    parts.push({ inline_data: { mime_type: audio.mime, data: audio.data } });
   }
   parts.push({ text: promptText });
 
@@ -302,7 +325,7 @@ export default async function handler(req, res) {
   }
 
   const body = parseRequestBody(req);
-  const mode = ["meal", "label", "text", "exercise", "recipes"].includes(body.mode) ? body.mode : "meal";
+  const mode = ["meal", "label", "text", "exercise", "recipes", "transcribe"].includes(body.mode) ? body.mode : "meal";
   const { image, text } = body;
 
   // Mode/input mismatch — fail fast, no network call (mirrors GeminiMealAnalyzer.analyze steps 1-2).
@@ -315,6 +338,20 @@ export default async function handler(req, res) {
   if (mode === "text" && (!text || text.trim() === "")) {
     res.status(200).json({ errorType: "other", message: "Add a description of what you ate." });
     return;
+  }
+  let audio;
+  if (mode === "transcribe") {
+    const mime = String(body.audioMime || "").split(";")[0].trim().toLowerCase();
+    const data = typeof body.audio === "string" ? body.audio : "";
+    if (!AUDIO_TYPES.includes(mime) || data.length === 0) {
+      res.status(200).json({ errorType: "other", message: "That recording couldn't be read. Try again, or type the meal instead." });
+      return;
+    }
+    if (data.length > MAX_AUDIO_BASE64) {
+      res.status(200).json({ errorType: "other", message: "That recording is too long. Keep it under a minute." });
+      return;
+    }
+    audio = { mime: mime === "audio/x-m4a" ? "audio/mp4" : mime, data };
   }
   if (mode === "exercise" && (!text || text.trim() === "")) {
     res.status(200).json({ errorType: "other", message: "Describe the workout first." });
@@ -335,6 +372,7 @@ export default async function handler(req, res) {
     mode === "meal" ? buildMealPrompt(text)
     : mode === "text" ? buildTextPrompt(text)
     : mode === "exercise" ? buildExercisePrompt(text, body.lang)
+    : mode === "transcribe" ? buildTranscribePrompt(body.lang)
     : mode === "recipes" ? buildRecipesPrompt({
         caloriesLeft: Number(body.caloriesLeft) || 600,
         proteinLeft: Number(body.proteinLeft) || 30,
@@ -342,11 +380,11 @@ export default async function handler(req, res) {
         lang: body.lang,
       })
     : LABEL_PROMPT;
-  const schema = mode === "exercise" ? EXERCISE_SCHEMA : mode === "recipes" ? RECIPE_SCHEMA : RESPONSE_SCHEMA;
+  const schema = mode === "exercise" ? EXERCISE_SCHEMA : mode === "recipes" ? RECIPE_SCHEMA : mode === "transcribe" ? TRANSCRIBE_SCHEMA : RESPONSE_SCHEMA;
   // Empty-image rule: a 0-byte image must never be base64-encoded into inline_data (§3).
   const normalizedImage = image && image.length > 0 ? image : undefined;
 
-  const primaryOutcome = await callGemini(primaryKey, { image: normalizedImage, promptText, schema });
+  const primaryOutcome = await callGemini(primaryKey, { image: normalizedImage, audio, promptText, schema });
 
   if (primaryOutcome.kind === "success") {
     res.status(200).json({ items: primaryOutcome.items });
@@ -364,7 +402,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const backupOutcome = await callGemini(backupKey, { image: normalizedImage, promptText, schema });
+  const backupOutcome = await callGemini(backupKey, { image: normalizedImage, audio, promptText, schema });
 
   if (primaryOutcome.kind === "rateLimited" && backupOutcome.kind === "rateLimited") {
     res.status(200).json({
