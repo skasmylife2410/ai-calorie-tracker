@@ -303,5 +303,15 @@
     "placeholder": "e.g. banana smoothie with two scoops of protein powder and blueberries",
     "tip": "Include quantities where you can — \"two scoops\", \"a handful\" — and the estimate gets a lot better.",
     "analyze": "Analyze"
+  },
+  "plate": {
+    "open": "Check this portion on a plate",
+    "hide": "Hide the plate",
+    "title": "Check your portion",
+    "sub": "Drawn to scale on a 26 cm dinner plate. Compare it with what's in front of you.",
+    "overflow": "That's more than a plate holds.",
+    "light": "A light plate.",
+    "hands": "By hand",
+    "approx": "Approximate — sizes come from typical densities, so a fluffy salad or a dense steak can look a little off."
   }
 }

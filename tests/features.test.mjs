@@ -333,3 +333,57 @@ test("the day's light rises steadily from 6:00 to 23:00 and resets overnight", a
   const after = skyAt(new Date(2026, 8, 21, 12, 1)).glow[0];
   assert.ok(before.every((v, i) => Math.abs(v - after[i]) < 6), "no visible jump at noon");
 });
+
+// --- portion plate ------------------------------------------------------------------
+
+
+
+// --- portion plate ------------------------------------------------------------------
+
+test("dishes are classified by their first-named food, and hand references are sensible", async () => {
+  const { kindOf, handReference, handLabel, volumeMl, plateSvg } = await import("../js/ui/portion-plate.js");
+  assert.equal(kindOf("Arepa con queso"), "bread");
+  assert.equal(kindOf("Café con leche"), "drink");
+  assert.equal(kindOf("Huevos con queso"), "protein");
+  assert.equal(kindOf("Peanut butter"), "fat");
+  assert.equal(kindOf("Something unrecognisable"), "other");
+
+  // 100 g of chicken is one palm; 240 ml of broccoli-volume is one fist
+  assert.deepEqual(handReference({ name: "Chicken breast", gramsEstimate: 100 }), { hand: "palm", count: 1, kind: "protein" });
+  assert.equal(handReference({ name: "Chicken breast", gramsEstimate: 150 }).count, 1.5);
+  assert.equal(handReference({ name: "Olive oil", gramsEstimate: 14 }).hand, "thumb");
+  assert.equal(handReference({ name: "Olive oil", gramsEstimate: 14 }).count, 1);
+  // never "0 palms": tiny portions show as half
+  assert.equal(handReference({ name: "Egg", gramsEstimate: 10 }).count, 0.5);
+  assert.equal(handLabel({ hand: "palm", count: 1.5 }, "en"), "≈ 1½ palms");
+  assert.equal(handLabel({ hand: "fist", count: 0.5 }, "es"), "≈ ½ puño");
+
+  // twice the grams -> twice the volume -> a bigger drawing
+  assert.equal(volumeMl({ name: "rice", gramsEstimate: 200 }), 2 * volumeMl({ name: "rice", gramsEstimate: 100 }));
+  const small = plateSvg([{ name: "rice", gramsEstimate: 100 }]).svg;
+  const big = plateSvg([{ name: "rice", gramsEstimate: 300 }]).svg;
+  const area = (svg) => { const pts = svg.match(/points="([^"]+)"/)[1].split(" ").map((p) => p.split(",").map(Number));
+    let a = 0; for (let i = 0; i < pts.length; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length]; a += x1 * y2 - x2 * y1; } return Math.abs(a / 2); };
+  const ratio = area(big) / area(small);
+  assert.ok(ratio > 2.7 && ratio < 3.3, `triple the rice should cover ~3x the plate (got ${ratio.toFixed(2)}x)`);
+
+  // drinks go in a glass, not on the plate
+  const withCoffee = plateSvg([{ name: "rice", gramsEstimate: 150 }, { name: "Café con leche", gramsEstimate: 200 }]).svg;
+  assert.equal((withCoffee.match(/<polygon/g) || []).length, 1, "only the rice is on the plate");
+  assert.match(withCoffee, /glassclip/);
+
+  // fullness: a huge meal overflows the plate, a snack is light
+  assert.ok(plateSvg([{ name: "rice", gramsEstimate: 2500 }]).fullness > 1.05);
+  assert.ok(plateSvg([{ name: "chicken", gramsEstimate: 60 }]).fullness < 0.25);
+  // three separate foods on a normal plate are laid out without overlapping
+  const meal = plateSvg([{ name: "chicken breast", gramsEstimate: 150 }, { name: "brown rice", gramsEstimate: 150 }, { name: "broccoli", gramsEstimate: 100 }]);
+  assert.deepEqual(meal.order, ["chicken breast", "brown rice", "broccoli"]);
+  assert.equal((meal.svg.match(/class="plate-num"/g) || []).length, 3, "each food is numbered to match the list");
+
+  // the centres of the three foods are well apart — nothing is hidden under anything else
+  const centres = [...meal.svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)"[^>]*class="plate-num"/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  for (let i = 0; i < centres.length; i++) for (let j = i + 1; j < centres.length; j++) {
+    const d = Math.hypot(centres[i][0] - centres[j][0], centres[i][1] - centres[j][1]);
+    assert.ok(d > 40, `foods ${i + 1} and ${j + 1} are stacked (${d.toFixed(0)} units apart)`);
+  }
+});

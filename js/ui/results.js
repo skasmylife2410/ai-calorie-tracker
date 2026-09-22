@@ -5,11 +5,12 @@
 // appended correction via queue.submitCorrection.
 
 import * as store from "../store.js";
-import { t } from "../i18n.js";
+import { t, currentLanguage } from "../i18n.js";
 import * as queue from "../queue.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { parseNumeric, formatNumeric } from "./numeric-field.js";
+import { plateSvg, handReference, handLabel, _KINDS_FOR_TESTS as KINDS } from "./portion-plate.js";
 
 const FIELD_DEFS = [
   { key: "gramsEstimate", label: "Grams", unit: "g" },
@@ -54,6 +55,8 @@ export function openResultsSheet(entry) {
             <div class="ios-section-body" id="results-items"></div>
           </div>
           <div class="results-items-section-footer">Tap any number to edit it. Editing grams rescales that item's macros proportionally.</div>
+          <button type="button" class="plate-toggle" id="plate-toggle" aria-expanded="false">🍽️ ${t("plate.open")}</button>
+          <div class="plate-card hidden" id="plate-card"></div>
         </div>
         <div class="results-totals-bar" id="results-totals"></div>
         <div class="results-actions">
@@ -98,6 +101,43 @@ export function openResultsSheet(entry) {
       renderServings();
       renderFav();
 
+      const plateEl = panel.querySelector("#plate-card");
+      const plateToggle = panel.querySelector("#plate-toggle");
+      let plateOpen = false;
+      /** Redraws the to-scale plate and the hand-size list; called whenever a portion changes. */
+      const renderPlate = () => {
+        if (!plateEl || !plateOpen) return;
+        // what's actually eaten: every ingredient times the servings multiplier
+        const live = items
+          .map((i) => ({ ...i, gramsEstimate: (Number(i.gramsEstimate) || 0) * servings }))
+          .filter((i) => i.gramsEstimate > 0);
+        if (live.length === 0) { plateEl.innerHTML = ""; return; }
+        const lang = currentLanguage() === "es" ? "es" : "en";
+        const { svg, fullness, order } = plateSvg(live, { lang });
+        const verdict = fullness > 1.05 ? t("plate.overflow") : fullness < 0.25 ? t("plate.light") : "";
+        plateEl.innerHTML = `
+          <div class="plate-title">${t("plate.title")}</div>
+          <div class="plate-sub">${t("plate.sub")}${verdict ? ` <b>${verdict}</b>` : ""}</div>
+          <div class="plate-draw">${svg}</div>
+          <div class="plate-hands-head">${t("plate.hands")}</div>
+          <ul class="plate-hands">
+            ${live.map((i) => {
+              const ref = handReference(i);
+              const color = (KINDS[ref.kind] ?? { color: "#D9D4CC" }).color;
+              const n = order.indexOf(i.name) + 1;
+              return `<li><i style="background:${color}">${n > 0 ? n : "☕"}</i><span class="plate-food">${escapeAttr(i.name)}</span><b>${handLabel(ref, lang)}</b><span class="plate-g">${Math.round(i.gramsEstimate)} g</span></li>`;
+            }).join("")}
+          </ul>
+          <div class="plate-note">${t("plate.approx")}</div>`;
+      };
+      plateToggle?.addEventListener("click", () => {
+        plateOpen = !plateOpen;
+        plateEl.classList.toggle("hidden", !plateOpen);
+        plateToggle.setAttribute("aria-expanded", String(plateOpen));
+        plateToggle.innerHTML = `🍽️ ${plateOpen ? t("plate.hide") : t("plate.open")}`;
+        renderPlate();
+      });
+
       const renderTotals = () => {
         totalsEl.innerHTML = TOTAL_DEFS.map((t) => {
           const total = items.reduce((acc, i) => acc + (i[t.key] ?? 0), 0) * servings;
@@ -108,6 +148,7 @@ export function openResultsSheet(entry) {
             </div>`;
         }).join("");
         saveBtn.disabled = items.length === 0;
+        renderPlate();
       };
 
       const renderItems = () => {

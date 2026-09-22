@@ -303,5 +303,15 @@
     "placeholder": "ej. batido de plátano con dos medidas de proteína y arándanos",
     "tip": "Incluye cantidades cuando puedas —«dos medidas», «un puñado»— y el cálculo mejora mucho.",
     "analyze": "Analizar"
+  },
+  "plate": {
+    "open": "Ver esta porción en un plato",
+    "hide": "Ocultar el plato",
+    "title": "Revisa tu porción",
+    "sub": "Dibujado a escala en un plato de 26 cm. Compáralo con lo que tienes enfrente.",
+    "overflow": "Eso es más de lo que cabe en un plato.",
+    "light": "Un plato ligero.",
+    "hands": "Con la mano",
+    "approx": "Aproximado: los tamaños salen de densidades típicas, así que una ensalada esponjosa o una carne densa pueden verse algo distintas."
   }
 }
