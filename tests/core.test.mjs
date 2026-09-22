@@ -103,16 +103,17 @@ test("resolveUserGoals — custom-first resolution", () => {
   assert.equal(withOverride.computedTargetCalories, 2259); // unaffected by override
   assert.equal(withOverride.targetCalories, 1800); // effective target wins
 
+  // computed macro targets are whole grams (nobody weighs 225.9 g of protein)
   const macrosFromOverride = macroTargets(1800);
-  assert.equal(withOverride.proteinTargetG, macrosFromOverride.proteinG);
+  assert.equal(withOverride.proteinTargetG, Math.round(macrosFromOverride.proteinG));
 
   const clearedOverride = resolveUserGoals({ ...base, customTargetKcal: null });
   assert.equal(clearedOverride.targetCalories, 2259); // reverts to computed
 
   const perMacroOverride = resolveUserGoals({ ...base, customProteinG: 220 });
   assert.equal(perMacroOverride.proteinTargetG, 220); // overridden macro
-  const expectedCarbs = macroTargets(2259).carbsG;
-  closeTo(perMacroOverride.carbsTargetG, expectedCarbs, 0.0001); // non-overridden macro still derives from effective kcal
+  const expectedCarbs = Math.round(macroTargets(2259).carbsG);
+  closeTo(perMacroOverride.carbsTargetG, expectedCarbs, 0.0001); // non-overridden macro still derives from effective kcal (whole grams)
 
   assert.equal(resolveUserGoals({ ...base, weightKg: 0 }).hasValidStats, false);
   assert.equal(resolveUserGoals({ ...base, heightCm: 0 }).hasValidStats, false);

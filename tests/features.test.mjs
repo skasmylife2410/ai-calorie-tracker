@@ -484,3 +484,49 @@ test("protein follows body weight, not a share of calories", async () => {
   // a custom protein target is respected as set
   assert.equal(resolveUserGoals({ weightKg: 90, heightCm: 180, age: 35, sex: "male", activityLevel: "moderate", targetDeltaKcal: 0, customProteinG: 120 }).proteinTargetG, 120);
 });
+
+// --- onboarding ------------------------------------------------------------------------
+
+test("build changes the maths: lean mass instead of bodyweight", async () => {
+  const { resolveUserGoals, estimateBodyFatPct, leanMassKg } = await import("../js/nutrition.js");
+  const base = { weightKg: 62, heightCm: 165, age: 30, sex: "female", activityLevel: "moderate", targetDeltaKcal: -300 };
+
+  const plain = resolveUserGoals(base);
+  const muscular = resolveUserGoals({ ...base, build: "muscular" });
+  const larger = resolveUserGoals({ ...base, build: "larger" });
+
+  assert.equal(plain.bmrSource, "standard");
+  assert.equal(muscular.bmrSource, "lean-mass");
+  assert.ok(muscular.formulaTdee > plain.formulaTdee, "a muscular build burns more at the same weight");
+  assert.ok(larger.formulaTdee < muscular.formulaTdee, "and more fat mass burns less");
+  assert.ok(muscular.proteinTargetG > larger.proteinTargetG, "protein follows lean mass, not scale weight");
+
+  // a measured body fat % beats the estimate from build
+  const measured = resolveUserGoals({ ...base, build: "average", bodyFatPct: 18 });
+  assert.ok(measured.formulaTdee > resolveUserGoals({ ...base, build: "average" }).formulaTdee);
+  assert.equal(Math.round(leanMassKg({ weightKg: 62, bodyFatPct: 18 })), 51);
+  assert.ok(estimateBodyFatPct("muscular", "female") < estimateBodyFatPct("average", "female"));
+
+  // nonsense percentages are ignored rather than trusted
+  assert.equal(leanMassKg({ weightKg: 62, bodyFatPct: 95 }), 0);
+});
+
+test("goal and pace turn into a sensible daily change", async () => {
+  const { targetDelta } = await import("../js/ui/onboarding.js");
+  assert.equal(targetDelta({ goal: "maintain", rate: "normal", weightKg: 80 }), 0);
+
+  const normal = targetDelta({ goal: "lose", rate: "normal", weightKg: 80 });
+  const slow = targetDelta({ goal: "lose", rate: "slow", weightKg: 80 });
+  const fast = targetDelta({ goal: "lose", rate: "fast", weightKg: 80 });
+  assert.ok(normal < 0 && slow < 0 && fast < 0, "losing means a deficit");
+  assert.ok(fast < normal && normal < slow, "faster is a bigger deficit");
+  // ~0.6% of body weight a week at "normal": about 0.5 kg for an 80 kg person
+  assert.ok(Math.abs((Math.abs(normal) * 7) / 7700 - 0.48) < 0.08);
+  // the fastest pace stays at/below about 1% a week, where muscle loss starts
+  assert.ok((Math.abs(fast) * 7) / 7700 <= 0.8);
+  // a lighter person gets a smaller deficit, not the same one
+  assert.ok(Math.abs(targetDelta({ goal: "lose", rate: "normal", weightKg: 55 })) < Math.abs(normal));
+  // building muscle is a modest surplus, never a mirror of the deficit
+  const gain = targetDelta({ goal: "gain", rate: "fast", weightKg: 80 });
+  assert.ok(gain > 0 && gain <= 400);
+});

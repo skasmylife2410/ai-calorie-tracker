@@ -95,6 +95,47 @@ export function macroTargets(targetCals) {
 /** Protein floor for fat loss: 1.6 g per kg of body weight (the lower end of the 1.6–2.2 range
  *  that preserves muscle in a deficit). Only applied when weight is known. */
 export const PROTEIN_G_PER_KG = 1.6;
+export const PROTEIN_G_PER_KG_LEAN = 2.0;
+
+// ---------------------------------------------------------------------------
+// Build → body composition
+// ---------------------------------------------------------------------------
+//
+// Why this matters: Mifflin-St Jeor only knows height, weight, age and sex, so it reads a
+// muscular person as "heavy" and over- or under-shoots their real burn. Muscle burns more at
+// rest than fat, so two people at the same weight can differ by hundreds of calories.
+//
+// When someone tells us their build (or their body fat %), we switch to Katch-McArdle, which
+// works from lean mass instead of total weight, and set protein from lean mass too.
+
+export const BUILDS = ["slim", "average", "muscular", "larger"];
+
+/** Rough body-fat estimate by build and sex, used only when a real measurement isn't given. */
+export function estimateBodyFatPct(build, sex) {
+  const female = normalizeSex(sex) === "female";
+  const table = female
+    ? { slim: 22, average: 29, muscular: 23, larger: 37 }
+    : { slim: 13, average: 20, muscular: 15, larger: 28 };
+  return table[build] ?? (female ? 29 : 20);
+}
+
+/** Katch-McArdle: 370 + 21.6 × lean body mass (kg). More accurate when composition is known. */
+export function katchMcArdleBMR(leanMassKg) {
+  const lbm = Number(leanMassKg);
+  if (!Number.isFinite(lbm) || lbm <= 0) return 0;
+  return 370 + 21.6 * lbm;
+}
+
+/** Lean mass from weight and either a measured or estimated body fat percentage. */
+export function leanMassKg({ weightKg, bodyFatPct, build, sex }) {
+  const w = Number(weightKg);
+  if (!Number.isFinite(w) || w <= 0) return 0;
+  const pct = Number.isFinite(Number(bodyFatPct)) && Number(bodyFatPct) > 0 && Number(bodyFatPct) < 70
+    ? Number(bodyFatPct)
+    : build ? estimateBodyFatPct(build, sex) : null;
+  if (pct === null) return 0;
+  return w * (1 - pct / 100);
+}
 
 export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   const {
@@ -110,13 +151,16 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
     customFatG = null,
   } = profile;
 
-  const bmr = mifflinStJeorBMR(weightKg, heightCm, age, normalizeSex(sex));
+  // Lean-mass formula when build or body fat is known, the standard one otherwise.
+  const lbm = leanMassKg({ weightKg, bodyFatPct: profile.bodyFatPct, build: profile.build, sex });
+  const mifflin = mifflinStJeorBMR(weightKg, heightCm, age, normalizeSex(sex));
+  const bmr = Math.round(lbm > 0 ? katchMcArdleBMR(lbm) : mifflin);
   const formulaTdee = tdee(bmr, activityLevel);
   // Maintenance: learned from the person's own intake and weight trend when there's enough data,
   // otherwise the formula. The learned number already includes their exercise and habits.
   const useLearned = Number.isFinite(learnedTdee) && learnedTdee > 0;
   const tdeeValue = useLearned ? learnedTdee : formulaTdee;
-  const computedTargetCalories = targetCalories(tdeeValue, targetDeltaKcal);
+  const computedTargetCalories = Math.round(targetCalories(tdeeValue, targetDeltaKcal)); // whole calories
   const effectiveTargetCalories =
     customTargetKcal !== null && customTargetKcal !== undefined ? customTargetKcal : computedTargetCalories;
   const macros = macroTargets(effectiveTargetCalories);
@@ -126,7 +170,9 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   let proteinG = macros.proteinG;
   let carbsG = macros.carbsG;
   if (weightKg > 0 && (customProteinG === null || customProteinG === undefined)) {
-    const floor = Math.round(weightKg * PROTEIN_G_PER_KG);
+    // With lean mass known, protein is set from that (muscle is what needs feeding), which is
+    // kinder to a muscular build and to someone carrying more fat.
+    const floor = Math.round(lbm > 0 ? Math.max(weightKg * PROTEIN_G_PER_KG, lbm * PROTEIN_G_PER_KG_LEAN) : weightKg * PROTEIN_G_PER_KG);
     if (floor > proteinG) {
       carbsG = Math.max(0, Math.round(carbsG - ((floor - proteinG) * 4) / 4));
       proteinG = floor;
@@ -135,14 +181,17 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
 
   return {
     bmr,
+    leanMassKg: lbm > 0 ? Math.round(lbm * 10) / 10 : null,
+    bmrSource: lbm > 0 ? "lean-mass" : "standard",
     tdee: tdeeValue,
     formulaTdee,
     tdeeSource: useLearned ? "learned" : "formula",
     computedTargetCalories,
     targetCalories: effectiveTargetCalories,
-    proteinTargetG: customProteinG !== null && customProteinG !== undefined ? customProteinG : proteinG,
-    carbsTargetG: customCarbsG !== null && customCarbsG !== undefined ? customCarbsG : carbsG,
-    fatTargetG: customFatG !== null && customFatG !== undefined ? customFatG : macros.fatG,
+    // computed grams are rounded; a value the person set themselves is left exactly as they set it
+    proteinTargetG: customProteinG !== null && customProteinG !== undefined ? customProteinG : Math.round(proteinG),
+    carbsTargetG: customCarbsG !== null && customCarbsG !== undefined ? customCarbsG : Math.round(carbsG),
+    fatTargetG: customFatG !== null && customFatG !== undefined ? customFatG : Math.round(macros.fatG),
     hasValidStats: weightKg > 0 && heightCm > 0 && age > 0,
   };
 }

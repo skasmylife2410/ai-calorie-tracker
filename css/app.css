@@ -1921,3 +1921,42 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .inv-pick-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
 .inv-pick-row { display: flex; gap: 8px; }
 .inv-pick-cancel { margin-top: 8px; font: inherit; font-size: 12px; font-weight: 700; border: 0; background: none; color: var(--sc-secondary); padding: 4px 0; }
+
+/* ===========================================================================
+   Onboarding: one question per screen (js/ui/onboarding.js)
+   =========================================================================== */
+.onb { display: flex; flex-direction: column; min-height: 100%; padding: max(20px, env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.onb-top { padding-bottom: 18px; }
+.onb-progress { height: 5px; border-radius: 3px; background: rgba(0,0,0,.08); overflow: hidden; }
+.onb-progress span { display: block; height: 100%; border-radius: 3px; background: var(--sc-primary-text); transition: width .3s ease; }
+.onb-step { font-size: 12px; font-weight: 600; color: var(--sc-secondary); margin-top: 8px; }
+.onb-body { flex: 1; }
+.onb-title { font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.onb-sub { font-size: 14px; color: var(--sc-secondary); line-height: 1.5; margin-top: 8px; }
+.onb-note { font-size: 12px; color: var(--sc-secondary); line-height: 1.5; margin-top: 12px; }
+.onb-choices { display: grid; gap: 8px; margin-top: 18px; }
+.onb-choices.onb-row { grid-auto-flow: column; grid-auto-columns: 1fr; }
+.onb-choice { text-align: left; border: 0; border-radius: 18px; padding: 14px 16px; background: rgba(255,255,255,.85); font: inherit;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06); display: grid; gap: 3px; }
+.onb-choice.is-on { background: var(--sc-primary-text); color: #fff; }
+.onb-choice-label { font-size: 16px; font-weight: 700; }
+.onb-choice-sub { font-size: 12px; opacity: .72; line-height: 1.4; }
+.onb-label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--sc-secondary); margin: 20px 0 8px; }
+.onb-field { display: flex; align-items: baseline; gap: 8px; background: rgba(255,255,255,.85); border-radius: 16px; padding: 12px 16px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.onb-input { font: inherit; font-size: 26px; font-weight: 800; width: 100%; min-width: 0; border: 0; background: none; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
+.onb-input:focus { outline: none; }
+.onb-field span { font-size: 14px; font-weight: 700; color: var(--sc-secondary); }
+.onb-units { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(0,0,0,.06); margin-top: 16px; }
+.onb-units button { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 13px; border: 0; border-radius: 9px; background: transparent; color: var(--sc-secondary); }
+.onb-units button[aria-pressed="true"] { background: #fff; color: var(--sc-primary-text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.onb-actions { display: flex; gap: 10px; padding-top: 20px; }
+.onb-back { font: inherit; font-size: 15px; font-weight: 700; padding: 15px 20px; border: 0; border-radius: 16px; background: rgba(0,0,0,.06); color: var(--sc-primary-text); }
+.onb-next { flex: 1; font: inherit; font-size: 16px; font-weight: 800; padding: 15px; border: 0; border-radius: 16px; background: var(--sc-primary-text); color: #fff; }
+.onb-plan { background: rgba(255,255,255,.9); border-radius: 22px; padding: 20px; margin-top: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.06); text-align: center; }
+.onb-plan-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--sc-secondary); }
+.onb-plan-row b { color: var(--sc-primary-text); }
+.onb-plan-big { font-size: 46px; font-weight: 800; letter-spacing: -.03em; margin-top: 14px; color: var(--sc-accent-calories); font-variant-numeric: tabular-nums; }
+.onb-plan-big small { font-size: 16px; color: var(--sc-secondary); margin-left: 5px; font-weight: 700; }
+.onb-plan-label { font-size: 13px; font-weight: 700; color: var(--sc-secondary); }
+.onb-plan-macros { font-size: 13px; margin-top: 12px; }
+.onb-plan-big small { margin-left: 8px; }
