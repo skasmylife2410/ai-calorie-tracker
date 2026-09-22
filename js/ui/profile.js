@@ -50,6 +50,7 @@ export function render(container) {
       ${goalSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
       ${accountSectionHtml(currentUsername)}
+      ${membersSectionHtml()}
       ${inviteSectionHtml()}
       ${accuracySectionHtml(profile)}
       ${doodlePickHtml()}
@@ -67,6 +68,7 @@ export function render(container) {
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
   wireInvites(container);
+  wireMembers(container, currentUsername);
   container.querySelectorAll("[data-excredit]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: Number(b.dataset.excredit) }); render(container); })
   );
@@ -138,6 +140,48 @@ function wireAccount(container, username) {
     setStoredToken("");
     location.reload();
   });
+}
+
+/** Members and their groups (owner only): fixes anyone who signed up without a group. */
+function membersSectionHtml() {
+  return `<div class="ios-section" id="members-section"></div>`;
+}
+
+async function wireMembers(container, me) {
+  const host = container.querySelector("#members-section");
+  if (!host) return;
+  const { apiFetch } = await import("../net.js");
+  const call = async (body) => {
+    try {
+      const r = await apiFetch("/api/groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      return await r.json();
+    } catch { return { ok: false }; }
+  };
+  const draw = async (data) => {
+    const info = data ?? (await call({ op: "all" }));
+    if (!info.ok || !info.isAdmin) { host.remove(); return; }
+    host.innerHTML = `
+      <div class="ios-section-header">${t("members.title")}</div>
+      <div class="ios-section-body">
+        ${info.people.map((p) => `
+          <div class="mem-row">
+            <span class="mem-name">${p.username}${p.username === me ? ` <i>${t("members.you")}</i>` : ""}</span>
+            <span class="mem-groups">
+              ${info.groups.map((g) => `
+                <button type="button" class="mem-chip${p.groups.includes(g.id) ? " is-on" : ""}"
+                        data-user="${p.username}" data-group="${g.id}" data-member="${p.groups.includes(g.id) ? "0" : "1"}">${g.name}</button>`).join("")}
+            </span>
+            ${p.groups.length === 0 ? `<span class="mem-warn">${t("members.none")}</span>` : ""}
+          </div>`).join("")}
+      </div>
+      <div class="ios-section-footer">${t("members.hint")}</div>`;
+    host.querySelectorAll(".mem-chip").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      const out = await call({ op: "set", username: b.dataset.user, group: b.dataset.group, member: b.dataset.member === "1" });
+      draw(out.ok ? out : undefined);
+    }));
+  };
+  draw();
 }
 
 /** Invite people (only shown to the owner): places used, a button to make a link, open links. */

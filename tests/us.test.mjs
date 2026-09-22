@@ -20,6 +20,9 @@ globalThis.fetch = async (url) => {
     snapcal_water: [{ owner: "maria", day: "2026-09-15", glasses: 4 }],
     snapcal_exercise: [{ owner: "aelson", day: "2026-09-15", data: { caloriesBurned: 420, activity: "soccer" } }],
     snapcal_users: [{ username: "aelson" }, { username: "maria" }],
+    // who appears on the dashboard now comes from group membership, not the account list
+    snapcal_groups: [{ id: "home", name: "Home" }],
+    snapcal_group_members: [{ group_id: "home", username: "aelson", joined_at: "1" }, { group_id: "home", username: "maria", joined_at: "2" }],
     snapcal_profile: [
       { owner: "aelson", data: { weightKg: 80, heightCm: 178, age: 35, sex: "male", activityLevel: "moderate", targetDeltaKcal: -500, customTargetKcal: 2000 } },
       { owner: "maria", data: { weightKg: 60, heightCm: 165, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 0, customTargetKcal: null } },

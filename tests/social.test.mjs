@@ -16,9 +16,9 @@ const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": crea
 
 // in-memory Supabase: users, notes, shares, with the filters these endpoints actually use
 let DB;
-const reset = () => { DB = {
+const reset = () => { installDb(); DB = {
   snapcal_users: [{ username: "aelson" }, { username: "baby" }, { username: "thayra23" }, { username: "jasmine" }],
-  snapcal_notes: [], snapcal_shares: [],
+  snapcal_notes: [], snapcal_shares: [], snapcal_food_entries: [], snapcal_water: [], snapcal_exercise: [], snapcal_profile: [],
   snapcal_groups: [{ id: "family", name: "Family" }, { id: "work", name: "Work" }],
   snapcal_group_members: [
     { group_id: "family", username: "aelson", joined_at: "1" }, { group_id: "family", username: "baby", joined_at: "2" },
@@ -34,14 +34,15 @@ const matches = (row, params) => [...params.entries()].every(([k, v]) => {
   if (op === "in") return val.replace(/[()]/g, "").split(",").includes(String(row[k]));
   return true;
 });
-globalThis.fetch = async (url, opts = {}) => {
+const installDb = () => { globalThis.fetch = async (url, opts = {}) => {
   const u = new URL(url); const table = u.pathname.split("/").pop(); const method = opts.method ?? "GET";
   const rows = DB[table];
   if (method === "GET") return { ok: true, json: async () => rows.filter((r) => matches(r, u.searchParams)) };
   if (method === "POST") { for (const r of JSON.parse(opts.body)) rows.push({ created_at: new Date().toISOString(), ...r }); return { ok: true, text: async () => "" }; }
   if (method === "PATCH") { const f = JSON.parse(opts.body); rows.forEach((r) => { if (matches(r, u.searchParams)) Object.assign(r, f); }); return { ok: true, text: async () => "" }; }
   if (method === "DELETE") { DB[table] = rows.filter((r) => !matches(r, u.searchParams)); return { ok: true, text: async () => "" }; }
-};
+}; };
+installDb();
 
 test("a note reaches only the person it's addressed to", async () => {
   reset();
@@ -224,4 +225,42 @@ test("doodle generation: tries the cheapest model, falls back, and reports billi
   await doodle({ method: "POST", headers: {}, body: { state: "strong" } }, res);
   assert.equal(res.code, 401);
   assert.equal(called, false);
+});
+
+// --- no group means no visibility ------------------------------------------------------
+
+test("someone in no group sees only themselves, never everyone", async () => {
+  reset();
+  DB.snapcal_users.push({ username: "stray" });          // signed up with the shared code
+  DB.snapcal_food_entries = [];
+  const { default: compare } = await import("../api/compare.js");
+  const res = mockRes();
+  await compare(as("stray", { from: "2026-01-01" }), res);
+  assert.ok(res.body.people, `expected people, got ${JSON.stringify(res.body)}`);
+  assert.deepEqual(res.body.people.map((p) => p.owner), ["stray"], "no group -> only yourself");
+  assert.deepEqual(res.body.groups, []);
+});
+
+test("the owner can place someone in a group; others can't", async () => {
+  reset();
+  DB.snapcal_users.push({ username: "stray" });
+  const { default: groups } = await import("../api/groups.js");
+
+  let res = mockRes(); await groups(as("thayra23", { op: "set", username: "stray", group: "family" }), res);
+  assert.equal(res.body.errorType, "forbidden");
+  assert.equal(DB.snapcal_group_members.filter((m) => m.username === "stray").length, 0);
+
+  res = mockRes(); await groups(as("aelson", { op: "set", username: "stray", group: "work" }), res);
+  assert.equal(res.body.ok, true, JSON.stringify(res.body));
+  assert.deepEqual(res.body.people.find((p) => p.username === "stray").groups, ["work"]);
+
+  // and can take them out again
+  res = mockRes(); await groups(as("aelson", { op: "set", username: "stray", group: "work", member: false }), res);
+  assert.deepEqual(res.body.people.find((p) => p.username === "stray").groups, []);
+
+  // unknown people and groups are refused
+  res = mockRes(); await groups(as("aelson", { op: "set", username: "ghost", group: "work" }), res);
+  assert.equal(res.body.ok, false);
+  res = mockRes(); await groups(as("aelson", { op: "set", username: "stray", group: "nope" }), res);
+  assert.equal(res.body.ok, false);
 });

@@ -88,7 +88,7 @@ export default async function handler(req, res) {
   let group = null;
   let groups = [];
   try {
-    const resolved = await resolveGroup(owner, typeof body.group === "string" ? body.group : null);
+    const resolved = await resolveGroup(me, typeof body.group === "string" ? body.group : null);
     if (resolved.error === "notMember") {
       res.status(200).json({ errorType: "notMember", message: "You're not in that group." });
       return;
@@ -96,20 +96,14 @@ export default async function handler(req, res) {
     group = resolved.group;
     groups = resolved.groups;
     if (group) owners = await membersOf(group.id);
-  } catch {
-    owners = [];
+  } catch (err) {
+    res.status(200).json({ errorType: "other", message: `Couldn't read your groups: ${err?.message ?? err}` });
+    return;
   }
-  // Nobody has groups yet (a deployment mid-upgrade): fall back to every account.
-  if (owners.length === 0 && groups.length === 0) {
-    try {
-      const rows = await select("snapcal_users", { select: "username", order: "created_at.asc", limit: "50" });
-      owners = rows.map((r) => r.username).filter((u) => typeof u === "string" && u !== "");
-    } catch { owners = []; }
-  }
-  if (owners.length === 0) {
-    const configured = [...new Set(parseUsers(process.env.APP_USERS).values())];
-    owners = configured.length > 0 ? configured : [DEFAULT_OWNER];
-  }
+  // Fail closed. This used to fall back to "every account in the app" when someone had no
+  // group — which handed the whole board to anyone who signed up with the shared code. Now a
+  // person with no group sees only themselves, and the app tells them to ask for an invite.
+  if (owners.length === 0) owners = [me];
   const ownerFilter = `in.(${owners.join(",")})`;
 
   let entries, water, exercise, profiles;

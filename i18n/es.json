@@ -457,5 +457,11 @@
     "light": "De pie parte del día",
     "moderate": "De pie la mayor parte del día",
     "active": "Trabajo físico o muy activa/o"
+  },
+  "members": {
+    "title": "Quién está en cada grupo",
+    "none": "Sin grupo",
+    "hint": "Toca un grupo para agregar o quitar a alguien. Quien no tiene grupo solo se ve a sí misma/o.",
+    "you": "tú"
   }
 }

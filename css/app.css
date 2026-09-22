@@ -1960,3 +1960,12 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .onb-plan-label { font-size: 13px; font-weight: 700; color: var(--sc-secondary); }
 .onb-plan-macros { font-size: 13px; margin-top: 12px; }
 .onb-plan-big small { margin-left: 8px; }
+/* --- Members and their groups (Profile, owner only) --- */
+.mem-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px; flex-wrap: wrap; }
+.mem-row + .mem-row { border-top: 1px solid var(--sc-secondary-14); }
+.mem-name { flex: 1; min-width: 90px; font-size: 15px; font-weight: 600; }
+.mem-name i { font-style: normal; font-size: 11px; font-weight: 700; color: var(--sc-secondary); }
+.mem-groups { display: flex; gap: 6px; }
+.mem-chip { font: inherit; font-size: 12px; font-weight: 700; padding: 7px 11px; border: 0; border-radius: 11px; background: var(--sc-secondary-15); color: var(--sc-secondary); }
+.mem-chip.is-on { background: var(--sc-primary-text); color: #fff; }
+.mem-warn { font-size: 11px; font-weight: 700; color: var(--sc-red); width: 100%; }
