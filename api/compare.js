@@ -7,6 +7,7 @@
 //             carbsG, fatG, meals, water} } }] }  |  { errorType }
 
 import { checkAuth, parseUsers, DEFAULT_OWNER } from "./_auth.js";
+import { resolveGroup, membersOf } from "./_groups.js";
 import { resolveUserGoals } from "../js/nutrition.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -81,14 +82,29 @@ export default async function handler(req, res) {
   let from = typeof body.from === "string" && DAY_RE.test(body.from) ? body.from : earliest;
   if (from < earliest) from = earliest;
 
-  // Who appears on this dashboard: every account in snapcal_users, so a person who signs up with
-  // the invite code shows up here too. APP_USERS is only a fallback for the changeover period.
+  // Who appears on this dashboard: the members of ONE group the caller belongs to. Nothing
+  // from another group is ever read, so people in different groups can't see each other.
   let owners = [];
+  let group = null;
+  let groups = [];
   try {
-    const rows = await select("snapcal_users", { select: "username", order: "created_at.asc", limit: "50" });
-    owners = rows.map((r) => r.username).filter((u) => typeof u === "string" && u !== "");
+    const resolved = await resolveGroup(owner, typeof body.group === "string" ? body.group : null);
+    if (resolved.error === "notMember") {
+      res.status(200).json({ errorType: "notMember", message: "You're not in that group." });
+      return;
+    }
+    group = resolved.group;
+    groups = resolved.groups;
+    if (group) owners = await membersOf(group.id);
   } catch {
     owners = [];
+  }
+  // Nobody has groups yet (a deployment mid-upgrade): fall back to every account.
+  if (owners.length === 0 && groups.length === 0) {
+    try {
+      const rows = await select("snapcal_users", { select: "username", order: "created_at.asc", limit: "50" });
+      owners = rows.map((r) => r.username).filter((u) => typeof u === "string" && u !== "");
+    } catch { owners = []; }
   }
   if (owners.length === 0) {
     const configured = [...new Set(parseUsers(process.env.APP_USERS).values())];
@@ -154,5 +170,5 @@ export default async function handler(req, res) {
     }
   }
 
-  res.status(200).json({ me, people });
+  res.status(200).json({ me, people, group, groups });
 }

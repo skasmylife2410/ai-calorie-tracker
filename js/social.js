@@ -34,14 +34,15 @@ export async function markNoteSeen(id) {
 }
 
 // --- shares -----------------------------------------------------------------------
-export const listShares = () => post("/api/shares", { op: "list" });
+export const listShares = (group = null) => post("/api/shares", { op: "list", ...(group ? { group } : {}) });
 export const deleteShare = (id) => post("/api/shares", { op: "delete", id });
 
 /** Share one of your logged meals (a snapshot of it). */
-export function shareMeal(entry, note = "") {
+export function shareMeal(entry, note = "", group = null) {
   return post("/api/shares", {
     op: "share",
     kind: "meal",
+    ...(group ? { group } : {}),
     item: {
       name: entry.name,
       calories: entry.calories,
@@ -55,6 +56,6 @@ export function shareMeal(entry, note = "") {
   });
 }
 
-export function shareIdea(recipe, note = "") {
-  return post("/api/shares", { op: "share", kind: "idea", item: { ...recipe, note } });
+export function shareIdea(recipe, note = "", group = null) {
+  return post("/api/shares", { op: "share", kind: "idea", item: { ...recipe, note }, ...(group ? { group } : {}) });
 }

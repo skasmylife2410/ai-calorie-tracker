@@ -9,6 +9,7 @@
 
 import { checkAuth } from "./_auth.js";
 import { select, insert, patch, parseBody, newId, restBase } from "./_rest.js";
+import { myGroups, membersOf, sharesGroup } from "./_groups.js";
 
 const MAX_LEN = 200;
 const PER_DAY = 20;
@@ -26,8 +27,11 @@ export default async function handler(req, res) {
 
   try {
     if (op === "people") {
-      const rows = await select("snapcal_users", { select: "username", order: "created_at.asc", limit: "50" });
-      return res.status(200).json({ ok: true, people: rows.map((r) => r.username).filter((u) => u !== me) });
+      // everyone in your groups, once, minus yourself
+      const groups = await myGroups(me);
+      const lists = await Promise.all(groups.map((g) => membersOf(g.id)));
+      const people = [...new Set(lists.flat())].filter((u) => u !== me);
+      return res.status(200).json({ ok: true, people });
     }
 
     if (op === "inbox") {
@@ -58,7 +62,11 @@ export default async function handler(req, res) {
       if (to === me) return fail(res, "self", "You can't send a note to yourself.");
 
       const exists = await select("snapcal_users", { select: "username", username: `eq.${to}`, limit: "1" });
-      if (exists.length === 0) return fail(res, "noSuchUser", "That person isn't in the app.");
+      // Same answer whether they don't exist or are simply in another group: someone in Work
+      // shouldn't be able to discover who's in Family by probing names.
+      if (exists.length === 0 || !(await sharesGroup(me, to))) {
+        return fail(res, "noSuchUser", "That person isn't in your groups.");
+      }
 
       const today = new Date(); today.setUTCHours(0, 0, 0, 0);
       const sentToday = await select("snapcal_notes", { select: "id", from_user: `eq.${me}`, created_at: `gte.${today.toISOString()}`, limit: String(PER_DAY + 1) });

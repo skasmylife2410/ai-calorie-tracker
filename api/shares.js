@@ -9,6 +9,7 @@
 
 import { checkAuth } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
+import { resolveGroup } from "./_groups.js";
 
 const MAX_PHOTO = 160_000;   // data-URL length; thumbnails are ~30–80 KB
 const PER_DAY = 30;
@@ -53,9 +54,16 @@ export default async function handler(req, res) {
 
   try {
     if (op === "list") {
+      const { group, error } = await resolveGroup(me, typeof body.group === "string" ? body.group : null);
+      if (error === "notMember") return fail(res, "notMember", "You're not in that group.");
+      if (!group) return res.status(200).json({ ok: true, shares: [] });
       const since = new Date(Date.now() - 30 * 86400000).toISOString();
-      const rows = await select("snapcal_shares", { select: "id,owner,kind,data,created_at", created_at: `gte.${since}`, order: "created_at.desc", limit: "40" });
-      return res.status(200).json({ ok: true, shares: rows });
+      const rows = await select("snapcal_shares", {
+        select: "id,owner,kind,data,created_at,group_id",
+        group_id: `eq.${group.id}`,
+        created_at: `gte.${since}`, order: "created_at.desc", limit: "40",
+      });
+      return res.status(200).json({ ok: true, shares: rows, group });
     }
 
     if (op === "share") {
@@ -68,9 +76,13 @@ export default async function handler(req, res) {
       const mine = await select("snapcal_shares", { select: "id", owner: `eq.${me}`, created_at: `gte.${today.toISOString()}`, limit: String(PER_DAY + 1) });
       if (mine.length >= PER_DAY) return fail(res, "limit", "That's a lot of sharing for one day.");
 
+      const { group, error } = await resolveGroup(me, typeof body.group === "string" ? body.group : null);
+      if (error === "notMember") return fail(res, "notMember", "You're not in that group.");
+      if (!group) return fail(res, "noGroup", "You're not in a group yet.");
+
       const id = newId();
-      await insert("snapcal_shares", { id, owner: me, kind, data });
-      return res.status(200).json({ ok: true, id });
+      await insert("snapcal_shares", { id, owner: me, kind, data, group_id: group.id });
+      return res.status(200).json({ ok: true, id, group });
     }
 
     if (op === "delete") {

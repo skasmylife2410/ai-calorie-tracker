@@ -1916,3 +1916,8 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .inv-cancel { color: var(--sc-red); }
 .auth-sub { font-size: 14px; color: var(--sc-secondary); margin: -12px 0 14px; }
 .auth-error:empty { display: none; }
+.inv-group { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--sc-secondary); background: var(--sc-secondary-15); padding: 3px 7px; border-radius: 7px; }
+.inv-pick { padding: 12px 14px; border-top: 1px solid var(--sc-secondary-14); }
+.inv-pick-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.inv-pick-row { display: flex; gap: 8px; }
+.inv-pick-cancel { margin-top: 8px; font: inherit; font-size: 12px; font-weight: 700; border: 0; background: none; color: var(--sc-secondary); padding: 4px 0; }

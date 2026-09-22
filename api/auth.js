@@ -17,7 +17,8 @@ import {
   createSession, readSession, passwordProblem,
 } from "./_accounts.js";
 import { maxUsers as memberCap } from "./_members.js";
-import { inviteProblem } from "./invites.js";
+import { inviteProblem, inviteGroup } from "./invites.js";
+import { addMembership } from "./_groups.js";
 
 function restBase() {
   return (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
@@ -123,6 +124,10 @@ export default async function handler(req, res) {
       }
       const { salt, hash } = hashPassword(password);
       await writeUser({ username, salt, password_hash: hash, must_change: false, created_at: new Date().toISOString() });
+      if (!viaShared) {
+        const groupId = await inviteGroup(invite);
+        if (groupId) await addMembership(groupId, username);
+      }
       return res.status(200).json({ ok: true, token: createSession(username) });
     }
 

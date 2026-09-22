@@ -13,6 +13,7 @@ import crypto from "node:crypto";
 import { checkAuth } from "./_auth.js";
 import { select, insert, patch, parseBody, restBase } from "./_rest.js";
 import { maxUsers, isAdmin, INVITE_DAYS } from "./_members.js";
+import { myGroups, membersOf, isMember } from "./_groups.js";
 
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
 
@@ -23,7 +24,13 @@ export function newInviteCode() {
 
 export async function openInvites() {
   const now = new Date().toISOString();
-  return select("snapcal_invites", { select: "code,created_by,created_at,expires_at", used_by: "is.null", revoked: "eq.false", expires_at: `gt.${now}`, order: "created_at.desc", limit: "50" });
+  return select("snapcal_invites", { select: "code,created_by,created_at,expires_at,group_id", used_by: "is.null", revoked: "eq.false", expires_at: `gt.${now}`, order: "created_at.desc", limit: "50" });
+}
+
+/** The group a valid invite is for, or null. Used by sign-up to place the new person. */
+export async function inviteGroup(code) {
+  const rows = await select("snapcal_invites", { select: "group_id", code: `eq.${code}`, limit: "1" });
+  return rows[0]?.group_id ?? null;
 }
 
 /** Why a code can't be used right now, or null if it can. */
@@ -58,20 +65,27 @@ export default async function handler(req, res) {
 
     if (op === "list") {
       const invites = admin ? await openInvites() : [];
-      return res.status(200).json({ ok: true, invites, members: members.length, max: maxUsers(), isAdmin: admin });
+      const groups = await myGroups(me);
+      const withMembers = await Promise.all(groups.map(async (g) => ({ ...g, members: (await membersOf(g.id)).length })));
+      return res.status(200).json({ ok: true, invites, members: members.length, max: maxUsers(), isAdmin: admin, groups: withMembers });
     }
 
     if (!admin) return fail(res, "forbidden", "Only the app's owner can manage invites.");
 
     if (op === "create") {
+      // Every link is for one group, and only for a group you're in yourself.
+      const groupId = String(body.group ?? "").trim();
+      if (!groupId) return fail(res, "noGroup", "Choose which group this invite is for.");
+      if (!(await isMember(me, groupId))) return fail(res, "notMember", "You're not in that group.");
+
       const open = await openInvites();
       if (members.length + open.length >= maxUsers()) {
         return fail(res, "full", `All ${maxUsers()} places are taken or already invited.`);
       }
       const code = newInviteCode();
       const expiresAt = new Date(Date.now() + INVITE_DAYS * 86400000).toISOString();
-      await insert("snapcal_invites", { code, created_by: me, expires_at: expiresAt });
-      return res.status(200).json({ ok: true, code, expiresAt });
+      await insert("snapcal_invites", { code, created_by: me, expires_at: expiresAt, group_id: groupId });
+      return res.status(200).json({ ok: true, code, expiresAt, group: groupId });
     }
 
     if (op === "revoke") {

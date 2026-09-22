@@ -399,5 +399,11 @@
       "revoked": "Este enlace fue cancelado.",
       "unknown": "Este enlace no es válido."
     }
+  },
+  "groups": {
+    "switch": "Grupo",
+    "inviteTo": "¿A qué grupo invitas?",
+    "cancel": "Cancelar",
+    "onlyYou": "Por ahora solo estás tú en {name}: invita a alguien desde Perfil."
   }
 }

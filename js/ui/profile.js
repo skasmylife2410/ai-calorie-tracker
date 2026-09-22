@@ -168,6 +168,7 @@ async function wireInvites(container) {
           <div class="inv-head">${t("invite.open")}</div>
           ${info.invites.map((i) => `
             <div class="inv-row">
+              <span class="inv-group">${(info.groups ?? []).find((g) => g.id === i.group_id)?.name ?? ""}</span>
               <span class="inv-code">…${i.code.slice(-6)}</span>
               <span class="inv-exp">${t("invite.expires", { date: new Date(i.expires_at).toLocaleDateString() })}</span>
               <button type="button" class="inv-copy" data-copy="${i.code}">⧉</button>
@@ -187,10 +188,12 @@ async function wireInvites(container) {
       try { await navigator.clipboard.writeText(url); } catch { /* old browsers */ }
       return t("invite.copied");
     };
-    host.querySelector("#inv-create")?.addEventListener("click", async (ev) => {
-      ev.currentTarget.disabled = true;
-      ev.currentTarget.textContent = t("invite.creating");
-      const made = await call({ op: "create" });
+    host.querySelector("#inv-create")?.addEventListener("click", async () => {
+      const groups = info.groups ?? [];
+      // Ask which group the newcomer joins — the whole point of having groups.
+      const chosen = groups.length > 1 ? await askGroup(host, groups) : groups[0]?.id ?? null;
+      if (!chosen) return draw();
+      const made = await call({ op: "create", group: chosen });
       if (!made.ok) return draw(made.message || t("errors.generic"));
       draw(await hand(made.code));
     });
@@ -198,6 +201,21 @@ async function wireInvites(container) {
     host.querySelectorAll("[data-revoke]").forEach((b) => b.addEventListener("click", async () => { await call({ op: "revoke", code: b.dataset.revoke }); draw(); }));
   };
   draw();
+}
+
+/** Little inline picker: which group is this invite for? */
+function askGroup(host, groups) {
+  return new Promise((resolve) => {
+    const box = document.createElement("div");
+    box.className = "inv-pick";
+    box.innerHTML = `<div class="inv-pick-title">${t("groups.inviteTo")}</div>
+      <div class="inv-pick-row">
+        ${groups.map((g) => `<button type="button" class="lang-btn" data-pick="${g.id}">${g.name}</button>`).join("")}
+      </div>
+      <button type="button" class="inv-pick-cancel" data-pick="">${t("groups.cancel")}</button>`;
+    host.querySelector(".ios-section-body")?.appendChild(box);
+    box.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => { box.remove(); resolve(b.dataset.pick || null); }));
+  });
 }
 
 /** Accuracy settings: whether exercise is eaten back, and whether to use learned maintenance. */

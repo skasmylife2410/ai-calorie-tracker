@@ -23,6 +23,7 @@ const COLORS = [
 ];
 let range = 7;
 let data = null;
+let groupId = null; // which group the dashboard is showing; null = the server picks your first
 
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const fmt = (n) => Math.round(n).toLocaleString();
@@ -40,7 +41,7 @@ async function load() {
   const res = await fetch("/api/compare", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-snapcal-token": getStoredToken() },
-    body: JSON.stringify({ from }),
+    body: JSON.stringify({ from, ...(groupId ? { group: groupId } : {}) }),
   });
   if (res.status === 401) return { unauthorized: true };
   if (!res.ok) return { error: `The server answered ${res.status}. Pull down to refresh or try again in a minute.` };
@@ -350,6 +351,16 @@ function squareThumb(file, size) {
   });
 }
 
+function groupBarHtml() {
+  const groups = data.groups ?? [];
+  if (groups.length < 2) return "";
+  const current = data.group?.id ?? groups[0].id;
+  return `
+    <div class="us-groups" role="group" aria-label="${t("groups.switch")}">
+      ${groups.map((g) => `<button type="button" data-group="${escHtml(g.id)}" aria-pressed="${g.id === current}">${escHtml(g.name)}</button>`).join("")}
+    </div>`;
+}
+
 function render() {
   const people = data.people || [];
   if (people.length === 0) {
@@ -362,14 +373,20 @@ function render() {
   // Two people still get the mirror chart — it reads beautifully head to head. Three or more
   // get sparklines, which stay legible however many rows there are.
   const chart = people.length > 2 ? trendHtml(people, days) : mirrorHtml(people, days);
-  body.innerHTML = todayHtml(people) + chart + summaryHtml(people, days) +
-    (people.length === 1 ? `<p class="tg-note">Only one person is set up. Add a second name and passcode to APP_USERS in Vercel to compare.</p>` : "");
+  body.innerHTML = groupBarHtml() + todayHtml(people) + chart + summaryHtml(people, days) +
+    (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: data.group?.name ?? "" })}</p>` : "");
+  body.querySelectorAll("[data-group]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.group === (data.group?.id ?? null)) return;
+    groupId = b.dataset.group;
+    data = null;
+    start();
+  }));
   wireAvatar();
   body.querySelectorAll("[data-note-to]").forEach((b) => b.addEventListener("click", () => openNoteSheet(b.dataset.noteTo)));
   const feed = document.createElement("section");
   feed.className = "tg-section us-feed";
   body.appendChild(feed);
-  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid) });
+  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid), group: data.group?.id ?? null });
 }
 
 async function start(afterPin = false) {

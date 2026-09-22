@@ -399,5 +399,11 @@
       "revoked": "This invite link was cancelled.",
       "unknown": "This invite link isn't valid."
     }
+  },
+  "groups": {
+    "switch": "Group",
+    "inviteTo": "Invite to which group?",
+    "cancel": "Cancel",
+    "onlyYou": "Only you are in {name} so far — invite someone from Profile."
   }
 }

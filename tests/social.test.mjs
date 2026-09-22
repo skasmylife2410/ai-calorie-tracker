@@ -16,12 +16,22 @@ const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": crea
 
 // in-memory Supabase: users, notes, shares, with the filters these endpoints actually use
 let DB;
-const reset = () => { DB = { snapcal_users: [{ username: "aelson" }, { username: "baby" }, { username: "thayra23" }], snapcal_notes: [], snapcal_shares: [] }; };
+const reset = () => { DB = {
+  snapcal_users: [{ username: "aelson" }, { username: "baby" }, { username: "thayra23" }, { username: "jasmine" }],
+  snapcal_notes: [], snapcal_shares: [],
+  snapcal_groups: [{ id: "family", name: "Family" }, { id: "work", name: "Work" }],
+  snapcal_group_members: [
+    { group_id: "family", username: "aelson", joined_at: "1" }, { group_id: "family", username: "baby", joined_at: "2" },
+    { group_id: "family", username: "thayra23", joined_at: "3" },
+    { group_id: "work", username: "aelson", joined_at: "4" }, { group_id: "work", username: "jasmine", joined_at: "5" },
+  ],
+}; };
 const matches = (row, params) => [...params.entries()].every(([k, v]) => {
   if (["select", "order", "limit"].includes(k)) return true;
   const [op, ...rest] = v.split("."); const val = rest.join(".");
   if (op === "eq") return String(row[k]) === val;
   if (op === "gte") return String(row[k] ?? "") >= val;
+  if (op === "in") return val.replace(/[()]/g, "").split(",").includes(String(row[k]));
   return true;
 });
 globalThis.fetch = async (url, opts = {}) => {
@@ -69,16 +79,62 @@ test("only the recipient can mark a note seen", async () => {
   assert.ok(DB.snapcal_notes[0].seen_at);
 });
 
-test("people lists everyone except you", async () => {
+test("people lists your groups' members only", async () => {
   reset();
-  const res = mockRes(); await notes(as("baby", { op: "people" }), res);
-  assert.deepEqual(res.body.people, ["aelson", "thayra23"]);
+  let res = mockRes(); await notes(as("baby", { op: "people" }), res);
+  assert.deepEqual(res.body.people, ["aelson", "thayra23"], "Family only — jasmine is in Work");
+
+  res = mockRes(); await notes(as("aelson", { op: "people" }), res);
+  assert.deepEqual(res.body.people.sort(), ["baby", "jasmine", "thayra23"], "aelson is in both groups");
+});
+
+test("a note can't cross groups, and a stranger's name gives nothing away", async () => {
+  reset();
+  let res = mockRes();
+  await notes(as("jasmine", { op: "send", to: "baby", body: "hola" }), res);
+  assert.equal(res.body.errorType, "noSuchUser", "Work can't write to Family");
+  assert.equal(DB.snapcal_notes.length, 0);
+
+  // the refusal reads the same as for a name that doesn't exist at all
+  const invented = mockRes();
+  await notes(as("jasmine", { op: "send", to: "nobody-at-all", body: "hola" }), invented);
+  assert.deepEqual(res.body, invented.body, "no way to discover who's in another group");
+
+  // within a group it works
+  const okRes = mockRes();
+  await notes(as("aelson", { op: "send", to: "jasmine", body: "nice work today" }), okRes);
+  assert.equal(okRes.body.ok, true);
+});
+
+test("shares stay inside the group they were posted in", async () => {
+  reset();
+  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa" }, group: "family" }), mockRes());
+  await shares(as("jasmine", { op: "share", kind: "meal", item: { name: "Work salad" }, group: "work" }), mockRes());
+
+  let res = mockRes(); await shares(as("thayra23", { op: "list" }), res);
+  assert.deepEqual(res.body.shares.map((s) => s.data.name), ["Arepa"], "Family sees only Family");
+
+  res = mockRes(); await shares(as("jasmine", { op: "list" }), res);
+  assert.deepEqual(res.body.shares.map((s) => s.data.name), ["Work salad"]);
+
+  // aelson is in both and sees one group at a time
+  res = mockRes(); await shares(as("aelson", { op: "list", group: "work" }), res);
+  assert.deepEqual(res.body.shares.map((s) => s.data.name), ["Work salad"]);
+  res = mockRes(); await shares(as("aelson", { op: "list", group: "family" }), res);
+  assert.deepEqual(res.body.shares.map((s) => s.data.name), ["Arepa"]);
+
+  // asking for a group you're not in is refused
+  res = mockRes(); await shares(as("jasmine", { op: "list", group: "family" }), res);
+  assert.equal(res.body.errorType, "notMember");
+  res = mockRes(); await shares(as("jasmine", { op: "share", kind: "meal", item: { name: "sneak" }, group: "family" }), res);
+  assert.equal(res.body.errorType, "notMember");
+  assert.equal(DB.snapcal_shares.filter((x) => x.group_id === "family").length, 1, "nothing was posted into Family");
 });
 
 test("shares are visible to everyone and deletable only by their owner", async () => {
   reset();
   let res = mockRes();
-  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa con huevo", calories: 420, proteinG: 22 } }), res);
+  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa con huevo", calories: 420, proteinG: 22 }, group: "family" }), res);
   assert.equal(res.body.ok, true);
   const id = res.body.id;
 

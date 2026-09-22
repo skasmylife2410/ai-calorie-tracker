@@ -65,10 +65,10 @@ function toast(text) {
  * Renders the Shared feed into `host`.
  * @param {{me:string, people:Array<{owner:string, avatar?:string}>, colors:string[]}} ctx
  */
-export async function renderFeed(host, { me, people, colors }) {
+export async function renderFeed(host, { me, people, colors, group = null }) {
   host.innerHTML = `<h2 class="tg-h2">${t("social.shared")}</h2><div class="feed-list"><p class="tg-note">…</p></div>`;
   const list = host.querySelector(".feed-list");
-  const out = await listShares();
+  const out = await listShares(group);
   if (!out.ok) { list.innerHTML = `<p class="tg-note">${esc(out.message || t("errors.generic"))}</p>`; return; }
   if (out.shares.length === 0) { list.innerHTML = `<p class="tg-note">${t("social.shareEmpty")}</p>`; return; }
 
