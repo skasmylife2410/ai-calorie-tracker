@@ -1759,3 +1759,38 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .plate-num { font-size: 13px; font-weight: 800; fill: #fff; paint-order: stroke; stroke: rgba(0,0,0,.28); stroke-width: 2.5px; }
 .plate-hands i { width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: #fff; text-shadow: 0 0 2px rgba(0,0,0,.4); }
 .plate-sub b { color: var(--sc-accent-calories); }
+
+/* ===========================================================================
+   + menu as a minimal arc of icon buttons (replaces the labelled tile grid).
+   Names appear only while a finger is on one; each option keeps its own colour.
+   =========================================================================== */
+.fab-popup-grid { display: none !important; }
+.fab-arc { position: fixed; left: 50%; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); width: 0; height: 0; z-index: 30; pointer-events: none; }
+.fab-arc.hidden { display: none; }
+.fab-dot {
+  --r: 122px;
+  position: absolute; left: 0; top: 0; width: 52px; height: 52px; margin: -26px 0 0 -26px;
+  border: 0; border-radius: 50%; display: grid; place-items: center; pointer-events: auto;
+  background: #fff; color: var(--c); box-shadow: 0 6px 18px -6px rgba(0,0,0,.35), 0 0 0 1px rgba(0,0,0,.04);
+  transform: rotate(var(--a)) translate(0) rotate(calc(-1 * var(--a))) scale(.3);
+  opacity: 0;
+  transition: transform .34s cubic-bezier(.2,.9,.3,1.25), opacity .2s ease, background-color .15s ease;
+  transition-delay: calc(var(--i) * 18ms);
+}
+.fab-dot.is-primary { width: 62px; height: 62px; margin: -31px 0 0 -31px; background: var(--c); color: #fff; }
+.fab-arc.visible .fab-dot { opacity: 1; transform: rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a))) scale(1); }
+.fab-dot:active { transform: rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a))) scale(.9); }
+.fab-dot:not(.is-primary):active { background: color-mix(in srgb, var(--c) 14%, #fff); }
+.fab-arc-caption {
+  position: absolute; left: 0; top: -178px; transform: translateX(-50%); white-space: nowrap;
+  font-size: 13px; font-weight: 700; letter-spacing: .01em; min-height: 18px;
+  opacity: 0; transition: opacity .2s ease;
+}
+.fab-arc.visible .fab-arc-caption:not(:empty) { opacity: 1; }
+@media (max-width: 360px) { .fab-dot { --r: 108px; width: 46px; height: 46px; margin: -23px 0 0 -23px; } }
+@media (prefers-reduced-motion: reduce) { .fab-dot { transition: opacity .15s ease; } }
+/* the arc sits ABOVE the dimmed backdrop — before this the backdrop swallowed every tap */
+.fab-arc { z-index: 60; }
+.fab-dot { --r: 165px; }
+@media (max-width: 360px) { .fab-dot { --r: 146px; } }
+.fab-arc-caption { top: -226px; padding: 6px 12px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px -4px rgba(0,0,0,.3); font-size: 14px; }

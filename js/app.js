@@ -37,14 +37,15 @@ const TABS = [
 // Profile has no tab of its own any more; it opens from the avatar at the top of Home.
 
 // Popup tile grid — exact 2x2 order (§2.2): row 1 = look something up, row 2 = capture new.
+// Left-to-right around the arc above the + button. The camera sits top centre, the most-used way in.
 const POPUP_TILES = [
-  { id: "saved", icon: "bookmarkFill", labelKey: "menu.favourites" },
-  { id: "search", icon: "magnifyingglass", labelKey: "menu.database" },
-  { id: "scan", icon: "cameraViewfinder", labelKey: "menu.scan" },
-  { id: "describe", icon: "textBubbleFill", labelKey: "menu.describe" },
-  { id: "voice", icon: "mic", labelKey: "voice.tile" },
-  { id: "exercise", icon: "boltFill", labelKey: "menu.exercise" },
-  { id: "recipes", icon: "wandAndStars", labelKey: "menu.ideas" },
+  { id: "saved", icon: "bookmarkFill", labelKey: "menu.favourites", color: "#D8487A" },
+  { id: "search", icon: "magnifyingglass", labelKey: "menu.database", color: "#2F6BE8" },
+  { id: "describe", icon: "textBubbleFill", labelKey: "menu.describe", color: "#7B5AD9" },
+  { id: "scan", icon: "cameraViewfinder", labelKey: "menu.scan", color: "#F0562D", primary: true },
+  { id: "voice", icon: "mic", labelKey: "voice.tile", color: "#3BA7DB" },
+  { id: "exercise", icon: "boltFill", labelKey: "menu.exercise", color: "#2AA66B" },
+  { id: "recipes", icon: "wandAndStars", labelKey: "menu.ideas", color: "#E2A03F" },
 ];
 
 let selectedTab = "home";
@@ -115,14 +116,18 @@ function renderShell() {
   appRoot.innerHTML = `
     <div class="scroll-view" id="tab-content"></div>
     <div class="fab-scrim hidden" id="fab-scrim"></div>
-    <div class="fab-popup-grid hidden" id="fab-popup">
-      ${POPUP_TILES.map(
-        (t) => `
-        <button class="fab-tile" data-tile="${t.id}">
-          ${icon(t.icon, { size: 26 })}
-          <span class="fab-tile-label">${translate(t.labelKey)}</span>
-        </button>`
-      ).join("")}
+    <div class="fab-arc hidden" id="fab-popup">
+      <div class="fab-arc-caption" id="fab-caption"></div>
+      ${POPUP_TILES.map((t, i) => {
+        // spread across the top of a wide arc, 205° to 335° (270° is straight up): wide enough
+        // that seven buttons sit ~10px apart, high enough that the ends clear the + button
+        const angle = 205 + (130 / (POPUP_TILES.length - 1)) * i;
+        return `
+        <button class="fab-dot${t.primary ? " is-primary" : ""}" data-tile="${t.id}" data-label="${translate(t.labelKey)}"
+                aria-label="${translate(t.labelKey)}" style="--a:${angle}deg;--c:${t.color};--i:${i}">
+          ${icon(t.icon, { size: t.primary ? 26 : 22 })}
+        </button>`;
+      }).join("")}
     </div>
     <div class="bottom-bar-wrap">
       <div class="bottom-bar">
@@ -167,6 +172,13 @@ function wireShell() {
   fabBtn.addEventListener("click", () => setPopupOpen(!popupOpen));
 
   appRoot.querySelector("#fab-scrim").addEventListener("click", () => setPopupOpen(false));
+  const caption = appRoot.querySelector("#fab-caption");
+  appRoot.querySelectorAll(".fab-dot").forEach((dot) => {
+    const show = () => { if (caption) { caption.textContent = dot.dataset.label; caption.style.color = getComputedStyle(dot).getPropertyValue("--c"); } };
+    dot.addEventListener("pointerenter", show);
+    dot.addEventListener("pointerdown", show);
+    dot.addEventListener("focus", show);
+  });
 
   // Swipe between tabs. Profile isn't in the bar, so it isn't part of the swipe order.
   const content = appRoot.querySelector("#tab-content");
@@ -203,6 +215,11 @@ function setPopupOpen(open) {
 
   fabBtn.classList.toggle("open", open);
   if (open) {
+    // centre the arc on the + button's real position, whatever the phone's size or insets
+    const r = fabBtn.getBoundingClientRect();
+    popup.style.left = `${r.left + r.width / 2}px`;
+    popup.style.top = `${r.top + r.height / 2}px`;
+    popup.style.bottom = "auto";
     scrim.classList.remove("hidden");
     popup.classList.remove("hidden");
     requestAnimationFrame(() => {
