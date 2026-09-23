@@ -509,5 +509,34 @@
       "saver": "512 px · recommended",
       "standard": "768 px · most detail"
     }
+  },
+  "context": {
+    "title": "Add details",
+    "prompt": "Anything the photo can't show — how it was cooked, the real portion, what's underneath.",
+    "placeholder": "e.g. fried in two spoons of oil, the chicken was about 200 g",
+    "submit": "Re-analyse",
+    "working": "Re-analysing…",
+    "chips": {
+      "oil": "Fried in oil",
+      "nooil": "No oil or butter",
+      "butter": "Cooked in butter",
+      "restaurant": "Restaurant portion",
+      "half": "I ate half",
+      "double": "Double portion",
+      "grams": "Weighed it",
+      "homemade": "Home-cooked, light on oil"
+    },
+    "chipText": {
+      "oil": "fried in about two tablespoons of oil",
+      "nooil": "cooked without any oil or butter",
+      "butter": "cooked in butter",
+      "restaurant": "a restaurant portion, generous and cooked with plenty of oil",
+      "half": "I only ate half of what's in the photo",
+      "double": "this is a double portion",
+      "grams": "the weights below are measured on a scale, keep them",
+      "homemade": "home-cooked with very little oil"
+    },
+    "before": "Add details (optional)",
+    "beforeHint": "Helps a lot when the photo can't show the portion or the oil."
   }
 }

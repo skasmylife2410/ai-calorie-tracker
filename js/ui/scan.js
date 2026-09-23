@@ -6,7 +6,10 @@
 // vendored zbar-wasm polyfill (no runtime CDN dependency).
 
 import { resizeImage, scanPreset } from "../resize.js";
+import { t } from "../i18n.js";
 import * as store from "../store.js";
+
+const escapeAttr = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 import { icon } from "./icons.js";
 import { openFullScreenCover } from "./sheet.js";
 
@@ -47,6 +50,8 @@ function getDetectorClass() {
  * Opens the camera scan full-screen cover.
  * @param {{onResult:(result:{type:"foodPhoto"|"labelPhoto", dataUrl:string}|{type:"barcode", code:string})=>void}} opts
  */
+let noteText = ""; // survives the camera panel re-rendering (torch toggle, permission changes)
+
 export function openCameraScan({ onResult }) {
   let mode = "food";
   let cameraState = "checking"; // checking | ready | denied | noCamera
@@ -95,6 +100,10 @@ export function openCameraScan({ onResult }) {
                   </button>`
                 ).join("")}
               </div>
+              ${mode === "meal" ? `
+                <div class="scan-note-row">
+                  <input type="text" id="scan-note" class="scan-note" placeholder="${t("context.before")}" value="${escapeAttr(noteText)}" />
+                </div>` : ""}
               <div class="shutter-row">
                 <button class="shutter-side-btn" id="scan-flash" ${torchSupported ? "" : "disabled"}>
                   ${icon(torchOn ? "boltFill" : "boltSlashFill", { size: 18 })}
@@ -186,8 +195,10 @@ export function openCameraScan({ onResult }) {
           const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
           if (!blob) return;
           const { dataUrl } = await resizeImage(blob, scanPreset(store.getProfile().scanQuality));
-          deliver({ type: mode === "label" ? "labelPhoto" : "foodPhoto", dataUrl });
+          deliver({ type: mode === "label" ? "labelPhoto" : "foodPhoto", dataUrl, note: noteText.trim() || null });
         });
+
+        panel.querySelector("#scan-note")?.addEventListener("input", (e) => { noteText = e.target.value; });
 
         const fileInput = panel.querySelector("#scan-file-input");
         panel.querySelector("#scan-library").addEventListener("click", () => fileInput.click());
@@ -211,7 +222,7 @@ export function openCameraScan({ onResult }) {
             return;
           }
           const { dataUrl } = await resizeImage(file, scanPreset(store.getProfile().scanQuality));
-          deliver({ type: mode === "label" ? "labelPhoto" : "foodPhoto", dataUrl });
+          deliver({ type: mode === "label" ? "labelPhoto" : "foodPhoto", dataUrl, note: noteText.trim() || null });
         });
 
         const manualInput = panel.querySelector("#manual-barcode-input");

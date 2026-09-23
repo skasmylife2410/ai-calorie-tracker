@@ -292,11 +292,12 @@ function renderCurrentTab() {
 
 function handleCameraResult(result) {
   if (result.type === "foodPhoto") {
-    queue.enqueuePhoto(result.dataUrl, "meal");
+    // anything typed on the camera screen goes to the model with the picture
+    queue.enqueuePhoto(result.dataUrl, "meal", { description: result.note ?? null });
     selectedTab = "home";
     renderShell();
   } else if (result.type === "labelPhoto") {
-    queue.enqueuePhoto(result.dataUrl, "label");
+    queue.enqueuePhoto(result.dataUrl, "label", { description: result.note ?? null });
     selectedTab = "home";
     renderShell();
   } else if (result.type === "barcode") {

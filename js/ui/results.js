@@ -61,7 +61,7 @@ export function openResultsSheet(entry) {
         </div>
         <div class="results-totals-bar" id="results-totals"></div>
         <div class="results-actions">
-          <button class="btn-bordered" id="fix-results-btn">${icon("wandAndStars", { size: 18 })}<span>${t("meal.fixResults")}</span></button>
+          <button class="btn-bordered" id="fix-results-btn">${icon("wandAndStars", { size: 18 })}<span>${t("context.title")}</span></button>
           <button class="btn-prominent" id="save-changes-btn">${t("meal.saveChanges")}</button>
         </div>
       `;
@@ -411,16 +411,20 @@ function openFixResultsSheet(entry, onSuccess) {
       const renderBody = (errorMessage = null) => {
         panel.innerHTML = `
           ${navBar({
-            title: "Fix Results",
-            leading: { label: "Cancel", disabled: submitting },
-            trailing: { label: "Submit", bold: true, disabled: true },
+            title: t("context.title"),
+            leading: { label: t("app.cancel"), disabled: submitting },
+            trailing: { label: t("context.submit"), bold: true, disabled: true },
           })}
           <div class="sheet-panel-body">
             <div class="fix-results-body">
-              <div class="fix-results-prompt">Tell the AI what it got wrong — e.g. "that's lamb not beef, and no rice"</div>
-              <textarea class="describe-textarea" id="fix-input" rows="4" placeholder="What should change?" ${submitting ? "disabled" : ""}></textarea>
+              <div class="fix-results-prompt">${t("context.prompt")}</div>
+              <div class="ctx-chips">
+                ${["oil", "nooil", "butter", "restaurant", "half", "double", "grams", "homemade"]
+                  .map((k) => `<button type="button" class="ctx-chip" data-ctx="${k}">${t(`context.chips.${k}`)}</button>`).join("")}
+              </div>
+              <textarea class="describe-textarea" id="fix-input" rows="4" placeholder="${t("context.placeholder")}" ${submitting ? "disabled" : ""}></textarea>
               ${errorMessage ? `<div class="fix-results-error">${escapeHtml(errorMessage)}</div>` : ""}
-              <div class="fix-results-progress ${submitting ? "" : "hidden"}" id="fix-progress"><div class="spinner"></div><span>Re-analyzing…</span></div>
+              <div class="fix-results-progress ${submitting ? "" : "hidden"}" id="fix-progress"><div class="spinner"></div><span>${t("context.working")}</span></div>
             </div>
           </div>
         `;
@@ -431,6 +435,16 @@ function openFixResultsSheet(entry, onSuccess) {
         textarea.addEventListener("input", () => {
           submitBtn.disabled = textarea.value.trim() === "" || submitting;
         });
+
+        // Tapping a chip writes the sentence for them; they can still edit or add to it.
+        panel.querySelectorAll("[data-ctx]").forEach((chip) => chip.addEventListener("click", () => {
+          const phrase = t(`context.chipText.${chip.dataset.ctx}`);
+          const current = textarea.value.trim();
+          if (current.toLowerCase().includes(phrase.toLowerCase())) return;
+          textarea.value = current ? `${current}, ${phrase}` : phrase;
+          chip.classList.add("is-on");
+          textarea.dispatchEvent(new Event("input"));
+        }));
 
         wireNavBar(panel, {
           onLeading: () => {

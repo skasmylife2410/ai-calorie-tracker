@@ -207,3 +207,23 @@ test("transcribe sends the audio inline with its real type and returns the text"
   assert.equal(media.inline_data.data, "QUJD");
   assert.deepEqual(res.body.items, [{ text: "dos huevos y una arepa con queso" }]);
 });
+
+// --- extra context travels with the photo ----------------------------------------------
+
+test("a note typed with the photo is sent to the model, and re-analysing keeps it", async () => {
+  process.env.GEMINI_API_KEY = "primary";
+  const prompts = [];
+  globalThis.fetch = async (url, opts) => {
+    const body = JSON.parse(opts.body);
+    prompts.push(body.contents[0].parts.map((p) => p.text ?? "[image]").join(" "));
+    return { ok: true, status: 200, json: async () => ({
+      candidates: [{ content: { parts: [{ text: '{"items":[{"name":"Arepa","gramsEstimate":120,"calories":300,"proteinG":8,"carbsG":38,"fatG":13}]}' }] } }],
+    }) };
+  };
+  const res = mockRes();
+  await gemini(req({ mode: "meal", image: "QUJD", text: "fried in about two tablespoons of oil, I only ate half" }), res);
+  assert.equal(res.body.items.length, 1);
+  assert.match(prompts[0], /two tablespoons of oil/, "the note reaches the model");
+  assert.match(prompts[0], /only ate half/);
+  assert.match(prompts[0], /\[image\]/, "and the photo is still attached");
+});

@@ -509,5 +509,34 @@
       "saver": "512 px · recomendada",
       "standard": "768 px · más detalle"
     }
+  },
+  "context": {
+    "title": "Agregar detalles",
+    "prompt": "Lo que la foto no puede mostrar: cómo se cocinó, la porción real, lo que hay debajo.",
+    "placeholder": "ej. frito en dos cucharadas de aceite, el pollo era de unos 200 g",
+    "submit": "Analizar de nuevo",
+    "working": "Analizando de nuevo…",
+    "chips": {
+      "oil": "Frito en aceite",
+      "nooil": "Sin aceite ni mantequilla",
+      "butter": "Cocinado en mantequilla",
+      "restaurant": "Porción de restaurante",
+      "half": "Comí la mitad",
+      "double": "Porción doble",
+      "grams": "Lo pesé",
+      "homemade": "Casero, con poco aceite"
+    },
+    "chipText": {
+      "oil": "frito en unas dos cucharadas de aceite",
+      "nooil": "cocinado sin aceite ni mantequilla",
+      "butter": "cocinado en mantequilla",
+      "restaurant": "porción de restaurante, generosa y con bastante aceite",
+      "half": "solo me comí la mitad de lo que se ve en la foto",
+      "double": "esta es una porción doble",
+      "grams": "los pesos de abajo están medidos en pesa, mantenlos",
+      "homemade": "casero y con muy poco aceite"
+    },
+    "before": "Agregar detalles (opcional)",
+    "beforeHint": "Ayuda mucho cuando la foto no muestra la porción ni el aceite."
   }
 }

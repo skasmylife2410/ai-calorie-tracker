@@ -2002,3 +2002,13 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .entry-row-bin { margin-left: 0 !important; }
 .scanq-choice { width: calc(100% - 28px); margin: 6px 14px; }
 .scanq-choice:first-of-type { margin-top: 12px; }
+/* --- Optional note on the camera screen, and context chips when re-analysing --- */
+.scan-note-row { padding: 0 18px 10px; }
+.scan-note { width: 100%; font: inherit; font-size: 14px; padding: 11px 14px; border: 0; border-radius: 14px;
+  background: rgba(255,255,255,.18); color: #fff; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.scan-note::placeholder { color: rgba(255,255,255,.7); }
+.scan-note:focus { outline: 2px solid rgba(255,255,255,.5); }
+.ctx-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.ctx-chip { font: inherit; font-size: 12px; font-weight: 600; padding: 8px 11px; border: 0; border-radius: 12px;
+  background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.ctx-chip.is-on { background: var(--sc-accent-calories); color: #fff; }
