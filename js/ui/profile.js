@@ -55,6 +55,7 @@ export function render(container) {
       ${membersSectionHtml()}
       ${inviteSectionHtml()}
       ${accuracySectionHtml(profile)}
+      ${scanQualityHtml(profile)}
       ${doodlePickHtml()}
       ${languageSectionHtml()}
       ${syncSectionHtml()}
@@ -73,6 +74,9 @@ export function render(container) {
   wireMembers(container, currentUsername);
   wireRedo(container);
   wireSuggest(container);
+  container.querySelectorAll("[data-scanq]").forEach((b) =>
+    b.addEventListener("click", () => { store.setProfile({ scanQuality: b.dataset.scanq }); render(container); })
+  );
   container.querySelectorAll("[data-excredit]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: Number(b.dataset.excredit) }); render(container); })
   );
@@ -336,6 +340,23 @@ function askGroup(host, groups) {
     host.querySelector(".ios-section-body")?.appendChild(box);
     box.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => { box.remove(); resolve(b.dataset.pick || null); }));
   });
+}
+
+/** Photo quality: what each scan costs to analyse and store. */
+function scanQualityHtml(profile) {
+  const current = ["tiny", "saver", "standard"].includes(profile.scanQuality) ? profile.scanQuality : "saver";
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("scanq.title")}</div>
+      <div class="ios-section-body">
+        ${["tiny", "saver", "standard"].map((k) => `
+          <button type="button" class="onb-choice scanq-choice${k === current ? " is-on" : ""}" data-scanq="${k}">
+            <span class="onb-choice-label">${t(`scanq.${k}`)}</span>
+            <span class="onb-choice-sub">${t(`scanq.sub.${k}`)}</span>
+          </button>`).join("")}
+      </div>
+      <div class="ios-section-footer">${t("scanq.hint")}</div>
+    </div>`;
 }
 
 /** Accuracy settings: whether exercise is eaten back, and whether to use learned maintenance. */

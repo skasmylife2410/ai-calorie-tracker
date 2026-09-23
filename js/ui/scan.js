@@ -5,7 +5,8 @@
 // barcode entry fallback. Barcode decoding: native BarcodeDetector when available, else the
 // vendored zbar-wasm polyfill (no runtime CDN dependency).
 
-import { resizeImage } from "../resize.js";
+import { resizeImage, scanPreset } from "../resize.js";
+import * as store from "../store.js";
 import { icon } from "./icons.js";
 import { openFullScreenCover } from "./sheet.js";
 
@@ -184,7 +185,7 @@ export function openCameraScan({ onResult }) {
           canvas.getContext("2d").drawImage(video, 0, 0);
           const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
           if (!blob) return;
-          const { dataUrl } = await resizeImage(blob);
+          const { dataUrl } = await resizeImage(blob, scanPreset(store.getProfile().scanQuality));
           deliver({ type: mode === "label" ? "labelPhoto" : "foodPhoto", dataUrl });
         });
 
@@ -209,7 +210,7 @@ export function openCameraScan({ onResult }) {
             }
             return;
           }
-          const { dataUrl } = await resizeImage(file);
+          const { dataUrl } = await resizeImage(file, scanPreset(store.getProfile().scanQuality));
           deliver({ type: mode === "label" ? "labelPhoto" : "foodPhoto", dataUrl });
         });
 

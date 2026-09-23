@@ -497,5 +497,17 @@
     "afternoon": "Afternoon",
     "evening": "Evening",
     "legend": "Morning · Afternoon · Evening"
+  },
+  "scanq": {
+    "title": "Photo quality",
+    "tiny": "Smallest",
+    "saver": "Saver",
+    "standard": "Detailed",
+    "hint": "Smaller photos cost less to analyse and store. Saver is enough for most meals; choose Detailed for busy plates with several dishes.",
+    "sub": {
+      "tiny": "384 px · cheapest, weaker on mixed plates",
+      "saver": "512 px · recommended",
+      "standard": "768 px · most detail"
+    }
   }
 }

@@ -609,3 +609,25 @@ test("the weekend heads-up uses their own weekday/weekend gap", () => {
   assert.ok(gap.weekends >= 12);
   assert.equal(store.weekendGap({ now: now.getTime(), weeks: 0 }), null, "not enough data -> nothing claimed");
 });
+
+test("scan photos are shrunk by preset, and the saver default is what's used", async () => {
+  const { computeTargetSize, SCAN_PRESETS, scanPreset, DEFAULT_SCAN_PRESET } = await import("../js/resize.js");
+  assert.equal(DEFAULT_SCAN_PRESET, "saver");
+  assert.equal(scanPreset(undefined).maxEdge, 512, "no setting -> saver");
+  assert.equal(scanPreset("nonsense").maxEdge, 512, "junk -> saver");
+  assert.equal(scanPreset("standard").maxEdge, 768);
+
+  // a 12 MP phone photo comes down to the preset's longest edge, keeping its shape
+  const big = computeTargetSize(4032, 3024, SCAN_PRESETS.saver.maxEdge);
+  assert.equal(Math.round(big.width), 512);
+  assert.equal(Math.round(big.height), 384);
+  assert.ok(Math.abs(big.width / big.height - 4032 / 3024) < 0.001, "aspect ratio kept");
+
+  // saver sends about half the pixels of the old default — the part that actually costs money
+  const old = computeTargetSize(4032, 3024, SCAN_PRESETS.standard.maxEdge);
+  assert.ok((big.width * big.height) / (old.width * old.height) < 0.5);
+
+  // small photos are never blown up
+  assert.deepEqual(computeTargetSize(300, 200, 512), { width: 300, height: 200 });
+  for (const p of Object.values(SCAN_PRESETS)) assert.ok(p.quality > 0 && p.quality <= 1);
+});

@@ -2000,3 +2000,5 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
   background: rgba(0,122,255,.10); color: var(--sc-blue); }
 .entry-row-share:disabled { opacity: .7; }
 .entry-row-bin { margin-left: 0 !important; }
+.scanq-choice { width: calc(100% - 28px); margin: 6px 14px; }
+.scanq-choice:first-of-type { margin-top: 12px; }

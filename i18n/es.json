@@ -497,5 +497,17 @@
     "afternoon": "Tarde",
     "evening": "Noche",
     "legend": "Mañana · Tarde · Noche"
+  },
+  "scanq": {
+    "title": "Calidad de las fotos",
+    "tiny": "Mínima",
+    "saver": "Ahorro",
+    "standard": "Detallada",
+    "hint": "Las fotos más pequeñas cuestan menos de analizar y guardar. Ahorro basta para casi todas las comidas; usa Detallada para platos con varios alimentos.",
+    "sub": {
+      "tiny": "384 px · lo más barato, peor en platos mixtos",
+      "saver": "512 px · recomendada",
+      "standard": "768 px · más detalle"
+    }
   }
 }

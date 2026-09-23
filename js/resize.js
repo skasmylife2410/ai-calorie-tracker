@@ -10,6 +10,29 @@ export const MAX_EDGE = 768;
 export const JPEG_QUALITY = 0.8;
 
 /**
+ * Scan quality presets. What Gemini charges for an image depends on its SIZE, not its JPEG
+ * quality: pictures are cut into 768px tiles and billed per tile, and anything up to 384px on
+ * both sides is the cheapest single tile. JPEG quality changes the upload size and what the
+ * photo costs to store, not the token count.
+ *
+ *   saver    512px — one tile, still enough detail for the model to name a plate of food
+ *   standard 768px — the old default: more detail on busy plates, up to twice the tiles
+ *   tiny     384px — cheapest possible; fine for one obvious item, weaker on mixed plates
+ */
+export const SCAN_PRESETS = {
+  tiny:     { maxEdge: 384, quality: 0.55 },
+  saver:    { maxEdge: 512, quality: 0.62 },
+  standard: { maxEdge: 768, quality: 0.8 },
+};
+
+export const DEFAULT_SCAN_PRESET = "saver";
+
+/** The preset for a profile, falling back to the saver default. */
+export function scanPreset(name) {
+  return SCAN_PRESETS[name] ?? SCAN_PRESETS[DEFAULT_SCAN_PRESET];
+}
+
+/**
  * Pure resize-target math, verbatim port of ImageResizer.targetSize. Never upscales.
  * @param {number} width
  * @param {number} height
