@@ -380,3 +380,18 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .us-groups { display: inline-flex; gap: 2px; padding: 3px; border-radius: 13px; background: rgba(16,16,20,.06); margin-bottom: 14px; }
 .us-groups button { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--sc-secondary, #6B6B73); }
 .us-groups button[aria-pressed="true"] { background: #fff; color: var(--tg-ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* --- calories split by when they were eaten --- */
+.us-bar { display: flex; align-items: stretch; }
+.us-bar .us-seg { position: static; height: 100%; border-radius: 0; transition: width .4s ease-out; }
+.us-bar .us-seg:first-child { border-radius: 5px 0 0 5px; }
+.us-bar .us-seg:last-child { border-radius: 0 5px 5px 0; }
+.seg-0 { filter: brightness(1.28) saturate(.85); }   /* morning: lightest */
+.seg-1 { filter: none; }                              /* afternoon: the person's colour */
+.seg-2 { filter: brightness(.72); }                   /* evening: darkest */
+.us-legend { display: flex; gap: 14px; justify-content: center; margin-top: 10px; font-size: 11px; color: var(--sc-secondary, #6B6B73); }
+.us-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--tg-ink); margin-right: 5px; vertical-align: -1px; }
+.tg-gtrack { display: flex; }
+.tg-gtrack .tg-gfill { position: static; height: 100%; border-radius: 0; }
+.tg-gtrack .tg-gfill:first-of-type { border-radius: 4px 0 0 4px; }
+.tg-gtrack .tg-gfill:last-of-type { border-radius: 0 4px 4px 0; }

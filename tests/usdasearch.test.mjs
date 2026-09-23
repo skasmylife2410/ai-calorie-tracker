@@ -56,3 +56,33 @@ test("network failure reports failed status, not a throw", async () => {
   assert.equal(res.status, "failed");
   assert.match(res.message, /boom/);
 });
+
+// --- built-in food list: the fix for "you have to type the whole word" ------------------
+
+test("built-in foods match partial words, accents and both languages", async () => {
+  const { searchLocalFoods, scoreFood, normalize } = await import("../js/foods-local.js");
+  const names = (q, lang = "es") => searchLocalFoods(q, { lang }).map((p) => p.name);
+
+  assert.ok(names("pech")[0].includes("Pechuga"), "half a word is enough");
+  assert.ok(names("arep").some((n) => n.startsWith("Arepa")));
+  assert.ok(names("platan").some((n) => n.includes("Plátano")), "accents optional");
+  assert.ok(names("plátano").some((n) => n.includes("Plátano")), "accents allowed");
+  assert.ok(names("chicken", "en").some((n) => n.includes("Chicken")), "English finds it too");
+  assert.ok(names("pollo").some((n) => n.includes("pollo")), "and Spanish");
+  assert.deepEqual(names("zzzz"), [], "nonsense returns nothing, not everything");
+  assert.deepEqual(searchLocalFoods("", { lang: "en" }), []);
+
+  // every word has to match: "arepa queso" finds the cheese one, not every arepa
+  assert.deepEqual(names("arepa queso"), ["Arepa con queso"]);
+
+  // results carry usable numbers in the shape the screen expects
+  const p = searchLocalFoods("huevo", { lang: "es" })[0];
+  assert.equal(p.servingDescription, "per 100 g");
+  assert.ok(p.calories > 0 && p.proteinG > 0);
+  assert.equal(p.source, "local");
+
+  // shorter, more exact names rank above longer ones
+  assert.equal(names("banano")[0], "Banano");
+  assert.ok(scoreFood({ en: "Banana", es: "Banano", s: "" }, "banana") > scoreFood({ en: "Banana bread", es: "Pan de banano", s: "" }, "banana"));
+  assert.equal(normalize("Plátano"), "platano");
+});

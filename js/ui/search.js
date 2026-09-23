@@ -6,6 +6,8 @@ import { offSearchByName, usdaSearchByName } from "../api.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { openAddFoodSheet } from "./addfood.js";
+import { searchLocalFoods } from "../foods-local.js";
+import { currentLanguage } from "../i18n.js";
 
 const DEBOUNCE_MS = 400;
 
@@ -84,7 +86,11 @@ export function openFoodSearchSheet() {
           return;
         }
         const generation = ++searchGeneration;
-        state = { kind: "loading" };
+        // Built-in foods match partial words ("pech", "arep") and need no network, so they
+        // show immediately while the databases are still being asked. Both remote sources
+        // only match whole words, which is why typing half a word used to return nothing.
+        const local = searchLocalFoods(trimmed, { lang: currentLanguage() === "es" ? "es" : "en" });
+        state = local.length > 0 ? { kind: "results", products: local, loadingMore: true } : { kind: "loading" };
         renderState();
         // USDA covers plain whole foods with clean names ("Bananas, raw"); OFF covers branded
         // packaged products. Both run in parallel; USDA's cleaner matches lead the list, since a
@@ -94,7 +100,15 @@ export function openFoodSearchSheet() {
 
         const usdaProducts = usda.status === "success" ? usda.products : [];
         const offProducts = off.status === "success" ? off.products : [];
-        const products = [...usdaProducts, ...offProducts];
+        // built-in first (they matched what was actually typed), then the databases, no repeats
+        const seen = new Set(local.map((p) => p.name.toLowerCase()));
+        const remote = [...usdaProducts, ...offProducts].filter((p) => {
+          const key = String(p.name ?? "").toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        const products = [...local, ...remote];
 
         if (products.length > 0) {
           state = { kind: "results", products };

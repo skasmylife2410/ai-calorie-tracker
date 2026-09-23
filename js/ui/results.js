@@ -10,10 +10,10 @@ import * as queue from "../queue.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { parseNumeric, formatNumeric } from "./numeric-field.js";
-import { plateSvg, handReference, handLabel, _KINDS_FOR_TESTS as KINDS } from "./portion-plate.js";
+import { plateSvg, handReference, handLabel, densityOf, _KINDS_FOR_TESTS as KINDS } from "./portion-plate.js";
 
 const FIELD_DEFS = [
-  { key: "gramsEstimate", label: "Grams", unit: "g" },
+  { key: "amount", label: "Amount", unit: "" },
   { key: "calories", label: "Kcal", unit: "" },
   { key: "proteinG", label: "Protein", unit: "g" },
   { key: "carbsG", label: "Carbs", unit: "g" },
@@ -164,6 +164,28 @@ export function openResultsSheet(entry) {
         renderPlate();
       };
 
+      /**
+       * Grams for one unit of this item, so amounts in ml or servings still have a weight
+       * underneath (the portion drawing, the totals and the AI all work in grams).
+       */
+      const gramsPerUnit = (item) => {
+        const unit = item.unit ?? "g";
+        if (unit === "g") return 1;
+        if (unit === "ml") return densityOf(item.name);
+        return item.gramsPerServing || item.gramsEstimate || 1; // one serving = what it was
+      };
+
+      /** Fills in unit/amount for items that only ever had grams. */
+      const ensureUnits = () => {
+        for (const item of items) {
+          if (!item.unit) item.unit = "g";
+          if (!Number.isFinite(item.amount)) {
+            item.amount = item.unit === "g" ? (Number(item.gramsEstimate) || 0) : (Number(item.amount) || 1);
+          }
+        }
+      };
+      ensureUnits();
+
       const renderItems = () => {
         if (items.length === 0) {
           itemsEl.innerHTML = `<div class="results-empty-items">No items left — add one back with "Fix results" or cancel.</div>`;
@@ -181,25 +203,57 @@ export function openResultsSheet(entry) {
             item.name = nameInput.value;
           });
 
-          /** Sets this ingredient to `grams`, rescaling its calories and macros proportionally. */
-          const setGrams = (grams) => {
+          /**
+           * Sets this ingredient's amount (in ITS unit) and rescales calories and macros in
+           * proportion. Grams are recomputed from the unit, so 250 ml of milk and 2 servings
+           * of rice both end up weighing something sensible.
+           */
+          const setAmount = (amount) => {
             const base = baselines[idx];
-            const g = Math.max(1, Math.round(grams));
-            if (base.gramsEstimate > 0) {
-              const factor = g / base.gramsEstimate;
+            const baseAmount = Number(base.amount) || Number(base.gramsEstimate) || 0;
+            const next = Math.max(0.1, Math.round(amount * 10) / 10);
+            if (baseAmount > 0) {
+              const factor = next / baseAmount;
               item.calories = base.calories * factor;
               item.proteinG = base.proteinG * factor;
               item.carbsG = base.carbsG * factor;
               item.fatG = base.fatG * factor;
             }
-            item.gramsEstimate = g;
+            item.amount = next;
+            item.gramsEstimate = Math.max(1, Math.round(next * gramsPerUnit(item)));
             renderItems();
           };
+          const setGrams = setAmount; // the quick buttons work in the item's own unit
+          row.querySelectorAll("[data-unit]").forEach((b) =>
+            b.addEventListener("click", () => {
+              const next = b.dataset.unit;
+              if (next === (item.unit ?? "g")) return;
+              const grams = Number(item.gramsEstimate) || 0;
+              if (next === "serving") {
+                // one serving = what's on the plate right now
+                item.gramsPerServing = Math.max(1, grams);
+                item.amount = 1;
+              } else if (next === "ml") {
+                item.amount = Math.round((grams / densityOf(item.name)) * 10) / 10;
+              } else {
+                item.amount = Math.max(1, Math.round(grams));
+              }
+              item.unit = next;
+              // the baseline moves with it, so later scaling is relative to this amount
+              baselines[idx] = { ...item };
+              renderItems();
+            })
+          );
+
           row.querySelectorAll("[data-mult]").forEach((b) =>
-            b.addEventListener("click", () => setGrams((item.gramsEstimate || 0) * Number(b.dataset.mult)))
+            b.addEventListener("click", () => setAmount((item.amount ?? item.gramsEstimate ?? 0) * Number(b.dataset.mult)))
           );
           row.querySelectorAll("[data-step]").forEach((b) =>
-            b.addEventListener("click", () => setGrams((item.gramsEstimate || 0) + Number(b.dataset.step)))
+            b.addEventListener("click", () => {
+              // +10 g steps by 10; in servings that would be absurd, so it steps by a half
+              const step = (item.unit ?? "g") === "serving" ? Math.sign(Number(b.dataset.step)) * 0.5 : Number(b.dataset.step);
+              setAmount((item.amount ?? item.gramsEstimate ?? 0) + step);
+            })
           );
 
           row.querySelector("[data-item-delete]").addEventListener("click", () => {
@@ -213,27 +267,30 @@ export function openResultsSheet(entry) {
             input.addEventListener("input", () => {
               const parsed = parseNumeric(input.value);
               if (parsed === null) return; // §13: leave model + buffer untouched mid-edit
-              if (f.key === "gramsEstimate") {
-                // Grams rescale — skip transient zero/empty; rescale against baseline snapshot.
+              if (f.key === "amount") {
+                // Amount rescale — skip transient zero/empty; rescale against baseline snapshot.
                 if (!(parsed > 0)) return;
                 const base = baselines[idx];
-                if (base.gramsEstimate > 0) {
-                  const factor = parsed / base.gramsEstimate;
-                  item.gramsEstimate = parsed;
+                const baseAmount = Number(base.amount) || Number(base.gramsEstimate) || 0;
+                if (baseAmount > 0) {
+                  const factor = parsed / baseAmount;
+                  item.amount = parsed;
+                  item.gramsEstimate = Math.max(1, Math.round(parsed * gramsPerUnit(item)));
                   item.calories = base.calories * factor;
                   item.proteinG = base.proteinG * factor;
                   item.carbsG = base.carbsG * factor;
                   item.fatG = base.fatG * factor;
                   // Re-display the four dependent fields (they're not focused — safe to rewrite).
                   for (const dep of FIELD_DEFS) {
-                    if (dep.key === "gramsEstimate") continue;
+                    if (dep.key === "amount") continue;
                     const depInput = row.querySelector(`[data-field="${dep.key}"]`);
                     if (depInput && document.activeElement !== depInput) {
                       depInput.value = formatNumeric(item[dep.key]);
                     }
                   }
                 } else {
-                  item.gramsEstimate = parsed;
+                  item.amount = parsed;
+                  item.gramsEstimate = Math.max(1, Math.round(parsed * gramsPerUnit(item)));
                 }
               } else {
                 // Direct macro edit = new ground truth: update value AND its baseline (§12.2).
@@ -330,14 +387,17 @@ function itemRowHtml(item, idx) {
           <div class="meal-field">
             <div class="meal-field-label">${f.label}</div>
             <input type="text" class="meal-field-input" inputmode="decimal" data-field="${f.key}" value="${formatNumeric(item[f.key])}" />
-            <div class="meal-field-unit">${f.unit}</div>
+            <div class="meal-field-unit">${f.key === "amount" ? ((item.unit ?? "g") === "serving" ? "×" : (item.unit ?? "g")) : f.unit}</div>
           </div>`
         ).join("")}
       </div>
+      <div class="meal-item-units" role="group" aria-label="Unit">
+        ${["g", "ml", "serving"].map((u) => `<button type="button" data-unit="${u}" aria-pressed="${(item.unit ?? "g") === u}">${u === "serving" ? t("edit.serving") : u}</button>`).join("")}
+      </div>
       <div class="meal-item-portion" role="group" aria-label="Portion">
-        <button type="button" data-step="-10" aria-label="10 grams less">−10 g</button>
+        <button type="button" data-step="-10" aria-label="less">${(item.unit ?? "g") === "serving" ? "−½" : "−10"}</button>
         ${[0.5, 0.75, 1.25, 1.5, 2].map((m) => `<button type="button" data-mult="${m}">×${m}</button>`).join("")}
-        <button type="button" data-step="10" aria-label="10 grams more">+10 g</button>
+        <button type="button" data-step="10" aria-label="more">${(item.unit ?? "g") === "serving" ? "+½" : "+10"}</button>
       </div>
     </div>
   `;

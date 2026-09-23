@@ -110,7 +110,7 @@ export default async function handler(req, res) {
   try {
     [entries, water, exercise, profiles] = await Promise.all([
       select("snapcal_food_entries", {
-        select: "owner,day,calories,protein_g,carbs_g,fat_g",
+        select: "owner,day,calories,protein_g,carbs_g,fat_g,ts:data->>timestamp",
         owner: ownerFilter,
         deleted: "is.false",
         day: `gte.${from}`,
@@ -135,7 +135,19 @@ export default async function handler(req, res) {
   });
   const byOwner = Object.fromEntries(people.map((p) => [p.owner, p]));
   const dayOf = (person, day) =>
-    (person.days[day] ??= { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, meals: 0, water: 0, burned: 0, sessions: 0 });
+    (person.days[day] ??= {
+      calories: 0, proteinG: 0, carbsG: 0, fatG: 0, meals: 0, water: 0, burned: 0, sessions: 0,
+      // the same calories, split by when they were eaten
+      morning: 0, afternoon: 0, evening: 0,
+    });
+
+/** Which part of the day a meal belongs to: before 11, before 17, or after. */
+function partOfDay(timestamp) {
+  const hour = new Date(Number(timestamp) || 0).getHours();
+  if (hour < 11) return "morning";
+  if (hour < 17) return "afternoon";
+  return "evening";
+}
 
   for (const e of entries) {
     const person = byOwner[e.owner];
@@ -146,6 +158,7 @@ export default async function handler(req, res) {
     d.carbsG += num(e.carbs_g);
     d.fatG += num(e.fat_g);
     d.meals += 1;
+    d[partOfDay(e.ts)] += num(e.calories);
   }
   for (const x of exercise) {
     const person = byOwner[x.owner];
@@ -160,7 +173,7 @@ export default async function handler(req, res) {
   }
   for (const p of people) {
     for (const d of Object.values(p.days)) {
-      for (const k of ["calories", "proteinG", "carbsG", "fatG", "burned"]) d[k] = Math.round(d[k]);
+      for (const k of ["calories", "proteinG", "carbsG", "fatG", "burned", "morning", "afternoon", "evening"]) d[k] = Math.round(d[k]);
     }
   }
 

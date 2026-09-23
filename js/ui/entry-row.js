@@ -106,7 +106,7 @@ function escapeHtml(str) {
  * @param {object} entry
  * @param {{onTap:(entry)=>void, onDelete:(entry)=>void}} handlers
  */
-export function mountEntryRow(container, entry, { onTap, onDelete }) {
+export function mountEntryRow(container, entry, { onTap, onDelete, onShare = null }) {
   const state = entryState(entry);
   const wrap = document.createElement("div");
   wrap.className = "entry-row";
@@ -116,13 +116,25 @@ export function mountEntryRow(container, entry, { onTap, onDelete }) {
     <div class="entry-row-fg${state === "failed" ? " failed" : ""}">
       ${state === "pending" ? pendingRowHtml(entry) : state === "failed" ? failedRowHtml(entry) : completedRowHtml(entry)}
     </div>
-    ${state === "pending" ? "" : `<button type="button" class="entry-row-bin" aria-label="Remove">${icon("trashFill", { size: 17 })}</button>`}
+    ${state === "pending" ? "" : `
+      <div class="entry-row-actions">
+        ${onShare ? `<button type="button" class="entry-row-share" aria-label="Share">↗︎</button>` : ""}
+        <button type="button" class="entry-row-bin" aria-label="Remove">${icon("trashFill", { size: 17 })}</button>
+      </div>`}
   `;
   container.appendChild(wrap);
 
   wrap.addEventListener("click", (e) => {
-    if (e.target.closest(".entry-row-bin")) return;
+    if (e.target.closest(".entry-row-bin") || e.target.closest(".entry-row-share")) return;
     onTap(entry);
+  });
+  wrap.querySelector(".entry-row-share")?.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const done = await onShare(entry);
+    btn.textContent = done ? "✓" : "↗︎";
+    btn.disabled = !done;
   });
   wrap.querySelector(".entry-row-bin")?.addEventListener("click", (e) => {
     e.stopPropagation();

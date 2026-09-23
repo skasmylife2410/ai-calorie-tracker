@@ -114,8 +114,12 @@ function todayHtml(people) {
           <span class="us-eaten">${fmt(d.calories)}</span>
           ${goal ? `<span class="us-goal">/ ${fmt(goal)}</span>` : ""}
         </div>
-        <div class="us-bar" style="background:${c.soft}">
-          <span style="width:${ratio * 100}%;background:${c.solid}"></span>
+        <div class="us-bar" style="background:${c.soft}" title="${t("partOfDay.legend")}">
+          ${["morning", "afternoon", "evening"].map((part, n) => {
+            const kcal = d[part] ?? 0;
+            const w = goal > 0 ? Math.max(0, Math.min(115, (kcal / goal) * 100)) : 0;
+            return w > 0 ? `<span class="us-seg seg-${n}" style="width:${w}%;background:${c.solid}" title="${t(`partOfDay.${part}`)}: ${fmt(kcal)}"></span>` : "";
+          }).join("")}
         </div>
         <div class="us-row-foot">
           <span>${pGoal ? `${fmt(d.proteinG)} / ${fmt(pGoal)} g` : `${fmt(d.proteinG)} g`}</span>
@@ -128,6 +132,11 @@ function todayHtml(people) {
   return `<section class="tg-section">
     <h2 class="tg-h2">${t("us.today")}</h2>
     <div class="us-card">${rows.join("")}</div>
+    <div class="us-legend">
+      <span><i class="seg-key seg-0"></i>${t("partOfDay.morning")}</span>
+      <span><i class="seg-key seg-1"></i>${t("partOfDay.afternoon")}</span>
+      <span><i class="seg-key seg-2"></i>${t("partOfDay.evening")}</span>
+    </div>
   </section>`;
 }
 
@@ -195,7 +204,11 @@ function groupedHtml(people, days) {
       return `
         <div class="tg-gbar">
           <div class="tg-gtrack" style="background:${c.soft}">
-            <div class="tg-gfill" style="width:${w}%;background:${c.solid}"></div>
+            ${["morning", "afternoon", "evening"].map((part, n) => {
+              const kcal = (p.days[key] ?? {})[part] ?? 0;
+              const pw = (kcal / max) * 100;
+              return pw > 0 ? `<div class="tg-gfill seg-${n}" style="width:${pw}%;background:${c.solid}"></div>` : "";
+            }).join("")}
             ${goal ? `<div class="tg-ggoal" style="left:calc(${(goal / max) * 100}% - 1px)"></div>` : ""}
           </div>
           <span class="tg-gnum">${kcal > 0 ? fmt(kcal) : "–"}</span>

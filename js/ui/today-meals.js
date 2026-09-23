@@ -80,6 +80,11 @@ export function render(container) {
   for (const entry of meals) {
     cleanups.push(
       mountEntryRow(list, entry, {
+        onShare: async (e) => {
+          const { shareMeal } = await import("../social.js");
+          const out = await shareMeal(store.getFoodEntry(e.id) ?? e);
+          return out.ok === true;
+        },
         onTap: (e) => {
           const fresh = store.getFoodEntry(e.id);
           // Photo meals open the item-by-item editor (grams per item); everything else opens

@@ -491,5 +491,11 @@
     "all": "Ideas de todos",
     "done": "Listo",
     "hint": "Lo que sea: una función, un error, una comida que la IA siempre calcula mal."
+  },
+  "partOfDay": {
+    "morning": "Mañana",
+    "afternoon": "Tarde",
+    "evening": "Noche",
+    "legend": "Mañana · Tarde · Noche"
   }
 }

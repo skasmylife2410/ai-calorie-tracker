@@ -491,5 +491,11 @@
     "all": "Everyone's ideas",
     "done": "Done",
     "hint": "Anything: a feature, a bug, a food the AI keeps getting wrong."
+  },
+  "partOfDay": {
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening",
+    "legend": "Morning · Afternoon · Evening"
   }
 }

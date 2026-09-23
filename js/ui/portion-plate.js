@@ -38,6 +38,11 @@ const FALLBACK = { density: 0.8, height: 2.5, hand: "fist", color: "#D9D4CC" };
  * main-thing-first: "arepa con queso" is an arepa, "café con leche" is a coffee, "huevos con
  * queso" is eggs. On a tie the longer match wins, so "peanut butter" is a fat, not nuts.
  */
+/** Typical density (g per ml) for a food, so ml can be converted to grams sensibly. */
+export function densityOf(name) {
+  return (KINDS[kindOf(name)] ?? FALLBACK).density;
+}
+
 export function kindOf(name) {
   const n = String(name ?? "").toLowerCase();
   let best = null;
