@@ -1969,8 +1969,26 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .mem-chip { font: inherit; font-size: 12px; font-weight: 700; padding: 7px 11px; border: 0; border-radius: 11px; background: var(--sc-secondary-15); color: var(--sc-secondary); }
 .mem-chip.is-on { background: var(--sc-primary-text); color: #fff; }
 .mem-warn { font-size: 11px; font-weight: 700; color: var(--sc-red); width: 100%; }
-/* Redo setup runs the onboarding over the app */
-.setup-overlay { position: fixed; inset: 0; z-index: 70; background: var(--sky-base, var(--sc-background)); overflow-y: auto; }
+/* Redo setup: a full screen of its own, not a floating layer over the app */
+.setup-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; flex-direction: column;
+  background: var(--sc-background);              /* opaque: nothing shows through */
+  background-image: linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,0) 40%);
+}
+.setup-bar {
+  display: flex; align-items: center; gap: 8px; flex: none;
+  padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  border-bottom: 1px solid var(--sc-secondary-14); background: rgba(255,255,255,.75);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.setup-title { font-size: 16px; font-weight: 800; flex: 1; text-align: center; }
+.setup-cancel { font: inherit; font-size: 15px; font-weight: 600; border: 0; background: none; color: var(--sc-blue); padding: 6px 2px; min-width: 64px; text-align: left; }
+.setup-bar .navbar-spacer { min-width: 64px; }
+.setup-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.setup-body .onb { min-height: 100%; }
+body.setup-open #app-root, body.setup-open #sky { overflow: hidden; }
+body.setup-open { overflow: hidden; }
 /* the Home card takes a colour from what it's showing */
 .doodle-card.tone-weekend { background: linear-gradient(140deg, #FFF 45%, rgba(240,86,45,.14) 100%) !important; }
 .doodle-card.tone-myth { background: linear-gradient(140deg, #FFF 45%, rgba(59,167,219,.12) 100%) !important; }

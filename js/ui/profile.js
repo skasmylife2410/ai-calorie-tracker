@@ -213,10 +213,25 @@ function wireRedo(container) {
   container.querySelector("#redo-setup")?.addEventListener("click", async () => {
     const { render: renderOnboarding } = await import("./onboarding.js");
     const overlay = document.createElement("div");
-    overlay.className = "setup-overlay scroll-view";
+    overlay.className = "setup-overlay";
+    overlay.innerHTML = `
+      <div class="setup-bar">
+        <button type="button" class="setup-cancel" id="setup-cancel">${t("app.cancel")}</button>
+        <div class="setup-title">${t("redo.title")}</div>
+        <span class="navbar-spacer"></span>
+      </div>
+      <div class="setup-body scroll-view" id="setup-body"></div>`;
     document.body.appendChild(overlay);
-    renderOnboarding(overlay, () => {
+    document.body.classList.add("setup-open"); // stop the page behind from scrolling
+
+    const close = () => {
       overlay.remove();
+      document.body.classList.remove("setup-open");
+    };
+    overlay.querySelector("#setup-cancel").addEventListener("click", close);
+
+    renderOnboarding(overlay.querySelector("#setup-body"), () => {
+      close();
       globalThis.snapcalGoTo?.("home"); // straight back to the app with the new numbers
     }, { redo: true });
   });
