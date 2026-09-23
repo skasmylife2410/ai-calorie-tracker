@@ -71,7 +71,7 @@ function showPin(wrong) {
 
 function personHead(p, i) {
   const c = COLORS[i % COLORS.length];
-  return `<span class="tg-dot" style="background:${c.solid}"></span>${escHtml(titleCase(p.owner))}${
+  return `<span class="tg-dot" style="background:${c.solid}"></span>${escHtml(p.name || titleCase(p.owner))}${
     p.owner === data.me ? ` <span class="tg-you">(${t("us.you")})</span>` : ""
   }`;
 }
@@ -84,7 +84,7 @@ function avatarHtml(p, i, size = 40) {
     : `<span>${escHtml(titleCase(p.owner).slice(0, 1))}</span>`;
   return `
     <button type="button" class="us-avatar${mine ? " is-mine" : ""}" ${mine ? 'data-edit-avatar="1"' : "disabled"}
-            style="--av:${c.solid};--av-soft:${c.soft};width:${size}px;height:${size}px" aria-label="${escHtml(titleCase(p.owner))}">
+            style="--av:${c.solid};--av-soft:${c.soft};width:${size}px;height:${size}px" aria-label="${escHtml(p.name || titleCase(p.owner))}">
       ${inner}
       ${mine ? `<i class="us-avatar-edit">+</i>` : ""}
     </button>`;
@@ -108,7 +108,7 @@ function todayHtml(people) {
       <div class="us-row">
         <div class="us-row-top">
           ${avatarHtml(p, i)}
-          <span class="us-name">${escHtml(titleCase(p.owner))}</span>
+          <span class="us-name">${escHtml(p.name || titleCase(p.owner))}</span>
           ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : `<button type="button" class="us-note-btn" data-note-to="${escHtml(p.owner)}" aria-label="${t("social.writeNote")}">✉︎</button>`}
           <span class="us-spacer"></span>
           <span class="us-eaten">${fmt(d.calories)}</span>
@@ -167,7 +167,7 @@ function trendHtml(people, days) {
     return `
       <div class="us-trend">
         <div class="us-trend-label">
-          <div class="us-trend-name"><span class="tg-dot" style="background:${c.solid}"></span>${escHtml(titleCase(p.owner))}</div>
+          <div class="us-trend-name"><span class="tg-dot" style="background:${c.solid}"></span>${escHtml(p.name || titleCase(p.owner))}</div>
           <div class="us-trend-avg">${t("us.avgCalories")} ${fmt(avg)}</div>
         </div>
         <svg class="us-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
@@ -221,7 +221,7 @@ function groupedHtml(people, days) {
   return `<section class="tg-section">
     <h2 class="tg-h2">${t("us.caloriesByDay")}</h2>
     <div class="tg-mirror">
-      <div class="tg-glegend">${people.map((p, i) => `<span><i style="background:${COLORS[i % COLORS.length].solid}"></i>${escHtml(titleCase(p.owner))}</span>`).join("")}</div>
+      <div class="tg-glegend">${people.map((p, i) => `<span><i style="background:${COLORS[i % COLORS.length].solid}"></i>${escHtml(p.name || titleCase(p.owner))}</span>`).join("")}</div>
       ${rows.join("")}
       <div class="tg-legend"><i></i> ${t("us.goalLine")}</div>
     </div>
@@ -290,7 +290,7 @@ function summaryHtml(people, days) {
     <div class="tg-table-wrap${people.length > 3 ? " is-wide" : ""}" style="--cols:${people.length}"><table class="tg-table">
       <thead><tr><th></th>${people.map((p, i) => {
         const c = COLORS[i % COLORS.length];
-        return `<th><span class="tg-th-name"><i style="background:${c.solid}"></i>${escHtml(titleCase(p.owner))}</span></th>`;
+        return `<th><span class="tg-th-name"><i style="background:${c.solid}"></i>${escHtml(p.name || titleCase(p.owner))}</span></th>`;
       }).join("")}</tr></thead>
       <tbody>
         ${row(t("us.daysLogged"), (s) => `${s.logged} / ${days.length}`)}

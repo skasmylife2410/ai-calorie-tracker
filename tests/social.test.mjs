@@ -264,3 +264,26 @@ test("the owner can place someone in a group; others can't", async () => {
   res = mockRes(); await groups(as("aelson", { op: "set", username: "stray", group: "nope" }), res);
   assert.equal(res.body.ok, false);
 });
+
+test("people are shown by their chosen name, not their login username", async () => {
+  reset();
+  DB.snapcal_profile = [
+    { owner: "mibaby", data: { displayName: "Mi baby", weightKg: 62, heightCm: 165, age: 30, sex: "female", activityLevel: "light" } },
+    { owner: "aelson", data: { weightKg: 90, heightCm: 184, age: 31, sex: "male", activityLevel: "light" } },
+  ];
+  DB.snapcal_group_members.push({ group_id: "family", username: "mibaby", joined_at: "6" });
+  const { default: compare } = await import("../api/compare.js");
+  const res = mockRes();
+  await compare(as("aelson", { from: "2026-01-01" }), res);
+
+  const her = res.body.people.find((p) => p.owner === "mibaby");
+  assert.equal(her.name, "Mi baby", "the display name travels with the numbers");
+  const him = res.body.people.find((p) => p.owner === "aelson");
+  assert.equal(him.name, null, "no display name set -> the app falls back to the username");
+
+  // a display name can't be used to smuggle markup or a novel into the dashboard
+  DB.snapcal_profile[0].data.displayName = "x".repeat(200);
+  const long = mockRes();
+  await compare(as("aelson", { from: "2026-01-01" }), long);
+  assert.equal(long.body.people.find((p) => p.owner === "mibaby").name.length, 40);
+});

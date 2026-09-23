@@ -504,7 +504,9 @@ function doodleCardHtml() {
   const latest = store.weightSeries(14).slice(-1)[0];
   const goalKg = Number(profile.goalWeightKg) || null;
   const username = (typeof localStorage !== "undefined" && localStorage.getItem("snapcal.username")) || "";
-  const name = username ? username.replace(/[-_]\d*$/, "").replace(/^./, (c) => c.toUpperCase()).replace(/\d+$/, "") : "";
+  // the name they chose, if they set one; otherwise tidy up the username
+  const chosen = String(profile.displayName ?? "").trim();
+  const name = chosen || (username ? username.replace(/[-_]\d*$/, "").replace(/^./, (c) => c.toUpperCase()).replace(/\d+$/, "") : "");
 
   const ctx = {
     name: name || (currentLanguage() === "es" ? "tú" : "you"),

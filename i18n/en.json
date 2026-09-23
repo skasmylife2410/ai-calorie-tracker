@@ -558,5 +558,10 @@
     "calc": "Work it out",
     "use": "Use {n}%",
     "invalid": "Those measurements don't add up — check the tape."
+  },
+  "displayName": {
+    "title": "Your name",
+    "hint": "What the others see. Your username stays the same for signing in.",
+    "placeholder": "Name"
   }
 }

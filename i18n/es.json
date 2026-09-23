@@ -558,5 +558,10 @@
     "calc": "Calcular",
     "use": "Usar {n}%",
     "invalid": "Esas medidas no cuadran, revisa la cinta."
+  },
+  "displayName": {
+    "title": "Tu nombre",
+    "hint": "Lo que ven los demás. Tu usuario para entrar sigue igual.",
+    "placeholder": "Nombre"
   }
 }

@@ -51,6 +51,16 @@ export function render(container) {
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
       ${suggestSectionHtml()}
       ${redoSectionHtml()}
+      <div class="ios-section">
+        <div class="ios-section-header">${t("displayName.title")}</div>
+        <div class="ios-section-body">
+          <div class="ios-row">
+            <input type="text" class="numeric-input name-input" id="display-name" maxlength="40"
+                   placeholder="${t("displayName.placeholder")}" value="${escapeHtml(profile.displayName ?? "")}" />
+          </div>
+        </div>
+        <div class="ios-section-footer">${t("displayName.hint")}</div>
+      </div>
       ${accountSectionHtml(currentUsername)}
       ${membersSectionHtml()}
       ${inviteSectionHtml()}
@@ -74,6 +84,8 @@ export function render(container) {
   wireMembers(container, currentUsername);
   wireRedo(container);
   wireSuggest(container);
+  const nameInput = container.querySelector("#display-name");
+  nameInput?.addEventListener("change", () => store.setProfile({ displayName: nameInput.value.trim().slice(0, 40) || null }));
   container.querySelectorAll("[data-scanq]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ scanQuality: b.dataset.scanq }); render(container); })
   );

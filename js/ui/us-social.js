@@ -66,6 +66,7 @@ function toast(text) {
  * @param {{me:string, people:Array<{owner:string, avatar?:string}>, colors:string[]}} ctx
  */
 export async function renderFeed(host, { me, people, colors, group = null }) {
+  const nameOf = (owner) => people.find((p) => p.owner === owner)?.name || title(owner);
   host.innerHTML = `<h2 class="tg-h2">${t("social.shared")}</h2><div class="feed-list"><p class="tg-note">…</p></div>`;
   const list = host.querySelector(".feed-list");
   const out = await listShares(group);
@@ -82,8 +83,8 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
     return `
       <article class="feed-card" data-id="${esc(s.id)}">
         <header class="feed-head">
-          <span class="feed-av" style="--av:${colorOf(s.owner)}">${av ? `<img src="${av}" alt="">` : esc(title(s.owner).slice(0, 1))}</span>
-          <span class="feed-who">${esc(title(s.owner))}</span>
+          <span class="feed-av" style="--av:${colorOf(s.owner)}">${av ? `<img src="${av}" alt="">` : esc(nameOf(s.owner).slice(0, 1))}</span>
+          <span class="feed-who">${esc(nameOf(s.owner))}</span>
           <span class="feed-kind">${s.kind === "idea" ? t("social.idea") : t("social.meal")}</span>
           <span class="feed-when">${agoLabel(s.created_at)}</span>
         </header>
