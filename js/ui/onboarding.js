@@ -18,7 +18,8 @@ const ACTIVITY = [
   { key: "sedentary", labelKey: "activity.sedentary" },
   { key: "light", labelKey: "activity.light" },
   { key: "moderate", labelKey: "activity.moderate" },
-  { key: "active", labelKey: "activity.active" },
+  { key: "veryActive", labelKey: "activity.active" },
+  { key: "extraActive", labelKey: "activity.extra" },
 ];
 
 const DEFAULTS = {

@@ -458,7 +458,8 @@
     "sedentary": "Mostly sitting",
     "light": "On my feet some of the day",
     "moderate": "On my feet most of the day",
-    "active": "Physical job or very active"
+    "active": "Physical job or very active",
+    "extra": "Physical job and training most days"
   },
   "members": {
     "title": "Who's in which group",

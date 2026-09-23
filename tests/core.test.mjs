@@ -327,3 +327,24 @@ test("store — notify banner flag persists as a simple boolean", () => {
   store.setNotifyBannerDismissed(true);
   assert.equal(store.isNotifyBannerDismissed(), true);
 });
+
+test("activity levels: the most active option is never treated as sedentary", async () => {
+  const { normalizeActivityLevel, ACTIVITY_MULTIPLIERS, resolveUserGoals } = await import("../js/nutrition.js");
+  // the onboarding once saved "active", which isn't a multiplier key
+  assert.equal(normalizeActivityLevel("active"), "veryActive");
+  assert.equal(normalizeActivityLevel("very_active"), "veryActive");
+  assert.equal(normalizeActivityLevel("extra_active"), "extraActive");
+  assert.equal(normalizeActivityLevel("gibberish"), "sedentary");
+  assert.equal(normalizeActivityLevel("moderate"), "moderate");
+
+  const base = { weightKg: 90, heightCm: 184, age: 31, sex: "male", targetDeltaKcal: 0 };
+  const levels = ["sedentary", "light", "moderate", "veryActive", "extraActive"]
+    .map((a) => resolveUserGoals({ ...base, activityLevel: a }).formulaTdee);
+  for (let i = 1; i < levels.length; i++) {
+    assert.ok(levels[i] > levels[i - 1], `${i}: each level must burn more than the one below`);
+  }
+  // and the old spelling lands on the right rung, not the bottom one
+  assert.equal(resolveUserGoals({ ...base, activityLevel: "active" }).formulaTdee,
+               resolveUserGoals({ ...base, activityLevel: "veryActive" }).formulaTdee);
+  assert.ok(ACTIVITY_MULTIPLIERS.veryActive > ACTIVITY_MULTIPLIERS.sedentary);
+});

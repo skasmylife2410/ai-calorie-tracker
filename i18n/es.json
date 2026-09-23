@@ -458,7 +458,8 @@
     "sedentary": "Casi todo sentada/o",
     "light": "De pie parte del día",
     "moderate": "De pie la mayor parte del día",
-    "active": "Trabajo físico o muy activa/o"
+    "active": "Trabajo físico o muy activa/o",
+    "extra": "Trabajo físico y entreno casi todos los días"
   },
   "members": {
     "title": "Quién está en cada grupo",

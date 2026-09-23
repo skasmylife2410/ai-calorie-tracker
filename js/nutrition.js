@@ -26,8 +26,23 @@ export const ACTIVITY_LABELS = Object.freeze({
 export const SEX_LABELS = Object.freeze({ male: "Male", female: "Female" });
 
 /** Decode fallback: unknown raw string -> "sedentary" (Models.swift ActivityLevel decode rule). */
+/**
+ * Older/other spellings map to the right level instead of silently falling back to sedentary.
+ * The onboarding used to save "active", which isn't a key here — so the most active option
+ * quietly produced the LOWEST multiplier. Anyone with that saved is corrected here.
+ */
+const ACTIVITY_ALIASES = Object.freeze({
+  active: "veryActive",
+  very_active: "veryActive",
+  "very active": "veryActive",
+  extra_active: "extraActive",
+  athlete: "extraActive",
+  none: "sedentary",
+});
+
 export function normalizeActivityLevel(raw) {
-  return Object.prototype.hasOwnProperty.call(ACTIVITY_MULTIPLIERS, raw) ? raw : "sedentary";
+  if (Object.prototype.hasOwnProperty.call(ACTIVITY_MULTIPLIERS, raw)) return raw;
+  return ACTIVITY_ALIASES[raw] ?? "sedentary";
 }
 
 /** Decode fallback: unknown raw string -> "male" (Models.swift Sex decode rule). */
