@@ -17,6 +17,7 @@ import { inbox, noteToShow, markNoteSeen } from "../social.js";
 import { currentLanguage } from "../i18n.js";
 import { doodleSvg, doodleState, daysSinceLastLog } from "./doodle.js";
 import { doodleMessage } from "./doodle-messages.js";
+import { homeCard } from "./home-card.js";
 import { cachedFaceDoodle, makeFaceDoodle } from "./photo-doodle.js";
 import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 
@@ -124,6 +125,7 @@ export function render(container) {
   container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
   wireDaySelection(container);
   if (viewingToday) showNoteIfAny(container);
+  container.querySelector("#card-more")?.addEventListener("click", () => { cardRevealed = true; render(container); });
 
   container.querySelector("#home-avatar")?.addEventListener("click", () => globalThis.snapcalGoTo?.("profile"));
   container.querySelector("#see-meals")?.addEventListener("click", () =>
@@ -504,7 +506,7 @@ function doodleCardHtml() {
   const username = (typeof localStorage !== "undefined" && localStorage.getItem("snapcal.username")) || "";
   const name = username ? username.replace(/[-_]\d*$/, "").replace(/^./, (c) => c.toUpperCase()).replace(/\d+$/, "") : "";
 
-  const text = doodleMessage({
+  const ctx = {
     name: name || (currentLanguage() === "es" ? "tú" : "you"),
     variant,
     state,
@@ -521,14 +523,18 @@ function doodleCardHtml() {
     goalLeft: goalKg && latest ? Math.round(Math.abs(latest.avg - goalKg) * 10) / 10 : null,
     hour: new Date().getHours(),
     daysSinceLog: Number.isFinite(daysSinceLastLog()) ? daysSinceLastLog() : 2,
-  }, { lang: currentLanguage() === "es" ? "es" : "en", username });
+  };
+  const lang = currentLanguage() === "es" ? "es" : "en";
+  const card = homeCard({ ctx, username, lang });
 
   return `
-    <div class="doodle-card">
+    <div class="doodle-card${card.tone ? ` tone-${card.tone}` : ""}">
       <div id="doodle-figure">${nano ? `<img class="nano-doodle" src="${nano}" alt="" />` : doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
       <div class="doodle-text" id="doodle-text">
-        <div class="doodle-title">${t(`doodle.${state}Title`)}</div>
-        <div class="doodle-sub">${text}</div>
+        <div class="doodle-title">${card.title}</div>
+        <div class="doodle-sub">${card.body}</div>
+        ${card.answer && !cardRevealed ? `<button type="button" class="card-more" id="card-more">${t("myth.tapToReveal")} ›</button>` : ""}
+        ${card.answer && cardRevealed ? `<div class="card-answer"><span class="myth-verdict">${t("myth.verdict")}</span><p>${card.answer}</p></div>` : ""}
       </div>
     </div>`;
 }
@@ -546,6 +552,7 @@ function weekRangeLabel(week) {
 /** Daily myth: the claim first, the evidence behind a tap — so it reads like a quiz, not a lecture. */
 let mythRevealed = false;
 let mythDay = "";
+let cardRevealed = false;
 
 function mythCardHtml() {
   const today = new Date().toDateString();

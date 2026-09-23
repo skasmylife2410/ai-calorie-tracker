@@ -1969,3 +1969,25 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .mem-chip { font: inherit; font-size: 12px; font-weight: 700; padding: 7px 11px; border: 0; border-radius: 11px; background: var(--sc-secondary-15); color: var(--sc-secondary); }
 .mem-chip.is-on { background: var(--sc-primary-text); color: #fff; }
 .mem-warn { font-size: 11px; font-weight: 700; color: var(--sc-red); width: 100%; }
+/* Redo setup runs the onboarding over the app */
+.setup-overlay { position: fixed; inset: 0; z-index: 70; background: var(--sky-base, var(--sc-background)); overflow-y: auto; }
+/* the Home card takes a colour from what it's showing */
+.doodle-card.tone-weekend { background: linear-gradient(140deg, #FFF 45%, rgba(240,86,45,.14) 100%) !important; }
+.doodle-card.tone-myth { background: linear-gradient(140deg, #FFF 45%, rgba(59,167,219,.12) 100%) !important; }
+.doodle-card.tone-tip { background: linear-gradient(140deg, #FFF 45%, rgba(226,160,63,.13) 100%) !important; }
+.card-more { margin-top: 8px; font: inherit; font-size: 12px; font-weight: 700; padding: 0; border: 0; background: none; color: var(--sc-accent-water); }
+.card-answer { margin-top: 10px; }
+.card-answer p { font-size: 13px; line-height: 1.5; margin: 8px 0 0; }
+/* Today tab: step back through days */
+.tm-head { display: flex; align-items: center; gap: 6px; }
+.tm-head-mid { flex: 1; text-align: center; }
+.tm-arrow { width: 38px; height: 44px; flex: none; font: inherit; font-size: 22px; font-weight: 700; border: 0; background: none; color: var(--sc-blue); }
+.tm-arrow.is-hidden { visibility: hidden; }
+.tm-back { font: inherit; font-size: 12px; font-weight: 700; border: 0; background: none; color: var(--sc-blue); padding: 0; text-transform: none; letter-spacing: 0; }
+/* Suggestion box */
+.sug-input { width: calc(100% - 28px); margin: 12px 14px 0; font: inherit; font-size: 15px; padding: 12px; border: 1px solid var(--sc-secondary-15); border-radius: 14px; background: #fff; resize: vertical; }
+.sug-row { display: flex; gap: 8px; align-items: flex-start; padding: 10px 14px; font-size: 13px; line-height: 1.45; }
+.sug-row + .sug-row { border-top: 1px solid var(--sc-secondary-14); }
+.sug-row.is-done { opacity: .5; }
+.sug-body { flex: 1; }
+.sug-done { font: inherit; font-size: 11px; font-weight: 700; border: 0; border-radius: 9px; padding: 5px 9px; background: rgba(42,166,107,.14); color: #1E7A4C; }

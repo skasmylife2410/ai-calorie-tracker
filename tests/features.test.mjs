@@ -530,3 +530,82 @@ test("goal and pace turn into a sensible daily change", async () => {
   const gain = targetDelta({ goal: "gain", rate: "fast", weightKg: 80 });
   assert.ok(gain > 0 && gain <= 400);
 });
+
+test("redoing setup starts from where they are, and keeps everything logged", async () => {
+  localStorage.clear();
+  const { draftFromProfile, targetDelta } = await import("../js/ui/onboarding.js");
+  store.setProfile({ weightKg: 84, heightCm: 178, age: 35, sex: "male", activityLevel: "moderate",
+    build: "average", goal: "lose", goalRate: "slow", weightUnit: "lb", bodyFatPct: 19, hasCompletedOnboarding: true });
+  store.addFoodEntry({ name: "Lunch", calories: 700 });
+  store.addWeightEntry({ kg: 83.4, timestamp: Date.now() - 2 * 86400000 });
+
+  const d = draftFromProfile(store.getProfile());
+  assert.equal(d.units, "imperial", "someone on pounds starts the flow in pounds and feet");
+  assert.equal(d.weightKg, 83.4, "uses the latest weigh-in, not the stale profile weight");
+  assert.deepEqual([d.sex, d.age, d.heightCm, d.build, d.bodyFatPct, d.activityLevel, d.goal, d.rate],
+    ["male", 35, 178, "average", 19, "moderate", "lose", "slow"]);
+
+  // someone who never picked a goal gets one inferred from their deficit
+  assert.equal(draftFromProfile({ targetDeltaKcal: 300 }).goal, "gain");
+  assert.equal(draftFromProfile({ targetDeltaKcal: 0 }).goal, "maintain");
+  // a brand-new profile falls back to sensible defaults rather than blanks
+  const empty = draftFromProfile({});
+  assert.ok(empty.age > 0 && empty.heightCm > 0 && empty.weightKg > 0);
+
+  // opening the flow doesn't touch what's been logged
+  assert.equal(store.allFoodEntries().length, 1);
+  assert.equal(store.allWeightEntries().length, 1);
+  assert.equal(targetDelta(d) < 0, true);
+});
+
+// --- what the Home card says ------------------------------------------------------------
+
+test("the Home card rotates instead of repeating, and takes over at weekends", async () => {
+  const { homeCard, isWeekendWindow } = await import("../js/ui/home-card.js");
+  localStorage.clear();
+  store.setProfile(PROFILE);
+  const ctx = { name: "Aelson", variant: "a", state: "strong", streak: 3, eaten: 1200, target: 2000, remaining: 800,
+    proteinLeft: 40, proteinHit: false, meals: 2, exerciseMin: 0, burned: 0, weightDelta30: null, goalLeft: null, hour: 10, daysSinceLog: 0 };
+
+  // Thursday evening through Sunday counts as the weekend window
+  assert.equal(isWeekendWindow(new Date(2026, 8, 24, 12)), false, "Thursday lunchtime: no");
+  assert.equal(isWeekendWindow(new Date(2026, 8, 24, 18)), true, "Thursday evening: yes");
+  assert.equal(isWeekendWindow(new Date(2026, 8, 26, 9)), true, "Saturday");
+  assert.equal(isWeekendWindow(new Date(2026, 8, 27, 21)), true, "Sunday");
+  assert.equal(isWeekendWindow(new Date(2026, 8, 22, 9)), false, "Tuesday");
+
+  // across a midweek day the card changes rather than repeating the same message
+  const kinds = new Set();
+  for (let i = 0; i < 6; i++) kinds.add(homeCard({ now: new Date(2026, 8, 22, 2 + i * 12), ctx, username: "aelson" }).kind);
+  assert.ok(kinds.size >= 2, `expected variety, got ${[...kinds]}`);
+  assert.ok(!kinds.has("weekend"), "no weekend card midweek");
+
+  // and the weekend card appears on a Saturday
+  const sat = new Set();
+  for (let i = 0; i < 4; i++) sat.add(homeCard({ now: new Date(2026, 8, 26, 2 + i * 12), ctx, username: "aelson" }).kind);
+  assert.ok(sat.has("weekend"));
+
+  // every card has something to say, and the myth one can be opened
+  for (const h of [0, 12]) {
+    const c = homeCard({ now: new Date(2026, 8, 26, h), ctx, username: "aelson" });
+    assert.ok(c.title.length > 2 && c.body.length > 10, JSON.stringify(c));
+  }
+});
+
+test("the weekend heads-up uses their own weekday/weekend gap", () => {
+  localStorage.clear();
+  store.setProfile(PROFILE);
+  const day = 86400000;
+  const now = new Date(2026, 8, 26, 10); // a Saturday
+  // six weeks: 2,000 on weekdays, 2,800 on weekends
+  for (let i = 42; i >= 1; i--) {
+    const ts = now.getTime() - i * day;
+    const dow = new Date(ts).getDay();
+    const isWeekend = dow === 0 || dow === 5 || dow === 6;
+    store.addFoodEntry({ name: "Day", calories: isWeekend ? 2800 : 2000, timestamp: ts });
+  }
+  const gap = store.weekendGap({ now: now.getTime() });
+  assert.ok(Math.abs(gap.gap - 800) < 60, `expected ~800 kcal, got ${gap.gap}`);
+  assert.ok(gap.weekends >= 12);
+  assert.equal(store.weekendGap({ now: now.getTime(), weeks: 0 }), null, "not enough data -> nothing claimed");
+});

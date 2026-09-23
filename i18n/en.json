@@ -217,7 +217,9 @@
     "nextWeek": "Next week",
     "mealsFor": "Meals · {day}",
     "noMeals": "Nothing logged this day",
-    "tapToSee": "See meals"
+    "tapToSee": "See meals",
+    "prevDay": "Previous day",
+    "nextDay": "Next day"
   },
   "weight": {
     "title": "Weight",
@@ -463,5 +465,31 @@
     "none": "No group yet",
     "hint": "Tap a group to add or remove someone. People with no group see only themselves.",
     "you": "you"
+  },
+  "redo": {
+    "title": "Set up again",
+    "button": "Redo setup",
+    "hint": "Walk through the questions again — useful to switch to pounds and feet, or after a change in build or goal. Your meals, weigh-ins and history are kept."
+  },
+  "weekend": {
+    "aheadTitle": "Weekend's coming",
+    "saturdayTitle": "It's Saturday",
+    "sundayTitle": "Sunday",
+    "aheadBody": "Two days that undo four is the most common pattern there is. Log them like any other day and they usually behave.",
+    "saturdayBody": "Nothing is off limits today — just log it while you remember. Saturday you log beats Saturday you guess at on Monday.",
+    "sundayBody": "One more day. A weekend logged honestly is worth more than a perfect-looking week with two blank days in it.",
+    "withNumber": "Over your last {weekends} weekends you've averaged {n} kcal a day more than on weekdays. Not a problem — just worth knowing before Saturday night.",
+    "under": "Your weekends actually run {n} kcal a day lighter than your weekdays. Whatever you're doing, keep it."
+  },
+  "suggest": {
+    "title": "Suggestion box",
+    "button": "Send an idea",
+    "placeholder": "Something that would make this better, or something that annoys you…",
+    "send": "Send",
+    "sent": "Sent — thank you. Aelson sees these.",
+    "yours": "Your ideas",
+    "all": "Everyone's ideas",
+    "done": "Done",
+    "hint": "Anything: a feature, a bug, a food the AI keeps getting wrong."
   }
 }

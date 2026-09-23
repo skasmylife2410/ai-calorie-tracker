@@ -21,7 +21,7 @@ const ACTIVITY = [
   { key: "active", labelKey: "activity.active" },
 ];
 
-const draft = {
+const DEFAULTS = {
   sex: "female",
   age: 30,
   heightCm: 165,
@@ -33,6 +33,33 @@ const draft = {
   goal: "lose",         // lose | maintain | gain
   rate: "normal",       // slow | normal | fast
 };
+
+let draft = { ...DEFAULTS };
+
+/**
+ * The starting answers when someone redoes setup: their profile, but with the weight taken
+ * from their latest weigh-in (the profile's number goes stale) and units from their preference.
+ * Exported so it can be tested without a browser.
+ */
+export function draftFromProfile(profile, latest = store.latestWeight()) {
+  return {
+    ...DEFAULTS,
+    sex: profile.sex === "male" ? "male" : "female",
+    age: Number(profile.age) > 0 ? Math.round(profile.age) : DEFAULTS.age,
+    heightCm: Number(profile.heightCm) > 0 ? profile.heightCm : DEFAULTS.heightCm,
+    weightKg: latest?.kg ?? (Number(profile.weightKg) > 0 ? profile.weightKg : DEFAULTS.weightKg),
+    units: profile.weightUnit === "lb" ? "imperial" : "metric",
+    build: profile.build ?? null,
+    bodyFatPct: Number(profile.bodyFatPct) > 0 ? profile.bodyFatPct : null,
+    activityLevel: profile.activityLevel ?? DEFAULTS.activityLevel,
+    goal: profile.goal ?? (Number(profile.targetDeltaKcal) > 0 ? "gain" : Number(profile.targetDeltaKcal) < 0 ? "lose" : "maintain"),
+    rate: profile.goalRate ?? DEFAULTS.rate,
+  };
+}
+
+function prefillFrom(profile) {
+  draft = draftFromProfile(profile);
+}
 
 const kgToLb = (kg) => kg * 2.2046226218;
 const lbToKg = (lb) => lb / 2.2046226218;
@@ -49,7 +76,14 @@ export function targetDelta({ goal, rate, weightKg }) {
   return goal === "gain" ? Math.min(400, Math.round(perDay * 0.55)) : -perDay;
 }
 
-export function render(container, onComplete) {
+/**
+ * @param {HTMLElement} container
+ * @param {Function} onComplete
+ * @param {{redo?: boolean}} opts  redo: prefill from the existing profile and keep all data
+ */
+export function render(container, onComplete, { redo = false } = {}) {
+  if (redo) prefillFrom(store.getProfile());
+  else draft = { ...DEFAULTS };
   let step = 0;
 
   const goals = () => resolveUserGoals({
@@ -77,7 +111,8 @@ export function render(container, onComplete) {
       language: currentLanguage(),
       hasCompletedOnboarding: true,
     });
-    // first point on the weight chart, so the trend can start building immediately
+    // First point on the weight chart, so the trend can start immediately. On a redo this
+    // replaces today's reading rather than adding a second one (one reading a day).
     store.addWeightEntry({ kg: draft.weightKg });
     onComplete?.();
   };

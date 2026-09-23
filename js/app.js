@@ -20,7 +20,7 @@ import { openExerciseSheet } from "./ui/exercise.js";
 import { viewedTimestamp } from "./ui/today.js";
 import { renderLogin, hasValidSession } from "./ui/login.js";
 import { render as renderWeight } from "./ui/weight.js";
-import { render as renderTodayMeals } from "./ui/today-meals.js";
+import { render as renderTodayMeals, viewedTabTimestamp } from "./ui/today-meals.js";
 import { renderUsTab } from "./us.js";
 import { wireTabSwipe } from "./ui/tab-swipe.js";
 import { mountSky } from "./ui/sky.js";
@@ -238,10 +238,15 @@ function setPopupOpen(open) {
   }
 }
 
+/** Which day new food belongs to: the day the visible tab is showing. */
+function activeTimestamp() {
+  return selectedTab === "today" ? viewedTabTimestamp() : viewedTimestamp();
+}
+
 function handleTileAction(tileId) {
   switch (tileId) {
     case "saved":
-      openFavouritesSheet({ timestamp: viewedTimestamp() });
+      openFavouritesSheet({ timestamp: activeTimestamp() });
       break;
     case "search":
       openFoodSearchSheet();
@@ -250,10 +255,10 @@ function handleTileAction(tileId) {
       openCameraScan({ onResult: handleCameraResult });
       break;
     case "describe":
-      openDescribeMealSheet({ timestamp: viewedTimestamp() });
+      openDescribeMealSheet({ timestamp: activeTimestamp() });
       break;
     case "voice":
-      openDescribeMealSheet({ voice: true, timestamp: viewedTimestamp() });
+      openDescribeMealSheet({ voice: true, timestamp: activeTimestamp() });
       break;
     case "exercise":
       openExerciseSheet({ onSaved: () => renderCurrentTab() });
@@ -334,11 +339,11 @@ function startBarcodeFlow(barcode) {
     if (progressClose) progressClose();
     setTimeout(() => {
       if (outcome.status === "found") {
-        openAddFoodSheet({ prefill: outcome.product, timestamp: viewedTimestamp() });
+        openAddFoodSheet({ prefill: outcome.product, timestamp: activeTimestamp() });
       } else if (outcome.status === "notFound") {
-        openAddFoodSheet({ prefillBarcode: barcode, timestamp: viewedTimestamp() });
+        openAddFoodSheet({ prefillBarcode: barcode, timestamp: activeTimestamp() });
       } else {
-        openAddFoodSheet({ prefillBarcode: barcode, failureReason: outcome.message, timestamp: viewedTimestamp() });
+        openAddFoodSheet({ prefillBarcode: barcode, failureReason: outcome.message, timestamp: activeTimestamp() });
       }
     }, 340);
   });

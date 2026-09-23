@@ -49,6 +49,8 @@ export function render(container) {
       ${activityLevelSectionHtml(profile)}
       ${goalSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
+      ${suggestSectionHtml()}
+      ${redoSectionHtml()}
       ${accountSectionHtml(currentUsername)}
       ${membersSectionHtml()}
       ${inviteSectionHtml()}
@@ -69,6 +71,8 @@ export function render(container) {
   wireAccount(container, currentUsername);
   wireInvites(container);
   wireMembers(container, currentUsername);
+  wireRedo(container);
+  wireSuggest(container);
   container.querySelectorAll("[data-excredit]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: Number(b.dataset.excredit) }); render(container); })
   );
@@ -139,6 +143,78 @@ function wireAccount(container, username) {
     if (globalThis.confirm && !globalThis.confirm(t("auth.signOutConfirm"))) return;
     setStoredToken("");
     location.reload();
+  });
+}
+
+/** Suggestion box: everyone can write; the owner sees them all. */
+function suggestSectionHtml() {
+  return `<div class="ios-section" id="suggest-section"></div>`;
+}
+
+async function wireSuggest(container) {
+  const host = container.querySelector("#suggest-section");
+  if (!host) return;
+  const { apiFetch } = await import("../net.js");
+  const call = async (body) => {
+    try {
+      const r = await apiFetch("/api/suggestions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      return await r.json();
+    } catch { return { ok: false, message: t("errors.offline") }; }
+  };
+  const draw = async (msg = "") => {
+    const info = await call({ op: "list" });
+    const list = info.ok ? info.suggestions : [];
+    host.innerHTML = `
+      <div class="ios-section-header">${t("suggest.title")}</div>
+      <div class="ios-section-body">
+        <textarea class="sug-input" id="sug-input" rows="3" maxlength="600" placeholder="${t("suggest.placeholder")}"></textarea>
+        <div class="acct-actions"><button type="button" class="acct-btn" id="sug-send">${t("suggest.button")}</button></div>
+        ${msg ? `<div class="acct-msg">${msg}</div>` : ""}
+        ${list.length ? `<div class="inv-head">${info.isAdmin ? t("suggest.all") : t("suggest.yours")}</div>` : ""}
+        ${list.map((x) => `
+          <div class="sug-row${x.done ? " is-done" : ""}">
+            <div class="sug-body">${info.isAdmin ? `<b>${x.owner}</b> · ` : ""}${escapeHtml(x.body)}</div>
+            ${info.isAdmin && !x.done ? `<button type="button" class="sug-done" data-done="${x.id}">${t("suggest.done")}</button>` : ""}
+          </div>`).join("")}
+      </div>
+      <div class="ios-section-footer">${t("suggest.hint")}</div>`;
+    host.querySelector("#sug-send")?.addEventListener("click", async () => {
+      const input = host.querySelector("#sug-input");
+      if (!input.value.trim()) return;
+      const out = await call({ op: "send", body: input.value });
+      draw(out.ok ? t("suggest.sent") : out.message || t("errors.generic"));
+    });
+    host.querySelectorAll("[data-done]").forEach((b) => b.addEventListener("click", async () => { await call({ op: "done", id: b.dataset.done }); draw(); }));
+  };
+  draw();
+}
+
+function escapeHtml(x) {
+  return String(x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/** Redo the first-run questions, keeping all logged data. */
+function redoSectionHtml() {
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("redo.title")}</div>
+      <div class="ios-section-body">
+        <div class="acct-actions"><button type="button" class="acct-btn" id="redo-setup">${t("redo.button")}</button></div>
+      </div>
+      <div class="ios-section-footer">${t("redo.hint")}</div>
+    </div>`;
+}
+
+function wireRedo(container) {
+  container.querySelector("#redo-setup")?.addEventListener("click", async () => {
+    const { render: renderOnboarding } = await import("./onboarding.js");
+    const overlay = document.createElement("div");
+    overlay.className = "setup-overlay scroll-view";
+    document.body.appendChild(overlay);
+    renderOnboarding(overlay, () => {
+      overlay.remove();
+      globalThis.snapcalGoTo?.("home"); // straight back to the app with the new numbers
+    }, { redo: true });
   });
 }
 

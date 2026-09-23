@@ -217,7 +217,9 @@
     "nextWeek": "Semana siguiente",
     "mealsFor": "Comidas · {day}",
     "noMeals": "Nada registrado ese día",
-    "tapToSee": "Ver comidas"
+    "tapToSee": "Ver comidas",
+    "prevDay": "Día anterior",
+    "nextDay": "Día siguiente"
   },
   "weight": {
     "title": "Peso",
@@ -463,5 +465,31 @@
     "none": "Sin grupo",
     "hint": "Toca un grupo para agregar o quitar a alguien. Quien no tiene grupo solo se ve a sí misma/o.",
     "you": "tú"
+  },
+  "redo": {
+    "title": "Configurar de nuevo",
+    "button": "Rehacer configuración",
+    "hint": "Vuelve a pasar por las preguntas: sirve para cambiar a libras y pies, o si cambió tu contextura o tu meta. Tus comidas, pesajes e historial se mantienen."
+  },
+  "weekend": {
+    "aheadTitle": "Llega el fin de semana",
+    "saturdayTitle": "Es sábado",
+    "sundayTitle": "Domingo",
+    "aheadBody": "Dos días que deshacen cuatro es el patrón más común que existe. Regístralos como cualquier otro día y casi siempre se portan bien.",
+    "saturdayBody": "Hoy no hay nada prohibido, solo regístralo mientras lo recuerdas. Un sábado registrado vale más que uno adivinado el lunes.",
+    "sundayBody": "Un día más. Un fin de semana registrado con honestidad vale más que una semana perfecta con dos días en blanco.",
+    "withNumber": "En tus últimos {weekends} fines de semana comiste en promedio {n} kcal más al día que entre semana. No es un problema, pero vale saberlo antes del sábado por la noche.",
+    "under": "Tus fines de semana son {n} kcal al día más ligeros que tus días de semana. Lo que estés haciendo, sigue."
+  },
+  "suggest": {
+    "title": "Buzón de sugerencias",
+    "button": "Enviar una idea",
+    "placeholder": "Algo que mejoraría esto, o algo que te molesta…",
+    "send": "Enviar",
+    "sent": "Enviado, gracias. Aelson las ve.",
+    "yours": "Tus ideas",
+    "all": "Ideas de todos",
+    "done": "Listo",
+    "hint": "Lo que sea: una función, un error, una comida que la IA siempre calcula mal."
   }
 }

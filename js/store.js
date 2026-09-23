@@ -473,6 +473,40 @@ export function exerciseCreditRatio() {
 }
 
 /**
+ * How much more (or less) they eat at weekends than on weekdays, from the last few weeks of
+ * complete days. Used for the weekend heads-up, so it quotes their own number instead of
+ * lecturing. Friday, Saturday and Sunday count as the weekend.
+ * @returns {null|{gap:number, weekend:number, weekday:number, weekends:number}}
+ */
+export function weekendGap({ now = Date.now(), weeks = 6 } = {}) {
+  if (!(weeks > 0)) return null;
+  const from = addDays(startOfDay(now), -(weeks * 7));
+  const perDay = new Map();
+  for (const e of allFoodEntries()) {
+    if (e.isPending === true || e.analysisFailed === true) continue;
+    if (e.timestamp < from || e.timestamp >= startOfDay(now)) continue;
+    const key = localDateString(e.timestamp);
+    perDay.set(key, (perDay.get(key) ?? 0) + (Number(e.calories) || 0));
+  }
+  const formula = resolveUserGoals(getProfile()).formulaTdee || 0;
+  const weekend = [];
+  const weekday = [];
+  for (const [day, kcal] of perDay) {
+    if (formula > 0 && kcal < formula * 0.5) continue; // half-logged day: not comparable
+    const dow = new Date(`${day}T12:00:00`).getDay();
+    (dow === 0 || dow === 5 || dow === 6 ? weekend : weekday).push(kcal);
+  }
+  if (weekend.length < 2 || weekday.length < 4) return null;
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  return {
+    gap: Math.round(mean(weekend) - mean(weekday)),
+    weekend: Math.round(mean(weekend)),
+    weekday: Math.round(mean(weekday)),
+    weekends: weekend.length,
+  };
+}
+
+/**
  * Learned maintenance from the last 28 complete days (today is excluded: it isn't over).
  * Days logged at under half the formula maintenance are treated as incomplete and skipped,
  * because a forgotten dinner would otherwise make maintenance look far lower than it is.
