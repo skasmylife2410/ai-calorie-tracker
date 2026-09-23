@@ -10,6 +10,7 @@
 
 import * as store from "../store.js";
 import { resolveUserGoals, estimateBodyFatPct, leanMassKg } from "../nutrition.js";
+import { BF_RANGES, silhouetteSvg, navyBodyFat, rangeFor } from "../bodyfat.js";
 import { t, currentLanguage, setLanguage, formatNumber } from "../i18n.js";
 
 const STEPS = ["lang", "about", "size", "build", "activity", "goal", "plan"];
@@ -83,6 +84,8 @@ export function targetDelta({ goal, rate, weightKg }) {
  * @param {{redo?: boolean}} opts  redo: prefill from the existing profile and keep all data
  */
 export function render(container, onComplete, { redo = false } = {}) {
+  let tapeOpen = false;
+  const tape = { neck: null, waist: null, hip: null };
   if (redo) prefillFrom(store.getProfile());
   else draft = { ...DEFAULTS };
   let step = 0;
@@ -192,19 +195,43 @@ export function render(container, onComplete, { redo = false } = {}) {
           </div>`;
       }
 
-      case "build":
+      case "build": {
+        if (tapeOpen) {
+          const measured = navyBodyFat({ sex: draft.sex, heightCm: draft.heightCm, neckCm: tape.neck, waistCm: tape.waist, hipCm: tape.hip });
+          return `
+            <h1 class="onb-title">${t("bf.tapeTitle")}</h1>
+            <p class="onb-sub">${t("bf.tapeSub")}</p>
+            <label class="onb-label">${t("bf.neck")}</label>
+            <div class="onb-field"><input id="tape-neck" class="onb-input" type="number" inputmode="decimal" value="${tape.neck ?? ""}" /><span>cm</span></div>
+            <p class="onb-note">${t("bf.neckHint")}</p>
+            <label class="onb-label">${t("bf.waist")}</label>
+            <div class="onb-field"><input id="tape-waist" class="onb-input" type="number" inputmode="decimal" value="${tape.waist ?? ""}" /><span>cm</span></div>
+            <p class="onb-note">${t("bf.waistHint")}</p>
+            ${draft.sex === "female" ? `
+              <label class="onb-label">${t("bf.hip")}</label>
+              <div class="onb-field"><input id="tape-hip" class="onb-input" type="number" inputmode="decimal" value="${tape.hip ?? ""}" /><span>cm</span></div>
+              <p class="onb-note">${t("bf.hipHint")}</p>` : ""}
+            ${measured !== null
+              ? `<div class="bf-result">${t("bf.result", { n: measured })}<button type="button" class="onb-back" id="tape-use">${t("bf.use", { n: measured })}</button></div>`
+              : (tape.neck || tape.waist) ? `<p class="onb-note bf-invalid">${t("bf.invalid")}</p>` : ""}`;
+        }
+        const list = BF_RANGES[draft.sex === "female" ? "female" : "male"];
         return `
-          <h1 class="onb-title">${t("onb.buildTitle")}</h1>
-          <p class="onb-sub">${t("onb.buildSub")}</p>
-          <div class="onb-choices">
-            ${choice("slim", draft.build, t("onb.buildSlim"), t("onb.buildSlimSub"))}
-            ${choice("average", draft.build, t("onb.buildAverage"), t("onb.buildAverageSub"))}
-            ${choice("muscular", draft.build, t("onb.buildMuscular"), t("onb.buildMuscularSub"))}
-            ${choice("larger", draft.build, t("onb.buildLarger"), t("onb.buildLargerSub"))}
+          <h1 class="onb-title">${t("bf.title")}</h1>
+          <p class="onb-sub">${draft.bodyFatPct !== null ? t("bf.result", { n: draft.bodyFatPct }) : t("bf.sub")}</p>
+          <div class="bf-grid">
+            ${list.map((r) => `
+              <button type="button" class="bf-card${draft.bodyFatPct !== null && rangeFor(draft.sex, draft.bodyFatPct).pct === r.pct ? " is-on" : ""}" data-bf="${r.pct}">
+                <span class="bf-fig">${silhouetteSvg(draft.sex, r.w, { size: 54 })}</span>
+                <span class="bf-label">${r.label}</span>
+                <span class="bf-desc">${r.desc}</span>
+              </button>`).join("")}
           </div>
-          <label class="onb-label">${t("onb.bodyFat")}</label>
-          <div class="onb-field"><input id="onb-bf" class="onb-input" type="number" inputmode="decimal" min="5" max="60" step="0.5"
-            value="${draft.bodyFatPct ?? ""}" placeholder="${draft.build ? estimateBodyFatPct(draft.build, draft.sex) : ""}" /><span>%</span></div>`;
+          <div class="bf-actions">
+            <button type="button" class="onb-back" id="bf-tape">${t("bf.tape")}</button>
+            <button type="button" class="onb-back" id="bf-skip">${t("bf.skip")}</button>
+          </div>`;
+      }
 
       case "activity":
         return `
@@ -274,7 +301,27 @@ export function render(container, onComplete, { redo = false } = {}) {
     };
     num("#onb-age", (v) => { if (v >= 13 && v <= 100) draft.age = Math.round(v); });
     num("#onb-cm", (v) => { if (v >= 120 && v <= 230) draft.heightCm = v; });
-    num("#onb-bf", (v) => { draft.bodyFatPct = v >= 5 && v <= 60 ? v : null; });
+    // body-fat picker: choosing a shape sets the percentage AND the build behind it
+    body.querySelectorAll("[data-bf]").forEach((b) => b.addEventListener("click", () => {
+      const pct = Number(b.dataset.bf);
+      draft.bodyFatPct = pct;
+      const female = draft.sex === "female";
+      draft.build = pct <= (female ? 20 : 12) ? "slim" : pct <= (female ? 25 : 17) ? "muscular" : pct <= (female ? 30 : 22) ? "average" : "larger";
+      draw();
+    }));
+    body.querySelector("#bf-tape")?.addEventListener("click", () => { tapeOpen = true; draw(); });
+    body.querySelector("#bf-skip")?.addEventListener("click", () => { draft.bodyFatPct = null; draft.build = null; step++; draw(); });
+    num("#tape-neck", (v) => { tape.neck = v || null; draw(); });
+    num("#tape-waist", (v) => { tape.waist = v || null; draw(); });
+    num("#tape-hip", (v) => { tape.hip = v || null; draw(); });
+    body.querySelector("#tape-use")?.addEventListener("click", () => {
+      const measured = navyBodyFat({ sex: draft.sex, heightCm: draft.heightCm, neckCm: tape.neck, waistCm: tape.waist, hipCm: tape.hip });
+      if (measured === null) return;
+      draft.bodyFatPct = measured;
+      draft.build = rangeFor(draft.sex, measured).pct <= (draft.sex === "female" ? 25 : 17) ? "muscular" : "average";
+      tapeOpen = false;
+      draw();
+    });
     num("#onb-weight", (v) => {
       if (!(v > 0)) return;
       draft.weightKg = draft.units === "imperial" ? lbToKg(v) : v;

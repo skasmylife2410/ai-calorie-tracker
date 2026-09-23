@@ -539,5 +539,24 @@
     },
     "before": "Add details (optional)",
     "beforeHint": "Helps a lot when the photo can't show the portion or the oil."
+  },
+  "bf": {
+    "title": "Which looks most like you?",
+    "sub": "Rough is fine — it only sets your starting number, and after two weeks your own data replaces it.",
+    "skip": "I'd rather not say",
+    "tape": "Measure with a tape instead",
+    "tapeTitle": "Tape measure",
+    "tapeSub": "The US Navy method — the most accurate thing you can do at home, usually within about 3 points.",
+    "neck": "Neck",
+    "waist": "Waist",
+    "hip": "Hips",
+    "height": "Height",
+    "neckHint": "Just below the Adam's apple, tape sloping slightly down at the front.",
+    "waistHint": "At the navel for men; at the narrowest point for women. Relaxed, don't suck in.",
+    "hipHint": "Around the widest part of the hips and glutes.",
+    "result": "That works out to about {n}%",
+    "calc": "Work it out",
+    "use": "Use {n}%",
+    "invalid": "Those measurements don't add up — check the tape."
   }
 }

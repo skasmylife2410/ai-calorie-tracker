@@ -539,5 +539,24 @@
     },
     "before": "Agregar detalles (opcional)",
     "beforeHint": "Ayuda mucho cuando la foto no muestra la porción ni el aceite."
+  },
+  "bf": {
+    "title": "¿Cuál se parece más a ti?",
+    "sub": "Con que sea aproximado basta: solo fija tu número inicial y en dos semanas tus propios datos lo reemplazan.",
+    "skip": "Prefiero no decirlo",
+    "tape": "Mejor medir con cinta",
+    "tapeTitle": "Medir con cinta",
+    "tapeSub": "El método de la Marina de EE. UU.: lo más preciso que puedes hacer en casa, normalmente con unos 3 puntos de margen.",
+    "neck": "Cuello",
+    "waist": "Cintura",
+    "hip": "Cadera",
+    "height": "Estatura",
+    "neckHint": "Justo debajo de la nuez, con la cinta un poco inclinada hacia abajo al frente.",
+    "waistHint": "A la altura del ombligo en hombres; en la parte más estrecha en mujeres. Relajada, sin meter la barriga.",
+    "hipHint": "Alrededor de la parte más ancha de cadera y glúteos.",
+    "result": "Eso da alrededor de {n}%",
+    "calc": "Calcular",
+    "use": "Usar {n}%",
+    "invalid": "Esas medidas no cuadran, revisa la cinta."
   }
 }

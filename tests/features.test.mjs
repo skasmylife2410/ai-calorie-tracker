@@ -631,3 +631,35 @@ test("scan photos are shrunk by preset, and the saver default is what's used", a
   assert.deepEqual(computeTargetSize(300, 200, 512), { width: 300, height: 200 });
   for (const p of Object.values(SCAN_PRESETS)) assert.ok(p.quality > 0 && p.quality <= 1);
 });
+
+test("body fat: tape method in centimetres, and shapes that map to sensible ranges", async () => {
+  const { navyBodyFat, BF_RANGES, rangeFor, silhouetteSvg } = await import("../js/bodyfat.js");
+
+  // the metric Navy formula — the inch constants would have said 55% for the lean woman
+  assert.ok(Math.abs(navyBodyFat({ sex: "male", heightCm: 180, neckCm: 38, waistCm: 80 }) - 12) < 2);
+  assert.ok(Math.abs(navyBodyFat({ sex: "male", heightCm: 184, neckCm: 40, waistCm: 95 }) - 21) < 2);
+  assert.ok(Math.abs(navyBodyFat({ sex: "female", heightCm: 165, neckCm: 31, waistCm: 68, hipCm: 92 }) - 23) < 3);
+  assert.ok(Math.abs(navyBodyFat({ sex: "female", heightCm: 165, neckCm: 32, waistCm: 74, hipCm: 98 }) - 28) < 3);
+  // a bigger waist always means a higher number
+  assert.ok(navyBodyFat({ sex: "male", heightCm: 180, neckCm: 38, waistCm: 100 }) > navyBodyFat({ sex: "male", heightCm: 180, neckCm: 38, waistCm: 85 }));
+
+  // impossible or missing measurements give nothing rather than a wrong number
+  assert.equal(navyBodyFat({ sex: "male", heightCm: 180, neckCm: 90, waistCm: 60 }), null);
+  assert.equal(navyBodyFat({ sex: "female", heightCm: 165, neckCm: 32, waistCm: 74 }), null, "women need hips");
+  assert.equal(navyBodyFat({ sex: "male", heightCm: 0, neckCm: 38, waistCm: 90 }), null);
+
+  // the pictures get wider as the percentage rises, and every option has a description
+  for (const sex of ["male", "female"]) {
+    const list = BF_RANGES[sex];
+    for (let i = 1; i < list.length; i++) {
+      assert.ok(list[i].pct > list[i - 1].pct);
+      assert.ok(list[i].w > list[i - 1].w, `${sex} ${i}: each shape must be wider`);
+    }
+    for (const r of list) {
+      assert.ok(r.desc.length > 20);
+      assert.match(silhouetteSvg(sex, r.w), /<svg/);
+    }
+  }
+  assert.equal(rangeFor("male", 21).label, "18–22%");
+  assert.equal(rangeFor("female", 40).label, "37%+");
+});
