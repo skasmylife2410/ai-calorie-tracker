@@ -28,6 +28,12 @@ export async function postAuth(payload) {
 export async function hasValidSession() {
   if (!getStoredToken()) return false;
   const out = await postAuth({ op: "whoami" });
+  if (!out.ok && out.errorType === "unauthorized") {
+    // stale session (e.g. the account was renamed): clear it so the sign-in screen appears
+    setStoredToken("");
+    try { localStorage.removeItem("snapcal.username"); } catch { /* private mode */ }
+    return false;
+  }
   if (out.ok && out.username) {
     try { localStorage.setItem("snapcal.username", out.username); } catch { /* private mode */ }
   }

@@ -76,7 +76,17 @@ export default async function handler(req, res) {
 
   if (op === "whoami") {
     const username = readSession(req.headers["x-snapcal-token"]);
-    return username ? res.status(200).json({ ok: true, username }) : fail(res, "unauthorized", "Not signed in");
+    if (!username) return fail(res, "unauthorized", "Not signed in");
+    // The session is signed and unexpired, but the account may no longer exist — renamed or
+    // removed. Without this check the phone keeps working under a name nobody owns: it belongs
+    // to no group, so the person sees only themselves, and anything it syncs lands in limbo.
+    try {
+      const still = await getUser(username);
+      if (!still) return fail(res, "unauthorized", "That account no longer exists. Sign in again.");
+    } catch {
+      return res.status(200).json({ ok: true, username }); // database hiccup: don't sign anyone out
+    }
+    return res.status(200).json({ ok: true, username });
   }
 
   const username = normalizeUsername(body.username);

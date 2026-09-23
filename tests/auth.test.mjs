@@ -118,6 +118,7 @@ test("a session identifies the caller to every other endpoint", () => {
 });
 
 test("whoami reports the signed-in user and nothing else", async () => {
+  USERS = [{ username: "aelson", salt: "s", password_hash: "h", must_change: false }];
   let res = mockRes();
   await auth(req({ op: "whoami" }, acct.createSession("aelson")), res);
   assert.deepEqual(res.body, { ok: true, username: "aelson" });
@@ -162,4 +163,19 @@ test("the account cap stops a leaked invite code letting in a fourth person", as
   process.env.MAX_USERS = "4";
   assert.equal((await signup("someone")).ok, true);
   process.env.MAX_USERS = "3";
+});
+
+test("a session for an account that no longer exists is refused", async () => {
+  USERS = [{ username: "carmen", salt: "s", password_hash: "h", must_change: false }];
+  // Carmen's phone still holds a session signed for her old username
+  const stale = mockRes();
+  await auth(req({ op: "whoami" }, acct.createSession("baby")), stale);
+  assert.equal(stale.body.ok, false);
+  assert.equal(stale.body.errorType, "unauthorized");
+  assert.match(stale.body.message, /no longer exists/);
+
+  // the renamed account works as normal
+  const fresh = mockRes();
+  await auth(req({ op: "whoami" }, acct.createSession("carmen")), fresh);
+  assert.deepEqual(fresh.body, { ok: true, username: "carmen" });
 });
