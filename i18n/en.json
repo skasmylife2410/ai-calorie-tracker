@@ -331,7 +331,7 @@
     "sent": "Sent to {name}",
     "noteHint": "It shows on their Home instead of the usual message.",
     "shared": "Shared",
-    "shareEmpty": "Nothing shared yet. Share a meal from its editor, or an idea from Ideas.",
+    "shareEmpty": "Nothing shared yet. Tap ↗︎ on a meal with a photo to share it.",
     "share": "Share with Us",
     "shareIdea": "Share",
     "shareDone": "Shared",
@@ -347,7 +347,11 @@
     "recipe": "Recipe",
     "hideRecipe": "Hide recipe",
     "idea": "Idea",
-    "meal": "Meal"
+    "meal": "Meal",
+    "feedRule": "Photo meals only, 3 a day each. Posts and comments delete themselves after 7 days.",
+    "noComments": "No comments yet.",
+    "commentPlaceholder": "Add a comment…",
+    "deleteComment": "Delete comment"
   },
   "homeChips": {
     "exercise": "Exercise",
@@ -563,5 +567,28 @@
     "title": "Your name",
     "hint": "What the others see. Your username stays the same for signing in.",
     "placeholder": "Name"
+  },
+  "recap": {
+    "title": "Your Friday check-in",
+    "range": "{from} to {to}",
+    "private": "Only you see this",
+    "none": "Your first recommendation arrives Friday morning, based on the 7 days before.",
+    "notEnough": "You logged {n} days this week. Log at least 3 and Friday's check-in will have specific advice for you.",
+    "statKcal": "{avg} kcal a day (target {target})",
+    "statKcalNoTarget": "{avg} kcal a day",
+    "statProtein": "{avg} g protein (target {target})",
+    "statDays": "{n} of 7 days logged",
+    "statWeight": "{kg} kg"
+  },
+  "tray": {
+    "hint": "Tap foods to put them on your plate, then add them all at once.",
+    "one": "{n} food",
+    "many": "{n} foods",
+    "add": "Add",
+    "details": "Edit details",
+    "less": "Less",
+    "more": "More",
+    "remove": "Remove {name}",
+    "serv": "serv"
   }
 }

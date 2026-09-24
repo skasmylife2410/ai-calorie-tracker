@@ -81,7 +81,6 @@ export function openRecipesSheet({ date = new Date() } = {}) {
               <div class="rec-actions">
                 <button type="button" class="rec-btn" data-toggle>${open ? t("ideas.hideRecipe") : t("ideas.recipe")}</button>
                 <button type="button" class="rec-btn is-primary" data-log>${t("ideas.logIt")}</button>
-                <button type="button" class="rec-btn" data-share>↗︎ ${t("social.shareIdea")}</button>
               </div>
               ${open ? `
                 <div class="rec-detail">
@@ -99,13 +98,6 @@ export function openRecipesSheet({ date = new Date() } = {}) {
           card.querySelector("[data-toggle]")?.addEventListener("click", () => {
             if (expanded.has(idx)) expanded.delete(idx); else expanded.add(idx);
             render();
-          });
-          card.querySelector("[data-share]")?.addEventListener("click", async (ev) => {
-            const btn = ev.currentTarget;
-            btn.disabled = true;
-            const { shareIdea } = await import("../social.js");
-            const out = await shareIdea(state.recipes[idx]);
-            btn.textContent = out.ok ? `✓ ${t("social.shareDone")}` : (out.message || t("errors.generic"));
           });
           card.querySelector("[data-log]")?.addEventListener("click", () => {
             const r = state.recipes[idx];

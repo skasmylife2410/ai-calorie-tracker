@@ -12,13 +12,14 @@ const { default: notes } = await import("../api/notes.js");
 const { default: shares, cleanItem } = await import("../api/shares.js");
 
 const mockRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
+const PHOTO = "data:image/webp;base64," + "A".repeat(2000);
 const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": createSession(user) }, body });
 
 // in-memory Supabase: users, notes, shares, with the filters these endpoints actually use
 let DB;
 const reset = () => { installDb(); DB = {
   snapcal_users: [{ username: "aelson" }, { username: "baby" }, { username: "thayra23" }, { username: "jasmine" }],
-  snapcal_notes: [], snapcal_shares: [], snapcal_food_entries: [], snapcal_water: [], snapcal_exercise: [], snapcal_profile: [],
+  snapcal_notes: [], snapcal_shares: [], snapcal_comments: [], snapcal_recaps: [], snapcal_food_entries: [], snapcal_water: [], snapcal_exercise: [], snapcal_profile: [],
   snapcal_groups: [{ id: "family", name: "Family" }, { id: "work", name: "Work" }],
   snapcal_group_members: [
     { group_id: "family", username: "aelson", joined_at: "1" }, { group_id: "family", username: "baby", joined_at: "2" },
@@ -31,7 +32,9 @@ const matches = (row, params) => [...params.entries()].every(([k, v]) => {
   const [op, ...rest] = v.split("."); const val = rest.join(".");
   if (op === "eq") return String(row[k]) === val;
   if (op === "gte") return String(row[k] ?? "") >= val;
-  if (op === "in") return val.replace(/[()]/g, "").split(",").includes(String(row[k]));
+  if (op === "lt") return String(row[k] ?? "") < val;
+  if (op === "lte") return String(row[k] ?? "") <= val;
+  if (op === "in") return val.replace(/[()"]/g, "").split(",").includes(String(row[k]));
   return true;
 });
 const installDb = () => { globalThis.fetch = async (url, opts = {}) => {
@@ -109,8 +112,8 @@ test("a note can't cross groups, and a stranger's name gives nothing away", asyn
 
 test("shares stay inside the group they were posted in", async () => {
   reset();
-  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa" }, group: "family" }), mockRes());
-  await shares(as("jasmine", { op: "share", kind: "meal", item: { name: "Work salad" }, group: "work" }), mockRes());
+  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa", photo: PHOTO }, group: "family" }), mockRes());
+  await shares(as("jasmine", { op: "share", kind: "meal", item: { name: "Work salad", photo: PHOTO }, group: "work" }), mockRes());
 
   let res = mockRes(); await shares(as("thayra23", { op: "list" }), res);
   assert.deepEqual(res.body.shares.map((s) => s.data.name), ["Arepa"], "Family sees only Family");
@@ -127,7 +130,7 @@ test("shares stay inside the group they were posted in", async () => {
   // asking for a group you're not in is refused
   res = mockRes(); await shares(as("jasmine", { op: "list", group: "family" }), res);
   assert.equal(res.body.errorType, "notMember");
-  res = mockRes(); await shares(as("jasmine", { op: "share", kind: "meal", item: { name: "sneak" }, group: "family" }), res);
+  res = mockRes(); await shares(as("jasmine", { op: "share", kind: "meal", item: { name: "sneak", photo: PHOTO }, group: "family" }), res);
   assert.equal(res.body.errorType, "notMember");
   assert.equal(DB.snapcal_shares.filter((x) => x.group_id === "family").length, 1, "nothing was posted into Family");
 });
@@ -135,7 +138,7 @@ test("shares stay inside the group they were posted in", async () => {
 test("shares are visible to everyone and deletable only by their owner", async () => {
   reset();
   let res = mockRes();
-  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa con huevo", calories: 420, proteinG: 22 }, group: "family" }), res);
+  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa con huevo", calories: 420, proteinG: 22, photo: PHOTO }, group: "family" }), res);
   assert.equal(res.body.ok, true);
   const id = res.body.id;
 
@@ -163,7 +166,7 @@ test("shared items are cleaned: bad photos dropped, numbers bounded, lists cappe
   assert.equal(meal.items.length, 12);
   assert.equal("extra" in meal, false);
 
-  const big = cleanItem("meal", { name: "a", photo: "data:image/jpeg;base64," + "A".repeat(200000) });
+  const big = cleanItem("meal", { name: "a", photo: "data:image/jpeg;base64," + "A".repeat(70000) });
   assert.equal(big.photo, null, "oversized photos are dropped");
 
   const idea = cleanItem("idea", { name: "Sancocho", ingredients: Array(40).fill("x"), steps: ["a", "", "b"] });
@@ -286,4 +289,69 @@ test("people are shown by their chosen name, not their login username", async ()
   const long = mockRes();
   await compare(as("aelson", { from: "2026-01-01" }), long);
   assert.equal(long.body.people.find((p) => p.owner === "mibaby").name.length, 40);
+});
+
+
+test("only photo meals can be posted, 3 a day", async () => {
+  reset();
+  let res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "No photo" } }), res);
+  assert.equal(res.body.errorType, "photoOnly");
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "idea", item: { name: "Sancocho" } }), res);
+  assert.equal(res.body.errorType, "photoOnly");
+  for (let i = 0; i < 3; i++) {
+    res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: `m${i}`, photo: PHOTO } }), res);
+    assert.equal(res.body.ok, true);
+  }
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "fourth", photo: PHOTO } }), res);
+  assert.equal(res.body.errorType, "limit");
+  assert.equal(DB.snapcal_shares.length, 3);
+});
+
+test("the feed shows the last 7 days only, and old posts are purged with their comments", async () => {
+  reset();
+  const old = new Date(Date.now() - 8 * 86400000).toISOString();
+  DB.snapcal_shares.push({ id: "old", owner: "baby", kind: "meal", group_id: "family", created_at: old, data: { name: "Old", photo: PHOTO } });
+  DB.snapcal_shares.push({ id: "idea", owner: "baby", kind: "idea", group_id: "family", created_at: new Date().toISOString(), data: { name: "Idea" } });
+  await shares(as("baby", { op: "share", kind: "meal", item: { name: "New", photo: PHOTO }, group: "family" }), mockRes());
+  const res = mockRes(); await shares(as("aelson", { op: "list", group: "family" }), res);
+  assert.deepEqual(res.body.shares.map((s) => s.data.name), ["New"]);
+
+  const { purgeOldPosts } = await import("../api/weekly.js");
+  await purgeOldPosts();
+  assert.deepEqual(DB.snapcal_shares.map((s) => s.id).includes("old"), false);
+});
+
+test("comments: group members only, 200 characters, delete only your own", async () => {
+  reset();
+  let res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa", photo: PHOTO }, group: "family" }), res);
+  const id = res.body.id;
+
+  res = mockRes(); await shares(as("thayra23", { op: "comment", shareId: id, body: "  Se ve rica!  " + "x".repeat(300) }), res);
+  assert.equal(res.body.ok, true);
+  assert.equal(res.body.comment.body.length, 200);
+  const cid = res.body.comment.id;
+
+  res = mockRes(); await shares(as("jasmine", { op: "comment", shareId: id, body: "sneak" }), res);
+  assert.equal(res.body.errorType, "notMember", "work can't comment on family posts");
+
+  res = mockRes(); await shares(as("aelson", { op: "list", group: "family" }), res);
+  assert.equal(res.body.shares[0].comments.length, 1);
+  assert.equal(res.body.shares[0].comments[0].owner, "thayra23");
+
+  await shares(as("baby", { op: "uncomment", id: cid }), mockRes());
+  assert.equal(DB.snapcal_comments.length, 1, "the post owner can't delete someone else's comment");
+  await shares(as("thayra23", { op: "uncomment", id: cid }), mockRes());
+  assert.equal(DB.snapcal_comments.length, 0);
+});
+
+test("Friday recommendations are private to their owner", async () => {
+  reset();
+  DB.snapcal_recaps.push({ owner: "baby", week_start: "2099-01-01", data: { weekStart: "2099-01-01", weekEnd: "2099-01-07", headline: "baby's", tips: [] } });
+  const { default: weekly } = await import("../api/weekly.js");
+  let res = mockRes(); await weekly(as("aelson", { op: "mine" }), res);
+  assert.equal(res.body.recap, null, "aelson can't see baby's");
+  res = mockRes(); await weekly(as("baby", { op: "mine" }), res);
+  assert.equal(res.body.recap.headline, "baby's");
+  res = mockRes(); await weekly({ method: "GET", headers: {}, query: { force: "1" } }, res);
+  assert.equal(res.code, 401, "the job needs the cron secret");
 });

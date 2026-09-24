@@ -88,7 +88,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               </div>
               ${footnote ? `<div class="ios-section-footer">${escapeAttr(footnote)}</div>` : ""}
             </div>
-            ${isEditing ? `<button type="button" class="share-row" id="share-food">↗︎ ${t("social.share")}</button>` : ""}
+            ${isEditing && entry?.photoDataUrl ? `<button type="button" class="share-row" id="share-food">↗︎ ${t("social.share")}</button>` : ""}
           </div>
         </div>
       `;

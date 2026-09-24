@@ -37,8 +37,44 @@ export async function markNoteSeen(id) {
 export const listShares = (group = null) => post("/api/shares", { op: "list", ...(group ? { group } : {}) });
 export const deleteShare = (id) => post("/api/shares", { op: "delete", id });
 
-/** Share one of your logged meals (a snapshot of it). */
-export function shareMeal(entry, note = "", group = null) {
+export const addComment = (shareId, body) => post("/api/shares", { op: "comment", shareId, body });
+export const deleteComment = (id) => post("/api/shares", { op: "uncomment", id });
+
+/** Your own Friday recommendation (private — the server only ever returns the signed-in person's). */
+export const myRecap = () => post("/api/weekly", { op: "mine" });
+
+export const SHARE_EDGE = 320;
+
+/**
+ * Shrinks a photo for the feed: longest edge SHARE_EDGE px, WebP where the browser can write it
+ * (Safari falls back to JPEG). A feed post ends up ~15–30 KB instead of the 60–150 KB log photo.
+ */
+export async function shrinkPhoto(dataUrl, edge = SHARE_EDGE) {
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return null;
+  if (typeof document === "undefined") return dataUrl;
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = dataUrl;
+    });
+    const scale = Math.min(1, edge / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    const webp = canvas.toDataURL("image/webp", 0.6);
+    return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.6);
+  } catch {
+    return null;
+  }
+}
+
+/** Share one of your logged meals (a snapshot of it). Only meals with a photo can be shared. */
+export async function shareMeal(entry, note = "", group = null) {
+  const photo = await shrinkPhoto(entry?.photoDataUrl ?? null);
+  if (!photo) return { ok: false, errorType: "photoOnly", message: "Only meals with a photo can be shared." };
   return post("/api/shares", {
     op: "share",
     kind: "meal",
@@ -49,13 +85,9 @@ export function shareMeal(entry, note = "", group = null) {
       proteinG: entry.proteinG,
       carbsG: entry.carbsG,
       fatG: entry.fatG,
-      photo: entry.photoDataUrl ?? null,
+      photo,
       items: entry.analysisItems ?? [],
       note,
     },
   });
-}
-
-export function shareIdea(recipe, note = "", group = null) {
-  return post("/api/shares", { op: "share", kind: "idea", item: { ...recipe, note }, ...(group ? { group } : {}) });
 }

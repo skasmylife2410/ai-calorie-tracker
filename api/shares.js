@@ -1,18 +1,27 @@
 // api/shares.js — meals and recipe ideas shared to the Us tab.
 //
-// POST { op: "list" }                  -> { ok, shares }  everyone's, newest first, last 30 days
-// POST { op: "share", kind, item }     -> { ok, id }      kind: "meal" | "idea"
-// POST { op: "delete", id }            -> { ok }          only your own
+// POST { op: "list" }                   -> { ok, shares }  your group's, newest first, last 7 days,
+//                                                            each with its comments
+// POST { op: "share", kind, item }      -> { ok, id }      meals with a photo only
+// POST { op: "delete", id }             -> { ok }          only your own
+// POST { op: "comment", shareId, body } -> { ok, comment } anyone in the post's group
+// POST { op: "uncomment", id }          -> { ok }          only your own comment
 //
 // A shared item is a snapshot: editing or deleting the meal in your log afterwards doesn't
-// change what was shared. Photos are small thumbnails (the app already stores them that way).
+// change what was shared. Posts must carry a photo, shrunk on the phone to ~320px before
+// upload. Everything older than FEED_DAYS is deleted by /api/weekly (and hidden here before that).
 
 import { checkAuth } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
 import { resolveGroup } from "./_groups.js";
 
-const MAX_PHOTO = 160_000;   // data-URL length; thumbnails are ~30–80 KB
-const PER_DAY = 30;
+const MAX_PHOTO = 60_000;    // data-URL length; the phone sends ~320px WebP/JPEG, ~15–30 KB
+const PER_DAY = 3;           // posts per person per day
+const FEED_SIZE = 20;        // newest posts shown
+const FEED_DAYS = 7;
+const COMMENT_MAX = 200;
+const COMMENTS_PER_DAY = 40;
+const COMMENTS_PER_POST = 50;
 
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
 const num = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v) * 10) / 10) : 0);
@@ -57,24 +66,30 @@ export default async function handler(req, res) {
       const { group, error } = await resolveGroup(me, typeof body.group === "string" ? body.group : null);
       if (error === "notMember") return fail(res, "notMember", "You're not in that group.");
       if (!group) return res.status(200).json({ ok: true, shares: [] });
-      const since = new Date(Date.now() - 30 * 86400000).toISOString();
+      const since = new Date(Date.now() - FEED_DAYS * 86400000).toISOString();
       const rows = await select("snapcal_shares", {
         select: "id,owner,kind,data,created_at,group_id",
-        group_id: `eq.${group.id}`,
-        created_at: `gte.${since}`, order: "created_at.desc", limit: "40",
+        group_id: `eq.${group.id}`, kind: "eq.meal",
+        created_at: `gte.${since}`, order: "created_at.desc", limit: String(FEED_SIZE),
       });
-      return res.status(200).json({ ok: true, shares: rows, group });
+      const shares = rows.filter((r) => r.data?.photo);
+      const comments = shares.length
+        ? await select("snapcal_comments", { select: "id,share_id,owner,body,created_at", share_id: `in.(${shares.map((r) => `"${r.id}"`).join(",")})`, order: "created_at.asc", limit: "500" })
+        : [];
+      for (const sh of shares) sh.comments = comments.filter((c) => c.share_id === sh.id);
+      return res.status(200).json({ ok: true, shares, group });
     }
 
     if (op === "share") {
-      const kind = body.kind === "idea" ? "idea" : body.kind === "meal" ? "meal" : null;
-      if (!kind) return fail(res, "other", "Share a meal or an idea.");
+      if (body.kind !== "meal") return fail(res, "photoOnly", "Only meals with a photo can be shared.");
+      const kind = "meal";
       const data = cleanItem(kind, body.item);
       if (!data.name) return fail(res, "empty", "It needs a name.");
+      if (!data.photo) return fail(res, "photoOnly", "Only meals with a photo can be shared.");
 
       const today = new Date(); today.setUTCHours(0, 0, 0, 0);
       const mine = await select("snapcal_shares", { select: "id", owner: `eq.${me}`, created_at: `gte.${today.toISOString()}`, limit: String(PER_DAY + 1) });
-      if (mine.length >= PER_DAY) return fail(res, "limit", "That's a lot of sharing for one day.");
+      if (mine.length >= PER_DAY) return fail(res, "limit", `You can share ${PER_DAY} meals a day.`);
 
       const { group, error } = await resolveGroup(me, typeof body.group === "string" ? body.group : null);
       if (error === "notMember") return fail(res, "notMember", "You're not in that group.");
@@ -89,6 +104,33 @@ export default async function handler(req, res) {
       const id = String(body.id ?? "");
       if (!id) return fail(res, "other", "Missing id.");
       await remove("snapcal_shares", { id: `eq.${id}`, owner: `eq.${me}` }); // owner filter: only your own
+      return res.status(200).json({ ok: true });
+    }
+
+    if (op === "comment") {
+      const shareId = String(body.shareId ?? "");
+      const text = str(body.body, COMMENT_MAX);
+      if (!shareId || !text) return fail(res, "empty", "Write something first.");
+      const [post] = await select("snapcal_shares", { select: "id,group_id,created_at", id: `eq.${shareId}`, limit: "1" });
+      if (!post || Date.parse(post.created_at) < Date.now() - FEED_DAYS * 86400000) return fail(res, "gone", "That post is gone.");
+      const { group, error } = await resolveGroup(me, post.group_id);
+      if (error || !group || group.id !== post.group_id) return fail(res, "notMember", "You're not in that group.");
+      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+      const [mineToday, onPost] = await Promise.all([
+        select("snapcal_comments", { select: "id", owner: `eq.${me}`, created_at: `gte.${today.toISOString()}`, limit: String(COMMENTS_PER_DAY + 1) }),
+        select("snapcal_comments", { select: "id", share_id: `eq.${shareId}`, limit: String(COMMENTS_PER_POST + 1) }),
+      ]);
+      if (mineToday.length >= COMMENTS_PER_DAY) return fail(res, "limit", "That's a lot of comments for one day.");
+      if (onPost.length >= COMMENTS_PER_POST) return fail(res, "limit", "This post has reached its comment limit.");
+      const comment = { id: newId(), share_id: shareId, owner: me, body: text, created_at: new Date().toISOString() };
+      await insert("snapcal_comments", comment);
+      return res.status(200).json({ ok: true, comment });
+    }
+
+    if (op === "uncomment") {
+      const id = String(body.id ?? "");
+      if (!id) return fail(res, "other", "Missing id.");
+      await remove("snapcal_comments", { id: `eq.${id}`, owner: `eq.${me}` }); // only your own
       return res.status(200).json({ ok: true });
     }
 

@@ -1,18 +1,23 @@
 // search.js — Food Database search (FoodSearchView.swift), SPEC-UI.md §8.
-// Backed by Open Food Facts name search (debounced 400ms), selecting a result opens
-// AddFoodView prefilled with the product (§19 ScannedProduct).
+// Backed by Open Food Facts name search (debounced 400ms). Tapping a result puts it on the
+// plate at the bottom and the sheet STAYS OPEN, so a whole meal can be built in one go; "Add"
+// saves every food on the plate as one meal (see meal-builder.js).
 
 import { offSearchByName, usdaSearchByName } from "../api.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { searchLocalFoods } from "../foods-local.js";
-import { currentLanguage } from "../i18n.js";
+import { currentLanguage, t } from "../i18n.js";
+import * as store from "../store.js";
+import { trayItemFromProduct, withAmount, stepOf, scaled, trayTotals, trayToEntry } from "../meal-builder.js";
 
 const DEBOUNCE_MS = 400;
 
-export function openFoodSearchSheet() {
+export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
   let state = { kind: "idle" }; // idle | loading | results | noResults | error
+  let tray = [];            // foods picked so far
+  let trayOpen = false;     // amounts list expanded
   let query = "";
   let debounceTimer = null;
   let searchGeneration = 0;
@@ -34,11 +39,69 @@ export function openFoodSearchSheet() {
           </div>
         </div>
         <div class="sheet-panel-body" id="search-content"></div>
+        <div class="tray" id="tray" hidden></div>
       `;
 
       const input = panel.querySelector("#search-input");
       const clearBtn = panel.querySelector("#search-clear");
       const content = panel.querySelector("#search-content");
+      const trayEl = panel.querySelector("#tray");
+
+      const onTray = (key) => tray.some((i) => i.key === key);
+
+      const renderTray = () => {
+        trayEl.hidden = tray.length === 0;
+        if (tray.length === 0) { trayEl.innerHTML = ""; return; }
+        const tot = trayTotals(tray);
+        trayEl.innerHTML = `
+          ${trayOpen ? `<ul class="tray-list">${tray.map((i, idx) => `
+            <li class="tray-item">
+              <div class="tray-item-text">
+                <div class="tray-item-name">${escapeHtml(i.name)}</div>
+                <div class="tray-item-kcal">${scaled(i).calories} kcal, ${scaled(i).proteinG} g protein</div>
+              </div>
+              <div class="tray-stepper">
+                <button type="button" data-step="-1" data-idx="${idx}" aria-label="${t("tray.less")}">−</button>
+                <span>${i.amount} ${i.per.unit === "serving" ? t("tray.serv") : i.per.unit}</span>
+                <button type="button" data-step="1" data-idx="${idx}" aria-label="${t("tray.more")}">+</button>
+              </div>
+              <button type="button" class="tray-remove" data-remove="${idx}" aria-label="${t("tray.remove", { name: escapeHtml(i.name) })}">×</button>
+            </li>`).join("")}</ul>` : ""}
+          <div class="tray-bar">
+            <button type="button" class="tray-summary" id="tray-toggle" aria-expanded="${trayOpen}">
+              <span class="tray-count">${tray.length}</span>
+              <span>${t(tray.length === 1 ? "tray.one" : "tray.many", { n: tray.length })}, ${tot.calories} kcal</span>
+              <span class="tray-caret">${trayOpen ? "▾" : "▴"}</span>
+            </button>
+            <button type="button" class="tray-add" id="tray-add">${t("tray.add")}</button>
+          </div>`;
+        trayEl.querySelector("#tray-toggle").addEventListener("click", () => { trayOpen = !trayOpen; renderTray(); });
+        trayEl.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
+          const i = tray[Number(b.dataset.idx)];
+          tray[Number(b.dataset.idx)] = withAmount(i, i.amount + Number(b.dataset.step) * stepOf(i));
+          renderTray();
+        }));
+        trayEl.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", () => {
+          tray.splice(Number(b.dataset.remove), 1);
+          if (tray.length === 0) trayOpen = false;
+          renderTray();
+          renderState();
+        }));
+        trayEl.querySelector("#tray-add").addEventListener("click", () => {
+          const saved = store.addFoodEntry(trayToEntry(tray, timestamp ?? Date.now()));
+          if (typeof onSaved === "function") onSaved(saved);
+          close();
+        });
+      };
+
+      const toggleProduct = (product) => {
+        const item = trayItemFromProduct(product);
+        const at = tray.findIndex((i) => i.key === item.key);
+        if (at >= 0) tray.splice(at, 1);
+        else tray.push(item);
+        renderTray();
+        renderState();
+      };
 
       const renderState = () => {
         clearBtn.classList.toggle("hidden", query === "");
@@ -51,12 +114,18 @@ export function openFoodSearchSheet() {
         } else if (state.kind === "loading") {
           content.innerHTML = `<div class="loading-center"><div class="spinner"></div></div>`;
         } else if (state.kind === "results") {
-          content.innerHTML = `<div class="search-results">${state.products.map(resultRowHtml).join("")}</div>`;
+          content.innerHTML = `<p class="tray-hint">${t("tray.hint")}</p><div class="search-results">${state.products.map((p, i) => resultRowHtml(p, i, onTray(trayItemFromProduct(p).key))).join("")}</div>`;
           content.querySelectorAll("[data-result-idx]").forEach((row) => {
-            row.addEventListener("click", () => {
-              const product = state.products[Number(row.dataset.resultIdx)];
-              close();
-              openAddFoodSheet({ prefill: product });
+            row.addEventListener("click", () => toggleProduct(state.products[Number(row.dataset.resultIdx)]));
+            row.addEventListener("keydown", (e) => {
+              if (e.target === row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleProduct(state.products[Number(row.dataset.resultIdx)]); }
+            });
+          });
+          content.querySelectorAll("[data-edit-idx]").forEach((b) => {
+            b.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const product = state.products[Number(b.dataset.editIdx)];
+              openAddFoodSheet({ prefill: product, timestamp, onSaved });
             });
           });
         } else if (state.kind === "noResults") {
@@ -150,7 +219,7 @@ export function openFoodSearchSheet() {
 
       wireNavBar(panel, {
         onLeading: () => close(),
-        onTrailing: () => openAddFoodSheet({}),
+        onTrailing: () => openAddFoodSheet({ timestamp, onSaved }),
       });
 
       renderState();
@@ -159,17 +228,19 @@ export function openFoodSearchSheet() {
   });
 }
 
-function resultRowHtml(product, idx) {
+function resultRowHtml(product, idx, picked = false) {
   return `
-    <div class="search-result-row card" data-result-idx="${idx}">
+    <div class="search-result-row card${picked ? " is-picked" : ""}" data-result-idx="${idx}" role="button" tabindex="0" aria-pressed="${picked}">
       <div class="search-result-left">
         <div class="search-result-name">${escapeHtml(product.name)}</div>
         ${product.brand ? `<div class="search-result-brand">${escapeHtml(product.brand)}</div>` : ""}
+        <button type="button" class="search-result-edit" data-edit-idx="${idx}">${t("tray.details")}</button>
       </div>
       <div class="search-result-right">
         <div class="search-result-cal">${Math.round(product.calories)} kcal</div>
         <div class="search-result-serving">${escapeHtml(product.servingDescription)}</div>
       </div>
+      <span class="search-result-pick" aria-hidden="true">${picked ? "✓" : "+"}</span>
     </div>
   `;
 }

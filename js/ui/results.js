@@ -49,7 +49,7 @@ export function openResultsSheet(entry) {
               <button type="button" data-serv="1" aria-label="More servings">+</button>
             </div>
             <button type="button" class="servings-heart" id="fav-toggle" aria-label="Favourite">♡</button>
-            <button type="button" class="servings-share" id="share-meal" aria-label="${t("social.share")}">↗︎</button>
+            ${entry.photoDataUrl ? `<button type="button" class="servings-share" id="share-meal" aria-label="${t("social.share")}">↗︎</button>` : ""}
           </div>
           <div class="results-items-section-header">${t("meal.items")}</div>
           <div class="ios-section" style="margin-bottom:0;">

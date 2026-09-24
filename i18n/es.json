@@ -331,7 +331,7 @@
     "sent": "Enviada a {name}",
     "noteHint": "Aparece en su Inicio en lugar del mensaje de siempre.",
     "shared": "Compartido",
-    "shareEmpty": "Aún no hay nada compartido. Comparte una comida desde su editor, o una idea desde Ideas.",
+    "shareEmpty": "Aún no hay nada compartido. Toca ↗︎ en una comida con foto para compartirla.",
     "share": "Compartir en Nosotros",
     "shareIdea": "Compartir",
     "shareDone": "Compartido",
@@ -347,7 +347,11 @@
     "recipe": "Receta",
     "hideRecipe": "Ocultar receta",
     "idea": "Idea",
-    "meal": "Comida"
+    "meal": "Comida",
+    "feedRule": "Solo comidas con foto, 3 al día por persona. Las publicaciones y comentarios se borran solos a los 7 días.",
+    "noComments": "Aún no hay comentarios.",
+    "commentPlaceholder": "Escribe un comentario…",
+    "deleteComment": "Borrar comentario"
   },
   "homeChips": {
     "exercise": "Ejercicio",
@@ -563,5 +567,28 @@
     "title": "Tu nombre",
     "hint": "Lo que ven los demás. Tu usuario para entrar sigue igual.",
     "placeholder": "Nombre"
+  },
+  "recap": {
+    "title": "Tu revisión del viernes",
+    "range": "{from} a {to}",
+    "private": "Solo tú ves esto",
+    "none": "Tu primera recomendación llega el viernes en la mañana, basada en los 7 días anteriores.",
+    "notEnough": "Registraste {n} días esta semana. Registra al menos 3 y la revisión del viernes tendrá consejos específicos para ti.",
+    "statKcal": "{avg} kcal al día (meta {target})",
+    "statKcalNoTarget": "{avg} kcal al día",
+    "statProtein": "{avg} g de proteína (meta {target})",
+    "statDays": "{n} de 7 días registrados",
+    "statWeight": "{kg} kg"
+  },
+  "tray": {
+    "hint": "Toca los alimentos para ponerlos en tu plato y agrégalos todos juntos.",
+    "one": "{n} alimento",
+    "many": "{n} alimentos",
+    "add": "Agregar",
+    "details": "Editar detalles",
+    "less": "Menos",
+    "more": "Más",
+    "remove": "Quitar {name}",
+    "serv": "porc."
   }
 }

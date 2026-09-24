@@ -80,7 +80,7 @@ export function render(container) {
   for (const entry of meals) {
     cleanups.push(
       mountEntryRow(list, entry, {
-        onShare: async (e) => {
+        onShare: !entry.photoDataUrl ? null : async (e) => {
           const { shareMeal } = await import("../social.js");
           const out = await shareMeal(store.getFoodEntry(e.id) ?? e);
           return out.ok === true;

@@ -1,7 +1,7 @@
 // us-social.js — the parts of the Us tab that are about each other rather than numbers:
 // writing someone a note, and the feed of shared meals and ideas.
 
-import { sendNote, listShares, deleteShare } from "../social.js";
+import { sendNote, listShares, deleteShare, addComment, deleteComment } from "../social.js";
 import { t, formatNumber } from "../i18n.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -62,12 +62,12 @@ function toast(text) {
 }
 
 /**
- * Renders the Shared feed into `host`.
+ * Renders the Shared feed into `host`: compact photo posts, each with its comments.
  * @param {{me:string, people:Array<{owner:string, avatar?:string}>, colors:string[]}} ctx
  */
 export async function renderFeed(host, { me, people, colors, group = null }) {
   const nameOf = (owner) => people.find((p) => p.owner === owner)?.name || title(owner);
-  host.innerHTML = `<h2 class="tg-h2">${t("social.shared")}</h2><div class="feed-list"><p class="tg-note">…</p></div>`;
+  host.innerHTML = `<h2 class="tg-h2">${t("social.shared")}</h2><p class="feed-rule">${t("social.feedRule")}</p><div class="feed-list"><p class="tg-note">…</p></div>`;
   const list = host.querySelector(".feed-list");
   const out = await listShares(group);
   if (!out.ok) { list.innerHTML = `<p class="tg-note">${esc(out.message || t("errors.generic"))}</p>`; return; }
@@ -75,52 +75,111 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
 
   const colorOf = (owner) => colors[Math.max(0, people.findIndex((p) => p.owner === owner)) % colors.length];
   const avatarOf = (owner) => people.find((p) => p.owner === owner)?.avatar ?? null;
+  const open = new Set();
 
-  list.innerHTML = out.shares.map((s) => {
+  const commentHtml = (c) => `
+    <li class="fc-item" data-cid="${esc(c.id)}">
+      <span class="fc-who">${esc(nameOf(c.owner))}</span> ${esc(c.body)}
+      ${c.owner === me ? `<button type="button" class="fc-del" data-cdel="${esc(c.id)}" aria-label="${t("social.deleteComment")}">×</button>` : ""}
+    </li>`;
+
+  const cardHtml = (s) => {
     const d = s.data ?? {};
     const mine = s.owner === me;
     const av = avatarOf(s.owner);
+    const comments = s.comments ?? [];
+    const isOpen = open.has(s.id);
     return `
       <article class="feed-card" data-id="${esc(s.id)}">
-        <header class="feed-head">
-          <span class="feed-av" style="--av:${colorOf(s.owner)}">${av ? `<img src="${av}" alt="">` : esc(nameOf(s.owner).slice(0, 1))}</span>
-          <span class="feed-who">${esc(nameOf(s.owner))}</span>
-          <span class="feed-kind">${s.kind === "idea" ? t("social.idea") : t("social.meal")}</span>
-          <span class="feed-when">${agoLabel(s.created_at)}</span>
-        </header>
-        ${d.photo ? `<img class="feed-photo" src="${d.photo}" alt="">` : ""}
-        <div class="feed-name">${esc(d.name)}</div>
-        <div class="feed-macros">${formatNumber(d.calories)} kcal · ${formatNumber(d.proteinG)} g protein${d.minutes ? ` · ${formatNumber(d.minutes)} min` : ""}</div>
-        ${d.note ? `<div class="feed-note">“${esc(d.note)}”</div>` : ""}
-        ${s.kind === "idea" && (d.ingredients?.length || d.steps?.length) ? `
-          <details class="feed-recipe"><summary>${t("social.recipe")}</summary>
-            <ul>${(d.ingredients ?? []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
-            <ol>${(d.steps ?? []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
-          </details>` : ""}
-        <footer class="feed-actions">
-          <button type="button" class="feed-btn is-primary" data-log="${esc(s.id)}">${t("social.logThis")}</button>
-          ${mine ? `<button type="button" class="feed-btn" data-del="${esc(s.id)}">${t("social.remove")}</button>` : ""}
-        </footer>
+        <img class="feed-thumb" src="${d.photo}" alt="${esc(d.name)}" loading="lazy">
+        <div class="feed-main">
+          <header class="feed-head">
+            <span class="feed-av" style="--av:${colorOf(s.owner)}">${av ? `<img src="${av}" alt="">` : esc(nameOf(s.owner).slice(0, 1))}</span>
+            <span class="feed-who">${esc(nameOf(s.owner))}</span>
+            <span class="feed-when">${agoLabel(s.created_at)}</span>
+          </header>
+          <div class="feed-name">${esc(d.name)}</div>
+          <div class="feed-macros">${formatNumber(d.calories)} kcal, ${formatNumber(d.proteinG)} g protein</div>
+          ${d.note ? `<div class="feed-note">“${esc(d.note)}”</div>` : ""}
+          <footer class="feed-actions">
+            <button type="button" class="feed-btn is-primary" data-log="${esc(s.id)}">${t("social.logThis")}</button>
+            <button type="button" class="feed-btn" data-talk="${esc(s.id)}" aria-expanded="${isOpen}">💬 ${comments.length || ""}</button>
+            ${mine ? `<button type="button" class="feed-btn" data-del="${esc(s.id)}">${t("social.remove")}</button>` : ""}
+          </footer>
+        </div>
+        ${isOpen ? `
+          <div class="feed-comments">
+            <ul class="fc-list">${comments.map(commentHtml).join("") || `<li class="fc-empty">${t("social.noComments")}</li>`}</ul>
+            <div class="fc-compose">
+              <input type="text" class="fc-input" maxlength="200" placeholder="${t("social.commentPlaceholder")}" aria-label="${t("social.commentPlaceholder")}">
+              <button type="button" class="feed-btn is-primary" data-send="${esc(s.id)}">${t("social.send")}</button>
+            </div>
+            <div class="fc-err" role="status"></div>
+          </div>` : ""}
       </article>`;
-  }).join("");
+  };
 
-  list.querySelectorAll("[data-log]").forEach((b) => b.addEventListener("click", async () => {
-    const s = out.shares.find((x) => x.id === b.dataset.log);
-    if (!s) return;
-    const store = await import("../store.js");
-    const d = s.data ?? {};
-    store.addFoodEntry({
-      name: d.name, calories: d.calories, proteinG: d.proteinG, carbsG: d.carbsG, fatG: d.fatG,
-      source: "manual", photoDataUrl: d.photo ?? null,
-      analysisItems: Array.isArray(d.items) && d.items.length ? d.items : null,
-      timestamp: Date.now(),
+  const draw = () => {
+    list.innerHTML = out.shares.map(cardHtml).join("");
+    wire();
+  };
+
+  const wire = () => {
+    list.querySelectorAll("[data-log]").forEach((b) => b.addEventListener("click", async () => {
+      const s = out.shares.find((x) => x.id === b.dataset.log);
+      if (!s) return;
+      const store = await import("../store.js");
+      const d = s.data ?? {};
+      store.addFoodEntry({
+        name: d.name, calories: d.calories, proteinG: d.proteinG, carbsG: d.carbsG, fatG: d.fatG,
+        source: "manual", photoDataUrl: d.photo ?? null,
+        analysisItems: Array.isArray(d.items) && d.items.length ? d.items : null,
+        timestamp: Date.now(),
+      });
+      b.textContent = `✓ ${t("social.logged")}`;
+      b.disabled = true;
+    }));
+    list.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      await deleteShare(b.dataset.del);
+      out.shares = out.shares.filter((x) => x.id !== b.dataset.del);
+      draw();
+    }));
+    list.querySelectorAll("[data-talk]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.talk;
+      if (open.has(id)) open.delete(id); else open.add(id);
+      draw();
+      if (open.has(id)) list.querySelector(`[data-id="${CSS.escape(id)}"] .fc-input`)?.focus();
+    }));
+    list.querySelectorAll("[data-send]").forEach((b) => {
+      const card = b.closest(".feed-card");
+      const input = card.querySelector(".fc-input");
+      const send = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        b.disabled = true;
+        const res = await addComment(b.dataset.send, text);
+        if (!res.ok) {
+          card.querySelector(".fc-err").textContent = res.message || t("errors.generic");
+          b.disabled = false;
+          return;
+        }
+        const s = out.shares.find((x) => x.id === b.dataset.send);
+        s.comments = [...(s.comments ?? []), res.comment];
+        draw();
+        list.querySelector(`[data-id="${CSS.escape(s.id)}"] .fc-input`)?.focus();
+      };
+      b.addEventListener("click", send);
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
     });
-    b.textContent = `✓ ${t("social.logged")}`;
-    b.disabled = true;
-  }));
-  list.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
-    b.disabled = true;
-    await deleteShare(b.dataset.del);
-    b.closest(".feed-card")?.remove();
-  }));
+    list.querySelectorAll("[data-cdel]").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      const res = await deleteComment(b.dataset.cdel);
+      if (!res.ok) { b.disabled = false; return; }
+      for (const s of out.shares) s.comments = (s.comments ?? []).filter((c) => c.id !== b.dataset.cdel);
+      draw();
+    }));
+  };
+
+  draw();
 }

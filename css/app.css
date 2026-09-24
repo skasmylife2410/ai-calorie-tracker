@@ -2043,3 +2043,28 @@ body.setup-open { overflow: hidden; }
 .bf-actions button { flex: 1; }
 .bf-result { margin-top: 18px; padding: 16px; border-radius: 18px; background: rgba(42,166,107,.12); font-size: 16px; font-weight: 700; display: grid; gap: 10px; }
 .bf-invalid { color: var(--sc-red); }
+
+/* Food search: pick several foods onto a plate, then add them as one meal */
+.tray-hint { font-size: 12px; color: var(--sc-secondary); margin: 0 16px 8px; }
+.search-result-row { cursor: pointer; transition: box-shadow .15s ease; }
+.search-result-row.is-picked { box-shadow: 0 0 0 2px var(--sc-primary-text) inset !important; }
+.search-result-row:focus-visible { outline: 2px solid var(--sc-primary-text); outline-offset: 2px; }
+.search-result-pick { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; font-weight: 800; background: var(--sc-black-6); color: var(--sc-primary-text); }
+.is-picked .search-result-pick { background: var(--sc-primary-text); color: var(--sc-card-bg); }
+.search-result-edit { align-self: flex-start; font: inherit; font-size: 12px; font-weight: 600; color: var(--sc-blue); background: none; border: 0; padding: 2px 0; }
+.tray { flex: none; background: var(--sc-card-bg); border-top: 1px solid var(--sc-black-6); padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 20px rgba(0,0,0,.06); }
+.tray-list { list-style: none; margin: 0 0 10px; padding: 0; max-height: 38vh; overflow-y: auto; display: grid; gap: 8px; }
+.tray-item { display: flex; align-items: center; gap: 8px; }
+.tray-item-text { flex: 1; min-width: 0; }
+.tray-item-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tray-item-kcal { font-size: 12px; color: var(--sc-secondary); }
+.tray-stepper { display: flex; align-items: center; gap: 4px; flex: none; }
+.tray-stepper span { min-width: 58px; text-align: center; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tray-stepper button, .tray-remove { width: 32px; height: 32px; border-radius: 10px; border: 0; background: var(--sc-black-6); color: var(--sc-primary-text); font-size: 18px; font-weight: 700; line-height: 1; }
+.tray-remove { background: none; color: var(--sc-secondary); font-size: 22px; }
+.tray-bar { display: flex; gap: 8px; align-items: center; }
+.tray-summary { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-primary-text); background: var(--sc-black-5); border: 0; border-radius: 14px; padding: 10px 12px; text-align: left; }
+.tray-count { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--sc-primary-text); color: var(--sc-card-bg); font-size: 12px; font-weight: 800; }
+.tray-caret { margin-left: auto; color: var(--sc-secondary); }
+.tray-add { flex: none; font: inherit; font-size: 15px; font-weight: 800; padding: 12px 20px; border: 0; border-radius: 14px; background: var(--sc-primary-text); color: var(--sc-card-bg); }
+.tray button:focus-visible { outline: 2px solid var(--sc-blue); outline-offset: 2px; }
