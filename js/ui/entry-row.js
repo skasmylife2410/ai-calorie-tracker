@@ -6,6 +6,7 @@ import { isGroupedEntry } from "../store.js";
 import { ANALYSIS_MODES } from "../api.js";
 import { icon } from "./icons.js";
 import { ringGauge } from "./ring.js";
+import { t } from "../i18n.js";
 
 const MACRO_META = [
   { key: "proteinG", label: "P", icon: "fishFill", color: "var(--sc-protein)" },
@@ -59,11 +60,11 @@ function pendingRowHtml(entry) {
 }
 
 function failedRowHtml(entry) {
-  const reason = entry.analysisFailureReason || "Tap to retry";
+  const reason = entry.analysisFailureReason || t("ui.tapRetry");
   return `
     <div class="entry-fail-icon-box">${icon("exclamationTriangleFill", { size: 18, color: "var(--sc-red)" })}</div>
     <div class="entry-fail-body">
-      <div class="entry-fail-title">Analysis failed</div>
+      <div class="entry-fail-title">${t("ui.analysisFailed")}</div>
       <div class="entry-fail-reason">${escapeHtml(reason)}</div>
     </div>
     <div class="entry-fail-chevron">${icon("chevronRight", { size: 13 })}</div>

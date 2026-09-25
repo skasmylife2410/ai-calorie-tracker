@@ -414,12 +414,16 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .rc-headline { font-size: 16px; font-weight: 600; line-height: 1.4; margin: 12px 0 8px; }
 .rc-stats { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .rc-stats li { font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 9px; background: rgba(0,0,0,.05); }
-.rc-tips { margin: 12px 0 0; padding-left: 22px; display: grid; gap: 14px; }
+.rc-card { min-width: 0; overflow: hidden; }
+.rc-tips { margin: 12px 0 0; padding-left: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.rc-tip { min-width: 0; overflow-wrap: anywhere; }
 .rc-tips > li::marker { font-weight: 800; }
 .rc-tip-title { font-size: 15px; font-weight: 700; line-height: 1.3; }
 .rc-body { font-size: 14px; line-height: 1.5; margin: 4px 0 0; }
-.rc-meals { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+.rc-meals { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-top: 8px; }
 .rc-meal { margin: 0; flex: none; width: 88px; }
 .rc-meal img { width: 88px; height: 88px; object-fit: cover; border-radius: 12px; display: block; }
 .rc-meal figcaption { font-size: 11px; color: var(--sc-secondary, #6B6B73); margin-top: 3px; line-height: 1.3; }
-.rc-chip { font-size: 12px; padding: 5px 9px; border-radius: 9px; background: rgba(0,0,0,.05); white-space: nowrap; }
+.rc-chip { font-size: 12px; line-height: 1.35; padding: 7px 10px; border-radius: 10px; background: rgba(0,0,0,.05); max-width: 100%; display: grid; gap: 1px; }
+.rc-chip-name { font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.rc-chip-meta { color: var(--sc-secondary, #6B6B73); }

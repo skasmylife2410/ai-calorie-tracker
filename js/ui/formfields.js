@@ -10,13 +10,14 @@
 import { wireNumericInput } from "./numeric-field.js";
 import { ACTIVITY_LABELS, SEX_LABELS, roundDisplay } from "../nutrition.js";
 import { icon } from "./icons.js";
+import { t } from "../i18n.js";
 
 export const GOAL_OPTIONS = [
-  { delta: -500, label: "Lose ~0.5 kg/week" },
-  { delta: -250, label: "Lose ~0.25 kg/week" },
-  { delta: 0, label: "Maintain weight" },
-  { delta: 250, label: "Gain ~0.25 kg/week" },
-  { delta: 500, label: "Gain ~0.5 kg/week" },
+  { delta: -500, get label() { return t("ui.goal_lose05"); } },
+  { delta: -250, get label() { return t("ui.goal_lose025"); } },
+  { delta: 0, get label() { return t("ui.goal_maintain"); } },
+  { delta: 250, get label() { return t("ui.goal_gain025"); } },
+  { delta: 500, get label() { return t("ui.goal_gain05"); } },
 ];
 
 function pickerRow({ id, label, currentLabel, options }) {
@@ -36,31 +37,31 @@ function pickerRow({ id, label, currentLabel, options }) {
 export function bodyStatsSectionHtml(profile) {
   return `
     <div class="ios-section">
-      <div class="ios-section-header">Body stats</div>
+      <div class="ios-section-header">${t("profileScreen.bodyStats")}</div>
       <div class="ios-section-body">
         <div class="ios-row">
-          <div class="ios-row-label">Weight</div>
+          <div class="ios-row-label">${t("ui.weight")}</div>
           <div class="ios-row-spacer"></div>
           <input type="text" class="numeric-input" id="field-weight" placeholder="kg" />
           <div class="ios-row-unit">kg</div>
         </div>
         <div class="ios-row">
-          <div class="ios-row-label">Height</div>
+          <div class="ios-row-label">${t("ui.height")}</div>
           <div class="ios-row-spacer"></div>
           <input type="text" class="numeric-input" id="field-height" placeholder="cm" />
           <div class="ios-row-unit">cm</div>
         </div>
         <div class="ios-row">
-          <div class="ios-row-label">Age</div>
+          <div class="ios-row-label">${t("ui.age")}</div>
           <div class="ios-row-spacer"></div>
           <input type="text" class="numeric-input" id="field-age" placeholder="years" />
           <div class="ios-row-unit">yrs</div>
         </div>
         ${pickerRow({
           id: "field-sex",
-          label: "Sex",
+          label: t("ui.sex"),
           currentLabel: SEX_LABELS[profile.sex],
-          options: Object.entries(SEX_LABELS).map(([value, label]) => ({ value, label, selected: value === profile.sex })),
+          options: Object.keys(SEX_LABELS).map((value) => ({ value, label: t(`ui.sex_${value}`), selected: value === profile.sex })),
         })}
       </div>
     </div>
@@ -70,13 +71,13 @@ export function bodyStatsSectionHtml(profile) {
 export function activityLevelSectionHtml(profile) {
   return `
     <div class="ios-section">
-      <div class="ios-section-header">Activity level</div>
+      <div class="ios-section-header">${t("profileScreen.activityLevel")}</div>
       <div class="ios-section-body">
         ${pickerRow({
           id: "field-activity",
-          label: "Activity level",
-          currentLabel: ACTIVITY_LABELS[profile.activityLevel],
-          options: Object.entries(ACTIVITY_LABELS).map(([value, label]) => ({ value, label, selected: value === profile.activityLevel })),
+          label: t("profileScreen.activityLevel"),
+          currentLabel: t(`ui.act_${profile.activityLevel}`),
+          options: Object.keys(ACTIVITY_LABELS).map((value) => ({ value, label: t(`ui.act_${value}`), selected: value === profile.activityLevel })),
         })}
       </div>
     </div>
@@ -87,11 +88,11 @@ export function goalSectionHtml(profile) {
   const current = GOAL_OPTIONS.find((g) => g.delta === profile.targetDeltaKcal) ?? GOAL_OPTIONS[0];
   return `
     <div class="ios-section">
-      <div class="ios-section-header">Goal</div>
+      <div class="ios-section-header">${t("profileScreen.goal")}</div>
       <div class="ios-section-body">
         ${pickerRow({
           id: "field-goal",
-          label: "Goal",
+          label: t("profileScreen.goal"),
           currentLabel: current.label,
           options: GOAL_OPTIONS.map((g) => ({ value: String(g.delta), label: g.label, selected: g.delta === current.delta })),
         })}
@@ -149,11 +150,11 @@ export function calculatorEstimateRowsHtml(goals) {
       <div class="calc-estimate-value">${roundDisplay(goals.bmr)} kcal</div>
     </div>
     <div class="calc-estimate-row">
-      <div class="calc-estimate-label">Estimated TDEE</div>
+      <div class="calc-estimate-label">${t("ui.tdee")}</div>
       <div class="calc-estimate-value">${roundDisplay(goals.tdee)} kcal</div>
     </div>
     <div class="calc-estimate-row">
-      <div class="calc-estimate-label">Estimated target</div>
+      <div class="calc-estimate-label">${t("ui.target")}</div>
       <div class="calc-estimate-value target">${roundDisplay(goals.computedTargetCalories)} kcal</div>
     </div>
   `;

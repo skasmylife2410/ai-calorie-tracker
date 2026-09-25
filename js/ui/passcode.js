@@ -3,6 +3,7 @@
 
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { setStoredToken } from "../net.js";
+import { t } from "../i18n.js";
 
 /**
  * @param {boolean} [showError] show an "incorrect passcode" line (a previous attempt just failed)
@@ -16,9 +17,9 @@ export function openPasscodeSheet(showError = false) {
       render(panel, close) {
         panel.innerHTML = `
           ${navBar({
-            title: "Passcode",
-            leading: { label: "Cancel" },
-            trailing: { label: "Continue", bold: true, disabled: true },
+            title: t("ui.passcode"),
+            leading: { label: t("app.cancel") },
+            trailing: { label: t("ui.continue"), bold: true, disabled: true },
           })}
           <div class="sheet-panel-body">
             <div class="describe-body">

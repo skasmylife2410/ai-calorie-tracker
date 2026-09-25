@@ -263,7 +263,7 @@ export function exerciseRowsHtml(date = new Date()) {
             <div class="ex-row-name">${escapeHtml(e.name || activityLabel(e.activity))}</div>
             <div class="ex-row-sub">${t(e.minutes > 0 ? "exercise.rowSub" : "exercise.rowSubKcal", { minutes: e.minutes, burned: e.caloriesBurned || 0, credit: exerciseCredit(e.caloriesBurned || 0, store.exerciseCreditRatio()) })}</div>
           </div>
-          <button type="button" class="ex-row-del" data-delete-exercise="${e.id}" aria-label="Delete">${icon("trashFill", { size: 16 })}</button>
+          <button type="button" class="ex-row-del" data-delete-exercise="${e.id}" aria-label="${t("app.delete")}">${icon("trashFill", { size: 16 })}</button>
         </div>`;
     })
     .join("");

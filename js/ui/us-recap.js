@@ -7,10 +7,11 @@ import { t, formatNumber } from "../i18n.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-/** "Mon 21" style label for a YYYY-MM-DD day, in the app language. */
-export function shortDay(day, lang = "en") {
-  const d = new Date(`${day}T12:00:00`);
-  return new Intl.DateTimeFormat(lang === "es" ? "es-CO" : "en-US", { weekday: "short", day: "numeric" }).format(d);
+/** "Sat, Sep 19" / "sáb, 19 sept" for a YYYY-MM-DD day, in the app language. */
+export function shortDay(day, lang = "en", withMonth = false) {
+  const d = new Date(`${day}T12:00:00Z`);
+  const opts = { weekday: "short", day: "numeric", timeZone: "UTC", ...(withMonth ? { month: "short" } : {}) };
+  return new Intl.DateTimeFormat(lang === "es" ? "es-CO" : "en-US", opts).format(d);
 }
 
 /** One line per stat that has something to say; missing targets are left out rather than guessed. */
@@ -20,22 +21,23 @@ export function statLines(stats) {
   else lines.push(t("recap.statKcalNoTarget", { avg: formatNumber(stats.avgCalories) }));
   if (stats.targetProteinG) lines.push(t("recap.statProtein", { avg: formatNumber(stats.avgProteinG), target: formatNumber(stats.targetProteinG) }));
   lines.push(t("recap.statDays", { n: stats.daysLogged }));
-  if (stats.weightChangeKg != null) lines.push(t("recap.statWeight", { kg: `${stats.weightChangeKg > 0 ? "+" : ""}${stats.weightChangeKg}` }));
+  if (stats.weightChangeKg != null) lines.push(t("recap.statWeight", { kg: formatNumber(stats.weightChangeKg, { signDisplay: "exceptZero", maximumFractionDigits: 1 }) }));
   return lines;
 }
 
 function mealHtml(meal, lang) {
   const entry = store.getFoodEntry?.(meal.id);
   const photo = entry?.photoDataUrl;
-  const label = `${esc(meal.name)}, ${esc(shortDay(meal.day, lang))}, ${formatNumber(meal.calories)} kcal`;
+  const day = esc(shortDay(meal.day, lang));
+  const kcal = `${formatNumber(meal.calories)} kcal`;
   return photo
-    ? `<figure class="rc-meal"><img src="${photo}" alt="${label}" loading="lazy"><figcaption>${esc(shortDay(meal.day, lang))}<br>${formatNumber(meal.calories)} kcal</figcaption></figure>`
-    : `<span class="rc-chip">${label}</span>`;
+    ? `<figure class="rc-meal"><img src="${photo}" alt="${esc(meal.name)}" loading="lazy"><figcaption>${day}<br>${kcal}</figcaption></figure>`
+    : `<div class="rc-chip"><span class="rc-chip-name">${esc(meal.name)}</span><span class="rc-chip-meta">${day}, ${kcal}</span></div>`;
 }
 
 export async function renderRecap(host, { lang = "en" } = {}) {
   host.innerHTML = "";
-  const out = await myRecap();
+  const out = await myRecap(lang);
   if (!out?.ok) return; // stays out of the way when offline or unconfigured
   const r = out.recap;
   if (!r) {
@@ -50,7 +52,7 @@ export async function renderRecap(host, { lang = "en" } = {}) {
   host.innerHTML = `
     <div class="rc-card">
       <h2 class="rc-title">${t("recap.title")}</h2>
-      <p class="rc-range">${t("recap.range", { from: esc(shortDay(r.weekStart, lang)), to: esc(shortDay(r.weekEnd, lang)) })} <span class="rc-private">🔒 ${t("recap.private")}</span></p>
+      <p class="rc-range">${t("recap.range", { from: esc(shortDay(r.weekStart, lang, true)), to: esc(shortDay(r.weekEnd, lang, true)) })} <span class="rc-private">🔒 ${t("recap.private")}</span></p>
       <p class="rc-headline">${esc(r.headline)}</p>
       <ul class="rc-stats">${statLines(stats).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
       <ol class="rc-tips">

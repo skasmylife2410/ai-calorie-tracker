@@ -14,9 +14,9 @@ import { icon } from "./icons.js";
 import { openFullScreenCover } from "./sheet.js";
 
 const MODES = [
-  { id: "food", title: "Scan Food", icon: "viewfinderRectangular" },
-  { id: "barcode", title: "Barcode", icon: "barcode" },
-  { id: "label", title: "Food label", icon: "listBulletRectanglePortrait" },
+  { id: "food", get title() { return t("ui.scanFood"); }, icon: "viewfinderRectangular" },
+  { id: "barcode", get title() { return t("ui.barcode"); }, icon: "barcode" },
+  { id: "label", get title() { return t("ui.foodLabel"); }, icon: "listBulletRectanglePortrait" },
 ];
 
 const BARCODE_FORMATS_NATIVE = ["ean_13", "ean_8", "upc_a", "upc_e"];
@@ -151,7 +151,7 @@ export function openCameraScan({ onResult }) {
       const manualBarcodeHtml = () => `
         <div class="scan-manual-barcode">
           <input type="text" class="scan-manual-input" id="manual-barcode-input" inputmode="numeric" placeholder="Enter barcode digits" />
-          <button class="scan-go-btn" id="manual-barcode-go" disabled>Go</button>
+          <button class="scan-go-btn" id="manual-barcode-go" disabled>${t("ui.go")}</button>
         </div>
       `;
 

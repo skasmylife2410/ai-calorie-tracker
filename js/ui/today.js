@@ -394,19 +394,19 @@ export function handleRowTap(entry, container) {
   if (state === "pending") return;
   if (state === "failed") {
     openActionSheet({
-      title: "Analysis failed",
-      message: entry.analysisFailureReason || "Something went wrong during analysis.",
+      title: t("ui.analysisFailed"),
+      message: entry.analysisFailureReason || t("ui.analysisFailedBody"),
       actions: [
-        { label: "Retry", onSelect: () => queue.retry(entry.id) },
+        { label: t("app.retry"), onSelect: () => queue.retry(entry.id) },
         {
-          label: "Edit manually",
+          label: t("ui.editManually"),
           onSelect: () => {
             store.updateFoodEntry(entry.id, { analysisFailed: false });
             openAddFoodSheet({ entry: store.getFoodEntry(entry.id) });
           },
         },
-        { label: "Delete", destructive: true, onSelect: () => store.deleteFoodEntry(entry.id) },
-        { label: "Cancel", cancel: true },
+        { label: t("app.delete"), destructive: true, onSelect: () => store.deleteFoodEntry(entry.id) },
+        { label: t("app.cancel"), cancel: true },
       ],
     });
     return;

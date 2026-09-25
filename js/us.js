@@ -55,10 +55,10 @@ async function load() {
 function showPin(wrong) {
   body.innerHTML = `
     <form class="tg-pin" id="tg-pin">
-      <label for="tg-pin-input" class="tg-note">Enter your passcode to see the dashboard.</label>
+      <label for="tg-pin-input" class="tg-note">${t("ui.pinPrompt")}</label>
       <input id="tg-pin-input" type="password" autocomplete="current-password" required />
-      ${wrong ? `<div class="tg-error">That passcode didn't match. Check capital letters and try again.</div>` : ""}
-      <button type="submit">Show dashboard</button>
+      ${wrong ? `<div class="tg-error">${t("ui.pinWrong")}</div>` : ""}
+      <button type="submit">${t("ui.showDash")}</button>
     </form>`;
   const input = document.getElementById("tg-pin-input");
   input.focus();
@@ -253,8 +253,8 @@ function mirrorHtml(people, days) {
   const rows = days.map(({ ts, key }) => {
     const dt = new Date(ts);
     const label = key === localDateString(Date.now())
-      ? `<strong>Today</strong>`
-      : `<strong>${dt.toLocaleDateString(undefined, { weekday: "short" })}</strong>${dt.getMonth() + 1}/${dt.getDate()}`;
+      ? `<strong>${t("us.today")}</strong>`
+      : `<strong>${formatDate(dt, { weekday: "short" })}</strong>${formatDate(dt, { month: "numeric", day: "numeric" })}`;
     return `<div class="tg-row">${side(a, 0, key, "left")}<div class="tg-day">${label}</div>${b ? side(b, 1, key, "right") : "<div></div>"}</div>`;
   });
 

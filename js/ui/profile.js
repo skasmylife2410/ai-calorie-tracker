@@ -17,10 +17,10 @@ import {
 } from "./formfields.js";
 
 const GOAL_FIELDS = [
-  { key: "customTargetKcal", derivedKey: "targetCalories", id: "calories", label: "Calories", unit: "kcal", decimal: false },
-  { key: "customProteinG", derivedKey: "proteinTargetG", id: "protein", label: "Protein", unit: "g", decimal: true },
-  { key: "customCarbsG", derivedKey: "carbsTargetG", id: "carbs", label: "Carbs", unit: "g", decimal: true },
-  { key: "customFatG", derivedKey: "fatTargetG", id: "fat", label: "Fat", unit: "g", decimal: true },
+  { key: "customTargetKcal", derivedKey: "targetCalories", id: "calories", get label() { return t("ui.calories"); }, unit: "kcal", decimal: false },
+  { key: "customProteinG", derivedKey: "proteinTargetG", id: "protein", get label() { return t("ui.protein"); }, unit: "g", decimal: true },
+  { key: "customCarbsG", derivedKey: "carbsTargetG", id: "carbs", get label() { return t("ui.carbs"); }, unit: "g", decimal: true },
+  { key: "customFatG", derivedKey: "fatTargetG", id: "fat", get label() { return t("ui.fat"); }, unit: "g", decimal: true },
 ];
 
 let currentUsername = "";
@@ -492,7 +492,7 @@ function dailyGoalsSectionHtml(profile, goals) {
       <div class="ios-row">
         <div class="ios-row-label">${f.label}</div>
         <div class="ios-row-spacer"></div>
-        ${hasOverride ? `<button class="auto-pill" data-auto="${f.id}">Auto</button>` : ""}
+        ${hasOverride ? `<button class="auto-pill" data-auto="${f.id}">${t("ui.auto")}</button>` : ""}
         <input type="text" class="numeric-input" id="goal-${f.id}" />
         <div class="ios-row-unit">${f.unit}</div>
       </div>

@@ -41,7 +41,7 @@ export const addComment = (shareId, body) => post("/api/shares", { op: "comment"
 export const deleteComment = (id) => post("/api/shares", { op: "uncomment", id });
 
 /** Your own Friday recommendation (private — the server only ever returns the signed-in person's). */
-export const myRecap = () => post("/api/weekly", { op: "mine" });
+export const myRecap = (lang = "en") => post("/api/weekly", { op: "mine", lang });
 
 export const SHARE_EDGE = 320;
 

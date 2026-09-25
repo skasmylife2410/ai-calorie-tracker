@@ -314,7 +314,7 @@ function startBarcodeFlow(barcode) {
     render(panel, close) {
       progressClose = close;
       panel.innerHTML = `
-        ${navBar({ title: "", leading: { label: "Cancel" } })}
+        ${navBar({ title: "", leading: { label: t("app.cancel") } })}
         <div class="sheet-panel-body">
           <div class="barcode-progress-body">
             <div class="spinner"></div>

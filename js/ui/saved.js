@@ -7,6 +7,7 @@
 import * as store from "../store.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
+import { t } from "../i18n.js";
 
 const MAX_SAVED = 20;
 
@@ -32,7 +33,7 @@ export function openSavedFoodsSheet() {
       const foods = recentDedupedFoods();
 
       panel.innerHTML = `
-        ${navBar({ title: "Saved foods", leading: { label: "Close" } })}
+        ${navBar({ title: t("ui.savedFoods"), leading: { label: t("app.close") } })}
         <div class="sheet-panel-body" id="saved-content"></div>
       `;
 
@@ -42,8 +43,8 @@ export function openSavedFoodsSheet() {
         content.innerHTML = `
           <div class="empty-state">
             ${icon("bookmark", { size: 40 })}
-            <div class="empty-state-title">No saved foods yet</div>
-            <div class="empty-state-message">Foods you log will show up here so you can log them again in one tap.</div>
+            <div class="empty-state-title">${t("ui.noSaved")}</div>
+            <div class="empty-state-message">${t("ui.noSavedBody")}</div>
           </div>
         `;
       } else {

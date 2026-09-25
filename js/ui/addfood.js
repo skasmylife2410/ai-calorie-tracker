@@ -9,10 +9,10 @@ import { cleanMicros, scaleMicros } from "../nutrition.js";
 import { microInputsHtml, wireMicroInputs, refreshMicroInputs } from "./micros.js";
 
 const MACRO_FIELDS = [
-  { key: "calories", label: "Calories", unit: "kcal", decimal: false },
-  { key: "proteinG", label: "Protein", unit: "g", decimal: true },
-  { key: "carbsG", label: "Carbs", unit: "g", decimal: true },
-  { key: "fatG", label: "Fat", unit: "g", decimal: true },
+  { key: "calories", get label() { return t("ui.calories"); }, unit: "kcal", decimal: false },
+  { key: "proteinG", get label() { return t("ui.protein"); }, unit: "g", decimal: true },
+  { key: "carbsG", get label() { return t("ui.carbs"); }, unit: "g", decimal: true },
+  { key: "fatG", get label() { return t("ui.fat"); }, unit: "g", decimal: true },
 ];
 
 /**

@@ -16,18 +16,18 @@ import { microsSummary, microInputsHtml, wireMicroInputs, formatMicro } from "./
 import { plateSvg, handReference, handLabel, densityOf, _KINDS_FOR_TESTS as KINDS } from "./portion-plate.js";
 
 const FIELD_DEFS = [
-  { key: "amount", label: "Amount", unit: "" },
-  { key: "calories", label: "Kcal", unit: "" },
-  { key: "proteinG", label: "Protein", unit: "g" },
-  { key: "carbsG", label: "Carbs", unit: "g" },
-  { key: "fatG", label: "Fat", unit: "g" },
+  { key: "amount", get label() { return t("ui.amount"); }, unit: "" },
+  { key: "calories", get label() { return t("ui.kcal"); }, unit: "" },
+  { key: "proteinG", get label() { return t("ui.protein"); }, unit: "g" },
+  { key: "carbsG", get label() { return t("ui.carbs"); }, unit: "g" },
+  { key: "fatG", get label() { return t("ui.fat"); }, unit: "g" },
 ];
 
 const TOTAL_DEFS = [
-  { key: "calories", label: "Kcal", suffix: "" },
-  { key: "proteinG", label: "Protein", suffix: "g" },
-  { key: "carbsG", label: "Carbs", suffix: "g" },
-  { key: "fatG", label: "Fat", suffix: "g" },
+  { key: "calories", get label() { return t("ui.kcal"); }, suffix: "" },
+  { key: "proteinG", get label() { return t("ui.protein"); }, suffix: "g" },
+  { key: "carbsG", get label() { return t("ui.carbs"); }, suffix: "g" },
+  { key: "fatG", get label() { return t("ui.fat"); }, suffix: "g" },
 ];
 
 /**

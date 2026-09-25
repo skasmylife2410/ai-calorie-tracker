@@ -32,9 +32,9 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
     render(panel, close) {
       panel.innerHTML = `
         ${navBar({
-          title: "Food Database",
-          leading: { label: "Close" },
-          trailing: onPick ? null : { label: "Add manually" },
+          title: t("ui.foodDb"),
+          leading: { label: t("app.close") },
+          trailing: onPick ? null : { label: t("ui.addManually") },
         })}
         <div class="search-field-wrap">
           <div class="search-field">
@@ -122,8 +122,8 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
           if (mine.length === 0) {
             content.innerHTML = emptyStateHtml({
               iconName: "magnifyingglass",
-              title: "Search the food database",
-              message: "Find packaged foods by name or brand.",
+              title: t("ui.searchTitle"),
+              message: t("ui.searchSub"),
             });
           } else {
             content.innerHTML = `<p class="tray-hint">${t("group.yourFoods")}</p><div class="search-results">${mine.map((p, i) => resultRowHtml(p, i, onTray(trayItemFromProduct(p).key), { noDetails: true })).join("")}</div>`;
@@ -153,15 +153,15 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
         } else if (state.kind === "noResults") {
           content.innerHTML = emptyStateHtml({
             iconName: "questionmarkCircle",
-            title: "No results",
-            message: `No foods found for “${escapeHtml(state.query)}”. Try a different search, or add it manually.`,
+            title: t("ui.noResults"),
+            message: t("ui.noResultsBody", { q: escapeHtml(state.query) }),
             retry: true,
           });
           wireRetry(content);
         } else if (state.kind === "error") {
           content.innerHTML = emptyStateHtml({
             iconName: "wifiSlash",
-            title: "Search unavailable",
+            title: t("ui.searchDown"),
             message: escapeHtml(state.message),
             retry: true,
           });
@@ -273,7 +273,7 @@ function emptyStateHtml({ iconName, title, message, retry = false }) {
       ${icon(iconName, { size: 40 })}
       <div class="empty-state-title">${title}</div>
       <div class="empty-state-message">${message}</div>
-      ${retry ? `<button class="btn-bordered" style="width:auto;padding:8px 20px;" data-retry>Try again</button>` : ""}
+      ${retry ? `<button class="btn-bordered" style="width:auto;padding:8px 20px;" data-retry>${t("app.retry")}</button>` : ""}
     </div>
   `;
 }

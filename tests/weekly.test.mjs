@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { summarizeWeek, candidateMeals, cleanRecap, weekWindow, localWeekday, buildPrompt } from "../api/_week.js";
+import { summarizeWeek, candidateMeals, cleanRecap, weekWindow, localWeekday, buildPrompt, textIn } from "../api/_week.js";
 import { trayItemFromProduct, withAmount, trayTotals, trayToEntry, mealName, baseOf } from "../js/meal-builder.js";
 
 const meal = (id, day, hourUtc, name, calories, protein_g) => ({ id, day, logged_at: `${day}T${String(hourUtc).padStart(2, "0")}:00:00Z`, name, calories, protein_g });
@@ -46,16 +46,22 @@ test("the model only sees names and numbers, and can only point at real meals", 
   const c = candidateMeals(meals);
   assert.equal(c[0].ref, "m1");
   assert.equal(c[0].id, "id-2"); // biggest first
-  const prompt = buildPrompt({ name: "Aelson", language: "es", stats: summarizeWeek({ meals }), candidates: c });
+  const prompt = buildPrompt({ name: "Aelson", stats: summarizeWeek({ meals }), candidates: c });
   assert.ok(!prompt.includes("id-1") && !prompt.includes("data:image"));
+  assert.ok(!prompt.includes("2026-09-19"), "days go to the model as weekdays");
+  assert.match(prompt, /Saturday/);
   assert.match(prompt, /Spanish/);
-  const out = cleanRecap({ headline: "Good week", tips: [
-    { title: "Halve the pizza", body: "Two slices, not four.", mealRefs: ["m1", "m99", "<script>"] },
-    { title: "", body: "dropped" },
-    { title: "a", body: "b", mealRefs: [] }, { title: "c", body: "d" }, { title: "e", body: "f" },
+  const out = cleanRecap({ headline_en: "Good week", headline_es: "Buena semana", tips: [
+    { title_en: "Halve the pizza", body_en: "On Saturday (2026-09-19) the pizza (m1 - 1600 kcal) was big.", title_es: "La mitad de la pizza", body_es: "El sábado la pizza (m1) fue grande.", mealRefs: ["m1", "m99", "<script>"] },
+    { title_en: "", body_en: "dropped" },
+    { title_en: "a", body_en: "b", title_es: "a", body_es: "b", mealRefs: [] },
   ] }, c);
-  assert.equal(out.tips.length, 2); // max 3 considered, the empty one dropped
+  assert.equal(out.tips.length, 2);
   assert.deepEqual(out.tips[0].meals.map((m) => m.id), ["id-2"]);
+  assert.equal(out.tips[0].body, "On Saturday the pizza was big.");
+  assert.equal(out.byLang.es.tips[0].body, "El sábado la pizza fue grande.");
+  assert.equal(textIn(out, "es").headline, "Buena semana");
+  assert.equal(textIn({ headline: "Only English", tips: [] }, "es").headline, "Only English");
 });
 
 test("plate: per-100 g foods start at 100 g and scale", () => {

@@ -34,8 +34,8 @@ export function render(container) {
     content.innerHTML = `
       <div class="empty-state">
         ${icon("forkKnife", { size: 40 })}
-        <div class="empty-state-title">No food logged yet</div>
-        <div class="empty-state-message">Entries you log will show up here, grouped by day.</div>
+        <div class="empty-state-title">${t("ui.noHistory")}</div>
+        <div class="empty-state-message">${t("ui.noHistoryBody")}</div>
       </div>
     `;
     return;

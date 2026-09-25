@@ -92,57 +92,117 @@ export function candidateMeals(meals, limit = 30) {
     .map((m, i) => ({ ref: `m${i + 1}`, id: m.id, day: m.day, name: String(m.name ?? "").slice(0, 60), calories: r0(n(m.calories)), proteinG: r0(n(m.protein_g)) }));
 }
 
-export function buildPrompt({ name, language, stats, candidates }) {
-  const es = language === "es";
-  const lines = candidates.map((c) => `${c.ref} | ${c.day} | ${c.name} | ${c.calories} kcal | ${c.proteinG} g protein`).join("\n");
+const WEEKDAYS = { en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], es: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"] };
+const weekdayOf = (day, lang = "en") => WEEKDAYS[lang][new Date(`${day}T12:00:00Z`).getUTCDay()];
+
+export function buildPrompt({ name, stats, candidates }) {
+  const lines = candidates.map((c) => `${c.ref} | ${weekdayOf(c.day)} | ${c.name} | ${c.calories} kcal | ${c.proteinG} g protein`).join("\n");
+  const daily = stats.days.map((d) => `${weekdayOf(d.day)} ${d.calories} kcal / ${d.proteinG} g`).join(", ");
   return `You are a practical nutrition coach writing a private weekly check-in for ${name || "this person"}.
-Write in ${es ? "Spanish (Colombian, informal tú)" : "English"}.
 
 Their goal: ${stats.goal}. Daily target: ${stats.targetCalories ?? "unknown"} kcal, ${stats.targetProteinG ?? "unknown"} g protein.
 Last 7 days: logged ${stats.daysLogged} days, averaged ${stats.avgCalories} kcal and ${stats.avgProteinG} g protein a day.
-Days clearly over target: ${stats.daysOver.join(", ") || "none"}. Days under 80% of protein target: ${stats.daysUnderProtein}.
+Days clearly over target: ${stats.daysOver.map((d) => weekdayOf(d)).join(", ") || "none"}. Days under 80% of protein target: ${stats.daysUnderProtein}.
 Share of calories eaten after 5pm: ${stats.eveningShare}%. Weight change: ${stats.weightChangeKg ?? "not tracked"} kg. Exercise: ${stats.exerciseMin} min.
-Daily totals: ${stats.days.map((d) => `${d.day}=${d.calories}kcal/${d.proteinG}g`).join(", ")}
+Daily totals: ${daily}
 
 Their biggest meals this week (ref | day | name | kcal | protein):
 ${lines || "(none)"}
 
-Give exactly 3 recommendations that would most help them reach their goal next week. Each must be specific to what they actually ate: name the meal and day, and say exactly what to change (swap, portion, timing, add protein), with rough numbers. Point at the meals you mean using their refs. If they did well, one recommendation can be to keep doing a specific thing. No medical advice, no shaming, no generic tips like "drink water".
-Also write a one-sentence headline summarising their week honestly.`;
+Give exactly 3 recommendations that would most help them reach their goal next week. Each must be specific to what they actually ate: name the food and the weekday, and say exactly what to change (swap, portion, timing, add protein), with rough numbers. If they did well, one recommendation can be to keep doing a specific thing. No medical advice, no shaming, no generic tips like "drink water". Keep each recommendation to 2 short sentences.
+
+Put the refs of the meals each recommendation is about ONLY in mealRefs. Never write a ref (m1, m4…) or a date like 2026-01-31 in the text: say the weekday ("on Saturday") and the food's everyday name ("the whisky", not the full product name).
+
+Write everything twice: in English, and in natural Latin American Spanish (Colombian, informal "tú", everyday food words people in Colombia and Mexico use). The Spanish must read as if written in Spanish, not translated word for word.
+Also write a one-sentence headline summarising their week honestly, in both languages.`;
 }
 
 export const RECAP_SCHEMA = {
   type: "OBJECT",
   properties: {
-    headline: { type: "STRING" },
+    headline_en: { type: "STRING" },
+    headline_es: { type: "STRING" },
     tips: {
       type: "ARRAY",
       items: {
         type: "OBJECT",
         properties: {
-          title: { type: "STRING" },
-          body: { type: "STRING" },
+          title_en: { type: "STRING" },
+          body_en: { type: "STRING" },
+          title_es: { type: "STRING" },
+          body_es: { type: "STRING" },
           mealRefs: { type: "ARRAY", items: { type: "STRING" } },
         },
-        required: ["title", "body", "mealRefs"],
+        required: ["title_en", "body_en", "title_es", "body_es", "mealRefs"],
       },
     },
+  },
+  required: ["headline_en", "headline_es", "tips"],
+};
+
+/** Schema + prompt for translating an older, English-only recap (the first Friday's). */
+export const TRANSLATE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    headline: { type: "STRING" },
+    tips: { type: "ARRAY", items: { type: "OBJECT", properties: { title: { type: "STRING" }, body: { type: "STRING" } }, required: ["title", "body"] } },
   },
   required: ["headline", "tips"],
 };
 
-/** Keep only what the card shows; map the model's m-refs back to real meal ids, dropping unknown ones. */
+export function translatePrompt(texts, lang) {
+  const target = lang === "es" ? "natural Latin American Spanish (Colombian, informal \"tú\", everyday food words used in Colombia and Mexico)" : "natural, plain English";
+  return `Rewrite this weekly nutrition check-in in ${target}. Keep every number and food. It must read as if written in that language, not translated word for word. Keep the same number of tips, in the same order.
+
+${JSON.stringify(texts)}`;
+}
+
+/**
+ * Removes what the model sometimes leaks into the text: meal refs like "(m4 - 620 kcal)" or
+ * "m4", and ISO dates like "(2026-09-19)". Weekday names already say which day.
+ */
+export function tidyText(text) {
+  return String(text ?? "")
+    .replace(/\s*\(\s*m\d+\b[^)]*\)/gi, "")          // (m4 - 620 kcal), (m2, m5)
+    .replace(/\s*\(\s*\d{4}-\d{2}-\d{2}\s*\)/g, "")   // (2026-09-19)
+    .replace(/\b(?:m\d+)(?:\s*(?:,|and|y)\s*m\d+)*\b/gi, (m) => (/^m\d/i.test(m) ? "" : m))
+    .replace(/\s+([,.;:])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+const str = (v, max) => tidyText(v).slice(0, max);
+
+/**
+ * Keep only what the card shows; map the model's m-refs back to real meal ids, dropping unknown
+ * ones. Returns the English text at the top level (as older recaps have it) plus byLang.{en,es}.
+ */
 export function cleanRecap(raw, candidates) {
   const byRef = new Map(candidates.map((c) => [c.ref, c]));
-  const str = (v, max) => String(v ?? "").trim().slice(0, max);
-  const tips = (Array.isArray(raw?.tips) ? raw.tips : []).slice(0, 3).map((tip) => ({
-    title: str(tip?.title, 80),
-    body: str(tip?.body, 360),
+  const rawTips = (Array.isArray(raw?.tips) ? raw.tips : []).slice(0, 3);
+  const kept = rawTips.filter((tip) => str(tip?.title_en, 80) && str(tip?.body_en, 360));
+  const textFor = (lang) => ({
+    headline: str(raw?.[`headline_${lang}`], 200),
+    tips: kept.map((tip) => ({ title: str(tip[`title_${lang}`], 80), body: str(tip[`body_${lang}`], 360) })),
+  });
+  const tips = kept.map((tip) => ({
+    title: str(tip.title_en, 80),
+    body: str(tip.body_en, 360),
     meals: (Array.isArray(tip?.mealRefs) ? tip.mealRefs : [])
       .map((ref) => byRef.get(String(ref).trim()))
       .filter(Boolean)
       .slice(0, 3)
       .map((c) => ({ id: c.id, day: c.day, name: c.name, calories: c.calories })),
-  })).filter((tip) => tip.title && tip.body);
-  return { headline: str(raw?.headline, 200), tips };
+  }));
+  const en = textFor("en");
+  const es = textFor("es");
+  return { headline: en.headline, tips, byLang: { en, ...(es.headline && es.tips.every((x) => x.title && x.body) ? { es } : {}) } };
+}
+
+/** The recap's text in `lang`, falling back to the English stored at the top level. */
+export function textIn(recap, lang) {
+  const base = { headline: tidyText(recap?.headline), tips: (recap?.tips ?? []).map((x) => ({ title: tidyText(x.title), body: tidyText(x.body) })) };
+  const alt = recap?.byLang?.[lang];
+  if (!alt || alt.tips?.length !== base.tips.length) return base;
+  return { headline: tidyText(alt.headline), tips: alt.tips.map((x) => ({ title: tidyText(x.title), body: tidyText(x.body) })) };
 }
