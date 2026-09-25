@@ -132,7 +132,9 @@ export function formatDate(date, opts = { weekday: "long", month: "short", day: 
 
 /** Short weekday names starting Monday, for the week strip. */
 export function weekdayLabels() {
-  const fmt = new Intl.DateTimeFormat(current, { weekday: "short" });
+  // Read in UTC: the dates below are UTC midnights, which in Chicago are still the evening
+  // before, so without this every label showed the previous day (Friday under "Thu").
+  const fmt = new Intl.DateTimeFormat(current, { weekday: "short", timeZone: "UTC" });
   // 2024-01-01 was a Monday
   return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2024, 0, 1 + i))));
 }

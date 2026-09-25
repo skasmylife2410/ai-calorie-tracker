@@ -3,7 +3,7 @@
 import * as store from "../store.js";
 import { t, weekdayLabels, formatDate } from "../i18n.js";
 import * as queue from "../queue.js";
-import { roundDisplay, startOfDay } from "../nutrition.js";
+import { roundDisplay, startOfDay, addDays } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { ringGauge } from "./ring.js";
 import { openActionSheet } from "./action-sheet.js";
@@ -63,7 +63,7 @@ export function render(container) {
   const viewingToday = isViewingToday();
   const totals = store.totalsForDay(date);
   const goals = store.computeGoals();
-  const week = store.weekStrip(new Date(startOfDay(new Date()) + weekOffset * 7 * 86400000));
+  const week = store.weekStrip(new Date(addDays(startOfDay(new Date()), weekOffset * 7))); // DST-safe
   const streakCount = store.streak();
   const water = store.getWaterEntryForDay(date);
   const recent = viewingToday
@@ -177,7 +177,7 @@ function showUndoToast(snapshot, container) {
 
 function weekStripHtml(week) {
   const todayStart = startOfDay(new Date());
-  const canGoForward = week.some((d) => d.dayStart < todayStart - 6 * 86400000) || weekOffset < 0;
+  const canGoForward = week.some((d) => d.dayStart < addDays(todayStart, -6)) || weekOffset < 0;
   return `
     <div class="week-row">
       <button type="button" class="week-arrow" id="week-prev" aria-label="${t("day.prevWeek")} (${weekRangeLabel(week)})">‹</button>

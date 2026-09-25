@@ -78,3 +78,8 @@ test("plate: servings, bounds and names", () => {
   assert.equal(withAmount(bar, 0).amount, 0.5); // never below one step
   assert.equal(mealName([{ name: "A" }, { name: "B" }, { name: "C" }, { name: "D" }]), "A, B +2");
 });
+
+test("week strip day names line up in Chicago time", async () => {
+  const { weekdayLabels } = await import("../js/i18n.js");
+  assert.deepEqual(weekdayLabels().map((s) => s.slice(0, 3)), ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+});
