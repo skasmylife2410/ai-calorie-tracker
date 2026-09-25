@@ -5,6 +5,7 @@
 
 import * as store from "../store.js";
 import { mountEntryRow } from "./entry-row.js";
+import { wireMealDrag, groupWithToast } from "./meal-drag.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { openResultsSheet } from "./results.js";
 import { icon } from "./icons.js";
@@ -57,6 +58,7 @@ export function render(container) {
       </div>
 
       <div class="tm-count">${t("us.mealsCount", { n: meals.length })}${isToday ? "" : ` · <button type="button" class="tm-back" id="tm-back">${t("home.backToToday")}</button>`}</div>
+      ${meals.length >= 2 ? `<div class="group-hint">${t("group.hint")}</div>` : ""}
       <div class="tm-list" id="tm-list"></div>
       <div class="bottom-safe-spacer"></div>
     </div>`;
@@ -102,6 +104,11 @@ export function render(container) {
       })
     );
   }
+
+  cleanups.push(wireMealDrag(list, {
+    canDrag: (id) => list.querySelector(`[data-entry-id="${id}"]`)?.dataset.state === "completed",
+    onDrop: (src, dst) => groupWithToast(src, dst, () => render(container)),
+  }));
 }
 
 

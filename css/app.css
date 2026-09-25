@@ -2119,3 +2119,18 @@ body.setup-open { overflow: hidden; }
 .ex-kcal-unit { font-size: 15px; color: var(--sc-secondary); }
 .ex-minutes-opt { width: 100%; }
 .is-hidden { display: none !important; }
+
+/* ---- Drag a meal onto another to group them ---- */
+.entry-row[data-state="completed"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.entry-row img { -webkit-user-drag: none; }
+.entry-row.is-drag-source { opacity: .35; }
+.entry-row.is-drop-target .entry-row-fg { box-shadow: 0 0 0 2.5px var(--sc-primary-text); transform: scale(1.02); transition: transform .12s, box-shadow .12s; }
+.entry-drag-ghost { position: fixed; z-index: 1000; pointer-events: none; margin: 0 !important; transform: scale(1.04) rotate(-1deg); box-shadow: 0 14px 30px var(--sc-black-30); border-radius: var(--sc-card-radius); opacity: .95; }
+.entry-drag-ghost.has-target { transform: scale(.92); opacity: .8; }
+.entry-drag-ghost .entry-row-actions { display: none; }
+.group-hint { font-size: 12px; color: var(--sc-secondary); padding: 0 16px 6px; }
+.group-toast { gap: 6px; }
+.group-toast .undo-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav-foods { font-size: 12px; color: var(--sc-secondary); }
+@media (prefers-reduced-motion: reduce) { .entry-drag-ghost, .entry-row.is-drop-target .entry-row-fg { transform: none; transition: none; } }
+.group-toast { z-index: 1100; }

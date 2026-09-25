@@ -110,3 +110,64 @@ test("typed exercise kcal is stored as given, minutes optional", () => {
   assert.equal(x.kcalEntered, true);
   assert.equal(x.minutes, 0);
 });
+
+test("dropping one meal on another makes one meal with both foods, and undo restores both", () => {
+  localStorage.clear();
+  const eggs = store.addFoodEntry({ name: "Eggs", calories: 140, proteinG: 12, amount: 100, amountUnit: "g", micros: { sodiumMg: 140 } });
+  const arepa = store.addFoodEntry({ name: "Arepa", calories: 220, proteinG: 4, servings: 2, base: { calories: 110, proteinG: 2, carbsG: 22, fatG: 1 } });
+  const out = store.groupEntries(eggs.id, arepa.id);
+  assert.equal(store.allFoodEntries().length, 1);
+  const g = out.entry;
+  assert.equal(g.analysisItems.length, 2);
+  assert.equal(g.calories, 360);
+  assert.equal(g.servings, 1);
+  assert.equal(g.micros.sodiumMg, 140);
+  assert.equal(g.analysisItems.find((i) => i.name === "Eggs").gramsEstimate, 100);
+
+  // grouped again with a third meal: items keep accumulating
+  const coffee = store.addFoodEntry({ name: "Tinto", calories: 5 });
+  store.groupEntries(coffee.id, g.id);
+  assert.equal(store.getFoodEntry(g.id).analysisItems.length, 3);
+  assert.equal(store.getFoodEntry(g.id).calories, 365);
+
+  localStorage.clear();
+  const a = store.addFoodEntry({ name: "A", calories: 100 });
+  const b = store.addFoodEntry({ name: "B", calories: 200 });
+  const res = store.groupEntries(a.id, b.id);
+  res.undo();
+  const names = store.allFoodEntries().map((e) => `${e.name}:${e.calories}`).sort();
+  assert.deepEqual(names, ["A:100", "B:200"]);
+  assert.equal(store.getFoodEntry(b.id).analysisItems ?? null, null);
+});
+
+test("a scanned meal's servings are baked in when it joins a group", () => {
+  localStorage.clear();
+  const items = [{ name: "rice", calories: 200, proteinG: 4, carbsG: 44, fatG: 1, gramsEstimate: 150 }];
+  const m = store.addFoodEntry({ name: "rice", ...store.fieldsFromItems(items, 2), servings: 2, analysisItems: items });
+  const s = store.addFoodEntry({ name: "Juice", calories: 100 });
+  const g = store.groupEntries(s.id, m.id).entry;
+  assert.equal(g.calories, 500);
+  assert.equal(g.analysisItems[0].gramsEstimate, 300);
+});
+
+test("a hearted group keeps its foods and re-logs them as separate items", () => {
+  localStorage.clear();
+  const a = store.addFoodEntry({ name: "Eggs", calories: 140 });
+  const b = store.addFoodEntry({ name: "Arepa", calories: 220 });
+  const g = store.groupEntries(a.id, b.id).entry;
+  store.toggleFavorite(g.id);
+  const saved = store.allSavedFoods()[0];
+  assert.equal(saved.items.length, 2);
+  const again = store.logSavedFood(saved.id, { servings: 2 });
+  assert.equal(again.analysisItems.length, 2);
+  assert.equal(again.calories, 720);
+  assert.equal(again.servings, 2);
+});
+
+test("pending or failed meals can't be grouped", () => {
+  localStorage.clear();
+  const a = store.addFoodEntry({ name: "A", calories: 100 });
+  const p = store.addFoodEntry({ name: "Analyzing", isPending: true });
+  assert.equal(store.groupEntries(p.id, a.id), null);
+  assert.equal(store.groupEntries(a.id, a.id), null);
+});

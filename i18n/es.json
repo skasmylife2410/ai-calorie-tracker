@@ -613,5 +613,12 @@
     "noneShort": "Sin datos de nutrientes: toca para añadir",
     "more": "Fibra, azúcar, sodio…",
     "moreHint": "Deja la casilla vacía si no lo sabes."
+  },
+  "group": {
+    "hint": "Truco: mantén presionada una comida y suéltala sobre otra para agruparlas.",
+    "done": "Agrupado en {name}",
+    "save": "Guardar",
+    "saved": "Guardado",
+    "foodsCount": "{n} alimento|{n} alimentos"
   }
 }

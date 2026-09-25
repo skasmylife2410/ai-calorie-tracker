@@ -6,6 +6,7 @@
 
 import * as store from "../store.js";
 import { mountEntryRow } from "./entry-row.js";
+import { wireMealDrag, groupWithToast } from "./meal-drag.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { openResultsSheet } from "./results.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
@@ -26,6 +27,7 @@ export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
           ${navBar({ title: t("day.meals"), leading: { label: t("app.close") } })}
           <div class="sheet-panel-body">
             <div class="day-meals-head">${formatDate(date, { weekday: "long", month: "short", day: "numeric" })}</div>
+            ${meals.length >= 2 ? `<div class="group-hint">${t("group.hint")}</div>` : ""}
             <div class="day-meals-list" id="day-meals-list"></div>
           </div>`;
 
@@ -55,6 +57,10 @@ export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
             );
           }
         }
+        cleanups.push(wireMealDrag(list, {
+          canDrag: (id) => list.querySelector(`[data-entry-id="${id}"]`)?.dataset.state === "completed",
+          onDrop: (src, dst) => groupWithToast(src, dst, () => { draw(); onChange?.(); }),
+        }));
         wireNavBar(panel, { onLeading: () => { cleanups.splice(0).forEach((fn) => fn?.()); close(); } });
       };
 

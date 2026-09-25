@@ -70,6 +70,7 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
             ${thumb}
             <div class="fav-text">
               <div class="fav-name">${escapeHtml(f.name)}</div>
+              ${Array.isArray(f.items) && f.items.length > 1 ? `<div class="fav-foods">${t("group.foodsCount", { n: f.items.length })}</div>` : ""}
               <div class="fav-macros">${t("favourites.macros", { calories: Math.round(f.calories * n), protein: Math.round(f.proteinG * n) })}${n !== 1 ? t("favourites.servingsSuffix", { n }) : ""}</div>
               <div class="fav-ctrl">
                 <div class="fav-stepper">

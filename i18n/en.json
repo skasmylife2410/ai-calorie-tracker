@@ -613,5 +613,12 @@
     "noneShort": "No nutrient data — tap to add",
     "more": "Fiber, sugar, sodium…",
     "moreHint": "Leave a box empty if you don't know it."
+  },
+  "group": {
+    "hint": "Tip: hold a meal and drop it on another to group them.",
+    "done": "Grouped into {name}",
+    "save": "Save",
+    "saved": "Saved",
+    "foodsCount": "{n} food|{n} foods"
   }
 }

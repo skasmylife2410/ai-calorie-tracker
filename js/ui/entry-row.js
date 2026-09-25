@@ -110,6 +110,8 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
   const state = entryState(entry);
   const wrap = document.createElement("div");
   wrap.className = "entry-row";
+  wrap.dataset.entryId = entry.id;
+  wrap.dataset.state = state;
   // No swipe gestures on rows any more: sideways swipes now move between tabs, and a visible
   // bin is quicker than any gesture anyway. Tap the row to edit, tap the bin to remove.
   wrap.innerHTML = `

@@ -3,6 +3,7 @@
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
 import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
+import { mealName } from "./meal-builder.js";
 
 export const STORAGE_KEYS = Object.freeze({
   foodEntries: "snapcal.foodEntries",
@@ -259,6 +260,84 @@ export function deleteFoodEntry(id) {
   tombstones.push({ id, day: localDateString(removed.timestamp), deletedAt: Date.now() });
   saveDeletedTombstones(tombstones);
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Grouping — drop one logged meal onto another and they become one meal whose foods are the
+// items, so Edit Meal still shows each food and a grouped meal can be hearted and re-logged.
+// ---------------------------------------------------------------------------
+
+const r1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
+
+/** An entry's foods as items for exactly what was eaten (servings already applied). */
+export function itemsOfEntry(entry) {
+  const n = normalizeServings(entry?.servings);
+  const items = Array.isArray(entry?.analysisItems) ? entry.analysisItems : [];
+  if (items.length > 0) {
+    return items.map((i) => ({
+      ...i,
+      id: i.id ?? generateId(),
+      calories: (Number(i.calories) || 0) * n,
+      proteinG: r1((Number(i.proteinG) || 0) * n),
+      carbsG: r1((Number(i.carbsG) || 0) * n),
+      fatG: r1((Number(i.fatG) || 0) * n),
+      micros: scaleMicros(i.micros, n),
+      gramsEstimate: Math.round((Number(i.gramsEstimate) || 0) * n),
+      ...(Number.isFinite(Number(i.amount)) ? { amount: r1(Number(i.amount) * n) } : {}),
+    }));
+  }
+  const unit = entry?.amountUnit ?? null;
+  const amount = Number(entry?.amount) > 0 ? Number(entry.amount) : null;
+  return [{
+    id: generateId(),
+    name: String(entry?.name ?? "").trim() || "Food",
+    calories: Number(entry?.calories) || 0,
+    proteinG: Number(entry?.proteinG) || 0,
+    carbsG: Number(entry?.carbsG) || 0,
+    fatG: Number(entry?.fatG) || 0,
+    micros: cleanMicros(entry?.micros),
+    unit: unit === "g" || unit === "ml" ? unit : "serving",
+    amount: unit === "g" || unit === "ml" ? amount : n,
+    gramsEstimate: unit === "g" && amount ? amount : 0,
+    confidence: 1,
+    grounded: false,
+  }];
+}
+
+/**
+ * Moves `sourceId` INTO `targetId`: the target now holds both meals' foods, the source is removed.
+ * Returns { entry, undo } — call undo() to put both meals back exactly as they were.
+ */
+export function groupEntries(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) return null;
+  const source = getFoodEntry(sourceId);
+  const target = getFoodEntry(targetId);
+  if (!source || !target || source.isPending === true || target.isPending === true) return null;
+  if (source.analysisFailed === true || target.analysisFailed === true) return null;
+
+  const beforeTarget = JSON.parse(JSON.stringify(target));
+  const beforeSource = JSON.parse(JSON.stringify(source));
+  const items = [...itemsOfEntry(target), ...itemsOfEntry(source)];
+
+  const entry = updateFoodEntry(targetId, {
+    name: mealName(items).slice(0, 90),
+    ...fieldsFromItems(items, 1),
+    servings: 1,
+    analysisItems: items,
+    photoDataUrl: target.photoDataUrl ?? source.photoDataUrl ?? null,
+    amount: null,
+    amountUnit: null,
+  });
+  deleteFoodEntry(sourceId);
+
+  const undo = () => {
+    const { id, updatedAt, ...restTarget } = beforeTarget;
+    if (getFoodEntry(targetId)) updateFoodEntry(targetId, restTarget);
+    // the source's id now has a deletion recorded for sync, so it comes back under a new id
+    const { id: _sid, updatedAt: _su, ...restSource } = beforeSource;
+    addFoodEntry(restSource);
+  };
+  return { entry, undo };
 }
 
 // ---------------------------------------------------------------------------
@@ -619,7 +698,7 @@ export function allSavedFoods() {
 }
 
 /** Saves a food for quick re-logging later. `source` is copied but analysisItems is NEVER copied. */
-export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 0, micros = null, source = "manual", photoDataUrl = null, servings = 1, favorite = true, fromEntryId = null }) {
+export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 0, micros = null, items = null, source = "manual", photoDataUrl = null, servings = 1, favorite = true, fromEntryId = null }) {
   const saved = {
     id: generateId(),
     name,
@@ -628,6 +707,8 @@ export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 
     carbsG,
     fatG,
     micros: cleanMicros(micros),
+    // a grouped meal keeps its foods (one serving), so re-logging it keeps them editable
+    items: Array.isArray(items) && items.length > 1 ? items : null,
     source: normalizeEntrySource(source),
     photoDataUrl,
     servings: normalizeServings(servings),
@@ -660,6 +741,18 @@ export function logSavedFood(id, { timestamp = Date.now(), servings } = {}) {
   if (!saved) return null;
   // A saved food's macros are always ONE serving; the multiplier is applied here.
   const n = normalizeServings(servings ?? saved.servings ?? 1);
+  if (Array.isArray(saved.items) && saved.items.length > 0) {
+    const items = saved.items.map((i) => ({ ...i, id: generateId() }));
+    return addFoodEntry({
+      name: saved.name,
+      ...fieldsFromItems(items, n),
+      servings: n,
+      source: saved.source,
+      photoDataUrl: saved.photoDataUrl ?? null,
+      timestamp,
+      analysisItems: items,
+    });
+  }
   const base = {
     calories: saved.calories,
     proteinG: saved.proteinG,
@@ -709,6 +802,7 @@ export function toggleFavorite(entryId) {
     carbsG: Math.round(b.carbsG * 10) / 10,
     fatG: Math.round(b.fatG * 10) / 10,
     micros: scaleMicros(b.micros, 1),
+    items: Array.isArray(entry.analysisItems) && entry.analysisItems.length > 1 ? entry.analysisItems : null,
     source: entry.source,
     photoDataUrl: entry.photoDataUrl ?? null,
     servings: entry.servings ?? 1,
