@@ -35,6 +35,8 @@ export function trayItemFromProduct(product, key = null) {
       micros: cleanMicros(product?.micros),
     },
     amount: base.amount,
+    // a saved meal's own foods (one serving), so it unpacks back into separate foods when added
+    ...(Array.isArray(product?.items) && product.items.length > 0 ? { sub: product.items } : {}),
   };
   return item;
 }
@@ -88,7 +90,21 @@ export function trayToEntry(items, timestamp = Date.now()) {
     ...totals,
     source: "manual",
     timestamp,
-    analysisItems: items.map((i) => {
+    analysisItems: items.flatMap((i) => {
+      if (Array.isArray(i.sub) && i.per.unit === "serving") {
+        const n = i.amount; // servings of the saved meal
+        return i.sub.map((f) => ({
+          ...f,
+          id: undefined,
+          calories: (Number(f.calories) || 0) * n,
+          proteinG: r1((Number(f.proteinG) || 0) * n),
+          carbsG: r1((Number(f.carbsG) || 0) * n),
+          fatG: r1((Number(f.fatG) || 0) * n),
+          micros: scaleMicros(f.micros, n),
+          gramsEstimate: Math.round((Number(f.gramsEstimate) || 0) * n),
+          ...(Number.isFinite(Number(f.amount)) ? { amount: r1(Number(f.amount) * n) } : {}),
+        }));
+      }
       const s = scaled(i);
       const unit = i.per.unit;
       return {

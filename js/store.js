@@ -772,6 +772,63 @@ export function logSavedFood(id, { timestamp = Date.now(), servings } = {}) {
   });
 }
 
+/**
+ * Creates or updates a saved (recurring) meal from one serving's items. With no `name`, the meal
+ * is named after its foods. Nothing is logged.
+ */
+export function saveMealTemplate({ id = null, name = null, items, photoDataUrl = null }) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (list.length === 0) return null;
+  const clean = list.map((i) => ({ ...i }));
+  const { base } = fieldsFromItems(clean, 1);
+  const fields = {
+    name: (String(name ?? "").trim() || mealName(clean)).slice(0, 90),
+    calories: Math.round(base.calories),
+    proteinG: r1(base.proteinG),
+    carbsG: r1(base.carbsG),
+    fatG: r1(base.fatG),
+    micros: base.micros,
+    items: clean.length > 1 ? clean : null,
+  };
+  if (id) {
+    const all = allSavedFoodsRaw();
+    const idx = all.findIndex((f) => f.id === id);
+    if (idx !== -1) {
+      all[idx] = { ...all[idx], ...fields, updatedAt: Date.now() };
+      saveSavedFoods(all);
+      return all[idx];
+    }
+  }
+  return addSavedFood({ ...fields, photoDataUrl, source: "manual", servings: 1 });
+}
+
+/**
+ * The person's own foods, newest-favourite first then recently eaten, shaped like search results
+ * (one serving each) so the food search can offer them before anything is typed.
+ */
+export function quickFoods(limit = 12) {
+  const out = [];
+  const seen = new Set();
+  const push = (p) => {
+    const key = String(p.name ?? "").trim().toLowerCase();
+    if (!key || seen.has(key) || out.length >= limit) return;
+    seen.add(key);
+    out.push(p);
+  };
+  const favs = allSavedFoodsRaw().filter((f) => f.favorite !== false).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  for (const f of favs) {
+    push({ barcode: null, name: f.name, brand: null, servingDescription: "1 serving", calories: f.calories, proteinG: f.proteinG, carbsG: f.carbsG, fatG: f.fatG, micros: f.micros ?? null, source: "mine", items: f.items ?? null });
+  }
+  const recent = allFoodEntriesRaw()
+    .filter((e) => e.isPending !== true && e.analysisFailed !== true)
+    .sort((a, b) => b.timestamp - a.timestamp);
+  for (const e of recent) {
+    const b = baseMacros(e);
+    push({ barcode: null, name: e.name, brand: null, servingDescription: "1 serving", calories: Math.round(b.calories), proteinG: r1(b.proteinG), carbsG: r1(b.carbsG), fatG: r1(b.fatG), micros: b.micros ?? null, source: "mine" });
+  }
+  return out;
+}
+
 /** True when an entry has already been hearted (matched by origin entry id, else by name). */
 export function isFavorited(entry) {
   if (!entry) return false;

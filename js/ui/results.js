@@ -7,6 +7,7 @@
 import * as store from "../store.js";
 import { t, currentLanguage } from "../i18n.js";
 import * as queue from "../queue.js";
+import { openFoodSearchSheet } from "./search.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { parseNumeric, formatNumeric } from "./numeric-field.js";
@@ -29,7 +30,13 @@ const TOTAL_DEFS = [
   { key: "fatG", label: "Fat", suffix: "g" },
 ];
 
-export function openResultsSheet(entry) {
+/**
+ * @param {object} entry  the logged meal — or, with `template`, a stand-in built from a saved meal
+ * @param {{template?: {savedId:string|null, name?:string, onSaved?:()=>void}}} [opts]
+ *   template: edit a saved (recurring) meal instead of a logged one — no servings, sharing or
+ *   re-analysis; "Save meal" writes back to Favourites and nothing is logged.
+ */
+export function openResultsSheet(entry, { template = null } = {}) {
   // Local editable copy of items + per-item baselines (snapshot at open / after reanalysis).
   let items = (entry.analysisItems ?? []).map((i) => ({ ...i }));
   let baselines = items.map(snapshotBaseline);
@@ -41,6 +48,12 @@ export function openResultsSheet(entry) {
         ${navBar({ title: t("meal.title"), leading: { label: t("app.cancel") } })}
         <div class="sheet-panel-body">
           ${thumbHtml(entry)}
+          ${template ? `
+          <div class="template-name-card">
+            <label class="template-name-label" for="template-name">${t("group.nameLabel")}</label>
+            <input type="text" id="template-name" class="template-name-input" maxlength="90"
+                   value="${escapeAttr(template.name ?? "")}" placeholder="${escapeAttr(t("group.namePlaceholder"))}" />
+          </div>` : `
           <div class="servings-card" id="servings-card">
             <div class="servings-label">
               <div class="servings-title">${t("meal.servings")}</div>
@@ -53,19 +66,20 @@ export function openResultsSheet(entry) {
             </div>
             <button type="button" class="servings-heart" id="fav-toggle" aria-label="Favourite">♡</button>
             ${entry.photoDataUrl ? `<button type="button" class="servings-share" id="share-meal" aria-label="${t("social.share")}">↗︎</button>` : ""}
-          </div>
+          </div>`}
           <div class="results-items-section-header">${t("meal.items")}</div>
           <div class="ios-section" style="margin-bottom:0;">
             <div class="ios-section-body" id="results-items"></div>
           </div>
           <div class="results-items-section-footer">Tap any number to edit it. Editing grams rescales that item's macros proportionally.</div>
+          <button type="button" class="add-to-meal-btn" id="add-to-meal">＋ ${t("group.addFood")}</button>
           <button type="button" class="plate-toggle" id="plate-toggle" aria-expanded="false">🍽️ ${t("plate.open")}</button>
           <div class="plate-card hidden" id="plate-card"></div>
         </div>
         <div class="results-totals-bar" id="results-totals"></div>
         <div class="results-actions">
-          <button class="btn-bordered" id="fix-results-btn">${icon("wandAndStars", { size: 18 })}<span>${t("context.title")}</span></button>
-          <button class="btn-prominent" id="save-changes-btn">${t("meal.saveChanges")}</button>
+          ${template ? "" : `<button class="btn-bordered" id="fix-results-btn">${icon("wandAndStars", { size: 18 })}<span>${t("context.title")}</span></button>`}
+          <button class="btn-prominent" id="save-changes-btn">${template ? t("group.saveMeal") : t("meal.saveChanges")}</button>
         </div>
       `;
 
@@ -80,11 +94,14 @@ export function openResultsSheet(entry) {
       const favBtn = panel.querySelector("#fav-toggle");
       let servings = store.normalizeServings(entry.servings);
 
+      if (template) servings = 1; // a saved meal is always one serving; the multiplier is chosen when logging
       const renderServings = () => {
+        if (!servValue) return;
         servValue.textContent = String(servings);
         panel.querySelector("#servings-card").classList.toggle("is-multiple", servings !== 1);
       };
       const renderFav = () => {
+        if (!favBtn) return;
         const on = store.isFavorited(store.getFoodEntry(entry.id) ?? entry);
         favBtn.textContent = on ? "♥" : "♡";
         favBtn.classList.toggle("is-on", on);
@@ -109,7 +126,7 @@ export function openResultsSheet(entry) {
         btn.title = out.ok ? t("social.shareDone") : (out.message || "");
       });
 
-      favBtn.addEventListener("click", () => {
+      favBtn?.addEventListener("click", () => {
         store.toggleFavorite(entry.id);
         renderFav();
       });
@@ -342,7 +359,22 @@ export function openResultsSheet(entry) {
 
       renderItems();
 
-      panel.querySelector("#fix-results-btn").addEventListener("click", () => {
+      // Add more foods to this meal from the food search; they join as extra items.
+      panel.querySelector("#add-to-meal").addEventListener("click", () => {
+        openFoodSearchSheet({
+          pickLabel: t("group.addToMeal"),
+          onPick: (newItems) => {
+            for (const it of newItems) {
+              items.push({ ...it, id: it.id ?? `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}` });
+            }
+            ensureUnits();
+            baselines = items.map(snapshotBaseline);
+            renderItems();
+          },
+        });
+      });
+
+      panel.querySelector("#fix-results-btn")?.addEventListener("click", () => {
         openFixResultsSheet(entry, () => {
           // Correction succeeded — queue already persisted the new items to the store.
           const fresh = store.getFoodEntry(entry.id);
@@ -358,6 +390,13 @@ export function openResultsSheet(entry) {
 
       saveBtn.addEventListener("click", () => {
         if (items.length === 0) return;
+        if (template) {
+          const typed = panel.querySelector("#template-name")?.value.trim();
+          store.saveMealTemplate({ id: template.savedId, name: typed || null, items, photoDataUrl: entry.photoDataUrl ?? null });
+          template.onSaved?.();
+          close();
+          return;
+        }
         const name = queue.buildJoinedName(items) || "Analyzed meal";
         // items are one serving; the totals keep the servings multiplier
         store.updateFoodEntry(entry.id, {

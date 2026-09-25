@@ -3,6 +3,8 @@
 // two taps. Replaces the old saved.js recents-only sheet (SPEC-UI.md §9 superseded).
 
 import * as store from "../store.js";
+import { openResultsSheet } from "./results.js";
+import { openFoodSearchSheet } from "./search.js";
 import { t } from "../i18n.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
@@ -79,10 +81,33 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
                   <button type="button" data-step="1" aria-label="More servings">+</button>
                 </div>
                 <button type="button" class="fav-log" data-log>${t("app.log")}</button>
+                ${current === "saved" ? `<button type="button" class="fav-edit" data-edit>${t("group.edit")}</button>` : ""}
                 ${current === "saved" ? `<button type="button" class="fav-heart" data-unfav aria-label="Remove from favourites">♥</button>` : ""}
               </div>
             </div>
           </div>`;
+      };
+
+      /** Opens a saved meal's foods for editing (add/remove foods, amounts, name). Nothing is logged. */
+      const editSaved = (food) => {
+        const items = Array.isArray(food.items) && food.items.length > 0
+          ? food.items.map((i) => ({ ...i }))
+          : [{ name: food.name, calories: food.calories, proteinG: food.proteinG, carbsG: food.carbsG, fatG: food.fatG, micros: food.micros ?? null, unit: "serving", amount: 1, gramsEstimate: 0 }];
+        openResultsSheet(
+          { id: `saved-${food.id}`, name: food.name, analysisItems: items, servings: 1, photoDataUrl: food.photoDataUrl ?? null },
+          { template: { savedId: food.id, name: food.name, onSaved: render } }
+        );
+      };
+
+      /** Build a recurring meal from scratch: pick its foods, then name it. */
+      const newMeal = () => {
+        openFoodSearchSheet({
+          pickLabel: t("group.next"),
+          onPick: (items) => openResultsSheet(
+            { id: "saved-new", name: "", analysisItems: items, servings: 1, photoDataUrl: null },
+            { template: { savedId: null, name: "", onSaved: render } }
+          ),
+        });
       };
 
       const render = () => {
@@ -91,6 +116,7 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
 
         if (foods.length === 0) {
           content.innerHTML = `
+            ${current === "saved" ? `<button type="button" class="fav-new-meal" id="fav-new-meal">＋ ${t("group.newMeal")}</button>` : ""}
             <div class="empty-state">
               ${icon(current === "saved" ? "bookmark" : "listBulletRectanglePortrait", { size: 40 })}
               <div class="empty-state-title">${current === "saved" ? t("favourites.emptySavedTitle") : t("favourites.emptyRecentTitle")}</div>
@@ -98,10 +124,14 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
                 current === "saved" ? t("favourites.emptySavedBody") : t("favourites.emptyRecentBody")
               }</div>
             </div>`;
+          content.querySelector("#fav-new-meal")?.addEventListener("click", newMeal);
           return;
         }
 
-        content.innerHTML = `<div class="fav-list">${foods.map(rowHtml).join("")}</div>`;
+        content.innerHTML = `
+          ${current === "saved" ? `<button type="button" class="fav-new-meal" id="fav-new-meal">＋ ${t("group.newMeal")}</button>` : ""}
+          <div class="fav-list">${foods.map(rowHtml).join("")}</div>`;
+        content.querySelector("#fav-new-meal")?.addEventListener("click", newMeal);
 
         content.querySelectorAll(".fav-row").forEach((row) => {
           const id = row.dataset.id;
@@ -136,6 +166,8 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
             if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(20);
             close();
           });
+
+          row.querySelector("[data-edit]")?.addEventListener("click", () => editSaved(food));
 
           row.querySelector("[data-unfav]")?.addEventListener("click", () => {
             store.deleteSavedFood(id);

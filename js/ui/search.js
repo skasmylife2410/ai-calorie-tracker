@@ -14,7 +14,13 @@ import { trayItemFromProduct, withAmount, stepOf, scaled, trayTotals, trayToEntr
 
 const DEBOUNCE_MS = 400;
 
-export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
+/**
+ * @param {object} [opts]
+ * @param {(items:object[])=>void} [opts.onPick]  "pick" mode: the plate's foods are handed back as
+ *   meal items (for adding to an existing or saved meal) instead of being logged.
+ * @param {string} [opts.pickLabel]  button text in pick mode
+ */
+export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick = null, pickLabel = null } = {}) {
   let state = { kind: "idle" }; // idle | loading | results | noResults | error
   let tray = [];            // foods picked so far
   let trayOpen = false;     // amounts list expanded
@@ -28,7 +34,7 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
         ${navBar({
           title: "Food Database",
           leading: { label: "Close" },
-          trailing: { label: "Add manually" },
+          trailing: onPick ? null : { label: "Add manually" },
         })}
         <div class="search-field-wrap">
           <div class="search-field">
@@ -73,7 +79,7 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
               <span>${t(tray.length === 1 ? "tray.one" : "tray.many", { n: tray.length })}, ${tot.calories} kcal</span>
               <span class="tray-caret">${trayOpen ? "▾" : "▴"}</span>
             </button>
-            <button type="button" class="tray-add" id="tray-add">${t("tray.add")}</button>
+            <button type="button" class="tray-add" id="tray-add">${onPick ? escapeHtml(pickLabel ?? t("group.addToMeal")) : t("tray.add")}</button>
           </div>`;
         trayEl.querySelector("#tray-toggle").addEventListener("click", () => { trayOpen = !trayOpen; renderTray(); });
         trayEl.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
@@ -88,6 +94,11 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
           renderState();
         }));
         trayEl.querySelector("#tray-add").addEventListener("click", () => {
+          if (onPick) {
+            onPick(trayToEntry(tray).analysisItems);
+            close();
+            return;
+          }
           const saved = store.addFoodEntry(trayToEntry(tray, timestamp ?? Date.now()));
           if (typeof onSaved === "function") onSaved(saved);
           close();
@@ -106,11 +117,20 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
       const renderState = () => {
         clearBtn.classList.toggle("hidden", query === "");
         if (state.kind === "idle") {
-          content.innerHTML = emptyStateHtml({
-            iconName: "magnifyingglass",
-            title: "Search the food database",
-            message: "Find packaged foods by name or brand.",
-          });
+          // Before anything is typed: your own foods (favourites, then recent), one tap to add.
+          const mine = store.quickFoods(12);
+          if (mine.length === 0) {
+            content.innerHTML = emptyStateHtml({
+              iconName: "magnifyingglass",
+              title: "Search the food database",
+              message: "Find packaged foods by name or brand.",
+            });
+          } else {
+            content.innerHTML = `<p class="tray-hint">${t("group.yourFoods")}</p><div class="search-results">${mine.map((p, i) => resultRowHtml(p, i, onTray(trayItemFromProduct(p).key), { noDetails: true })).join("")}</div>`;
+            content.querySelectorAll("[data-result-idx]").forEach((row) => {
+              row.addEventListener("click", () => toggleProduct(mine[Number(row.dataset.resultIdx)]));
+            });
+          }
         } else if (state.kind === "loading") {
           content.innerHTML = `<div class="loading-center"><div class="spinner"></div></div>`;
         } else if (state.kind === "results") {
@@ -125,7 +145,9 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
             b.addEventListener("click", (e) => {
               e.stopPropagation();
               const product = state.products[Number(b.dataset.editIdx)];
-              openAddFoodSheet({ prefill: product, timestamp, onSaved });
+              // in pick mode nothing gets logged on its own; the food just goes on the plate
+              if (onPick) toggleProduct(product);
+              else openAddFoodSheet({ prefill: product, timestamp, onSaved });
             });
           });
         } else if (state.kind === "noResults") {
@@ -219,7 +241,7 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
 
       wireNavBar(panel, {
         onLeading: () => close(),
-        onTrailing: () => openAddFoodSheet({ timestamp, onSaved }),
+        onTrailing: onPick ? null : () => openAddFoodSheet({ timestamp, onSaved }),
       });
 
       renderState();
@@ -228,13 +250,13 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null } = {}) {
   });
 }
 
-function resultRowHtml(product, idx, picked = false) {
+function resultRowHtml(product, idx, picked = false, { noDetails = false } = {}) {
   return `
     <div class="search-result-row card${picked ? " is-picked" : ""}" data-result-idx="${idx}" role="button" tabindex="0" aria-pressed="${picked}">
       <div class="search-result-left">
         <div class="search-result-name">${escapeHtml(product.name)}</div>
         ${product.brand ? `<div class="search-result-brand">${escapeHtml(product.brand)}</div>` : ""}
-        <button type="button" class="search-result-edit" data-edit-idx="${idx}">${t("tray.details")}</button>
+        ${noDetails ? "" : `<button type="button" class="search-result-edit" data-edit-idx="${idx}">${t("tray.details")}</button>`}
       </div>
       <div class="search-result-right">
         <div class="search-result-cal">${Math.round(product.calories)} kcal</div>

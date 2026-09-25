@@ -619,6 +619,15 @@
     "done": "Agrupado en {name}",
     "save": "Guardar",
     "saved": "Guardado",
-    "foodsCount": "{n} alimento|{n} alimentos"
+    "foodsCount": "{n} alimento|{n} alimentos",
+    "nameLabel": "Nombre de la comida",
+    "namePlaceholder": "p. ej. Desayuno de siempre",
+    "addFood": "Añadir alimento",
+    "addToMeal": "Añadir a la comida",
+    "saveMeal": "Guardar comida",
+    "yourFoods": "Tus alimentos: toca para añadir o busca arriba",
+    "edit": "Editar",
+    "newMeal": "Nueva comida",
+    "next": "Siguiente"
   }
 }

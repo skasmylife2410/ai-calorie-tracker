@@ -619,6 +619,15 @@
     "done": "Grouped into {name}",
     "save": "Save",
     "saved": "Saved",
-    "foodsCount": "{n} food|{n} foods"
+    "foodsCount": "{n} food|{n} foods",
+    "nameLabel": "Meal name",
+    "namePlaceholder": "e.g. Usual breakfast",
+    "addFood": "Add food",
+    "addToMeal": "Add to meal",
+    "saveMeal": "Save meal",
+    "yourFoods": "Your foods — tap to add, or search above",
+    "edit": "Edit",
+    "newMeal": "New meal",
+    "next": "Next"
   }
 }

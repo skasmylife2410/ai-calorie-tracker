@@ -2134,3 +2134,12 @@ body.setup-open { overflow: hidden; }
 .fav-foods { font-size: 12px; color: var(--sc-secondary); }
 @media (prefers-reduced-motion: reduce) { .entry-drag-ghost, .entry-row.is-drop-target .entry-row-fg { transform: none; transition: none; } }
 .group-toast { z-index: 1100; }
+
+/* ---- Recurring meals: add foods, edit saved meals ---- */
+.add-to-meal-btn { display: block; width: calc(100% - 32px); margin: 8px 16px 4px; padding: 11px; border: 1.5px dashed var(--sc-secondary-35); border-radius: 12px; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-primary-text); }
+.template-name-card { margin: 8px 16px 12px; background: var(--sc-card-bg); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
+.template-name-label { font-size: 12px; color: var(--sc-secondary); }
+.template-name-input { border: 0; background: none; font: inherit; font-size: 17px; font-weight: 600; padding: 2px 0; color: var(--sc-primary-text); }
+.template-name-input:focus { outline: none; }
+.fav-edit { font: inherit; font-size: 12px; font-weight: 700; padding: 8px 11px; border: 0; border-radius: 11px; background: var(--sc-secondary-14); color: var(--sc-primary-text); }
+.fav-new-meal { display: block; width: calc(100% - 32px); margin: 4px 16px 10px; padding: 12px; border: 1.5px dashed var(--sc-secondary-35); border-radius: 14px; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--sc-primary-text); }

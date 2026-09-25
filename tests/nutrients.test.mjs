@@ -180,3 +180,37 @@ test("the drag accepts every state a finished meal row actually has", async () =
   assert.equal(isGroupableState(entryState({ isPending: true })), false);
   assert.equal(isGroupableState(entryState({ analysisFailed: true })), false);
 });
+
+test("saved meals can be built, edited with more foods, and re-logged with every food", () => {
+  localStorage.clear();
+  const eggs = { name: "Eggs", calories: 140, proteinG: 12, carbsG: 1, fatG: 10, unit: "g", amount: 100, gramsEstimate: 100 };
+  const arepa = { name: "Arepa", calories: 220, proteinG: 4, carbsG: 45, fatG: 2, unit: "serving", amount: 1, gramsEstimate: 0 };
+  const saved = store.saveMealTemplate({ name: "Usual breakfast", items: [eggs, arepa] });
+  assert.equal(saved.name, "Usual breakfast");
+  assert.equal(saved.calories, 360);
+  // add a third food later
+  const tinto = { name: "Tinto", calories: 5, proteinG: 0, carbsG: 0, fatG: 0, unit: "serving", amount: 1, gramsEstimate: 0 };
+  const edited = store.saveMealTemplate({ id: saved.id, name: "Usual breakfast", items: [eggs, arepa, tinto] });
+  assert.equal(edited.id, saved.id);
+  assert.equal(store.allSavedFoods().length, 1);
+  assert.equal(edited.items.length, 3);
+  assert.equal(edited.calories, 365);
+  const logged = store.logSavedFood(saved.id, { servings: 1 });
+  assert.equal(logged.analysisItems.length, 3);
+  assert.equal(logged.name, "Usual breakfast");
+});
+
+test("your saved meal can be added to the plate and unpacks into its foods", () => {
+  localStorage.clear();
+  store.saveMealTemplate({ name: "Usual breakfast", items: [
+    { name: "Eggs", calories: 140, proteinG: 12, carbsG: 1, fatG: 10 },
+    { name: "Arepa", calories: 220, proteinG: 4, carbsG: 45, fatG: 2 },
+  ] });
+  const [mine] = store.quickFoods();
+  assert.equal(mine.name, "Usual breakfast");
+  const tray = [withAmount(trayItemFromProduct(mine), 2)];
+  const entry = trayToEntry(tray);
+  assert.equal(entry.analysisItems.length, 2);
+  assert.equal(entry.analysisItems[0].calories, 280);
+  assert.equal(entry.calories, 720);
+});
