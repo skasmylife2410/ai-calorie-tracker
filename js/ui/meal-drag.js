@@ -7,6 +7,20 @@
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 
+/**
+ * Only finished meals can be picked up or dropped on. queue.entryState() calls these
+ * "completedWithItems" and "completedPlain" (never plain "completed").
+ */
+export function isGroupableState(state) {
+  return state === "completedWithItems" || state === "completedPlain";
+}
+
+/** canDrag for a list built with mountEntryRow: reads the row's data-state. */
+export function rowIsGroupable(list, id) {
+  const row = [...list.querySelectorAll(".entry-row[data-entry-id]")].find((r) => r.dataset.entryId === id);
+  return isGroupableState(row?.dataset.state);
+}
+
 const HOLD_MS = 350;
 const SLOP = 8; // px the finger may wander during the hold before it counts as a scroll
 const EDGE_SCROLL = 70; // px from the top/bottom of the screen that scroll the list while dragging

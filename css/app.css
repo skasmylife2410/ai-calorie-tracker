@@ -2121,7 +2121,7 @@ body.setup-open { overflow: hidden; }
 .is-hidden { display: none !important; }
 
 /* ---- Drag a meal onto another to group them ---- */
-.entry-row[data-state="completed"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.entry-row[data-state^="completed"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .entry-row img { -webkit-user-drag: none; }
 .entry-row.is-drag-source { opacity: .35; }
 .entry-row.is-drop-target .entry-row-fg { box-shadow: 0 0 0 2.5px var(--sc-primary-text); transform: scale(1.02); transition: transform .12s, box-shadow .12s; }

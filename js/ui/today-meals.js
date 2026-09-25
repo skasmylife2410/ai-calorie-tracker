@@ -5,7 +5,7 @@
 
 import * as store from "../store.js";
 import { mountEntryRow } from "./entry-row.js";
-import { wireMealDrag, groupWithToast } from "./meal-drag.js";
+import { wireMealDrag, groupWithToast, rowIsGroupable } from "./meal-drag.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { openResultsSheet } from "./results.js";
 import { icon } from "./icons.js";
@@ -106,7 +106,7 @@ export function render(container) {
   }
 
   cleanups.push(wireMealDrag(list, {
-    canDrag: (id) => list.querySelector(`[data-entry-id="${id}"]`)?.dataset.state === "completed",
+    canDrag: (id) => rowIsGroupable(list, id),
     onDrop: (src, dst) => groupWithToast(src, dst, () => render(container)),
   }));
 }

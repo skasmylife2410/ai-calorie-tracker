@@ -171,3 +171,12 @@ test("pending or failed meals can't be grouped", () => {
   assert.equal(store.groupEntries(p.id, a.id), null);
   assert.equal(store.groupEntries(a.id, a.id), null);
 });
+
+test("the drag accepts every state a finished meal row actually has", async () => {
+  const { entryState } = await import("../js/queue.js");
+  const { isGroupableState } = await import("../js/ui/meal-drag.js");
+  assert.equal(isGroupableState(entryState({ name: "a" })), true);
+  assert.equal(isGroupableState(entryState({ name: "a", analysisItems: [] })), true);
+  assert.equal(isGroupableState(entryState({ isPending: true })), false);
+  assert.equal(isGroupableState(entryState({ analysisFailed: true })), false);
+});
