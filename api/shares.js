@@ -15,6 +15,8 @@ import { checkAuth } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
 import { resolveGroup } from "./_groups.js";
 import { cleanMicros } from "../js/nutrition.js";
+import { notify, displayName } from "./_push.js";
+import { membersOf } from "./_groups.js";
 
 const MAX_PHOTO = 60_000;    // data-URL length; the phone sends ~320px WebP/JPEG, ~15–30 KB
 const PER_DAY = 3;           // posts per person per day
@@ -106,6 +108,15 @@ export default async function handler(req, res) {
 
       const id = newId();
       await insert("snapcal_shares", { id, owner: me, kind, data, group_id: group.id });
+      // everyone else in this group, and only this group
+      const [who, members] = await Promise.all([displayName(me), membersOf(group.id).catch(() => [])]);
+      const kcal = Math.round(data.calories);
+      await notify(members.filter((u) => u !== me), (lang) => ({
+        title: lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`,
+        body: `${data.name} · ${kcal} kcal`,
+        url: "/?tab=us",
+        tag: `post-${id}`,
+      }));
       return res.status(200).json({ ok: true, id, group });
     }
 
@@ -120,7 +131,7 @@ export default async function handler(req, res) {
       const shareId = String(body.shareId ?? "");
       const text = str(body.body, COMMENT_MAX);
       if (!shareId || !text) return fail(res, "empty", "Write something first.");
-      const [post] = await select("snapcal_shares", { select: "id,group_id,created_at", id: `eq.${shareId}`, limit: "1" });
+      const [post] = await select("snapcal_shares", { select: "id,group_id,created_at,owner,data->>name", id: `eq.${shareId}`, limit: "1" });
       if (!post || Date.parse(post.created_at) < Date.now() - FEED_DAYS * 86400000) return fail(res, "gone", "That post is gone.");
       const { group, error } = await resolveGroup(me, post.group_id);
       if (error || !group || group.id !== post.group_id) return fail(res, "notMember", "You're not in that group.");
@@ -133,6 +144,20 @@ export default async function handler(req, res) {
       if (onPost.length >= COMMENTS_PER_POST) return fail(res, "limit", "This post has reached its comment limit.");
       const comment = { id: newId(), share_id: shareId, owner: me, body: text, created_at: new Date().toISOString() };
       await insert("snapcal_comments", comment);
+      // The post's owner, plus anyone who already commented on it — never the commenter.
+      const earlier = await select("snapcal_comments", { select: "owner", share_id: `eq.${shareId}`, limit: "60" }).catch(() => []);
+      const who = await displayName(me);
+      const meal = String(post.name ?? "").slice(0, 60);
+      const others = [...new Set(earlier.map((c) => c.owner))].filter((u) => u !== me && u !== post.owner);
+      const msg = (mine) => (lang) => ({
+        title: mine
+          ? (lang === "es" ? `${who} comentó tu comida` : `${who} commented on your meal`)
+          : (lang === "es" ? `${who} también comentó · ${meal}` : `${who} also commented · ${meal}`),
+        body: text,
+        url: "/?tab=us",
+        tag: `comments-${shareId}`,
+      });
+      await Promise.all([post.owner !== me ? notify([post.owner], msg(true)) : null, notify(others, msg(false))]);
       return res.status(200).json({ ok: true, comment });
     }
 

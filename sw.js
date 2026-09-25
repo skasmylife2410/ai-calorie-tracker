@@ -1,7 +1,7 @@
 // sw.js — minimal service worker: network-first for everything, cache-fallback for the app
 // shell, enough for PWA installability. Bump CACHE_VERSION to bust caches on deploy.
 
-const CACHE_VERSION = "snapcal-v2";
+const CACHE_VERSION = "snapcal-v3";
 
 const APP_SHELL = [
   "/i18n/en.json",
@@ -82,4 +82,43 @@ self.addEventListener("fetch", (event) => {
         })
       )
   );
+});
+
+// ---------------------------------------------------------------------------
+// Push notifications (api/_push.js sends them). iPhones require every push to show a
+// notification, so this always shows one — never a silent push.
+// ---------------------------------------------------------------------------
+
+self.addEventListener("push", (event) => {
+  let msg = {};
+  try { msg = event.data ? event.data.json() : {}; } catch { msg = { body: event.data?.text?.() ?? "" }; }
+  const title = msg.title || "SnapCal";
+  const options = {
+    body: msg.body || "",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: msg.tag || undefined,
+    renotify: Boolean(msg.tag),
+    data: { url: msg.url || "/" },
+  };
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    // red dot on the home-screen icon until the app is opened (where supported)
+    self.navigator?.setAppBadge?.(1)?.catch?.(() => {}),
+  ]));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil((async () => {
+    const open = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const client = open.find((c) => new URL(c.url).origin === self.location.origin);
+    if (client) {
+      // app already running: tell it where to go instead of reloading it
+      client.postMessage({ type: "snapcal:open", url });
+      return client.focus();
+    }
+    return self.clients.openWindow(url);
+  })());
 });

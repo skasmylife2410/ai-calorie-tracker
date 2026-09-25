@@ -7,6 +7,7 @@ import { t, initI18n, formatNumber, formatDate, currentLanguage } from "./i18n.j
 import { doodleSvg } from "./ui/doodle.js";
 import { openNoteSheet, renderFeed } from "./ui/us-social.js";
 import { renderRecap } from "./ui/us-recap.js";
+import { renderPushCard } from "./ui/push-ui.js";
 import { localDateString, addDays, startOfDay } from "./nutrition.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
@@ -387,7 +388,7 @@ function render() {
   // Two people still get the mirror chart — it reads beautifully head to head. Three or more
   // get sparklines, which stay legible however many rows there are.
   const chart = people.length > 2 ? trendHtml(people, days) : mirrorHtml(people, days);
-  body.innerHTML = groupBarHtml() + `<section class="us-recap" id="us-recap"></section>` + todayHtml(people) + chart + summaryHtml(people, days) +
+  body.innerHTML = groupBarHtml() + `<section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + todayHtml(people) + chart + summaryHtml(people, days) +
     (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: data.group?.name ?? "" })}</p>` : "");
   body.querySelectorAll("[data-group]").forEach((b) => b.addEventListener("click", () => {
     if (b.dataset.group === (data.group?.id ?? null)) return;
@@ -396,6 +397,7 @@ function render() {
     start();
   }));
   wireAvatar();
+  if (body.id === "us-tab-body") renderPushCard(body.querySelector("#us-push")); // in the app only, not us.html
   renderRecap(body.querySelector("#us-recap"), { lang: currentLanguage() === "es" ? "es" : "en" });
   body.querySelectorAll("[data-note-to]").forEach((b) => b.addEventListener("click", () => openNoteSheet(b.dataset.noteTo)));
   const feed = document.createElement("section");

@@ -1,6 +1,7 @@
 // profile.js — Profile / Settings tab (ProfileSettingsView in ContentView.swift), SPEC-UI.md §3.
 
 import * as store from "../store.js";
+import { renderPushSettings } from "./push-ui.js";
 import * as sync from "../sync.js";
 import { t, currentLanguage, setLanguage, supportedLanguages } from "../i18n.js";
 import { postAuth } from "./login.js";
@@ -67,6 +68,7 @@ export function render(container) {
       ${accuracySectionHtml(profile)}
       ${scanQualityHtml(profile)}
       ${doodlePickHtml()}
+      <div class="ios-section" id="push-section"></div>
       ${languageSectionHtml()}
       ${syncSectionHtml()}
       <div class="bottom-safe-spacer"></div>
@@ -78,6 +80,7 @@ export function render(container) {
   wireCalculatorSection(container, goals);
   wireSyncSection(container);
   wireLanguage(container);
+  renderPushSettings(container.querySelector("#push-section"));
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
   wireInvites(container);

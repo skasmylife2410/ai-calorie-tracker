@@ -681,5 +681,33 @@
     "act_moderate": "Moderado, 3–5 entrenos a la semana",
     "act_veryActive": "Muy activo, 6–7 entrenos a la semana",
     "act_extraActive": "Súper activo, trabajo físico o entreno dos veces al día"
+  },
+  "push": {
+    "cardTitle": "Recibe notificaciones",
+    "cardBody": "Entérate cuando alguien de tu grupo comparta una comida, comente la tuya, te mande una nota o tu revisión del viernes esté lista.",
+    "turnOn": "Activar",
+    "notNow": "Ahora no",
+    "installTitle": "Notificaciones en iPhone",
+    "installBody": "Abre SnapCal desde su ícono en la pantalla de inicio y vuelve aquí para activar las notificaciones. No funcionan desde una pestaña de Safari.",
+    "gotIt": "Entendido",
+    "settingsTitle": "Notificaciones",
+    "on": "Activadas",
+    "off": "Desactivadas",
+    "hintOn": "Este teléfono recibe publicaciones del grupo, comentarios en tus comidas, notas y tu revisión del viernes.",
+    "hintOff": "Actívalas para enterarte de publicaciones, comentarios, notas y tu revisión del viernes.",
+    "hintDenied": "Las notificaciones de SnapCal están bloqueadas. Permítelas en Ajustes del teléfono, en Notificaciones, y vuelve aquí.",
+    "hintInstall": "En iPhone, las notificaciones solo funcionan si abres SnapCal desde su ícono en la pantalla de inicio.",
+    "hintUnsupported": "Este navegador no puede recibir notificaciones.",
+    "notReady": "Las notificaciones aún no están configuradas en el servidor. Intenta más tarde.",
+    "failed": "No se pudieron activar las notificaciones. Intenta de nuevo.",
+    "enabled": "Notificaciones activadas"
+  },
+  "whatsNew": {
+    "title": "Novedades en SnapCal",
+    "close": "Listo",
+    "n1Title": "Notificaciones",
+    "n1Body": "SnapCal ahora te avisa cuando alguien comparte una comida, comenta la tuya, te manda una nota o tu revisión del viernes está lista.",
+    "n2Title": "Tú decides",
+    "n2Body": "Actívalas o desactívalas cuando quieras en Perfil, en Notificaciones. Solo te llegan avisos de tus propios grupos."
   }
 }

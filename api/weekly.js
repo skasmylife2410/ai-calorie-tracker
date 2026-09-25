@@ -12,6 +12,7 @@
 // One Vercel function for both jobs keeps the project under the Hobby plan's function limit.
 
 import { checkAuth } from "./_auth.js";
+import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
 import { resolveUserGoals } from "../js/nutrition.js";
 import { weekWindow, localWeekday, summarizeWeek, candidateMeals, buildPrompt, cleanRecap, RECAP_SCHEMA, TRANSLATE_SCHEMA, translatePrompt, textIn, localDay } from "./_week.js";
@@ -107,6 +108,14 @@ export default async function handler(req, res) {
       const users = await select("snapcal_users", { select: "username" });
       const results = await Promise.allSettled(users.map((u) => recapFor(u.username, win)));
       out.recaps = results.map((r, i) => ({ owner: users[i].username, ok: r.status === "fulfilled", ...(r.status === "rejected" ? { error: String(r.reason?.message ?? r.reason) } : { tips: r.value.tips.length }) }));
+      // a heads-up only for people who actually got tips; the text itself stays private in the app
+      const ready = out.recaps.filter((r) => r.ok && r.tips > 0).map((r) => r.owner);
+      out.pushed = await notify(ready, (lang) => ({
+        title: lang === "es" ? "Tu revisión del viernes está lista" : "Your Friday check-in is ready",
+        body: lang === "es" ? "Consejos basados en tu semana. Solo tú los ves." : "Tips based on your week. Only you can see them.",
+        url: "/?tab=us",
+        tag: "recap",
+      }));
     }
     return res.status(200).json(out);
   }

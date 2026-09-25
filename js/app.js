@@ -27,6 +27,8 @@ import { mountSky } from "./ui/sky.js";
 import { openRecipesSheet } from "./ui/recipes.js";
 import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
+import { refreshPush, clearBadge } from "./push.js";
+import { maybeShowWhatsNew } from "./ui/push-ui.js";
 
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
@@ -96,7 +98,36 @@ async function boot() {
     navigator.serviceWorker.register("/sw.js").catch((err) => {
       console.warn("app.js: service worker registration failed", err);
     });
+    // a notification tapped while the app is already open
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      if (e.data?.type === "snapcal:open") openFromUrl(e.data.url);
+    });
   }
+
+  // Notifications: clear the icon badge, keep this phone's subscription current, then either
+  // follow the link a notification opened us with or show the latest update once.
+  clearBadge();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") clearBadge(); });
+  refreshPush().catch(() => {});
+  const opened = openFromUrl(location.href);
+  if (hasProfile && !opened) setTimeout(() => maybeShowWhatsNew().catch(() => {}), 800);
+}
+
+/** Handles ?tab=us / ?whatsnew=1 from a notification. Returns true when it did something. */
+function openFromUrl(href) {
+  let url;
+  try { url = new URL(href, location.origin); } catch { return false; }
+  const tab = url.searchParams.get("tab");
+  const whatsNew = url.searchParams.get("whatsnew") === "1";
+  if (url.search) history.replaceState(null, "", "/");
+  if (!hasProfile) return false;
+  if (tab && TABS.some((x) => x.id === tab)) {
+    if (popupOpen) setPopupOpen(false);
+    selectedTab = tab;
+    renderShell();
+  }
+  if (whatsNew) maybeShowWhatsNew({ force: true }).catch(() => {});
+  return Boolean(tab || whatsNew);
 }
 
 // ---------------------------------------------------------------------------

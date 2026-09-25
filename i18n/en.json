@@ -681,5 +681,33 @@
     "act_moderate": "Moderate, 3–5 workouts a week",
     "act_veryActive": "Very active, 6–7 workouts a week",
     "act_extraActive": "Extra active, physical job or training twice a day"
+  },
+  "push": {
+    "cardTitle": "Get notified",
+    "cardBody": "Know when someone in your group shares a meal, comments on yours, sends you a note, or your Friday check-in is ready.",
+    "turnOn": "Turn on",
+    "notNow": "Not now",
+    "installTitle": "Notifications on iPhone",
+    "installBody": "Open SnapCal from its icon on your home screen, then come back here to turn notifications on. They don't work from a Safari tab.",
+    "gotIt": "Got it",
+    "settingsTitle": "Notifications",
+    "on": "On",
+    "off": "Off",
+    "hintOn": "This phone gets group posts, comments on your meals, notes and your Friday check-in.",
+    "hintOff": "Turn on to hear about group posts, comments, notes and your Friday check-in.",
+    "hintDenied": "Notifications are blocked for SnapCal. Allow them in your phone's Settings, under Notifications, then come back here.",
+    "hintInstall": "On iPhone, notifications only work when SnapCal is opened from its home-screen icon.",
+    "hintUnsupported": "This browser can't receive notifications.",
+    "notReady": "Notifications aren't set up on the server yet. Try again later.",
+    "failed": "Couldn't turn notifications on. Try again.",
+    "enabled": "Notifications are on"
+  },
+  "whatsNew": {
+    "title": "What's new in SnapCal",
+    "close": "Done",
+    "n1Title": "Notifications",
+    "n1Body": "SnapCal can now tell you when someone shares a meal, comments on yours, sends you a note, or your Friday check-in is ready.",
+    "n2Title": "You're in control",
+    "n2Body": "Turn them on or off anytime in Profile, under Notifications. You only hear about your own groups."
   }
 }
