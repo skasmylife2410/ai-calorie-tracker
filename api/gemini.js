@@ -16,6 +16,11 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MO
 const REQUEST_TIMEOUT_MS = 45_000;
 const REQUIRES_IMAGE = Object.freeze({ meal: true, label: true, text: false, exercise: false, recipes: false, transcribe: false });
 
+// Nutrients beyond the macros, for the same stated portion as calories/protein.
+const MICRO_FIELDS = ["fiber_g", "sugar_g", "added_sugar_g", "sat_fat_g", "sodium_mg", "potassium_mg"];
+const MICRO_PROPS = Object.fromEntries(MICRO_FIELDS.map((k) => [k, { type: "NUMBER" }]));
+const MICRO_RULE = `- fiber_g, sugar_g (total sugars), added_sugar_g, sat_fat_g, sodium_mg and potassium_mg are for the same grams as calories. added_sugar_g counts sugar, syrup, honey or panela added during making (sodas, sweetened drinks and juices, desserts, sweetened sauces); sugar naturally in fruit, milk and plain 100% juice is NOT added, and added_sugar_g can never exceed sugar_g. For sodium include salt used in cooking and in sauces, cured meats and cheeses — restaurant and street food is usually salty. Give your best estimate; use 0 only when the item truly has none.`;
+
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
@@ -30,9 +35,10 @@ const RESPONSE_SCHEMA = {
           protein_g: { type: "NUMBER" },
           carbs_g: { type: "NUMBER" },
           fat_g: { type: "NUMBER" },
+          ...MICRO_PROPS,
           confidence: { type: "NUMBER" },
         },
-        required: ["name", "grams_estimate", "calories", "protein_g", "carbs_g", "fat_g", "confidence"],
+        required: ["name", "grams_estimate", "calories", "protein_g", "carbs_g", "fat_g", ...MICRO_FIELDS, "confidence"],
       },
     },
   },
@@ -75,10 +81,11 @@ const RECIPE_SCHEMA = {
           protein_g: { type: "NUMBER" },
           carbs_g: { type: "NUMBER" },
           fat_g: { type: "NUMBER" },
+          ...MICRO_PROPS,
           ingredients: { type: "ARRAY", items: { type: "STRING" } },
           steps: { type: "ARRAY", items: { type: "STRING" } },
         },
-        required: ["name", "minutes", "calories", "protein_g", "carbs_g", "fat_g", "ingredients", "steps"],
+        required: ["name", "minutes", "calories", "protein_g", "carbs_g", "fat_g", ...MICRO_FIELDS, "ingredients", "steps"],
       },
     },
   },
@@ -136,7 +143,7 @@ function buildRecipesPrompt({ caloriesLeft, proteinLeft, preferences, lang }) {
     `Rules:
 - Return exactly 3 different ideas that a home cook can make.
 - Each idea should fit comfortably inside the remaining calories: aim between 40% and 90% of the calories left, and get as close to the remaining protein as is realistic.
-- calories, protein_g, carbs_g and fat_g are for one serving of the finished dish.
+- calories, protein_g, carbs_g and fat_g are for one serving of the finished dish, and so are fiber_g, sugar_g, added_sugar_g, sat_fat_g, sodium_mg and potassium_mg.
 - minutes is total hands-on plus cooking time.
 - ingredients: 4-10 short lines with quantities. steps: 3-6 short lines.
 - Keep them ordinary and affordable — everyday supermarket ingredients, no restaurant technique.`,
@@ -155,6 +162,7 @@ const MEAL_PROMPT_SECTION_3 = `Rules:
 - Estimate the cooked/served weight in grams of each item as it appears. Judge portion size against the plate, bowl, cutlery, or hand visible in frame; typical dinner plates are 26–28 cm.
 - Assume standard preparation: dishes are cooked with oil or butter unless clearly not; when a fried or sautéed dish is present, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items. Common hidden fat that looks plain: rice in Latin American cooking (arroz blanco, arroz con pollo) is usually made with oil; arepas are often buttered or griddled with fat; plantains (patacones, tajadas/maduros) are fried; restaurant and street food generally uses more oil than home cooking. Portion estimates from photos tend to come out low on generous plates — don't round down.
 - calories, protein_g, carbs_g, fat_g must be your estimate for the stated grams of that specific item.
+${MICRO_RULE}
 - confidence is 0–1: how sure you are of the item's identity AND portion size.
 - If the image contains no food or drink, return an empty items array.
 Return ONLY JSON matching the schema.`;
@@ -184,6 +192,7 @@ Rules:
 - When the user gives NO quantity for an item, assume ONE typical serving and estimate grams from standard serving sizes (medium banana ≈ 118 g, scoop of whey ≈ 30 g, slice of bread ≈ 40 g, cup of cooked rice ≈ 160 g).
 - Assume standard preparation: dishes are cooked with oil or butter unless the user says otherwise; when a fried or sautéed dish is described, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items. Common hidden fat that looks plain: rice in Latin American cooking (arroz blanco, arroz con pollo) is usually made with oil; arepas are often buttered or griddled with fat; plantains (patacones, tajadas/maduros) are fried; restaurant and street food generally uses more oil than home cooking. Portion estimates from photos tend to come out low on generous plates — don't round down.
 - calories, protein_g, carbs_g, fat_g must be your estimate for the stated grams of that specific item.
+${MICRO_RULE}
 - confidence is 0–1: how sure you are of the item's identity AND portion size. Be honest — a precisely quantified item ("two scoops of whey") deserves high confidence, while an unquantified vague one ("some pasta") deserves LOW confidence.
 - If the text does not describe any food or drink, return an empty items array.
 Return ONLY JSON matching the schema.`;
@@ -195,6 +204,7 @@ Rules:
 - Return exactly one item. name = the product name if visible on the packaging, otherwise a short generic name for the food.
 - Use the per-serving values printed on the label when a serving size is shown; grams_estimate = the serving size in grams. If the label only shows per-100g values, use 100 and the per-100g numbers.
 - calories, protein_g, carbs_g, fat_g must be the numbers PRINTED on the label — transcribe, do not estimate. Convert kJ to kcal (divide by 4.184) only if kcal is not printed.
+- fiber_g, sugar_g (total sugars), added_sugar_g, sat_fat_g, sodium_mg and potassium_mg: transcribe them from the label for the same serving. If the label gives salt instead of sodium, sodium_mg = salt in grams × 400. If a value is not printed, estimate it for this product (use 0 for added sugar only if the label shows no sugar in the ingredients).
 - confidence is 0.95 when the label is clearly legible; lower it if the label is blurry or partially visible.
 - If the photo does not contain a nutrition label, return an empty items array.
 Return ONLY JSON matching the schema.`;

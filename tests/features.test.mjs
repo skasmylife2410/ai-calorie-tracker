@@ -22,7 +22,7 @@ test("servings rescale an entry from its one-serving base without drift", () => 
   localStorage.clear();
   const e = store.addFoodEntry({ name: "Bowl", calories: 572, proteinG: 52, carbsG: 44, fatG: 18 });
   assert.equal(e.servings, 1);
-  assert.deepEqual(e.base, { calories: 572, proteinG: 52, carbsG: 44, fatG: 18 });
+  assert.deepEqual(e.base, { calories: 572, proteinG: 52, carbsG: 44, fatG: 18, micros: null });
 
   const two = store.setServings(e.id, 2);
   assert.equal(two.calories, 1144);

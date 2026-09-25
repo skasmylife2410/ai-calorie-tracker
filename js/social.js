@@ -85,6 +85,7 @@ export async function shareMeal(entry, note = "", group = null) {
       proteinG: entry.proteinG,
       carbsG: entry.carbsG,
       fatG: entry.fatG,
+      micros: entry.micros ?? null,
       photo,
       items: entry.analysisItems ?? [],
       note,

@@ -5,6 +5,8 @@ import * as store from "../store.js";
 import { wireNumericInput, formatNumeric } from "./numeric-field.js";
 import { t } from "../i18n.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
+import { cleanMicros, scaleMicros } from "../nutrition.js";
+import { microInputsHtml, wireMicroInputs, refreshMicroInputs } from "./micros.js";
 
 const MACRO_FIELDS = [
   { key: "calories", label: "Calories", unit: "kcal", decimal: false },
@@ -24,6 +26,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
     proteinG: entry?.proteinG ?? prefill?.proteinG ?? 0,
     carbsG: entry?.carbsG ?? prefill?.carbsG ?? 0,
     fatG: entry?.fatG ?? prefill?.fatG ?? 0,
+    micros: cleanMicros(entry ? entry.micros : prefill?.micros),
     // How much was eaten. Known for search results ("per 100 g" -> 100 g); for manual entries it
     // starts unknown, and the first number typed becomes the baseline rather than rescaling.
     amount: entry?.amount ?? prefillAmount(prefill),
@@ -88,6 +91,13 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               </div>
               ${footnote ? `<div class="ios-section-footer">${escapeAttr(footnote)}</div>` : ""}
             </div>
+            <div class="ios-section">
+              <details class="micro-section" id="micro-section"${draft.micros ? " open" : ""}>
+                <summary>${t("nutrients.more")}</summary>
+                ${microInputsHtml(draft.micros)}
+              </details>
+              <div class="ios-section-footer">${t("nutrients.moreHint")}</div>
+            </div>
             ${isEditing && entry?.photoDataUrl ? `<button type="button" class="share-row" id="share-food">↗︎ ${t("social.share")}</button>` : ""}
           </div>
         </div>
@@ -114,7 +124,9 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         if (!Number.isFinite(factor) || factor <= 0) return;
         draft.calories = Math.round(draft.calories * factor);
         for (const k of ["proteinG", "carbsG", "fatG"]) draft[k] = Math.round(draft[k] * factor * 10) / 10;
+        draft.micros = scaleMicros(draft.micros, factor);
         refreshMacros();
+        refreshMicroInputs(panel, draft.micros);
       };
 
       const amountInput = panel.querySelector("#food-amount");
@@ -171,11 +183,16 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         });
       }
 
+      wireMicroInputs(panel, {
+        getValue: (k) => draft.micros?.[k] ?? null,
+        onChange: (k, v) => { draft.micros = cleanMicros({ ...(draft.micros ?? {}), [k]: v }); },
+      });
+
       panel.querySelector("#share-food")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
         btn.disabled = true;
         const { shareMeal } = await import("../social.js");
-        const out = await shareMeal({ ...entry, name: draft.name, calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG });
+        const out = await shareMeal({ ...entry, name: draft.name, calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG, micros: draft.micros });
         btn.textContent = out.ok ? `✓ ${t("social.shareDone")}` : (out.message || t("errors.generic"));
       });
 
@@ -192,11 +209,12 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               proteinG: draft.proteinG,
               carbsG: draft.carbsG,
               fatG: draft.fatG,
+              micros: draft.micros,
               amount: draft.amount,
               amountUnit: draft.amountUnit,
               // editing by hand resets the servings multiplier; the numbers ARE the meal now
               servings: 1,
-              base: { calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG },
+              base: { calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG, micros: draft.micros },
             });
           } else {
             saved = store.addFoodEntry({
@@ -205,6 +223,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               proteinG: draft.proteinG,
               carbsG: draft.carbsG,
               fatG: draft.fatG,
+              micros: draft.micros,
               amount: draft.amount,
               amountUnit: draft.amountUnit,
               source,

@@ -10,6 +10,8 @@ import * as queue from "../queue.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { parseNumeric, formatNumeric } from "./numeric-field.js";
+import { scaleMicros, cleanMicros, sumMicros } from "../nutrition.js";
+import { microsSummary, microInputsHtml, wireMicroInputs, formatMicro } from "./micros.js";
 import { plateSvg, handReference, handLabel, densityOf, _KINDS_FOR_TESTS as KINDS } from "./portion-plate.js";
 
 const FIELD_DEFS = [
@@ -31,6 +33,7 @@ export function openResultsSheet(entry) {
   // Local editable copy of items + per-item baselines (snapshot at open / after reanalysis).
   let items = (entry.analysisItems ?? []).map((i) => ({ ...i }));
   let baselines = items.map(snapshotBaseline);
+  const openMicros = new Set(); // which items have their nutrient fields expanded
 
   openSheet({
     render(panel, close) {
@@ -101,8 +104,7 @@ export function openResultsSheet(entry) {
         const { shareMeal } = await import("../social.js");
         // share what's on screen now, including unsaved portion edits
         const current = store.getFoodEntry(entry.id) ?? entry;
-        const total = (k) => items.reduce((a, i) => a + (i[k] ?? 0), 0) * servings;
-        const out = await shareMeal({ ...current, analysisItems: items, calories: total("calories"), proteinG: total("proteinG"), carbsG: total("carbsG"), fatG: total("fatG") });
+        const out = await shareMeal({ ...current, analysisItems: items, ...store.fieldsFromItems(items, servings) });
         btn.textContent = out.ok ? "✓" : "!";
         btn.title = out.ok ? t("social.shareDone") : (out.message || "");
       });
@@ -160,6 +162,10 @@ export function openResultsSheet(entry) {
               <div class="total-stat-label">${t.label}</div>
             </div>`;
         }).join("");
+        const m = scaleMicros(sumMicros(items.map((i) => i.micros)), servings);
+        totalsEl.insertAdjacentHTML("beforeend", m
+          ? `<div class="results-micros-line">${["sodiumMg", "sugarG", "satFatG", "fiberG", "potassiumMg"].map((k) => `${t(`nutrients.${k}`)} ${formatMicro(k, m[k])}`).join(" · ")}</div>`
+          : "");
         saveBtn.disabled = items.length === 0;
         renderPlate();
       };
@@ -185,6 +191,7 @@ export function openResultsSheet(entry) {
         }
       };
       ensureUnits();
+      baselines = items.map(snapshotBaseline); // now that every item has an amount
 
       const renderItems = () => {
         if (items.length === 0) {
@@ -192,7 +199,7 @@ export function openResultsSheet(entry) {
           renderTotals();
           return;
         }
-        itemsEl.innerHTML = items.map((item, idx) => itemRowHtml(item, idx)).join("");
+        itemsEl.innerHTML = items.map((item, idx) => itemRowHtml(item, idx, openMicros.has(idx))).join("");
 
         items.forEach((item, idx) => {
           const row = itemsEl.querySelector(`[data-item-idx="${idx}"]`);
@@ -218,6 +225,7 @@ export function openResultsSheet(entry) {
               item.proteinG = base.proteinG * factor;
               item.carbsG = base.carbsG * factor;
               item.fatG = base.fatG * factor;
+              item.micros = scaleMicros(base.micros, factor);
             }
             item.amount = next;
             item.gramsEstimate = Math.max(1, Math.round(next * gramsPerUnit(item)));
@@ -240,7 +248,7 @@ export function openResultsSheet(entry) {
               }
               item.unit = next;
               // the baseline moves with it, so later scaling is relative to this amount
-              baselines[idx] = { ...item };
+              baselines[idx] = { ...item, micros: cleanMicros(item.micros) };
               renderItems();
             })
           );
@@ -259,7 +267,24 @@ export function openResultsSheet(entry) {
           row.querySelector("[data-item-delete]").addEventListener("click", () => {
             items.splice(idx, 1);
             baselines.splice(idx, 1);
+            openMicros.clear();
             renderItems();
+          });
+
+          const details = row.querySelector(".micro-details");
+          details?.addEventListener("toggle", () => {
+            if (details.open) openMicros.add(idx); else openMicros.delete(idx);
+          });
+          // Typing a nutrient is new ground truth for this amount, same as typing a macro.
+          wireMicroInputs(row, {
+            getValue: (k) => item.micros?.[k] ?? null,
+            onChange: (k, v) => {
+              item.micros = cleanMicros({ ...(item.micros ?? {}), [k]: v });
+              baselines[idx] = snapshotBaseline(item);
+              const sumEl = row.querySelector(".micro-details > summary span");
+              if (sumEl) sumEl.textContent = microsSummary(item.micros);
+              renderTotals();
+            },
           });
 
           for (const f of FIELD_DEFS) {
@@ -280,6 +305,13 @@ export function openResultsSheet(entry) {
                   item.proteinG = base.proteinG * factor;
                   item.carbsG = base.carbsG * factor;
                   item.fatG = base.fatG * factor;
+                  item.micros = scaleMicros(base.micros, factor);
+                  const sumEl = row.querySelector(".micro-details > summary span");
+                  if (sumEl) sumEl.textContent = microsSummary(item.micros);
+                  row.querySelectorAll("[data-micro]").forEach((mi) => {
+                    const v = item.micros?.[mi.dataset.micro];
+                    mi.value = v === null || v === undefined ? "" : String(mi.dataset.micro.endsWith("Mg") ? Math.round(v) : Math.round(v * 10) / 10);
+                  });
                   // Re-display the four dependent fields (they're not focused — safe to rewrite).
                   for (const dep of FIELD_DEFS) {
                     if (dep.key === "amount") continue;
@@ -295,8 +327,7 @@ export function openResultsSheet(entry) {
               } else {
                 // Direct macro edit = new ground truth: update value AND its baseline (§12.2).
                 item[f.key] = parsed;
-                baselines[idx][f.key] = parsed;
-                baselines[idx].gramsEstimate = item.gramsEstimate; // rescale later from here
+                baselines[idx] = snapshotBaseline(item); // rescale later from here
               }
               renderTotals();
             });
@@ -318,6 +349,7 @@ export function openResultsSheet(entry) {
           if (fresh) {
             entry = fresh;
             items = (fresh.analysisItems ?? []).map((i) => ({ ...i }));
+            ensureUnits();
             baselines = items.map(snapshotBaseline);
             renderItems();
           }
@@ -327,12 +359,10 @@ export function openResultsSheet(entry) {
       saveBtn.addEventListener("click", () => {
         if (items.length === 0) return;
         const name = queue.buildJoinedName(items) || "Analyzed meal";
+        // items are one serving; the totals keep the servings multiplier
         store.updateFoodEntry(entry.id, {
           name,
-          calories: sum(items, "calories"),
-          proteinG: sum(items, "proteinG"),
-          carbsG: sum(items, "carbsG"),
-          fatG: sum(items, "fatG"),
+          ...store.fieldsFromItems(items, servings),
           analysisItems: items,
         });
         close();
@@ -350,11 +380,9 @@ function snapshotBaseline(item) {
     proteinG: item.proteinG,
     carbsG: item.carbsG,
     fatG: item.fatG,
+    amount: item.amount,
+    micros: cleanMicros(item.micros),
   };
-}
-
-function sum(items, key) {
-  return items.reduce((acc, i) => acc + (i[key] ?? 0), 0);
 }
 
 function thumbHtml(entry) {
@@ -371,7 +399,7 @@ function thumbHtml(entry) {
   return "";
 }
 
-function itemRowHtml(item, idx) {
+function itemRowHtml(item, idx, microsOpen = false) {
   const lowConfidence = typeof item.confidence === "number" && item.confidence < 0.5;
   return `
     <div class="meal-item-row" data-item-idx="${idx}">
@@ -399,6 +427,10 @@ function itemRowHtml(item, idx) {
         ${[0.5, 0.75, 1.25, 1.5, 2].map((m) => `<button type="button" data-mult="${m}">×${m}</button>`).join("")}
         <button type="button" data-step="10" aria-label="more">${(item.unit ?? "g") === "serving" ? "+½" : "+10"}</button>
       </div>
+      <details class="micro-details"${microsOpen ? " open" : ""}>
+        <summary><span>${escapeHtml(microsSummary(item.micros))}</span></summary>
+        ${microInputsHtml(item.micros)}
+      </details>
     </div>
   `;
 }

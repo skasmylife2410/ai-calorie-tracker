@@ -144,10 +144,8 @@ export async function submitCorrection(entryId, correctionText) {
       analysisItems: outcome.items,
       analysisDescription: composedDescription,
       name: buildJoinedName(outcome.items) || "Analyzed meal",
-      calories: sum(outcome.items, "calories"),
-      proteinG: sum(outcome.items, "proteinG"),
-      carbsG: sum(outcome.items, "carbsG"),
-      fatG: sum(outcome.items, "fatG"),
+      // items are one serving; keep whatever servings multiplier the meal already had
+      ...store.fieldsFromItems(outcome.items, entry.servings),
     });
   }
   return outcome;
@@ -199,9 +197,6 @@ function emitComplete(payload) {
   }
 }
 
-function sum(items, key) {
-  return items.reduce((acc, item) => acc + (item[key] ?? 0), 0);
-}
 
 // ---------------------------------------------------------------------------
 // Notifications (best-effort — see SPEC-LOGIC.md §15.3: no direct browser equivalent of
@@ -268,14 +263,12 @@ function handleOutcome(entryId, mode, outcome) {
 
     const joinedName = buildJoinedName(items);
     const name = joinedName === "" ? "Analyzed meal" : joinedName;
-    const calories = sum(items, "calories");
+    const fields = store.fieldsFromItems(items, store.getFoodEntry(entryId)?.servings);
+    const calories = fields.calories;
 
     store.updateFoodEntry(entryId, {
       name,
-      calories,
-      proteinG: sum(items, "proteinG"),
-      carbsG: sum(items, "carbsG"),
-      fatG: sum(items, "fatG"),
+      ...fields,
       analysisItems: items,
       isPending: false,
       analysisFailed: false,

@@ -10,6 +10,7 @@ import { openActionSheet } from "./action-sheet.js";
 import { openResultsSheet } from "./results.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
+import { nutrientsPageHtml } from "./micros.js";
 import { openRecipesSheet } from "./recipes.js";
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
@@ -30,6 +31,8 @@ const MACRO_DEFS = [
 // Week strip labels follow the active language (Mon/lun…).
 
 let swiperPage = 0;
+// calories, nutrients, water
+const PAGE_COUNT = 3;
 let rowCleanups = [];
 // The day the Home tab is showing. null = today (and it snaps back to today on a fresh launch).
 let selectedDayStart = null;
@@ -97,12 +100,12 @@ export function render(container) {
       <div data-own-swipe class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
           <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount)}</div>
+          <div class="swiper-page">${nutrientsPageHtml(store.microsForDay(date))}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
         </div>
       </div>
       <div class="swiper-dots">
-        <span class="swiper-dot${swiperPage === 0 ? " active" : ""}" data-dot="0"></span>
-        <span class="swiper-dot${swiperPage === 1 ? " active" : ""}" data-dot="1"></span>
+        ${Array.from({ length: PAGE_COUNT }, (_, i) => `<span class="swiper-dot${swiperPage === i ? " active" : ""}" data-dot="${i}"></span>`).join("")}
       </div>
 
       ${viewingToday ? doodleCardHtml() : ""}
@@ -348,8 +351,8 @@ function wireSwiper(container) {
     dragging = false;
     track.style.transition = "";
     const pct = (dx / wrapper.offsetWidth) * 100;
-    if (pct < -20 && swiperPage < 1) swiperPage = 1;
-    else if (pct > 20 && swiperPage > 0) swiperPage = 0;
+    if (pct < -20 && swiperPage < PAGE_COUNT - 1) swiperPage += 1;
+    else if (pct > 20 && swiperPage > 0) swiperPage -= 1;
     track.style.transform = `translateX(${-swiperPage * 100}%)`;
     fitHeight();
     dots.forEach((d) => d.classList.toggle("active", Number(d.dataset.dot) === swiperPage));

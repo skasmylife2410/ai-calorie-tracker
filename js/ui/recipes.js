@@ -107,6 +107,7 @@ export function openRecipesSheet({ date = new Date() } = {}) {
               proteinG: r.proteinG,
               carbsG: r.carbsG,
               fatG: r.fatG,
+              micros: r.micros ?? null,
               source: "manual",
               timestamp: date instanceof Date ? date.getTime() : Date.now(),
               analysisItems: null,

@@ -34,11 +34,30 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
       let intensity = "moderate";
       let parsing = false;
       let parseError = "";
+      // "estimate": activity × minutes × intensity. "kcal": a number they already have (a watch,
+      // a gym machine, a fitness app), with minutes optional.
+      let mode = "estimate";
+      let typedKcal = null;
+      let typedMinutes = null;
 
       panel.innerHTML = `
         ${navBar({ title: t("exercise.title"), leading: { label: t("app.cancel") } })}
         <div class="sheet-panel-body">
-          <div class="ex-card">
+          <div class="ex-mode" role="group" aria-label="${t("exercise.title")}">
+            <button type="button" data-mode="estimate" aria-pressed="true">${t("exercise.modeEstimate")}</button>
+            <button type="button" data-mode="kcal" aria-pressed="false">${t("exercise.modeKcal")}</button>
+          </div>
+
+          <div class="ex-card is-hidden" id="ex-kcal-card">
+            <div class="ex-card-label">${t("exercise.kcalLabel")}</div>
+            <div class="ex-kcal-row">
+              <input id="ex-kcal" class="ex-kcal-input" type="text" inputmode="numeric" placeholder="350" autocomplete="off" />
+              <span class="ex-kcal-unit">${t("exercise.burned")}</span>
+            </div>
+            <div class="ex-card-hint">${t("exercise.kcalHint")}</div>
+          </div>
+
+          <div class="ex-card" id="ex-describe-card">
             <div class="ex-card-label">${t("exercise.describeIt")}</div>
             <div class="ex-describe-row">
               <input id="ex-text" class="ex-input" type="text" placeholder="${t("exercise.placeholder")}"
@@ -52,13 +71,21 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
           <div class="ex-chips" id="ex-activities"></div>
 
           <div class="ex-section-header">${t("exercise.duration")}</div>
-          <div class="ex-card">
+          <div class="ex-card" id="ex-duration-card">
             <div class="ex-duration"><span id="ex-minutes">45</span><small>${t("exercise.minutes")}</small></div>
             <input id="ex-slider" class="ex-slider" type="range" min="5" max="180" step="5" value="45" />
           </div>
+          <div class="ex-card is-hidden" id="ex-minutes-opt-card">
+            <div class="ex-kcal-row">
+              <input id="ex-minutes-opt" class="ex-input ex-minutes-opt" type="text" inputmode="numeric" placeholder="${t("exercise.minutesOptional")}" autocomplete="off" />
+              <span class="ex-kcal-unit">${t("exercise.minutes")}</span>
+            </div>
+          </div>
 
-          <div class="ex-section-header">${t("exercise.intensity")}</div>
-          <div class="ex-chips" id="ex-intensities"></div>
+          <div id="ex-intensity-block">
+            <div class="ex-section-header">${t("exercise.intensity")}</div>
+            <div class="ex-chips" id="ex-intensities"></div>
+          </div>
 
           <div class="ex-burn" id="ex-burn"></div>
         </div>
@@ -95,7 +122,20 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
         );
       };
 
+      const saveBtn = panel.querySelector("#ex-save");
       const renderBurn = () => {
+        if (mode === "kcal") {
+          const burned = typedKcal ?? 0;
+          const credit = exerciseCredit(burned, store.exerciseCreditRatio());
+          els.burn.innerHTML = burned > 0
+            ? `<div class="ex-burn-note">${credit > 0
+                ? t("accuracy.exNoteOn", { credit, pct: Math.round(store.exerciseCreditRatio() * 100) })
+                : t("accuracy.exNoteOff")}</div>`
+            : "";
+          saveBtn.disabled = !(burned > 0);
+          return;
+        }
+        saveBtn.disabled = false;
         const burned = estimateCaloriesBurned({ activity, minutes, intensity, weightKg });
         const credit = exerciseCredit(burned, store.exerciseCreditRatio());
         els.burn.innerHTML = `
@@ -149,10 +189,47 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
       els.parse.addEventListener("click", runParse);
       els.text.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); runParse(); } });
 
-      panel.querySelector("#ex-save").addEventListener("click", () => {
-        if (minutes <= 0) return;
+      const setMode = (next) => {
+        mode = next;
+        panel.querySelectorAll("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+        const kcal = mode === "kcal";
+        panel.querySelector("#ex-kcal-card").classList.toggle("is-hidden", !kcal);
+        panel.querySelector("#ex-minutes-opt-card").classList.toggle("is-hidden", !kcal);
+        panel.querySelector("#ex-describe-card").classList.toggle("is-hidden", kcal);
+        panel.querySelector("#ex-duration-card").classList.toggle("is-hidden", kcal);
+        panel.querySelector("#ex-intensity-block").classList.toggle("is-hidden", kcal);
+        renderBurn();
+        if (kcal) setTimeout(() => panel.querySelector("#ex-kcal")?.focus(), 50);
+      };
+      panel.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+      const wholeNumber = (raw, max) => {
+        const n = Math.round(Number(String(raw).replace(/[^\d.,]/g, "").replace(",", ".")));
+        return Number.isFinite(n) && n > 0 ? Math.min(n, max) : null;
+      };
+      panel.querySelector("#ex-kcal").addEventListener("input", (e) => { typedKcal = wholeNumber(e.target.value, 5000); renderBurn(); });
+      panel.querySelector("#ex-minutes-opt").addEventListener("input", (e) => { typedMinutes = wholeNumber(e.target.value, 1440); });
+
+      saveBtn.addEventListener("click", () => {
         const typed = els.text.value.trim();
         const label = activityLabel(activity);
+        if (mode === "kcal") {
+          if (!(typedKcal > 0)) return;
+          store.addExerciseEntry({
+            name: label,
+            activity,
+            minutes: typedMinutes ?? 0,
+            intensity: "moderate",
+            caloriesBurned: typedKcal,
+            kcalEntered: true,
+            timestamp,
+          });
+          if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(20);
+          if (typeof onSaved === "function") onSaved();
+          close();
+          return;
+        }
+        if (minutes <= 0) return;
         store.addExerciseEntry({
           name: typed !== "" ? typed.slice(0, 60) : label,
           activity,
@@ -184,7 +261,7 @@ export function exerciseRowsHtml(date = new Date()) {
           <div class="ex-row-icon">${label}</div>
           <div class="ex-row-text">
             <div class="ex-row-name">${escapeHtml(e.name || activityLabel(e.activity))}</div>
-            <div class="ex-row-sub">${t("exercise.rowSub", { minutes: e.minutes, burned: e.caloriesBurned || 0, credit: exerciseCredit(e.caloriesBurned || 0, store.exerciseCreditRatio()) })}</div>
+            <div class="ex-row-sub">${t(e.minutes > 0 ? "exercise.rowSub" : "exercise.rowSubKcal", { minutes: e.minutes, burned: e.caloriesBurned || 0, credit: exerciseCredit(e.caloriesBurned || 0, store.exerciseCreditRatio()) })}</div>
           </div>
           <button type="button" class="ex-row-del" data-delete-exercise="${e.id}" aria-label="Delete">${icon("trashFill", { size: 16 })}</button>
         </div>`;

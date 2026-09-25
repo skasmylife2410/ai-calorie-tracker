@@ -29,6 +29,7 @@ function recentFoods() {
       proteinG: Math.round(b.proteinG),
       carbsG: Math.round(b.carbsG),
       fatG: Math.round(b.fatG),
+      micros: b.micros ?? null,
       photoDataUrl: e.photoDataUrl ?? null,
       source: e.source,
       recentEntryId: e.id,
@@ -119,13 +120,10 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
             if (current === "saved") {
               store.logSavedFood(id, { servings: n, timestamp: timestamp ?? Date.now() });
             } else {
-              const base = { calories: food.calories, proteinG: food.proteinG, carbsG: food.carbsG, fatG: food.fatG };
+              const base = { calories: food.calories, proteinG: food.proteinG, carbsG: food.carbsG, fatG: food.fatG, micros: food.micros ?? null };
               store.addFoodEntry({
                 name: food.name,
-                calories: Math.round(base.calories * n),
-                proteinG: Math.round(base.proteinG * n * 10) / 10,
-                carbsG: Math.round(base.carbsG * n * 10) / 10,
-                fatG: Math.round(base.fatG * n * 10) / 10,
+                ...store.totalsFor(base, n),
                 base,
                 servings: n,
                 source: food.source,

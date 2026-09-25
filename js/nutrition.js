@@ -376,3 +376,76 @@ export function computeStreak(loggedDayTimestamps, today = new Date()) {
 export function roundDisplay(value) {
   return value >= 0 ? Math.floor(value + 0.5) : -Math.floor(-value + 0.5);
 }
+
+// ---------------------------------------------------------------------------
+// Nutrients beyond the macros: fiber, sugars, saturated fat, sodium, potassium.
+//
+// Stored as an optional `micros` object on products, meal items and entries. Every value is a
+// number or null — null means "we don't know", which is different from zero. Old entries have no
+// `micros` at all, and the Today card counts them as missing rather than treating them as 0.
+// ---------------------------------------------------------------------------
+
+export const MICRO_KEYS = ["fiberG", "sugarG", "addedSugarG", "satFatG", "sodiumMg", "potassiumMg"];
+
+const isMg = (key) => key.endsWith("Mg");
+const roundMicro = (key, v) => (isMg(key) ? Math.round(v) : Math.round(v * 10) / 10);
+
+/** Keeps only known, non-negative numbers. Returns null when nothing is known. */
+export function cleanMicros(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const out = {};
+  let any = false;
+  for (const k of MICRO_KEYS) {
+    const v = raw[k];
+    if (v === null || v === undefined || v === "") { out[k] = null; continue; }
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 0) { out[k] = n; any = true; } else out[k] = null;
+  }
+  // added sugar can't be more than total sugar
+  if (out.addedSugarG !== null && out.sugarG !== null && out.addedSugarG > out.sugarG) out.addedSugarG = out.sugarG;
+  return any ? out : null;
+}
+
+/** Multiplies every known value by `factor`; unknowns stay unknown. */
+export function scaleMicros(micros, factor) {
+  const m = cleanMicros(micros);
+  if (!m || !Number.isFinite(factor)) return null;
+  const out = {};
+  for (const k of MICRO_KEYS) out[k] = m[k] === null ? null : roundMicro(k, m[k] * factor);
+  return out;
+}
+
+/** Adds up a list of micros objects. A nutrient is known if ANY input knows it. */
+export function sumMicros(list) {
+  const out = {};
+  let any = false;
+  for (const k of MICRO_KEYS) out[k] = null;
+  for (const raw of list ?? []) {
+    const m = cleanMicros(raw);
+    if (!m) continue;
+    for (const k of MICRO_KEYS) {
+      if (m[k] === null) continue;
+      out[k] = (out[k] ?? 0) + m[k];
+      any = true;
+    }
+  }
+  if (!any) return null;
+  for (const k of MICRO_KEYS) if (out[k] !== null) out[k] = roundMicro(k, out[k]);
+  return out;
+}
+
+/**
+ * Daily reference values, as limits (stay under) or goals (try to reach).
+ * Sodium 2,300 mg and added sugar 50 g are the US Daily Values; saturated fat under 10% of
+ * calories; fiber 14 g per 1,000 kcal; potassium 3,400 mg (men) / 2,600 mg (women).
+ */
+export function microTargets({ targetCalories = 2000, sex = "male" } = {}) {
+  const kcal = Number(targetCalories) > 0 ? Number(targetCalories) : 2000;
+  return {
+    sodiumMg: { kind: "limit", value: 2300 },
+    addedSugarG: { kind: "limit", value: 50 },
+    satFatG: { kind: "limit", value: Math.round((kcal * 0.1) / 9) },
+    fiberG: { kind: "goal", value: Math.round((kcal / 1000) * 14) },
+    potassiumMg: { kind: "goal", value: normalizeSex(sex) === "female" ? 2600 : 3400 },
+  };
+}

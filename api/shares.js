@@ -14,6 +14,7 @@
 import { checkAuth } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
 import { resolveGroup } from "./_groups.js";
+import { cleanMicros } from "../js/nutrition.js";
 
 const MAX_PHOTO = 60_000;    // data-URL length; the phone sends ~320px WebP/JPEG, ~15–30 KB
 const PER_DAY = 3;           // posts per person per day
@@ -26,6 +27,14 @@ const COMMENTS_PER_POST = 50;
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
 const num = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v) * 10) / 10) : 0);
 const str = (v, max) => String(v ?? "").trim().slice(0, max);
+
+/** Nutrient values from the client, capped at sane sizes (so someone copying the meal gets them too). */
+function boundedMicros(raw) {
+  const m = cleanMicros(raw);
+  if (!m) return null;
+  for (const k of Object.keys(m)) if (m[k] !== null) m[k] = Math.min(m[k], k.endsWith("Mg") ? 50000 : 2000);
+  return m;
+}
 
 /** Keep only the fields the Us feed shows, with sane bounds — never trust the client blindly. */
 export function cleanItem(kind, item = {}) {
@@ -40,9 +49,9 @@ export function cleanItem(kind, item = {}) {
   if (kind === "meal") {
     const photo = typeof item.photo === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
     const items = Array.isArray(item.items)
-      ? item.items.slice(0, 12).map((i) => ({ name: str(i.name, 60), gramsEstimate: num(i.gramsEstimate), calories: num(i.calories), proteinG: num(i.proteinG), carbsG: num(i.carbsG), fatG: num(i.fatG) }))
+      ? item.items.slice(0, 12).map((i) => ({ name: str(i.name, 60), gramsEstimate: num(i.gramsEstimate), calories: num(i.calories), proteinG: num(i.proteinG), carbsG: num(i.carbsG), fatG: num(i.fatG), micros: boundedMicros(i.micros) }))
       : [];
-    return { ...base, photo, items };
+    return { ...base, micros: boundedMicros(item.micros), photo, items };
   }
   return {
     ...base,

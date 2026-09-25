@@ -74,6 +74,7 @@ export function openSavedFoodsSheet() {
               proteinG: food.proteinG,
               carbsG: food.carbsG,
               fatG: food.fatG,
+              micros: food.micros ?? null,
               source: food.source,
               photoDataUrl: food.photoDataUrl,
               timestamp: Date.now(),

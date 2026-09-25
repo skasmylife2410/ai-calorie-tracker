@@ -90,7 +90,13 @@
       "cycling": "Bicicleta",
       "swim": "Natación",
       "other": "Otro"
-    }
+    },
+    "modeEstimate": "Estimar",
+    "modeKcal": "Escribir kcal",
+    "kcalLabel": "Calorías quemadas",
+    "kcalHint": "De tu reloj, una máquina del gimnasio o una app de ejercicio.",
+    "minutesOptional": "Minutos (opcional)",
+    "rowSubKcal": "−{burned} kcal ({credit} contadas)"
   },
   "ideas": {
     "title": "Ideas",
@@ -590,5 +596,22 @@
     "more": "Más",
     "remove": "Quitar {name}",
     "serv": "porc."
+  },
+  "nutrients": {
+    "title": "Nutrientes",
+    "fiberG": "Fibra",
+    "sugarG": "Azúcares",
+    "addedSugarG": "Azúcar añadida",
+    "satFatG": "Grasa saturada",
+    "sodiumMg": "Sodio",
+    "potassiumMg": "Potasio",
+    "limit": "Límite {value}",
+    "goal": "Meta {value}",
+    "addedPart": "{value} añadida",
+    "partial": "{n} comida no tiene datos de nutrientes, así que estos totales se quedan cortos.|{n} comidas no tienen datos de nutrientes, así que estos totales se quedan cortos.",
+    "empty": "Registra una comida para ver fibra, azúcar, sodio y más.",
+    "noneShort": "Sin datos de nutrientes: toca para añadir",
+    "more": "Fibra, azúcar, sodio…",
+    "moreHint": "Deja la casilla vacía si no lo sabes."
   }
 }

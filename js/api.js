@@ -5,6 +5,7 @@
 // Verbatim URLs/params/constants per SPEC-LOGIC.md §3, §7, §8, §9, §10.
 
 import { apiFetch } from "./net.js";
+import { cleanMicros, scaleMicros } from "./nutrition.js";
 
 // Open Food Facts asks apps to identify themselves with a contact email — put YOURS here.
 const OFF_USER_AGENT = "SnapCal/1.0 (personal calorie tracker; you@example.com)";
@@ -102,10 +103,31 @@ export function parseBasis(nutriments, servingSize) {
       proteinG: proteinServing,
       carbsG: carbsServing,
       fatG: fatServing,
+      micros: offMicros(n, "_serving"),
     };
   }
 
-  return { servingDescription: "per 100 g", calories: kcal100g, proteinG: protein100g, carbsG: carbs100g, fatG: fat100g };
+  return { servingDescription: "per 100 g", calories: kcal100g, proteinG: protein100g, carbsG: carbs100g, fatG: fat100g, micros: offMicros(n, "_100g") };
+}
+
+/**
+ * Fiber, sugars, sat fat, sodium, potassium from OFF nutriments. OFF keeps everything in grams,
+ * so sodium and potassium are converted to mg; when only salt is given, sodium = salt ÷ 2.5.
+ */
+export function offMicros(nutriments, suffix = "_100g") {
+  const n = nutriments ?? {};
+  const g = (k) => lenientNumber(n[`${k}${suffix}`]);
+  const salt = g("salt");
+  const sodiumG = g("sodium") ?? (salt !== undefined ? salt / 2.5 : undefined);
+  const potassiumG = g("potassium");
+  return cleanMicros({
+    fiberG: g("fiber"),
+    sugarG: g("sugars"),
+    addedSugarG: g("added-sugars"),
+    satFatG: g("saturated-fat"),
+    sodiumMg: sodiumG !== undefined ? sodiumG * 1000 : null,
+    potassiumMg: potassiumG !== undefined ? potassiumG * 1000 : null,
+  });
 }
 
 function offProductName(product) {
@@ -131,6 +153,7 @@ function offProductToScannedProduct(barcode, product) {
     proteinG: basis.proteinG,
     carbsG: basis.carbsG,
     fatG: basis.fatG,
+    micros: basis.micros ?? null,
   };
 }
 
@@ -216,6 +239,22 @@ export function normalizedDigits(s) {
 }
 
 const USDA_NUTRIENT_NUMBERS = { calories: "208", protein: "203", carbs: "205", fat: "204" };
+// fiber, total sugars (269; Foundation foods sometimes use 269.3), added sugar, sat fat, sodium, potassium
+const USDA_MICRO_NUMBERS = { fiberG: ["291"], sugarG: ["269", "269.3"], addedSugarG: ["539"], satFatG: ["606"], sodiumMg: ["307"], potassiumMg: ["306"] };
+
+/** Per-100 g micros from an FDC foodNutrients list (FDC already reports sodium/potassium in mg). */
+export function usdaMicrosPer100g(foodNutrients) {
+  const out = {};
+  for (const [key, numbers] of Object.entries(USDA_MICRO_NUMBERS)) {
+    let v;
+    for (const num of numbers) {
+      v = getUsdaNutrient(foodNutrients, num);
+      if (v !== undefined) break;
+    }
+    out[key] = v ?? null;
+  }
+  return cleanMicros(out);
+}
 
 function getUsdaNutrient(foodNutrients, number) {
   if (!Array.isArray(foodNutrients)) return undefined;
@@ -262,7 +301,16 @@ function usdaLabelNutrients(food) {
   const carbs = lenientNumber(ln.carbohydrates?.value);
   const fat = lenientNumber(ln.fat?.value);
   if ([calories, protein, carbs, fat].some((v) => v === undefined)) return null;
-  return { calories, proteinG: protein, carbsG: carbs, fatG: fat };
+  const lv = (k) => lenientNumber(ln[k]?.value) ?? null;
+  const micros = cleanMicros({
+    fiberG: lv("fiber"),
+    sugarG: lv("sugars"),
+    addedSugarG: lv("addedSugar") ?? lv("addedSugars"),
+    satFatG: lv("saturatedFat"),
+    sodiumMg: lv("sodium"),
+    potassiumMg: lv("potassium"),
+  });
+  return { calories, proteinG: protein, carbsG: carbs, fatG: fat, micros };
 }
 
 function usdaFoodToScannedProduct(barcode, food) {
@@ -277,6 +325,7 @@ function usdaFoodToScannedProduct(barcode, food) {
 
   const per100 = usdaPer100g(food.foodNutrients);
   if (!per100) return null;
+  const micros100 = usdaMicrosPer100g(food.foodNutrients);
 
   const servingSize = lenientNumber(food.servingSize);
   const servingUnit = food.servingSizeUnit;
@@ -291,6 +340,7 @@ function usdaFoodToScannedProduct(barcode, food) {
       proteinG: per100.protein * factor,
       carbsG: per100.carbs * factor,
       fatG: per100.fat * factor,
+      micros: scaleMicros(micros100, factor),
     };
   }
 
@@ -303,6 +353,7 @@ function usdaFoodToScannedProduct(barcode, food) {
     proteinG: per100.protein,
     carbsG: per100.carbs,
     fatG: per100.fat,
+    micros: micros100,
   };
 }
 
@@ -444,12 +495,24 @@ async function groundSingle(item) {
     const ratio = groundedCalories / item.calories;
     if (ratio < GROUNDING_RATIO_MIN || ratio > GROUNDING_RATIO_MAX) return item;
 
+    // USDA's numbers win where it has them; the AI's estimate fills the gaps (USDA whole foods
+    // rarely list added sugar, for example).
+    const usdaMicros = scaleMicros(usdaMicrosPer100g(topHit.foodNutrients), factor);
+    const aiMicros = cleanMicros(item.micros);
+    let micros = aiMicros;
+    if (usdaMicros) {
+      micros = { ...(aiMicros ?? {}) };
+      for (const [k, v] of Object.entries(usdaMicros)) if (v !== null) micros[k] = v;
+      micros = cleanMicros(micros);
+    }
+
     return {
       ...item,
       calories: groundedCalories,
       proteinG: per100.protein * factor,
       carbsG: per100.carbs * factor,
       fatG: per100.fat * factor,
+      micros,
       grounded: true,
     };
   } catch {
@@ -526,9 +589,23 @@ export function mapRawItemToAnalyzedItem(raw) {
     proteinG: raw.protein_g ?? raw.proteinG,
     carbsG: raw.carbs_g ?? raw.carbsG,
     fatG: raw.fat_g ?? raw.fatG,
+    micros: microsFromRaw(raw),
     confidence: raw.confidence,
     grounded: false,
   };
+}
+
+/** The AI's snake_case nutrient fields -> a micros object (or null if it gave none). */
+export function microsFromRaw(raw) {
+  if (raw?.micros && typeof raw.micros === "object") return cleanMicros(raw.micros);
+  return cleanMicros({
+    fiberG: raw?.fiber_g,
+    sugarG: raw?.sugar_g,
+    addedSugarG: raw?.added_sugar_g,
+    satFatG: raw?.sat_fat_g,
+    sodiumMg: raw?.sodium_mg,
+    potassiumMg: raw?.potassium_mg,
+  });
 }
 
 /**
@@ -608,6 +685,7 @@ export async function suggestRecipes({ caloriesLeft, proteinLeft, preferences = 
       proteinG: Math.max(0, Math.round(Number(raw?.protein_g) || 0)),
       carbsG: Math.max(0, Math.round(Number(raw?.carbs_g) || 0)),
       fatG: Math.max(0, Math.round(Number(raw?.fat_g) || 0)),
+      micros: microsFromRaw(raw),
       ingredients: Array.isArray(raw?.ingredients) ? raw.ingredients.map(String).filter(Boolean) : [],
       steps: Array.isArray(raw?.steps) ? raw.steps.map(String).filter(Boolean) : [],
     }))

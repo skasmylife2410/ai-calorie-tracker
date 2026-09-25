@@ -5,6 +5,8 @@
 // amount eaten. Added together they become ONE meal whose analysisItems are the foods, so tapping
 // it later opens the item-by-item editor, same as a scanned plate.
 
+import { cleanMicros, scaleMicros, sumMicros } from "./nutrition.js";
+
 const r1 = (v) => Math.round(v * 10) / 10;
 
 /** "per 100 g" -> {amount:100, unit:"g"}, "per serving (30 g)" -> {30, "g"}, unknown -> 1 serving. */
@@ -30,6 +32,7 @@ export function trayItemFromProduct(product, key = null) {
       proteinG: Number(product?.proteinG) || 0,
       carbsG: Number(product?.carbsG) || 0,
       fatG: Number(product?.fatG) || 0,
+      micros: cleanMicros(product?.micros),
     },
     amount: base.amount,
   };
@@ -44,6 +47,7 @@ export function scaled(item) {
     proteinG: r1(item.per.proteinG * f),
     carbsG: r1(item.per.carbsG * f),
     fatG: r1(item.per.fatG * f),
+    micros: scaleMicros(item.per.micros, f),
   };
 }
 
@@ -59,10 +63,12 @@ export function withAmount(item, amount) {
 }
 
 export function trayTotals(items) {
-  return items.map(scaled).reduce(
+  const each = items.map(scaled);
+  const totals = each.reduce(
     (t, s) => ({ calories: t.calories + s.calories, proteinG: r1(t.proteinG + s.proteinG), carbsG: r1(t.carbsG + s.carbsG), fatG: r1(t.fatG + s.fatG) }),
     { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
   );
+  return { ...totals, micros: sumMicros(each.map((s) => s.micros)) };
 }
 
 /** "Arepa", "Arepa & Huevo", "Arepa, Huevo & Café", "Arepa, Huevo +2". */

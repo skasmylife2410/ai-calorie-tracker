@@ -132,6 +132,7 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
       const d = s.data ?? {};
       store.addFoodEntry({
         name: d.name, calories: d.calories, proteinG: d.proteinG, carbsG: d.carbsG, fatG: d.fatG,
+        micros: d.micros ?? null,
         source: "manual", photoDataUrl: d.photo ?? null,
         analysisItems: Array.isArray(d.items) && d.items.length ? d.items : null,
         timestamp: Date.now(),

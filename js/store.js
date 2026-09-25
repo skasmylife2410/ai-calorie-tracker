@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES } from "./nutrition.js";
+import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
 
 export const STORAGE_KEYS = Object.freeze({
   foodEntries: "snapcal.foodEntries",
@@ -125,11 +125,14 @@ export function makeFoodEntry(fields) {
     amount: Number.isFinite(Number(fields.amount)) && Number(fields.amount) > 0 ? Number(fields.amount) : null,
     amountUnit: ["g", "ml", "serving"].includes(fields.amountUnit) ? fields.amountUnit : null,
     servings: normalizeServings(fields.servings),
+    // fiber, sugars, sat fat, sodium, potassium for the whole entry; null = not known
+    micros: cleanMicros(fields.micros),
     base: fields.base ?? {
       calories: fields.calories ?? 0,
       proteinG: fields.proteinG ?? 0,
       carbsG: fields.carbsG ?? 0,
       fatG: fields.fatG ?? 0,
+      micros: cleanMicros(fields.micros),
     },
     updatedAt: fields.updatedAt ?? now,
   };
@@ -143,18 +146,46 @@ export function normalizeServings(raw) {
 }
 
 /**
- * Reads an entry's one-serving macros. Entries created before servings existed have no `base`,
- * so their current macros ARE the one-serving values (servings defaults to 1).
+ * Reads an entry's one-serving numbers (macros + micros).
+ * - Meals with analysisItems: the items ARE one serving, so they are the truth. (Scanned meals
+ *   start life as a 0 kcal placeholder, so their stored `base` can be stale zeros.)
+ * - Otherwise the stored `base`, or — for entries older than servings — totals ÷ servings.
  */
 export function baseMacros(entry) {
-  const b = entry?.base;
   const servings = normalizeServings(entry?.servings);
-  if (b && typeof b === "object") return { ...b };
+  const items = Array.isArray(entry?.analysisItems) ? entry.analysisItems : null;
+  if (items && items.length > 0) {
+    const sum = (k) => items.reduce((a, i) => a + (Number(i?.[k]) || 0), 0);
+    return {
+      calories: sum("calories"),
+      proteinG: sum("proteinG"),
+      carbsG: sum("carbsG"),
+      fatG: sum("fatG"),
+      micros: sumMicros(items.map((i) => i?.micros)),
+    };
+  }
+  const b = entry?.base;
+  if (b && typeof b === "object") {
+    return { ...b, micros: b.micros !== undefined ? cleanMicros(b.micros) : scaleMicros(entry?.micros, 1 / servings) };
+  }
   return {
     calories: (entry?.calories ?? 0) / servings,
     proteinG: (entry?.proteinG ?? 0) / servings,
     carbsG: (entry?.carbsG ?? 0) / servings,
     fatG: (entry?.fatG ?? 0) / servings,
+    micros: scaleMicros(entry?.micros, 1 / servings),
+  };
+}
+
+/** Whole-entry numbers for one-serving `base` × `servings`, rounded the way entries store them. */
+export function totalsFor(base, servings = 1) {
+  const n = normalizeServings(servings);
+  return {
+    calories: Math.round((base?.calories ?? 0) * n),
+    proteinG: Math.round((base?.proteinG ?? 0) * n * 10) / 10,
+    carbsG: Math.round((base?.carbsG ?? 0) * n * 10) / 10,
+    fatG: Math.round((base?.fatG ?? 0) * n * 10) / 10,
+    micros: scaleMicros(base?.micros, n),
   };
 }
 
@@ -164,14 +195,24 @@ export function setServings(id, servings) {
   if (!entry) return null;
   const n = normalizeServings(servings);
   const b = baseMacros(entry);
-  return updateFoodEntry(id, {
-    servings: n,
-    base: b,
-    calories: Math.round(b.calories * n),
-    proteinG: Math.round(b.proteinG * n * 10) / 10,
-    carbsG: Math.round(b.carbsG * n * 10) / 10,
-    fatG: Math.round(b.fatG * n * 10) / 10,
-  });
+  return updateFoodEntry(id, { servings: n, base: b, ...totalsFor(b, n) });
+}
+
+/**
+ * The fields to store after a meal's items change (scan finished, "Fix results", Edit Meal):
+ * items are one serving, totals are items × the entry's current servings.
+ */
+export function fieldsFromItems(items, servings = 1) {
+  const list = Array.isArray(items) ? items : [];
+  const sum = (k) => list.reduce((a, i) => a + (Number(i?.[k]) || 0), 0);
+  const base = {
+    calories: sum("calories"),
+    proteinG: sum("proteinG"),
+    carbsG: sum("carbsG"),
+    fatG: sum("fatG"),
+    micros: sumMicros(list.map((i) => i?.micros)),
+  };
+  return { base, ...totalsFor(base, servings) };
 }
 
 /** All food entries (no ordering guarantee). */
@@ -291,6 +332,22 @@ export function totalsForDay(date = new Date()) {
     }),
     { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
   );
+}
+
+/**
+ * The day's fiber / sugars / sat fat / sodium / potassium, plus how many logged meals have no
+ * nutrient data (older entries, or foods whose source didn't report them), so the screen can say
+ * the total is partial instead of showing a falsely low number.
+ */
+export function microsForDay(date = new Date()) {
+  const logged = entriesForDay(date).filter((e) => e.isPending !== true && e.analysisFailed !== true);
+  const known = logged.filter((e) => cleanMicros(e.micros) !== null);
+  return {
+    totals: sumMicros(known.map((e) => e.micros)),
+    meals: logged.length,
+    missing: logged.length - known.length,
+    targets: microTargets({ targetCalories: computeGoals().targetCalories, sex: getProfile().sex }),
+  };
 }
 
 /** Set of start-of-day timestamps that have at least one logged entry (streak + week-strip dots). */
@@ -562,7 +619,7 @@ export function allSavedFoods() {
 }
 
 /** Saves a food for quick re-logging later. `source` is copied but analysisItems is NEVER copied. */
-export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 0, source = "manual", photoDataUrl = null, servings = 1, favorite = true, fromEntryId = null }) {
+export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 0, micros = null, source = "manual", photoDataUrl = null, servings = 1, favorite = true, fromEntryId = null }) {
   const saved = {
     id: generateId(),
     name,
@@ -570,6 +627,7 @@ export function addSavedFood({ name, calories, proteinG = 0, carbsG = 0, fatG = 
     proteinG,
     carbsG,
     fatG,
+    micros: cleanMicros(micros),
     source: normalizeEntrySource(source),
     photoDataUrl,
     servings: normalizeServings(servings),
@@ -607,13 +665,11 @@ export function logSavedFood(id, { timestamp = Date.now(), servings } = {}) {
     proteinG: saved.proteinG,
     carbsG: saved.carbsG,
     fatG: saved.fatG,
+    micros: cleanMicros(saved.micros),
   };
   return addFoodEntry({
     name: saved.name,
-    calories: Math.round(base.calories * n),
-    proteinG: Math.round(base.proteinG * n * 10) / 10,
-    carbsG: Math.round(base.carbsG * n * 10) / 10,
-    fatG: Math.round(base.fatG * n * 10) / 10,
+    ...totalsFor(base, n),
     base,
     servings: n,
     source: saved.source,
@@ -652,6 +708,7 @@ export function toggleFavorite(entryId) {
     proteinG: Math.round(b.proteinG * 10) / 10,
     carbsG: Math.round(b.carbsG * 10) / 10,
     fatG: Math.round(b.fatG * 10) / 10,
+    micros: scaleMicros(b.micros, 1),
     source: entry.source,
     photoDataUrl: entry.photoDataUrl ?? null,
     servings: entry.servings ?? 1,
@@ -705,6 +762,8 @@ export function addExerciseEntry(fields = {}) {
     minutes,
     intensity,
     caloriesBurned: burned,
+    // true when they typed the kcal themselves (watch, machine) instead of the estimate
+    kcalEntered: fields.kcalEntered === true,
     timestamp: fields.timestamp ?? now,
     updatedAt: fields.updatedAt ?? now,
   };

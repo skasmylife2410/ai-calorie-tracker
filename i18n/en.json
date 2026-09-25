@@ -90,7 +90,13 @@
       "cycling": "Cycling",
       "swim": "Swim",
       "other": "Other"
-    }
+    },
+    "modeEstimate": "Estimate",
+    "modeKcal": "Enter kcal",
+    "kcalLabel": "Calories burned",
+    "kcalHint": "From your watch, a gym machine or a fitness app.",
+    "minutesOptional": "Minutes (optional)",
+    "rowSubKcal": "−{burned} kcal ({credit} counted)"
   },
   "ideas": {
     "title": "Ideas",
@@ -590,5 +596,22 @@
     "more": "More",
     "remove": "Remove {name}",
     "serv": "serv"
+  },
+  "nutrients": {
+    "title": "Nutrients",
+    "fiberG": "Fiber",
+    "sugarG": "Sugars",
+    "addedSugarG": "Added sugar",
+    "satFatG": "Saturated fat",
+    "sodiumMg": "Sodium",
+    "potassiumMg": "Potassium",
+    "limit": "Limit {value}",
+    "goal": "Goal {value}",
+    "addedPart": "{value} added",
+    "partial": "{n} meal has no nutrient data, so these totals are low.|{n} meals have no nutrient data, so these totals are low.",
+    "empty": "Log a meal to see fiber, sugar, sodium and more.",
+    "noneShort": "No nutrient data — tap to add",
+    "more": "Fiber, sugar, sodium…",
+    "moreHint": "Leave a box empty if you don't know it."
   }
 }
