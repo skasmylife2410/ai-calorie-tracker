@@ -41,6 +41,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
   let items = (entry.analysisItems ?? []).map((i) => ({ ...i }));
   let baselines = items.map(snapshotBaseline);
   const openMicros = new Set(); // which items have their nutrient fields expanded
+  let addedFoods = false; // foods added with "+ Add food" turn the meal into a group
 
   openSheet({
     render(panel, close) {
@@ -364,6 +365,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
         openFoodSearchSheet({
           pickLabel: t("group.addToMeal"),
           onPick: (newItems) => {
+            addedFoods = true;
             for (const it of newItems) {
               items.push({ ...it, id: it.id ?? `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}` });
             }
@@ -403,6 +405,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
           name,
           ...store.fieldsFromItems(items, servings),
           analysisItems: items,
+          ...(addedFoods && items.length > 1 ? { grouped: true } : {}),
         });
         close();
       });

@@ -214,3 +214,17 @@ test("your saved meal can be added to the plate and unpacks into its foods", () 
   assert.equal(entry.analysisItems[0].calories, 280);
   assert.equal(entry.calories, 720);
 });
+
+test("grouped meals are recognised for their icon; AI scans with several ingredients are not", () => {
+  localStorage.clear();
+  const a = store.addFoodEntry({ name: "A", calories: 100 });
+  const b = store.addFoodEntry({ name: "B", calories: 200 });
+  const g = store.groupEntries(a.id, b.id);
+  assert.equal(store.isGroupedEntry(g.entry), true);
+  g.undo();
+  assert.equal(store.isGroupedEntry(store.getFoodEntry(b.id)), false);
+  const scan = store.addFoodEntry({ name: "Plate", analysisMode: "meal", analysisItems: [{ name: "rice" }, { name: "chicken" }] });
+  assert.equal(store.isGroupedEntry(scan), false);
+  const plate = trayToEntry([trayItemFromProduct({ name: "Egg", calories: 70, servingDescription: "per 100 g" }), trayItemFromProduct({ name: "Toast", calories: 80, servingDescription: "per 100 g" })]);
+  assert.equal(store.isGroupedEntry(store.addFoodEntry(plate)), true);
+});

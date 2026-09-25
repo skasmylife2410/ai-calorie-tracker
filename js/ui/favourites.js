@@ -4,6 +4,7 @@
 
 import * as store from "../store.js";
 import { openResultsSheet } from "./results.js";
+import { groupThumbHtml } from "./entry-row.js";
 import { openFoodSearchSheet } from "./search.js";
 import { t } from "../i18n.js";
 import { icon } from "./icons.js";
@@ -64,7 +65,9 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
 
       const rowHtml = (f) => {
         const n = servings.get(f.id) ?? 1;
-        const thumb = f.photoDataUrl
+        const thumb = Array.isArray(f.items) && f.items.length > 1
+          ? groupThumbHtml(f, { className: "fav-thumb" })
+          : f.photoDataUrl
           ? `<img class="fav-thumb" src="${f.photoDataUrl}" alt="">`
           : `<div class="fav-thumb"></div>`;
         return `

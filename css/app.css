@@ -2143,3 +2143,13 @@ body.setup-open { overflow: hidden; }
 .template-name-input:focus { outline: none; }
 .fav-edit { font: inherit; font-size: 12px; font-weight: 700; padding: 8px 11px; border: 0; border-radius: 11px; background: var(--sc-secondary-14); color: var(--sc-primary-text); }
 .fav-new-meal { display: block; width: calc(100% - 32px); margin: 4px 16px 10px; padding: 12px; border: 1.5px dashed var(--sc-secondary-35); border-radius: 14px; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--sc-primary-text); }
+
+/* ---- Grouped meals: layers icon + food count ---- */
+.entry-thumb.is-group, .fav-thumb.is-group { position: relative; background: var(--sc-primary-text); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.entry-thumb.is-group .icon { width: 22px; height: 22px; color: #fff; }
+.fav-thumb.is-group .icon { width: 24px; height: 24px; }
+.is-group .group-count { position: absolute; right: 4px; bottom: 3px; font-size: 10px; font-weight: 800; line-height: 1; color: #fff; opacity: .85; font-variant-numeric: tabular-nums; }
+.is-group.has-photo { background: var(--sc-secondary-18); }
+.is-group.has-photo img { width: 100%; height: 100%; object-fit: cover; }
+.is-group .group-badge { position: absolute; left: 3px; bottom: 3px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 6px; background: rgba(0,0,0,.72); color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
+.is-group .group-badge .icon { width: 11px !important; height: 11px !important; }

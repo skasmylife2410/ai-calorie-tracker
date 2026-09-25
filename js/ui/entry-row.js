@@ -2,6 +2,7 @@
 // Three states (pending / failed / completed), swipeable to delete, tap-routed per §5.4.4.
 
 import { entryState } from "../queue.js";
+import { isGroupedEntry } from "../store.js";
 import { ANALYSIS_MODES } from "../api.js";
 import { icon } from "./icons.js";
 import { ringGauge } from "./ring.js";
@@ -69,10 +70,21 @@ function failedRowHtml(entry) {
   `;
 }
 
+/** A grouped meal: the layers icon, with how many foods it holds. */
+export function groupThumbHtml(entry, { className = "entry-thumb" } = {}) {
+  const n = Array.isArray(entry.analysisItems) ? entry.analysisItems.length : Array.isArray(entry.items) ? entry.items.length : 0;
+  const count = n > 1 ? `<span class="group-count" aria-hidden="true">${n}</span>` : "";
+  if (entry.photoDataUrl) {
+    return `<div class="${className} is-group has-photo"><img src="${entry.photoDataUrl}" alt="" /><span class="group-badge">${icon("layersFill", { size: 11, color: "#fff" })}${n > 1 ? n : ""}</span></div>`;
+  }
+  return `<div class="${className} is-group">${icon("layersFill", { size: 22, color: "#fff" })}${count}</div>`;
+}
+
 function completedRowHtml(entry) {
   const thumb = entry.photoDataUrl
     ? `<img src="${entry.photoDataUrl}" alt="" />`
     : icon("forkKnife", { size: 18, color: "var(--sc-secondary)" });
+  const thumbBox = isGroupedEntry(entry) ? groupThumbHtml(entry) : `<div class="entry-thumb">${thumb}</div>`;
   const macroChips = MACRO_META.map(
     (m) => `
       <div class="macro-chip">
@@ -81,7 +93,7 @@ function completedRowHtml(entry) {
       </div>`
   ).join("");
   return `
-    <div class="entry-thumb">${thumb}</div>
+    ${thumbBox}
     <div class="entry-complete-body">
       <div class="entry-title-row">
         <div class="entry-name">${escapeHtml(entry.name)}</div>

@@ -126,6 +126,8 @@ export function makeFoodEntry(fields) {
     amount: Number.isFinite(Number(fields.amount)) && Number(fields.amount) > 0 ? Number(fields.amount) : null,
     amountUnit: ["g", "ml", "serving"].includes(fields.amountUnit) ? fields.amountUnit : null,
     servings: normalizeServings(fields.servings),
+    // made by grouping meals or from a saved meal — shown with its own icon in lists
+    grouped: fields.grouped === true,
     // fiber, sugars, sat fat, sodium, potassium for the whole entry; null = not known
     micros: cleanMicros(fields.micros),
     base: fields.base ?? {
@@ -269,6 +271,17 @@ export function deleteFoodEntry(id) {
 
 const r1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
 
+/**
+ * Shown as a group in lists: meals you combined (dragged together, added foods to, logged from a
+ * saved meal) and multi-food plates built in the food search — but not an AI scan that simply
+ * found several ingredients on one plate.
+ */
+export function isGroupedEntry(entry) {
+  if (entry?.grouped === true) return true;
+  const n = Array.isArray(entry?.analysisItems) ? entry.analysisItems.length : 0;
+  return n > 1 && !entry?.analysisMode;
+}
+
 /** An entry's foods as items for exactly what was eaten (servings already applied). */
 export function itemsOfEntry(entry) {
   const n = normalizeServings(entry?.servings);
@@ -324,6 +337,7 @@ export function groupEntries(sourceId, targetId) {
     ...fieldsFromItems(items, 1),
     servings: 1,
     analysisItems: items,
+    grouped: true,
     photoDataUrl: target.photoDataUrl ?? source.photoDataUrl ?? null,
     amount: null,
     amountUnit: null,
@@ -332,7 +346,7 @@ export function groupEntries(sourceId, targetId) {
 
   const undo = () => {
     const { id, updatedAt, ...restTarget } = beforeTarget;
-    if (getFoodEntry(targetId)) updateFoodEntry(targetId, restTarget);
+    if (getFoodEntry(targetId)) updateFoodEntry(targetId, { ...restTarget, grouped: beforeTarget.grouped === true });
     // the source's id now has a deletion recorded for sync, so it comes back under a new id
     const { id: _sid, updatedAt: _su, ...restSource } = beforeSource;
     addFoodEntry(restSource);
@@ -747,6 +761,7 @@ export function logSavedFood(id, { timestamp = Date.now(), servings } = {}) {
       name: saved.name,
       ...fieldsFromItems(items, n),
       servings: n,
+      grouped: items.length > 1,
       source: saved.source,
       photoDataUrl: saved.photoDataUrl ?? null,
       timestamp,
