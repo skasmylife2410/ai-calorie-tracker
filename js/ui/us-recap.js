@@ -7,6 +7,34 @@ import { t, formatNumber } from "../i18n.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// Hiding is per-phone and per-week: the key carries the week, so next Friday's
+// check-in comes back on its own without anything to un-hide.
+const HIDE_PREFIX = "snapcal.recapHidden.";
+
+/** True when this phone has hidden the check-in for the week starting `weekStart`. */
+export function recapHidden(weekStart) {
+  if (!weekStart) return false;
+  try {
+    return localStorage.getItem(HIDE_PREFIX + weekStart) === "1";
+  } catch {
+    return false; // private mode, storage blocked: show the card rather than lose it
+  }
+}
+
+/** Hide this week's check-in on this phone, and sweep away older weeks' keys. */
+export function hideRecap(weekStart) {
+  if (!weekStart) return;
+  try {
+    localStorage.setItem(HIDE_PREFIX + weekStart, "1");
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(HIDE_PREFIX) && k !== HIDE_PREFIX + weekStart) localStorage.removeItem(k);
+    }
+  } catch {
+    /* nothing to do: hiding is a convenience, never load-bearing */
+  }
+}
+
 /** "Sat, Sep 19" / "sáb, 19 sept" for a YYYY-MM-DD day, in the app language. */
 export function shortDay(day, lang = "en", withMonth = false) {
   const d = new Date(`${day}T12:00:00Z`);
@@ -49,8 +77,10 @@ export async function renderRecap(host, { lang = "en" } = {}) {
     host.innerHTML = `<div class="rc-card rc-quiet"><h2 class="rc-title">${t("recap.title")}</h2><p class="rc-body">${t("recap.notEnough", { n: stats.daysLogged ?? 0 })}</p></div>`;
     return;
   }
+  if (recapHidden(r.weekStart)) return; // hidden on this phone for this week
   host.innerHTML = `
     <div class="rc-card">
+      <button type="button" class="rc-hide" aria-label="${esc(t("recap.hide"))}" title="${esc(t("recap.hide"))}">&times;</button>
       <h2 class="rc-title">${t("recap.title")}</h2>
       <p class="rc-range">${t("recap.range", { from: esc(shortDay(r.weekStart, lang, true)), to: esc(shortDay(r.weekEnd, lang, true)) })} <span class="rc-private">🔒 ${t("recap.private")}</span></p>
       <p class="rc-headline">${esc(r.headline)}</p>
@@ -64,4 +94,9 @@ export async function renderRecap(host, { lang = "en" } = {}) {
           </li>`).join("")}
       </ol>
     </div>`;
+  host.querySelector(".rc-hide")?.addEventListener("click", () => {
+    hideRecap(r.weekStart);
+    host.innerHTML = `<p class="rc-hidden-note">${esc(t("recap.hiddenNote"))}</p>`;
+    setTimeout(() => { if (host.querySelector(".rc-hidden-note")) host.innerHTML = ""; }, 4000);
+  });
 }

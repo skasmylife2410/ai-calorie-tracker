@@ -584,7 +584,9 @@
     "statKcalNoTarget": "{avg} kcal a day",
     "statProtein": "{avg} g protein (target {target})",
     "statDays": "{n} of 7 days logged",
-    "statWeight": "{kg} kg"
+    "statWeight": "{kg} kg",
+    "hide": "Hide",
+    "hiddenNote": "Hidden until next Friday."
   },
   "tray": {
     "hint": "Tap foods to put them on your plate, then add them all at once.",

@@ -584,7 +584,9 @@
     "statKcalNoTarget": "{avg} kcal al día",
     "statProtein": "{avg} g de proteína (meta {target})",
     "statDays": "{n} de 7 días registrados",
-    "statWeight": "{kg} kg"
+    "statWeight": "{kg} kg",
+    "hide": "Ocultar",
+    "hiddenNote": "Oculto hasta el próximo viernes."
   },
   "tray": {
     "hint": "Toca los alimentos para ponerlos en tu plato y agrégalos todos juntos.",
