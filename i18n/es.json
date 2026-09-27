@@ -134,7 +134,17 @@
     "mealsCount": "{n} comida|{n} comidas",
     "noExercise": "sin ejercicio",
     "sessionsCount": "{n} sesión|{n} sesiones",
-    "tab": "Nosotros"
+    "tab": "Nosotros",
+    "weekend": "Fin de semana",
+    "tapDay": "Toca un día para ver el detalle",
+    "noLog": "Sin registros",
+    "overGoal": "{n} sobre la meta",
+    "underGoal": "{n} bajo la meta",
+    "macros": "Proteína {p} g · Carbohidratos {c} g · Grasa {f} g",
+    "burned": "{n} kcal quemadas",
+    "part0": "Mañana",
+    "part1": "Tarde",
+    "part2": "Noche"
   },
   "profile": {
     "language": "Idioma",

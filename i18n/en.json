@@ -134,7 +134,17 @@
     "mealsCount": "{n} meal|{n} meals",
     "noExercise": "no exercise",
     "sessionsCount": "{n} session|{n} sessions",
-    "tab": "Us"
+    "tab": "Us",
+    "weekend": "Weekend",
+    "tapDay": "Tap a day for the details",
+    "noLog": "Nothing logged",
+    "overGoal": "{n} over goal",
+    "underGoal": "{n} under goal",
+    "macros": "Protein {p} g · Carbs {c} g · Fat {f} g",
+    "burned": "{n} kcal burned",
+    "part0": "Morning",
+    "part1": "Afternoon",
+    "part2": "Evening"
   },
   "profile": {
     "language": "Language",
