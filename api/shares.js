@@ -132,7 +132,7 @@ export default async function handler(req, res) {
           ? (lang === "es" ? `${who} publicó algo` : `${who} posted`)
           : (lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`),
         body: kind === "post" ? (data.text || (lang === "es" ? "Una foto" : "A photo")) : `${data.name} · ${Math.round(data.calories)} kcal`,
-        url: "/?tab=us",
+        url: "/?tab=shared",
         tag: `post-${id}`,
       }));
       return res.status(200).json({ ok: true, id, group });
@@ -172,7 +172,7 @@ export default async function handler(req, res) {
           ? (lang === "es" ? `${who} comentó tu comida` : `${who} commented on your meal`)
           : (lang === "es" ? `${who} también comentó · ${meal}` : `${who} also commented · ${meal}`),
         body: text,
-        url: "/?tab=us",
+        url: "/?tab=shared",
         tag: `comments-${shareId}`,
       });
       await Promise.all([post.owner !== me ? notify([post.owner], msg(true)) : null, notify(others, msg(false))]);

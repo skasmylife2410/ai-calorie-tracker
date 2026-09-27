@@ -12,6 +12,8 @@ import { render as renderToday } from "./ui/today.js";
 import { render as renderHistory } from "./ui/history.js";
 import { render as renderProfile } from "./ui/profile.js";
 import { render as renderOnboarding } from "./ui/onboarding.js";
+import { render as renderSharedTab } from "./ui/shared-tab.js";
+import { startAutoUpdate, applyIfPending } from "./updater.js";
 import "./install.js"; // catches Android Chrome's install offer as early as possible
 import { openCameraScan } from "./ui/scan.js";
 import { openFoodSearchSheet } from "./ui/search.js";
@@ -34,6 +36,7 @@ import { maybeShowWhatsNew } from "./ui/push-ui.js";
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
   { id: "us", labelKey: "us.tab", icon: "personFill" },
+  { id: "shared", labelKey: "social.tab", icon: "textBubbleFill" },
   { id: "weight", labelKey: "weight.tab", icon: "chartBarFill" }, // the Progress tab (id kept for old links)
 ];
 // Profile has no tab of its own any more; it opens from the avatar at the top of Home.
@@ -50,7 +53,14 @@ const POPUP_TILES = [
   { id: "recipes", icon: "wandAndStars", labelKey: "menu.ideas", color: "#E2A03F" },
 ];
 
-let selectedTab = "home";
+let selectedTab = (() => {
+  // an automatic update reloads the page; come back to the tab that was open
+  try {
+    const kept = sessionStorage.getItem("snapcal.tabBeforeUpdate");
+    sessionStorage.removeItem("snapcal.tabBeforeUpdate");
+    return kept || "home";
+  } catch { return "home"; }
+})();
 let popupOpen = false;
 let hasProfile = false;
 
@@ -95,7 +105,20 @@ async function boot() {
     renderCurrentTab();
   });
 
+  if (!TABS.some((x) => x.id === selectedTab)) selectedTab = "home";
   renderShell();
+
+  // New versions arrive on their own: see js/updater.js for when it's safe to reload.
+  startAutoUpdate({
+    onBeforeReload: () => sessionStorage.setItem("snapcal.tabBeforeUpdate", selectedTab),
+    onUpdated: () => {
+      const el = document.createElement("div");
+      el.className = "undo-toast";
+      el.innerHTML = `<span class="undo-text">✓ ${translate("app.updated")}</span>`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2600);
+    },
+  });
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch((err) => {
@@ -205,6 +228,7 @@ function wireShell() {
       if (popupOpen) setPopupOpen(false);
       if (btn.dataset.tab === selectedTab) return;
       selectedTab = btn.dataset.tab;
+      applyIfPending(); // switching tabs is a natural moment to pick up a waiting update
       appRoot.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("active", b.dataset.tab === selectedTab));
       renderCurrentTab();
     });
@@ -322,6 +346,7 @@ function renderCurrentTab() {
   if (!content) return;
   if (selectedTab === "home") renderToday(content);
   else if (selectedTab === "us") renderUsTab(content);
+  else if (selectedTab === "shared") renderSharedTab(content);
   else if (selectedTab === "weight") renderWeight(content);
   else if (selectedTab === "progress") renderHistory(content);
   else renderProfile(content);

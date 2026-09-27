@@ -7,7 +7,8 @@
     "delete": "Delete",
     "retry": "Try again",
     "add": "+ Add",
-    "log": "Log"
+    "log": "Log",
+    "updated": "SnapCal updated"
   },
   "home": {
     "caloriesLeft": "Calories left",
@@ -393,7 +394,8 @@
     "addPhoto": "＋ Photo",
     "post": "Post",
     "postedToday": "You've posted today. Your next post opens tomorrow.",
-    "showMore": "Show {n} more"
+    "showMore": "Show {n} more",
+    "tab": "Shared"
   },
   "homeChips": {
     "exercise": "Exercise",

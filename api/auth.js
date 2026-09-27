@@ -90,7 +90,22 @@ async function writeUser(row, { update = false } = {}) {
 const fail = (res, code, message, status = 200) =>
   res.status(status).json({ ok: false, errorType: code, message });
 
+/**
+ * Which deployment is live, so open apps can notice a new one and reload themselves
+ * (js/updater.js). GET /api/auth?op=version, no sign-in needed, never cached.
+ */
+export function liveVersion() {
+  return (process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || "").trim() || null;
+}
+
 export default async function handler(req, res) {
+  if (req.method === "GET") {
+    const op = req.query?.op ?? new URL(req.url ?? "/", "http://localhost").searchParams.get("op");
+    if (op === "version") {
+      res.setHeader?.("Cache-Control", "no-store");
+      return res.status(200).json({ ok: true, version: liveVersion() });
+    }
+  }
   if (req.method !== "POST") return fail(res, "other", "Method not allowed", 405);
   if (!restBase()) return fail(res, "unconfigured", "Accounts need Supabase configured.");
 

@@ -495,3 +495,6 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .feed-card.no-photo { grid-template-columns: 1fr; }
 .feed-text { font-size: 15px; line-height: 1.4; margin: 4px 0 2px; overflow-wrap: anywhere; }
 .feed-more { font: inherit; font-size: 13.5px; font-weight: 600; color: var(--tg-a); background: none; border: 0; padding: 6px; cursor: pointer; }
+
+/* Shared tab: the tab title already says "Shared", so the feed's own heading would repeat it */
+.shared-tab .us-feed > .tg-h2 { display: none; }

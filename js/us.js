@@ -6,7 +6,7 @@ import { safeSrc } from "./safe-src.js";
 import { getStoredToken, setStoredToken } from "./net.js";
 import { t, initI18n, formatNumber, formatDate, currentLanguage } from "./i18n.js";
 import { doodleSvg } from "./ui/doodle.js";
-import { openNoteSheet, renderFeed } from "./ui/us-social.js";
+import { openNoteSheet } from "./ui/us-social.js";
 import { renderRecap } from "./ui/us-recap.js";
 import { renderPushCard } from "./ui/push-ui.js";
 import { localDateString, addDays, startOfDay } from "./nutrition.js";
@@ -14,7 +14,7 @@ import { localDateString, addDays, startOfDay } from "./nutrition.js";
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
 // container when mounted inside the app.
 let body = typeof document !== "undefined" ? document.getElementById("tg-body") : null;
-const COLORS = [
+export const COLORS = [
   { solid: "var(--tg-a)", soft: "var(--tg-a-soft)" },
   { solid: "var(--tg-b)", soft: "var(--tg-b-soft)" },
   { solid: "var(--tg-c)", soft: "var(--tg-c-soft)" },
@@ -551,10 +551,7 @@ function render() {
   if (body.id === "us-tab-body") renderPushCard(body.querySelector("#us-push")); // in the app only, not us.html
   renderRecap(body.querySelector("#us-recap"), { lang: currentLanguage() === "es" ? "es" : "en" });
   body.querySelectorAll("[data-note-to]").forEach((b) => b.addEventListener("click", () => openNoteSheet(b.dataset.noteTo)));
-  const feed = document.createElement("section");
-  feed.className = "tg-section us-feed";
-  body.appendChild(feed);
-  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid), group: data.group?.id ?? null });
+  // the shared feed has its own tab now (js/ui/shared-tab.js)
 }
 
 async function start(afterPin = false) {

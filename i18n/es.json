@@ -7,7 +7,8 @@
     "delete": "Eliminar",
     "retry": "Reintentar",
     "add": "+ Añadir",
-    "log": "Registrar"
+    "log": "Registrar",
+    "updated": "SnapCal se actualizó"
   },
   "home": {
     "caloriesLeft": "Calorías restantes",
@@ -393,7 +394,8 @@
     "addPhoto": "＋ Foto",
     "post": "Publicar",
     "postedToday": "Ya publicaste hoy. Mañana podrás publicar otra vez.",
-    "showMore": "Ver {n} más"
+    "showMore": "Ver {n} más",
+    "tab": "Compartido"
   },
   "homeChips": {
     "exercise": "Ejercicio",
