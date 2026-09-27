@@ -1,14 +1,14 @@
-// intro.js — the opening: a liquid-metal flow with the SnapCal wordmark, then it dissolves into
-// the app.
+// intro.js — the opening: a slow pearl flow (the app's paper tones) with the SnapCal wordmark,
+// then it dissolves into the app.
 //
-// The black cover and wordmark are plain markup in index.html, so they're on screen before any
+// The paper cover and wordmark are plain markup in index.html, so they're on screen before any
 // script runs; this module only adds the moving picture and decides when to leave. It never
 // holds the app back: the app boots underneath the whole time, and the intro leaves once both
 // a short minimum has passed and the app has drawn something (or a hard cap, whichever first).
 // The picture is drawn by fluid-bg (MIT, vendor/fluid-bg) from the design made in the Fluid
-// studio; phones without WebGL simply keep the still black cover.
+// studio; phones without WebGL simply keep the plain paper cover.
 
-export const INTRO_HASH = "#p=2.5,1.55,1.7,0.195,1,15,0,8,25.15,0.05,0.55,0.5625,0,0,1,0,-0.014,0.066,0,0,0,4473924,12632256,16777215";
+export const INTRO_HASH = "#p=1.2,2.4,1.7,0.05,1,15,0,8,25.15,0.05,0.55,0.5625,0,0,1,0,-0.014,0.066,0,0,13617856,14736596,15657958,16447991";
 
 const MIN_MS = 1700;       // long enough to read the wordmark
 const REDUCED_MIN_MS = 700;
@@ -31,9 +31,6 @@ function start() {
   if (!shouldPlay()) return intro.remove();
 
   const reduced = matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-  const theme = document.querySelector('meta[name="theme-color"]');
-  const appTheme = theme?.getAttribute("content");
-  theme?.setAttribute("content", "#000000");
   intro.classList.add("intro-playing");
 
   let mount = null;
@@ -50,7 +47,7 @@ function start() {
         setTimeout(maybeLeave, SHOWN_MS);
       }, 30);
     })
-    .catch(() => { /* no WebGL: the black cover and wordmark still work */ })
+    .catch(() => { /* no WebGL: the paper cover and wordmark still work */ })
     .finally(() => { if (!mount) shownAt = began - SHOWN_MS; }); // nothing to wait for
   const appRoot = document.getElementById("app-root");
   let appDrawn = Boolean(appRoot?.children.length);
@@ -60,7 +57,6 @@ function start() {
     if (left) return;
     left = true;
     observer.disconnect();
-    theme?.setAttribute("content", appTheme);
     intro.classList.add("intro-leaving");
     setTimeout(() => {
       try { mount?.destroy(); } catch { /* already gone */ }

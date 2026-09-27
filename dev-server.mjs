@@ -43,6 +43,7 @@ const MIME = {
   ".svg": "image/svg+xml",
   ".wasm": "application/wasm",
   ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
 };
 
 function vercelResShim(res) {

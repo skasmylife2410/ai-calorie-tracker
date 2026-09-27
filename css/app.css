@@ -1533,9 +1533,13 @@
 .fab-tile:nth-child(6) { color: var(--sc-accent-ideas); }
 .fab-tile-label { color: var(--sc-primary-text); }
 
-/* Four tabs need a little less room each */
-.bottom-bar-half { gap: 4px; }
-.tab-btn { padding-left: 10px; padding-right: 10px; }
+/* Four tabs: both halves get an equal share of the bar whatever the labels say, so the right
+   pair mirrors the left and a long label ("Progress", "Compartido") never pushes past the edge. */
+.bottom-bar-half { flex: 1 1 0; min-width: 0; gap: 2px; }
+.bottom-bar-half.right { justify-content: stretch; }
+.tab-btn { flex: 1 1 0; min-width: 0; padding: 0 2px; }
+.tab-label { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
+@media (max-width: 360px) { :root { --sc-fab-slot-width: 88px; } .tab-icon-pill { width: 38px; } }
 
 /* --- Amount editing (js/ui/addfood.js) --- */
 .amount-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
@@ -1809,6 +1813,8 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 /* week: one row, arrows at the ends, small day pills */
 .week-nav, .week-range { display: none !important; }
 .week-row { display: flex; align-items: center; gap: 2px; padding: 0 6px; }
+.week-row { align-items: flex-end; margin-top: 4px; }
+/* arrows line up with the day circles, not with the middle of label + circle */
 .week-row .week-arrow { width: 26px; height: 40px; font-size: 20px; flex: none; }
 .week-row .week-strip { flex: 1; padding: 0 !important; margin: 0 !important; }
 .week-day-label { font-size: 10px !important; margin-bottom: 3px !important; }
