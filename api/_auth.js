@@ -70,13 +70,47 @@ export function checkAuth(req, res) {
  */
 export async function requireUser(req, res) {
   const provided = String(req.headers?.["x-snapcal-token"] || "").trim();
-  if (provided === "" || readSession(provided)) return checkAuth(req, res);
-  const keys = [`ip:${clientIp(req)}`];
-  if (await isLocked(keys)) {
-    tooMany(res);
+  let who;
+  if (provided === "" || readSession(provided)) {
+    who = checkAuth(req, res);
+  } else {
+    const keys = [`ip:${clientIp(req)}`];
+    if (await isLocked(keys)) {
+      tooMany(res);
+      return false;
+    }
+    who = checkAuth(req, res);
+    if (!who) await recordFailure(keys);
+  }
+  // Sessions and passcodes are checked without the database, so a removed person's phone would
+  // otherwise keep working. Every request also confirms the account still exists.
+  if (who && !(await accountExists(who))) {
+    res.status(401).json({ errorType: "unauthorized", message: "That account no longer exists." });
     return false;
   }
-  const who = checkAuth(req, res);
-  if (!who) await recordFailure(keys);
   return who;
+}
+
+const EXISTS_TTL_MS = 30_000;
+const existsCache = new Map(); // username -> { yes, at }
+
+/** Forget a cached answer, so a removal takes effect at once on this server. */
+export function forgetAccount(username) {
+  existsCache.delete(username);
+}
+
+async function accountExists(username) {
+  const base = (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+  if (!base || process.env.ALLOW_ANONYMOUS === "1") return true; // local dev: no accounts table
+  const hit = existsCache.get(username);
+  if (hit && Date.now() - hit.at < EXISTS_TTL_MS) return hit.yes;
+  try {
+    const { select } = await import("./_rest.js");
+    const rows = await select("snapcal_users", { select: "username", username: `eq.${username}`, limit: "1" });
+    const yes = Array.isArray(rows) && rows.length > 0;
+    existsCache.set(username, { yes, at: Date.now() });
+    return yes;
+  } catch {
+    return true; // database hiccup: don't lock everyone out; the account check runs again soon
+  }
 }

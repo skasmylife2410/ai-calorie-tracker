@@ -11,8 +11,8 @@
 // POST { op: "export" }                  with session     -> { ok, data }  everything stored
 // POST { op: "deleteAccount", password } with session     -> { ok }   removes it all
 //
-// Sign-up needs INVITE_CODE, because the app sits on a public URL: without it anyone who found
-// the address could create an account. Sharing the code with someone is how you invite them.
+// Sign-up needs a single-use invite link (api/invites.js), because the app sits on a public URL:
+// without one anyone who found the address could create an account. Only the admin makes links.
 //
 // There is also a hard cap on how many accounts can exist (MAX_USERS, default 3). The invite code
 // can leak — someone forwards it, it is overheard — and the cap means that even then nobody new
@@ -130,10 +130,11 @@ export default async function handler(req, res) {
 
   try {
     if (op === "signup") {
+      // Only single-use invite links let someone in. (The old shared INVITE_CODE could be
+      // forwarded and reused, so it no longer works.)
       const invite = String(body.invite ?? "").trim();
-      const shared = (process.env.INVITE_CODE || "").trim();
-      const viaShared = shared !== "" && invite === shared;
-      const linkProblem = viaShared ? null : await inviteProblem(invite);
+      const viaShared = false;
+      const linkProblem = await inviteProblem(invite);
       if (!viaShared && linkProblem) {
         const why = {
           used: "That invite link has already been used.",

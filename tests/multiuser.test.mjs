@@ -18,6 +18,9 @@ globalThis.fetch = async (url, opts = {}) => {
     // id "taken" belongs to someone else
     return { ok: true, json: async () => [{ id: "taken" }] };
   }
+  if ((opts.method || "GET") === "GET" && u.pathname.endsWith("/snapcal_users")) {
+    return { ok: true, json: async () => [{ username: u.searchParams.get("username")?.slice(3) }] }; // accounts exist
+  }
   if ((opts.method || "GET") === "GET") return { ok: true, json: async () => [] };
   return { ok: true, text: async () => "" };
 };
@@ -46,7 +49,7 @@ test("pull only reads the caller's rows", async () => {
   await sync({ method: "POST", headers: { "x-snapcal-token": "2222" }, body: { op: "pull" } }, res);
   // entries, water, exercise, weight, favourites, profile — every table is owner-scoped.
   // (A passcode isn't a session, so the guessing brake also looks up recent failures first.)
-  const reads = calls.filter((c) => !c.url.includes("snapcal_auth_failures"));
+  const reads = calls.filter((c) => !c.url.includes("snapcal_auth_failures") && !c.url.includes("snapcal_users"));
   assert.equal(reads.length, 6);
   for (const c of reads) assert.equal(new URL(c.url).searchParams.get("owner"), "eq.maria");
   assert.equal(reads[0].opts.headers.apikey, "sb_secret_abc");

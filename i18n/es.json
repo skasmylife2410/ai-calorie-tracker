@@ -210,7 +210,7 @@
     "username": "Usuario",
     "password": "Contraseña",
     "invite": "Código de invitación",
-    "inviteHint": "Pídeselo a quien configuró la app.",
+    "inviteHint": "Pega el código del enlace de invitación que te enviaron, o simplemente abre el enlace.",
     "signInButton": "Entrar",
     "createButton": "Crear cuenta",
     "working": "Un momento…",
@@ -501,10 +501,12 @@
     "extra": "Trabajo físico y entreno casi todos los días"
   },
   "members": {
-    "title": "Quién está en cada grupo",
+    "title": "Personas y grupos",
     "none": "Sin grupo",
-    "hint": "Toca un grupo para agregar o quitar a alguien. Quien no tiene grupo solo se ve a sí misma/o.",
-    "you": "tú"
+    "hint": "Toca un grupo para añadir o quitar a alguien de él. Quien no tiene grupo solo se ve a sí mismo. Quitar saca a alguien de la app para siempre.",
+    "you": "tú",
+    "remove": "Quitar",
+    "removeConfirm": "¿Quitar a {name} de SnapCal? Se borran su cuenta y todo lo que contiene (comidas, fotos, peso, notas) y se cierra su sesión en el teléfono. No se puede deshacer."
   },
   "redo": {
     "title": "Configurar de nuevo",

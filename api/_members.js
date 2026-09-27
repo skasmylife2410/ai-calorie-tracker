@@ -6,10 +6,14 @@ export function maxUsers() {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 8;
 }
 
-/** People who can create invite links. ADMIN_USERS in Vercel overrides (comma-separated). */
+/**
+ * The one account that can invite, remove people and manage groups. Fixed in code on purpose:
+ * an environment variable could quietly hand these powers to someone else.
+ */
+export const ADMIN = "aelson";
+
 export function isAdmin(username) {
-  const list = (process.env.ADMIN_USERS || "aelson").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  return list.includes(String(username ?? "").toLowerCase());
+  return String(username ?? "").toLowerCase() === ADMIN;
 }
 
 export const INVITE_DAYS = 7;

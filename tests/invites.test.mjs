@@ -40,7 +40,8 @@ const ok = (row, params) => [...params.entries()].every(([k, v]) => {
 });
 globalThis.fetch = async (url, opts = {}) => {
   const u = new URL(url); const table = u.pathname.split("/").pop(); const m = opts.method ?? "GET";
-  const rows = DB[table];
+  const rows = (DB[table] ??= []); // tables the test doesn't seed start empty
+  if (m === "DELETE") { DB[table] = rows.filter((r) => !ok(r, u.searchParams)); return { ok: true, text: async () => "" }; }
   if (m === "GET") {
     if ((opts.headers ?? {}).Prefer === "count=exact") return { ok: true, headers: { get: () => `0-0/${rows.length}` }, json: async () => [] };
     return { ok: true, json: async () => rows.filter((r) => ok(r, u.searchParams)) };
@@ -138,15 +139,40 @@ test("a link can only be made for a group you're in, and must name one", async (
   let res = mockRes(); await invites(as("baby", { op: "create", group: "work" }), res);
   assert.equal(res.body.errorType, "forbidden", "not an admin at all");
 
-  DB.snapcal_group_members.push({ group_id: "work", username: "baby", joined_at: "9" });
+  // the admin is fixed in code: a Vercel setting can't make anyone else one
   process.env.ADMIN_USERS = "aelson,baby";
   res = mockRes(); await invites(as("baby", { op: "create", group: "family" }), res);
-  assert.equal(res.body.ok, true, "baby is in Family, so this is allowed");
-  res = mockRes(); await invites(as("baby", { op: "create" }), res);
-  assert.equal(res.body.errorType, "noGroup", "a link must say which group");
+  assert.equal(res.body.errorType, "forbidden", "ADMIN_USERS no longer grants anything");
   delete process.env.ADMIN_USERS;
+  res = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), res);
+  assert.equal(res.body.ok, true, "aelson is in Family, so this is allowed");
+  res = mockRes(); await invites(as("aelson", { op: "create" }), res);
+  assert.equal(res.body.errorType, "noGroup", "a link must say which group");
 
   reset();
   res = mockRes(); await invites(as("aelson", { op: "create", group: "nosuchgroup" }), res);
   assert.equal(res.body.errorType, "notMember");
+});
+
+test("only the admin can remove someone; it deletes their account and they're locked out", async () => {
+  reset();
+  DB.snapcal_food_entries = [{ owner: "baby", id: "1" }];
+  const { default: groups } = await import("../api/groups.js");
+  const { requireUser } = await import("../api/_auth.js");
+  const acct = await import("../api/_accounts.js");
+  const call = async (who, body) => { const res = mockRes(); await groups(as(who, body), res); return res.body; };
+
+  assert.equal((await call("baby", { op: "remove", username: "thayra23" })).errorType, "forbidden");
+  assert.equal((await call("aelson", { op: "remove", username: "aelson" })).ok, false, "not yourself");
+
+  const babySession = acct.createSession("baby");
+  assert.equal(await requireUser({ headers: { "x-snapcal-token": babySession } }, mockRes()), "baby");
+  const out = await call("aelson", { op: "remove", username: "baby" });
+  assert.equal(out.ok, true);
+  assert.ok(!DB.snapcal_users.some((u) => u.username === "baby"), "account gone");
+  assert.ok(!DB.snapcal_group_members.some((m) => m.username === "baby"), "out of every group");
+  assert.ok(!out.people.some((p) => p.username === "baby"), "the answer is the updated list");
+  const locked = mockRes();
+  assert.equal(await requireUser({ headers: { "x-snapcal-token": babySession } }, locked), false, "their phone is signed out");
+  assert.equal(locked.code, 401);
 });

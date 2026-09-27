@@ -2188,3 +2188,5 @@ body.setup-open { overflow: hidden; }
 .consent-check a { color: var(--sc-blue, #007AFF); font-weight: 600; }
 .privacy-row { text-decoration: none; color: inherit; }
 .auth-submit.is-danger { background: var(--sc-red, #FF3B30); }
+.mem-remove { margin-left: auto; font: inherit; font-size: 12px; font-weight: 600; color: var(--sc-red, #FF3B30); background: rgba(255, 59, 48, .1); border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer; flex: none; }
+.mem-remove:disabled { opacity: .6; }

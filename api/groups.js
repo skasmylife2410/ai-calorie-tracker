@@ -5,6 +5,8 @@ import { parseBody, restBase } from "./_rest.js";
 import { myGroups, membersOf } from "./_groups.js";
 import { select, insert, remove, parseBody as readBody } from "./_rest.js";
 import { isAdmin } from "./_members.js";
+import { deleteAccount } from "./_account-data.js";
+import { forgetAccount } from "./_auth.js";
 
 export default async function handler(req, res) {
   const me = await requireUser(req, res);
@@ -15,7 +17,20 @@ export default async function handler(req, res) {
   const op = String(body.op ?? "mine");
 
   try {
-    if (op === "all" || op === "set") {
+    if (op === "remove") {
+      // Removes a person from the app: their account and everything in it. Their phone is
+      // signed out on its next request. Only the admin, and never the admin themselves.
+      if (!isAdmin(me)) return res.status(200).json({ ok: false, errorType: "forbidden", message: "Only the app's owner can remove people." });
+      const username = String(body.username ?? "").trim().toLowerCase();
+      if (!username || username === me) return res.status(200).json({ ok: false, errorType: "other", message: "You can't remove yourself." });
+      const exists = await select("snapcal_users", { select: "username", username: `eq.${username}`, limit: "1" });
+      if (exists.length === 0) return res.status(200).json({ ok: false, errorType: "other", message: "No such account." });
+      await deleteAccount(username);
+      forgetAccount(username);
+      body.op = "all"; // fall through: answer with the updated list
+    }
+
+    if (body.op === "all" || op === "all" || op === "set") {
       // Only the owner can see or change who is in which group.
       if (!isAdmin(me)) return res.status(200).json({ ok: false, errorType: "forbidden", message: "Only the app's owner can manage members." });
       const allGroups = await select("snapcal_groups", { select: "id,name", order: "created_at.asc", limit: "20" });

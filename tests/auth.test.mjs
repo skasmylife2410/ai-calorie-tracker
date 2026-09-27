@@ -20,6 +20,14 @@ let USERS = [];
 globalThis.fetch = async (url, opts = {}) => {
   const u = new URL(url);
   const method = opts.method ?? "GET";
+  const table = u.pathname.split("/").pop();
+  if (table === "snapcal_invites") {
+    const code = decodeURIComponent(u.searchParams.get("code")?.slice(3) ?? "");
+    const row = { code, used_by: null, revoked: false, expires_at: new Date(Date.now() + 86400000).toISOString(), group_id: null };
+    const valid = code.startsWith("valid-");
+    return { ok: true, json: async () => (valid ? [row] : []), text: async () => "" };
+  }
+  if (method === "GET" && table === "snapcal_auth_failures") return { ok: true, json: async () => [] };
   if (method === "GET") {
     if ((opts.headers ?? {}).Prefer === "count=exact") {
       return { ok: true, headers: { get: () => `0-0/${USERS.length}` }, json: async () => [] };
@@ -61,23 +69,28 @@ test("sign-up needs the invite code and a real password", async () => {
   USERS = [];
   let res = mockRes();
   await auth(req({ op: "signup", consent: true, username: "thayra23", password: "cumbia7431", invite: "wrong" }), res);
+  assert.equal(res.body.ok, false);
+  // the old shared INVITE_CODE no longer lets anyone in: only single-use links do
+  const shared = mockRes();
+  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "cumbia7431", invite: "arepa" }), shared);
+  assert.equal(shared.body.errorType, "badInvite");
   assert.equal(res.body.errorType, "badInvite");
 
   res = mockRes();
-  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "short", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "short", invite: "valid-invite-0001" }), res);
   assert.equal(res.body.errorType, "tooShort");
 
   res = mockRes();
-  await auth(req({ op: "signup", consent: true, username: "Thayra 23!", password: "cumbia7431", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "Thayra 23!", password: "cumbia7431", invite: "valid-invite-0001" }), res);
   assert.equal(res.body.errorType, "badUsername");
 
   res = mockRes();
-  await auth(req({ op: "signup", consent: true, username: "THAYRA23", password: "cumbia7431", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "THAYRA23", password: "cumbia7431", invite: "valid-invite-0001" }), res);
   assert.equal(res.body.ok, true);
   assert.equal(acct.readSession(res.body.token), "thayra23", "usernames are lower-cased");
 
   res = mockRes();
-  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "otherpassword", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "otherpassword", invite: "valid-invite-0001" }), res);
   assert.equal(res.body.errorType, "taken");
 });
 
@@ -142,7 +155,7 @@ test("the account cap stops a leaked invite code letting in a fourth person", as
   process.env.MAX_USERS = "3";
   const signup = async (username) => {
     const res = mockRes();
-    await auth(req({ op: "signup", consent: true, username, password: "cumbia7431", invite: "arepa" }), res);
+    await auth(req({ op: "signup", consent: true, username, password: "cumbia7431", invite: "valid-invite-0001" }), res);
     return res.body;
   };
 
@@ -211,6 +224,7 @@ test("security: wrong passcodes are braked after too many failures", async () =>
   const savedFetch = globalThis.fetch;
   globalThis.fetch = async (url, opts = {}) => {
     if (opts.method === "POST") { recorded += 1; return { ok: true, json: async () => [] }; }
+    if (String(url).includes("snapcal_users")) return { ok: true, json: async () => [{ username: "maria" }] };
     return { ok: true, json: async () => Array.from({ length: failures }, (_, i) => ({ id: i })) };
   };
   try {
@@ -234,11 +248,11 @@ test("privacy: sign-up without consent is refused, and consent is recorded with 
   const { POLICY_VERSION: v } = await import("../api/_policy.js");
   USERS = [];
   const res = mockRes();
-  await auth(req({ op: "signup", username: "newbie", password: "longenough", invite: "arepa" }), res);
+  await auth(req({ op: "signup", username: "newbie", password: "longenough", invite: "valid-invite-0001" }), res);
   assert.equal(res.body.errorType, "consent");
   assert.equal(USERS.length, 0, "nothing stored without consent");
   const ok = mockRes();
-  await auth(req({ op: "signup", username: "newbie", password: "longenough", invite: "arepa", consent: true }), ok);
+  await auth(req({ op: "signup", username: "newbie", password: "longenough", invite: "valid-invite-0001", consent: true }), ok);
   assert.equal(ok.body.ok, true, JSON.stringify(ok.body));
   assert.equal(USERS.find((u) => u.username === "newbie")?.consent_version, v);
 });

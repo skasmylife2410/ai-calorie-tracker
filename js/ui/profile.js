@@ -24,7 +24,8 @@ const GOAL_FIELDS = [
   { key: "customFatG", derivedKey: "fatTargetG", id: "fat", get label() { return t("ui.fat"); }, unit: "g", decimal: true },
 ];
 
-let currentUsername = "";
+// the name saved at sign-in, until the server confirms it (so "you" is right from the first draw)
+let currentUsername = (() => { try { return localStorage.getItem("snapcal.username") || ""; } catch { return ""; } })();
 postAuth({ op: "whoami" }).then((out) => {
   if (out.ok && out.username !== currentUsername) {
     currentUsername = out.username;
@@ -378,16 +379,28 @@ async function wireMembers(container, me) {
       <div class="ios-section-body">
         ${info.people.map((p) => `
           <div class="mem-row">
-            <span class="mem-name">${p.username}${p.username === me ? ` <i>${t("members.you")}</i>` : ""}</span>
+            <span class="mem-name">${escapeHtml(p.username)}${p.username === me ? ` <i>${t("members.you")}</i>` : ""}</span>
+            ${p.username !== me ? `<button type="button" class="mem-remove" data-remove="${escapeHtml(p.username)}">${t("members.remove")}</button>` : ""}
             <span class="mem-groups">
               ${info.groups.map((g) => `
                 <button type="button" class="mem-chip${p.groups.includes(g.id) ? " is-on" : ""}"
-                        data-user="${p.username}" data-group="${g.id}" data-member="${p.groups.includes(g.id) ? "0" : "1"}">${g.name}</button>`).join("")}
+                        data-user="${escapeHtml(p.username)}" data-group="${escapeHtml(g.id)}" data-member="${p.groups.includes(g.id) ? "0" : "1"}">${escapeHtml(g.name)}</button>`).join("")}
             </span>
             ${p.groups.length === 0 ? `<span class="mem-warn">${t("members.none")}</span>` : ""}
           </div>`).join("")}
       </div>
       <div class="ios-section-footer">${t("members.hint")}</div>`;
+    host.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", async () => {
+      const who = b.dataset.remove;
+      if (!confirm(t("members.removeConfirm", { name: who }))) return;
+      b.disabled = true;
+      b.textContent = t("auth.working");
+      const out = await call({ op: "remove", username: who });
+      if (!out.ok) { alert(out.message || t("errors.generic")); return draw(); }
+      draw(out);
+      // a place just opened up: refresh the invite section's count
+      container.dispatchEvent(new CustomEvent("snapcal:members-changed"));
+    }));
     host.querySelectorAll(".mem-chip").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;
       const out = await call({ op: "set", username: b.dataset.user, group: b.dataset.group, member: b.dataset.member === "1" });
@@ -457,6 +470,7 @@ async function wireInvites(container) {
     host.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => draw(await hand(b.dataset.copy))));
     host.querySelectorAll("[data-revoke]").forEach((b) => b.addEventListener("click", async () => { await call({ op: "revoke", code: b.dataset.revoke }); draw(); }));
   };
+  container.addEventListener("snapcal:members-changed", () => draw());
   draw();
 }
 

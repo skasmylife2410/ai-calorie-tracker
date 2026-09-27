@@ -210,7 +210,7 @@
     "username": "Username",
     "password": "Password",
     "invite": "Invite code",
-    "inviteHint": "Ask whoever set up the app for this.",
+    "inviteHint": "Paste the code from the invite link you were sent, or just open the link.",
     "signInButton": "Sign in",
     "createButton": "Create account",
     "working": "One moment…",
@@ -501,10 +501,12 @@
     "extra": "Physical job and training most days"
   },
   "members": {
-    "title": "Who's in which group",
+    "title": "People and groups",
     "none": "No group yet",
-    "hint": "Tap a group to add or remove someone. People with no group see only themselves.",
-    "you": "you"
+    "hint": "Tap a group to add or remove someone. People with no group see only themselves. Remove takes someone out of the app for good.",
+    "you": "you",
+    "remove": "Remove",
+    "removeConfirm": "Remove {name} from SnapCal? Their account and everything in it (meals, photos, weight, notes) are deleted, and their phone is signed out. This can't be undone."
   },
   "redo": {
     "title": "Set up again",
