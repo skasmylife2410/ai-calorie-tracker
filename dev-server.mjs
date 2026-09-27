@@ -30,6 +30,7 @@ try {
 
 const { default: geminiHandler } = await import("./api/gemini.js");
 const { default: syncHandler } = await import("./api/sync.js");
+const { default: foodsHandler } = await import("./api/foods.js");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -61,6 +62,17 @@ function vercelResShim(res) {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (url.pathname === "/api/foods") {
+    try {
+      await foodsHandler(req, vercelResShim(res));
+    } catch (err) {
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, errorType: "other", message: String(err) }));
+    }
+    return;
+  }
 
   if (url.pathname === "/api/gemini" || url.pathname === "/api/sync") {
     const handler = url.pathname === "/api/gemini" ? geminiHandler : syncHandler;

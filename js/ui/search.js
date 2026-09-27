@@ -1,18 +1,23 @@
 // search.js — Food Database search (FoodSearchView.swift), SPEC-UI.md §8.
-// Backed by Open Food Facts name search (debounced 400ms). Tapping a result puts it on the
+// Results come in two steps while typing: your own foods and the built-in list show at once
+// (they match half-typed words), then /api/foods adds USDA + Open Food Facts (debounced 250ms,
+// cached per query so backspacing is instant). Tapping a result puts it on the
 // plate at the bottom and the sheet STAYS OPEN, so a whole meal can be built in one go; "Add"
 // saves every food on the plate as one meal (see meal-builder.js).
 
-import { offSearchByName, usdaSearchByName } from "../api.js";
+import { offSearchByName, usdaSearchByName, searchFoods } from "../api.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { openAddFoodSheet } from "./addfood.js";
-import { searchLocalFoods } from "../foods-local.js";
+import { searchLocalFoods, normalize } from "../foods-local.js";
 import { currentLanguage, t } from "../i18n.js";
 import * as store from "../store.js";
 import { trayItemFromProduct, withAmount, stepOf, scaled, trayTotals, trayToEntry } from "../meal-builder.js";
 
-const DEBOUNCE_MS = 400;
+const DEBOUNCE_MS = 250;
+const RETRY_DELAY_MS = 1200;
+// remote answers for this session, by normalized query — backspacing or retyping never re-asks
+const remoteCache = new Map();
 
 /**
  * @param {object} [opts]
@@ -27,6 +32,7 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
   let query = "";
   let debounceTimer = null;
   let searchGeneration = 0;
+  let inFlight = null;      // AbortController of the remote search being waited on
 
   openSheet({
     render(panel, close) {
@@ -134,7 +140,13 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
         } else if (state.kind === "loading") {
           content.innerHTML = `<div class="loading-center"><div class="spinner"></div></div>`;
         } else if (state.kind === "results") {
-          content.innerHTML = `<p class="tray-hint">${t("tray.hint")}</p><div class="search-results">${state.products.map((p, i) => resultRowHtml(p, i, onTray(trayItemFromProduct(p).key))).join("")}</div>`;
+          const footer = state.loadingMore
+            ? `<div class="loading-center search-more"><div class="spinner"></div></div>`
+            : state.remoteFailed
+              ? `<div class="empty-state search-more"><div class="empty-state-message">${t("ui.searchDown")}</div><button class="btn-bordered" style="width:auto;padding:8px 20px;" data-retry>${t("app.retry")}</button></div>`
+              : "";
+          content.innerHTML = `<p class="tray-hint">${t("tray.hint")}</p><div class="search-results">${state.products.map((p, i) => resultRowHtml(p, i, onTray(trayItemFromProduct(p).key))).join("")}</div>${footer}`;
+          wireRetry(content);
           content.querySelectorAll("[data-result-idx]").forEach((row) => {
             row.addEventListener("click", () => toggleProduct(state.products[Number(row.dataset.resultIdx)]));
             row.addEventListener("keydown", (e) => {
@@ -177,36 +189,42 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
           return;
         }
         const generation = ++searchGeneration;
-        // Built-in foods match partial words ("pech", "arep") and need no network, so they
-        // show immediately while the databases are still being asked. Both remote sources
-        // only match whole words, which is why typing half a word used to return nothing.
-        const local = searchLocalFoods(trimmed, { lang: currentLanguage() === "es" ? "es" : "en" });
+        inFlight?.abort();
+        inFlight = null;
+
+        // Your own foods and the built-in list match half-typed words ("pech", "arep") and need
+        // no network, so they show at once while the databases are asked.
+        const lang = currentLanguage() === "es" ? "es" : "en";
+        const local = dedupe([...searchMyFoods(trimmed), ...searchLocalFoods(trimmed, { lang })]);
+        const key = normalize(trimmed);
+        const cached = remoteCache.get(key);
+        if (cached) {
+          state = { kind: "results", products: dedupe([...local, ...cached]) };
+          renderState();
+          return;
+        }
+        if (trimmed.length < 2) {
+          state = local.length > 0 ? { kind: "results", products: local } : { kind: "idle" };
+          renderState();
+          return;
+        }
         state = local.length > 0 ? { kind: "results", products: local, loadingMore: true } : { kind: "loading" };
         renderState();
-        // USDA covers plain whole foods with clean names ("Bananas, raw"); OFF covers branded
-        // packaged products. Both run in parallel; USDA's cleaner matches lead the list, since a
-        // person typing "banana" almost always means the fruit, not a branded banana product.
-        const [usda, off] = await Promise.all([usdaSearchByName(trimmed), offSearchByName(trimmed)]);
+
+        const controller = new AbortController();
+        inFlight = controller;
+        const remote = await fetchRemote(trimmed, controller.signal);
         if (generation !== searchGeneration) return; // superseded by a newer search
+        inFlight = null;
 
-        const usdaProducts = usda.status === "success" ? usda.products : [];
-        const offProducts = off.status === "success" ? off.products : [];
-        // built-in first (they matched what was actually typed), then the databases, no repeats
-        const seen = new Set(local.map((p) => p.name.toLowerCase()));
-        const remote = [...usdaProducts, ...offProducts].filter((p) => {
-          const key = String(p.name ?? "").toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        const products = [...local, ...remote];
-
-        if (products.length > 0) {
-          state = { kind: "results", products };
-        } else if (usda.status === "failed" && off.status === "failed") {
-          state = { kind: "error", message: off.message };
+        if (remote.status === "success") {
+          if (!remote.partial) remoteCache.set(key, remote.products);
+          const products = dedupe([...local, ...remote.products]);
+          state = products.length > 0 ? { kind: "results", products } : { kind: "noResults", query: trimmed };
+        } else if (local.length > 0) {
+          state = { kind: "results", products: local, remoteFailed: true };
         } else {
-          state = { kind: "noResults", query: trimmed };
+          state = { kind: "error", message: remote.message };
         }
         renderState();
       };
@@ -222,11 +240,12 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
         clearTimeout(debounceTimer);
         if (query.trim() === "") {
           searchGeneration += 1; // cancel any in-flight result application
+          inFlight?.abort();
           state = { kind: "idle" };
           renderState();
           return;
         }
-        debounceTimer = setTimeout(runSearch, DEBOUNCE_MS);
+        debounceTimer = setTimeout(runSearch, remoteCache.has(normalize(query)) ? 0 : DEBOUNCE_MS);
       });
 
       clearBtn.addEventListener("click", () => {
@@ -234,6 +253,7 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
         input.value = "";
         clearTimeout(debounceTimer);
         searchGeneration += 1;
+        inFlight?.abort();
         state = { kind: "idle" };
         renderState();
         input.focus();
@@ -247,6 +267,55 @@ export function openFoodSearchSheet({ timestamp = null, onSaved = null, onPick =
       renderState();
       setTimeout(() => input.focus(), 350);
     },
+  });
+}
+
+/**
+ * USDA + Open Food Facts for one query. Tries the app's own /api/foods first; if that can't be
+ * reached (older deploy, local dev server) it asks the two databases directly, as before. A
+ * failure is retried once on its own after a moment, so a brief hiccup never needs a tap.
+ */
+async function fetchRemote(query, signal) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      if (signal.aborted) break;
+    }
+    const viaServer = await searchFoods(query, { signal });
+    if (viaServer.status === "success" || viaServer.aborted) return viaServer;
+    const [usda, off] = await Promise.all([usdaSearchByName(query), offSearchByName(query)]);
+    if (usda.status === "success" || off.status === "success") {
+      const products = [
+        ...(usda.status === "success" ? usda.products : []),
+        ...(off.status === "success" ? off.products : []),
+      ];
+      return { status: "success", products, partial: usda.status !== "success" || off.status !== "success" };
+    }
+    if (attempt === 1) return { status: "failed", message: off.message || viaServer.message };
+  }
+  return { status: "failed", message: "Search cancelled", aborted: true };
+}
+
+/** Foods you've logged or saved whose name matches every typed word (prefixes count). */
+function searchMyFoods(query, limit = 5) {
+  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  return store.quickFoods(200)
+    .filter((p) => {
+      const words = normalize(p.name).split(/[^a-z0-9]+/).filter(Boolean);
+      return terms.every((term) => words.some((w) => w.startsWith(term)));
+    })
+    .slice(0, limit);
+}
+
+/** First occurrence wins, compared by name (and brand) ignoring case and accents. */
+function dedupe(products) {
+  const seen = new Set();
+  return products.filter((p) => {
+    const key = `${normalize(p.name)}|${normalize(p.brand ?? "")}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 

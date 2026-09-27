@@ -63,6 +63,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return; // POST /api/gemini etc. always hit the network
+  if (new URL(request.url).pathname.startsWith("/api/")) return; // live data, never the shell cache
 
   // Network-first, cache-fallback (fresh code wins; offline still boots the shell).
   event.respondWith(

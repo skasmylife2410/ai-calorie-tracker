@@ -269,3 +269,43 @@ export function searchLocalFoods(query, { lang = "en", limit = 8 } = {}) {
       source: "local",
     }));
 }
+
+/**
+ * Scores a database product (USDA, Open Food Facts, your own foods) against what was typed.
+ * Same idea as scoreFood(): whole-word hits beat prefix hits, a name that starts with the first
+ * word leads, shorter names win ties. Unlike the built-in list, a product that misses a word is
+ * kept (the databases also match on brand and category) but sinks below every full match.
+ */
+export function scoreProduct(product, query) {
+  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  const name = normalize(product?.name);
+  if (terms.length === 0 || name === "" || name === "unknown product") return 0;
+  const words = normalize(`${product.name} ${product.brand ?? ""}`).split(/[^a-z0-9]+/).filter(Boolean);
+  let score = 0;
+  let missed = 0;
+  for (const term of terms) {
+    if (words.includes(term)) score += 3;
+    else if (words.some((w) => w.startsWith(term))) score += 2;
+    else missed += 1;
+  }
+  if (name.startsWith(terms[0])) score += 2;
+  // USDA's generic foods ("Bananas, raw") are usually what a person typing a food means
+  if (product.source === "usda") score += 1;
+  return Math.max(1, (score - missed * 4) * 100 + 500 - Math.min(90, name.length));
+}
+
+/** Best matches first, dropping repeats (same name and brand) and unnamed products. */
+export function rankProducts(products, query) {
+  const seen = new Set();
+  return products
+    .map((p, i) => ({ p, i, score: scoreProduct(p, query) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.i - b.i)
+    .map((x) => x.p)
+    .filter((p) => {
+      const key = `${normalize(p.name)}|${normalize(p.brand ?? "")}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}

@@ -141,7 +141,7 @@ function offBrand(product) {
   return product.brands.split(",")[0].trim() || null;
 }
 
-function offProductToScannedProduct(barcode, product) {
+export function offProductToScannedProduct(barcode, product) {
   const basis = parseBasis(product.nutriments, product.serving_size);
   if (!basis) return null;
   return {
@@ -226,6 +226,31 @@ export async function offSearchByName(query) {
     .filter((p) => p !== null); // incomplete hits are silently dropped, not surfaced as errors
 
   return { status: "success", products };
+}
+
+/**
+ * GET /api/foods?q=... — the app's own search endpoint (api/foods.js): USDA and Open Food Facts
+ * together, ranked and cached on the server with a real USDA key. Preferred over calling the two
+ * databases from the phone, which runs into their rate limits within a few searches.
+ * @returns {Promise<{status:"success", products:object[], partial:boolean}|{status:"failed", message:string, aborted?:boolean}>}
+ */
+export async function searchFoods(query, { signal } = {}) {
+  const q = String(query ?? "").trim();
+  if (q.length < 2) return { status: "success", products: [], partial: false };
+  let res;
+  try {
+    res = await apiFetch(`/api/foods?q=${encodeURIComponent(q)}`, { signal });
+  } catch (err) {
+    return { status: "failed", message: `Search network error: ${err.message ?? err}`, aborted: err?.name === "AbortError" };
+  }
+  if (!res.ok) return { status: "failed", message: `Search HTTP ${res.status}` };
+  try {
+    const body = await res.json();
+    if (!body?.ok || !Array.isArray(body.products)) return { status: "failed", message: body?.message || "Search failed" };
+    return { status: "success", products: body.products, partial: body.partial === true };
+  } catch (err) {
+    return { status: "failed", message: `Search decode error: ${err.message ?? err}` };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -313,7 +338,7 @@ function usdaLabelNutrients(food) {
   return { calories, proteinG: protein, carbsG: carbs, fatG: fat, micros };
 }
 
-function usdaFoodToScannedProduct(barcode, food) {
+export function usdaFoodToScannedProduct(barcode, food) {
   const name = (food.description ?? "").trim() || "Unknown product";
   const brandRaw = food.brandName ?? food.brandOwner ?? "";
   const brand = String(brandRaw).trim() || null;
