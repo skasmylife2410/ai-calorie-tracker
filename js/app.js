@@ -34,7 +34,7 @@ import { maybeShowWhatsNew } from "./ui/push-ui.js";
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
   { id: "us", labelKey: "us.tab", icon: "personFill" },
-  { id: "weight", labelKey: "weight.tab", icon: "scale" },
+  { id: "weight", labelKey: "weight.tab", icon: "chartBarFill" }, // the Progress tab (id kept for old links)
 ];
 // Profile has no tab of its own any more; it opens from the avatar at the top of Home.
 

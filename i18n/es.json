@@ -271,7 +271,7 @@
     "legend": "línea = promedio de 7 días",
     "emptyTitle": "Aún no hay peso registrado",
     "emptyBody": "Añade una lectura y la tendencia se arma sola.",
-    "tab": "Peso"
+    "tab": "Progreso"
   },
   "edit": {
     "amount": "Cantidad",
@@ -785,5 +785,80 @@
     "agreeSignup": "Tengo 16 años o más y acepto la",
     "continue": "Aceptar y continuar",
     "tickFirst": "Marca la casilla para aceptar primero."
+  },
+  "prog": {
+    "title": "Progreso",
+    "timeline": "Línea de tiempo",
+    "insightsTitle": "Qué cambió",
+    "winsTitle": "Logros",
+    "compareNote": "Las flechas comparan con los {n} días anteriores.",
+    "tWeight": "Peso",
+    "tWeightSub": "media de 7 días",
+    "tTarget": "Calorías en meta",
+    "tTargetSub": "de los días registrados",
+    "tProtein": "Meta de proteína",
+    "days": " días",
+    "tProteinSub": "media {g} g al día",
+    "tLogged": "Días registrados",
+    "tLoggedSub": "racha: {n} días",
+    "tWorkouts": "Entrenamientos",
+    "tWorkoutsSub": "{time} · {kcal} kcal",
+    "tWorkoutsNone": "aún ninguno",
+    "tWater": "Agua",
+    "glasses": " vasos",
+    "tWaterSub": "meta de 8 vasos en {n} días",
+    "noCompare": "nuevo",
+    "same": "igual que antes",
+    "tapDay": "Toca o desliza sobre la línea de tiempo para ver un día.",
+    "noWeight": "Pésate unas cuantas veces para ver tu tendencia",
+    "dayNothing": "Nada registrado",
+    "dayProtein": "proteína {g} g",
+    "dayWorkout": "{n} entrenamiento · {min} min|{n} entrenamientos · {min} min",
+    "dayWater": "{n} vaso de agua|{n} vasos de agua",
+    "noWins": "Tus logros se juntan aquí: rachas, pesos alcanzados, entrenamientos y comidas.",
+    "allWins": "Ver los {n}",
+    "fewer": "Ver menos",
+    "lane": {
+      "calories": "Calorías",
+      "protein": "Proteína",
+      "workout": "Ejercicio",
+      "water": "Agua"
+    },
+    "leg": {
+      "on": "en meta",
+      "over": "por encima",
+      "under": "por debajo",
+      "win": "logro"
+    },
+    "in": {
+      "weightDown": "Tu media de 7 días bajó {kg} en {days} días, unos {perWeek} por semana.",
+      "weightUp": "Tu media de 7 días subió {kg} en {days} días, unos {perWeek} por semana.",
+      "weightFlat": "Tu peso se mantuvo estable en {days} días.",
+      "onTargetUp": "Calorías en meta {n} días, {diff} más que los {total} días anteriores.",
+      "onTargetDown": "Calorías en meta {n} días, {diff} menos que los {total} días anteriores.",
+      "onTargetUpFirst": "Calorías en meta {n} de los últimos {total} días.",
+      "proteinUp": "Meta de proteína cumplida {n} días, {diff} más que antes.",
+      "proteinDown": "Meta de proteína cumplida {n} días, {diff} menos que antes.",
+      "proteinUpFirst": "Meta de proteína cumplida {n} de los últimos {total} días.",
+      "loggedUp": "Registraste {n} de {total} días, {diff} más que antes.",
+      "loggedDown": "Registraste {n} de {total} días, {diff} menos que antes.",
+      "loggedUpFirst": "Registraste {n} de los últimos {total} días.",
+      "workoutsUp": "{n} entrenamientos, {diff} más que los {total} días anteriores.",
+      "workoutsDown": "{n} entrenamientos, {diff} menos que los {total} días anteriores.",
+      "workoutsUpFirst": "{n} entrenamientos en los últimos {total} días.",
+      "weekendMore": "Los fines de semana comes unas {kcal} kcal más que entre semana.",
+      "weekendLess": "Los fines de semana comes unas {kcal} kcal menos que entre semana.",
+      "steady": "Registraste {n} de {total} días. Sigue así y aquí aparecerán patrones.",
+      "none": "Registra unos días y pésate un par de veces, y aquí verás qué cambia."
+    },
+    "ms": {
+      "streak": "Racha de {n} días registrando",
+      "meals": "{n} comidas registradas",
+      "workouts": "Primer entrenamiento registrado|{n} entrenamientos registrados",
+      "proteinWeek": "Una semana entera cumpliendo tu proteína",
+      "weightStep": "Media de 7 días llegó a {kg}",
+      "halfway": "A mitad de camino de tu meta de {kg}",
+      "goal": "Meta alcanzada: {kg}"
+    }
   }
 }

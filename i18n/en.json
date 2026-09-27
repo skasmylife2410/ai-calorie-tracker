@@ -271,7 +271,7 @@
     "legend": "line = 7-day average",
     "emptyTitle": "No weight logged yet",
     "emptyBody": "Add a reading and the trend builds from there.",
-    "tab": "Weight"
+    "tab": "Progress"
   },
   "edit": {
     "amount": "Amount",
@@ -785,5 +785,80 @@
     "agreeSignup": "I'm 16 or older and I agree to the",
     "continue": "Agree and continue",
     "tickFirst": "Please tick the box to agree first."
+  },
+  "prog": {
+    "title": "Progress",
+    "timeline": "Timeline",
+    "insightsTitle": "What changed",
+    "winsTitle": "Wins",
+    "compareNote": "Arrows compare with the {n} days before.",
+    "tWeight": "Weight",
+    "tWeightSub": "7-day average",
+    "tTarget": "Calories on target",
+    "tTargetSub": "of the days you logged",
+    "tProtein": "Protein goal",
+    "days": " days",
+    "tProteinSub": "avg {g} g a day",
+    "tLogged": "Days logged",
+    "tLoggedSub": "streak: {n} days",
+    "tWorkouts": "Workouts",
+    "tWorkoutsSub": "{time} · {kcal} kcal",
+    "tWorkoutsNone": "none yet",
+    "tWater": "Water",
+    "glasses": " glasses",
+    "tWaterSub": "8-glass goal on {n} days",
+    "noCompare": "new",
+    "same": "same as before",
+    "tapDay": "Tap or drag across the timeline for a day's details.",
+    "noWeight": "Weigh in a few times to see your trend",
+    "dayNothing": "Nothing logged",
+    "dayProtein": "protein {g} g",
+    "dayWorkout": "{n} workout · {min} min|{n} workouts · {min} min",
+    "dayWater": "{n} glass of water|{n} glasses of water",
+    "noWins": "Your wins collect here: streaks, weights reached, workout and meal counts.",
+    "allWins": "Show all {n}",
+    "fewer": "Show fewer",
+    "lane": {
+      "calories": "Calories",
+      "protein": "Protein",
+      "workout": "Workout",
+      "water": "Water"
+    },
+    "leg": {
+      "on": "on target",
+      "over": "over",
+      "under": "under",
+      "win": "win"
+    },
+    "in": {
+      "weightDown": "Your 7-day average is down {kg} over {days} days, about {perWeek} a week.",
+      "weightUp": "Your 7-day average is up {kg} over {days} days, about {perWeek} a week.",
+      "weightFlat": "Your weight held steady over {days} days.",
+      "onTargetUp": "Calories on target {n} days, {diff} more than the {total} days before.",
+      "onTargetDown": "Calories on target {n} days, {diff} fewer than the {total} days before.",
+      "onTargetUpFirst": "Calories on target {n} of the last {total} days.",
+      "proteinUp": "Protein goal hit on {n} days, {diff} more than before.",
+      "proteinDown": "Protein goal hit on {n} days, {diff} fewer than before.",
+      "proteinUpFirst": "Protein goal hit on {n} of the last {total} days.",
+      "loggedUp": "You logged {n} of {total} days, {diff} more than before.",
+      "loggedDown": "You logged {n} of {total} days, {diff} fewer than before.",
+      "loggedUpFirst": "You logged {n} of the last {total} days.",
+      "workoutsUp": "{n} workouts, {diff} more than the {total} days before.",
+      "workoutsDown": "{n} workouts, {diff} fewer than the {total} days before.",
+      "workoutsUpFirst": "{n} workouts in the last {total} days.",
+      "weekendMore": "Weekends run about {kcal} kcal above your weekdays.",
+      "weekendLess": "Weekends run about {kcal} kcal below your weekdays.",
+      "steady": "You logged {n} of {total} days. Keep going and patterns will show up here.",
+      "none": "Log a few days and weigh in a couple of times, and what changes will show up here."
+    },
+    "ms": {
+      "streak": "{n}-day logging streak",
+      "meals": "{n} meals logged",
+      "workouts": "First workout logged|{n} workouts logged",
+      "proteinWeek": "A full week hitting your protein goal",
+      "weightStep": "7-day average reached {kg}",
+      "halfway": "Halfway to your goal of {kg}",
+      "goal": "Goal reached: {kg}"
+    }
   }
 }
