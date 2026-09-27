@@ -498,7 +498,21 @@
     "back": "Atrás",
     "next": "Siguiente",
     "start": "Empezar",
-    "step": "Paso {n} de {total}"
+    "step": "Paso {n} de {total}",
+    "installTitle": "Pon SnapCal en tu pantalla de inicio",
+    "installSub": "Se abre a pantalla completa como una app, carga más rápido y, en iPhone, es la única forma de recibir notificaciones.",
+    "installWhich": "Qué teléfono",
+    "installNow": "Instalar SnapCal",
+    "installOrByHand": "O hazlo tú:",
+    "ios1": "Abre esta página en <b>Safari</b>.",
+    "ios2": "Toca <b>Compartir</b> {icon} abajo en la pantalla (arriba en iPad).",
+    "ios3": "Desliza hacia abajo y toca <b>Agregar a inicio</b> {icon}.",
+    "ios4": "Toca <b>Agregar</b>. SnapCal ya está en tu pantalla de inicio: ábrela desde ahí.",
+    "iosNote": "En Chrome para iPhone, el botón Compartir está en la barra de direcciones.",
+    "android1": "En Chrome, toca el menú {icon} arriba a la derecha.",
+    "android2": "Toca <b>Instalar app</b> o <b>Agregar a la pantalla principal</b> {icon}.",
+    "android3": "Toca <b>Instalar</b>. SnapCal aparece con tus apps: ábrela desde ahí.",
+    "androidNote": "Samsung Internet: toca el menú ☰ y luego Añadir página a → Pantalla de inicio."
   },
   "activity": {
     "sedentary": "Casi todo sentada/o",

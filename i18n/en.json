@@ -498,7 +498,21 @@
     "back": "Back",
     "next": "Next",
     "start": "Start logging",
-    "step": "Step {n} of {total}"
+    "step": "Step {n} of {total}",
+    "installTitle": "Put SnapCal on your Home Screen",
+    "installSub": "It opens full screen like an app, loads faster, and on iPhone it's the only way to get notifications.",
+    "installWhich": "Which phone",
+    "installNow": "Install SnapCal",
+    "installOrByHand": "Or do it yourself:",
+    "ios1": "Open this page in <b>Safari</b>.",
+    "ios2": "Tap <b>Share</b> {icon} at the bottom of the screen (at the top on iPad).",
+    "ios3": "Scroll down and tap <b>Add to Home Screen</b> {icon}.",
+    "ios4": "Tap <b>Add</b>. SnapCal is now on your Home Screen — open it from there.",
+    "iosNote": "In Chrome on iPhone, the Share button is in the address bar.",
+    "android1": "In Chrome, tap the menu {icon} at the top right.",
+    "android2": "Tap <b>Install app</b> or <b>Add to Home screen</b> {icon}.",
+    "android3": "Tap <b>Install</b>. SnapCal appears with your apps — open it from there.",
+    "androidNote": "Samsung Internet: tap the menu ☰, then Add page to → Home screen."
   },
   "activity": {
     "sedentary": "Mostly sitting",

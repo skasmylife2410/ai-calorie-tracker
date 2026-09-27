@@ -12,6 +12,7 @@ import { render as renderToday } from "./ui/today.js";
 import { render as renderHistory } from "./ui/history.js";
 import { render as renderProfile } from "./ui/profile.js";
 import { render as renderOnboarding } from "./ui/onboarding.js";
+import "./install.js"; // catches Android Chrome's install offer as early as possible
 import { openCameraScan } from "./ui/scan.js";
 import { openFoodSearchSheet } from "./ui/search.js";
 import { openDescribeMealSheet } from "./ui/describe.js";

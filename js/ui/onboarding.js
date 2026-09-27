@@ -9,11 +9,12 @@
 // (see nutrition.js), which for a muscular woman at 62 kg is worth over 100 kcal a day.
 
 import * as store from "../store.js";
+import { isStandalone, platform, canPromptInstall, promptInstall, onInstallChange, SHARE_ICON, ADD_ICON, MENU_ICON, PHONE_ICON } from "../install.js";
 import { resolveUserGoals, estimateBodyFatPct, leanMassKg } from "../nutrition.js";
 import { BF_RANGES, silhouetteSvg, navyBodyFat, rangeFor } from "../bodyfat.js";
 import { t, currentLanguage, setLanguage, formatNumber } from "../i18n.js";
 
-const STEPS = ["lang", "about", "size", "build", "activity", "goal", "plan"];
+const BASE_STEPS = ["lang", "about", "size", "build", "activity", "goal", "plan"];
 
 const ACTIVITY = [
   { key: "sedentary", labelKey: "activity.sedentary" },
@@ -89,6 +90,12 @@ export function render(container, onComplete, { redo = false } = {}) {
   if (redo) prefillFrom(store.getProfile());
   else draft = { ...DEFAULTS };
   let step = 0;
+  // Last step: how to put SnapCal on the Home Screen. Not when it's already opened from there,
+  // and not when someone is only redoing their plan from Profile.
+  const STEPS = redo || isStandalone() ? BASE_STEPS : [...BASE_STEPS, "install"];
+  const LAST = STEPS[STEPS.length - 1];
+  let installFor = platform() === "android" ? "android" : "ios";
+  let stopInstallWatch = null;
 
   const goals = () => resolveUserGoals({
     weightKg: draft.weightKg, heightCm: draft.heightCm, age: draft.age, sex: draft.sex,
@@ -118,6 +125,7 @@ export function render(container, onComplete, { redo = false } = {}) {
     // First point on the weight chart, so the trend can start immediately. On a redo this
     // replaces today's reading rather than adding a second one (one reading a day).
     store.addWeightEntry({ kg: draft.weightKg });
+    stopInstallWatch?.();
     onComplete?.();
   };
 
@@ -132,13 +140,13 @@ export function render(container, onComplete, { redo = false } = {}) {
         <div class="onb-body" id="onb-body">${bodyHtml(name)}</div>
         <div class="onb-actions">
           ${step > 0 ? `<button type="button" class="onb-back" id="onb-back">${t("onb.back")}</button>` : ""}
-          <button type="button" class="onb-next" id="onb-next">${name === "plan" ? t("onb.start") : t("onb.next")}</button>
+          <button type="button" class="onb-next" id="onb-next">${name === LAST ? t("onb.start") : t("onb.next")}</button>
         </div>
       </div>`;
     wire(name);
     container.querySelector("#onb-back")?.addEventListener("click", () => { step--; draw(); });
     container.querySelector("#onb-next")?.addEventListener("click", () => {
-      if (name === "plan") return finish();
+      if (name === LAST) return finish();
       step++;
       draw();
     });
@@ -275,6 +283,25 @@ export function render(container, onComplete, { redo = false } = {}) {
           ${lean > 0 ? `<p class="onb-note">${t("onb.planLean", { n: Math.round(lean * 10) / 10 })}</p>` : ""}
           <p class="onb-note">${t("onb.planLearn")}</p>`;
       }
+      case "install": {
+        const ios = installFor === "ios";
+        const steps = ios
+          ? [t("onb.ios1"), t("onb.ios2", { icon: SHARE_ICON }), t("onb.ios3", { icon: ADD_ICON }), t("onb.ios4")]
+          : [t("onb.android1", { icon: MENU_ICON }), t("onb.android2", { icon: PHONE_ICON }), t("onb.android3")];
+        const oneTap = !ios && canPromptInstall();
+        return `
+          <h1 class="onb-title">${t("onb.installTitle")}</h1>
+          <p class="onb-sub">${t("onb.installSub")}</p>
+          <div class="onb-units onb-platform" role="group" aria-label="${t("onb.installWhich")}">
+            <button type="button" data-platform="ios" aria-pressed="${ios}">iPhone</button>
+            <button type="button" data-platform="android" aria-pressed="${!ios}">Android</button>
+          </div>
+          ${oneTap ? `<button type="button" class="onb-install-now" id="onb-install-now">${PHONE_ICON}<span>${t("onb.installNow")}</span></button><p class="onb-note">${t("onb.installOrByHand")}</p>` : ""}
+          <ol class="onb-install-steps">
+            ${steps.map((s, i) => `<li><span class="onb-install-n">${i + 1}</span><span class="onb-install-text">${s}</span></li>`).join("")}
+          </ol>
+          <p class="onb-note">${ios ? t("onb.iosNote") : t("onb.androidNote")}</p>`;
+      }
       default:
         return "";
     }
@@ -291,6 +318,13 @@ export function render(container, onComplete, { redo = false } = {}) {
       if (name === "goal") (["slow", "normal", "fast"].includes(v) ? (draft.rate = v) : (draft.goal = v));
       draw();
     }));
+
+    body.querySelectorAll("[data-platform]").forEach((b) => b.addEventListener("click", () => { installFor = b.dataset.platform; draw(); }));
+    body.querySelector("#onb-install-now")?.addEventListener("click", async () => {
+      if (await promptInstall()) finish(); // installed: nothing left to explain
+      else draw();
+    });
+    if (name === "install" && !stopInstallWatch) stopInstallWatch = onInstallChange(() => { if (STEPS[step] === "install") draw(); });
 
     body.querySelectorAll("[data-units]").forEach((b) => b.addEventListener("click", () => { draft.units = b.dataset.units; draw(); }));
 

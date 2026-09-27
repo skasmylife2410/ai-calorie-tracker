@@ -2206,3 +2206,11 @@ body.setup-open { overflow: hidden; }
 .calorie-remaining, .macro-value { font-variant-numeric: tabular-nums; }
 .calorie-remaining.is-counting, .macro-value.is-counting { color: var(--sc-primary-text); }
 @media (prefers-reduced-motion: reduce) { .home-meals-list:not([hidden]) { animation: none; } .mini-tab-caret { transition: none; } }
+
+/* onboarding: add to Home Screen */
+.onb-platform { margin-top: 14px; }
+.onb-install-steps { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+.onb-install-steps li { display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,.85); border-radius: 16px; padding: 12px 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); font-size: 14.5px; line-height: 1.45; }
+.onb-install-n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--sc-primary-text); color: #fff; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.onb-install-text svg { display: inline-block; vertical-align: -4px; color: var(--sc-blue, #007AFF); margin: 0 1px; }
+.onb-install-now { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 16px; font: inherit; font-size: 16px; font-weight: 800; padding: 14px; border: 0; border-radius: 16px; background: var(--sc-blue, #007AFF); color: #fff; }
