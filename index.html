@@ -15,10 +15,50 @@
   <link rel="stylesheet" href="/css/theme.css" />
   <link rel="stylesheet" href="/css/us.css" />
     <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    /* The opening (js/intro.js). Inline so it's on screen before anything else loads. */
+    #intro { position: fixed; inset: 0; z-index: 10000; background: #050505; overflow: hidden;
+      display: grid; place-items: center; transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .7s ease; }
+    #intro .intro-fluid { position: absolute; inset: -4%; opacity: 0; transform: scale(1.12); transition: opacity .7s ease, transform 2.4s cubic-bezier(.2,.7,.2,1); }
+    #intro.intro-fluid-in .intro-fluid { opacity: 1; transform: scale(1); }
+    #intro .intro-fluid canvas { width: 100% !important; height: 100% !important; display: block; }
+    #intro::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(60% 26% at 50% 50%, rgba(0,0,0,.62) 0%, rgba(0,0,0,.28) 60%, rgba(0,0,0,0) 100%), radial-gradient(140% 90% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.5) 100%); }
+    #intro .intro-mark { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 14px;
+      color: #fff; text-shadow: 0 2px 24px rgba(0,0,0,.6); }
+    #intro .intro-word { display: flex; font: 700 clamp(44px, 14vw, 72px)/1 -apple-system, "SF Pro Display", system-ui, "Helvetica Neue", sans-serif; letter-spacing: -.045em; }
+    #intro .intro-word span { display: inline-block; clip-path: inset(0 0 0 0); }
+    #intro .intro-word i { display: inline-block; font-style: normal; transform: translateY(105%); }
+    #intro .intro-line { width: 0; height: 1.5px; background: currentColor; }
+    #intro .intro-tag { font: 600 11px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .38em; text-transform: uppercase; opacity: 0; padding-left: .38em; }
+    #intro.intro-playing .intro-word i { animation: intro-rise .9s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--i) * 45ms + 150ms); }
+    #intro.intro-playing .intro-line { animation: intro-line .9s cubic-bezier(.6,0,.2,1) .55s forwards; }
+    #intro.intro-playing .intro-tag { animation: intro-fade .6s ease .95s forwards; }
+    #intro.intro-leaving { opacity: 0; transform: scale(1.06); filter: blur(6px); pointer-events: none; }
+    @keyframes intro-rise { to { transform: translateY(0); } }
+    @keyframes intro-line { to { width: 132px; } }
+    @keyframes intro-fade { to { opacity: .8; } }
+    @media (prefers-reduced-motion: reduce) {
+      #intro .intro-word i { transform: none; }
+      #intro .intro-line { width: 132px; }
+      #intro .intro-tag { opacity: .8; }
+      #intro.intro-playing * { animation: none !important; }
+      #intro, #intro .intro-fluid { transition-duration: .25s; }
+    }
+  </style>
 </head>
 <body>
+  <div id="intro" aria-hidden="true">
+    <div class="intro-fluid"></div>
+    <div class="intro-mark">
+      <div class="intro-word"><span><i style="--i:0">S</i><i style="--i:1">n</i><i style="--i:2">a</i><i style="--i:3">p</i><i style="--i:4">C</i><i style="--i:5">a</i><i style="--i:6">l</i></span></div>
+      <div class="intro-line"></div>
+      <div class="intro-tag">snap · log · live</div>
+    </div>
+  </div>
   <div id="app-root"></div>
   <div id="modal-root"></div>
+  <script type="module" src="/js/intro.js"></script>
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>

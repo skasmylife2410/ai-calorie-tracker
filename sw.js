@@ -1,7 +1,7 @@
 // sw.js — minimal service worker: network-first for everything, cache-fallback for the app
 // shell, enough for PWA installability. Bump CACHE_VERSION to bust caches on deploy.
 
-const CACHE_VERSION = "snapcal-v4";
+const CACHE_VERSION = "snapcal-v5";
 
 const APP_SHELL = [
   "/i18n/en.json",
@@ -11,6 +11,8 @@ const APP_SHELL = [
   "/css/theme.css",
   "/css/app.css",
   "/js/app.js",
+  "/js/intro.js",
+  "/vendor/fluid-bg/core.js",
   "/js/nutrition.js",
   "/js/store.js",
   "/js/resize.js",
