@@ -4,6 +4,7 @@
 // direct macro edits become the new baseline (§12.2). "Fix results" re-runs analysis with an
 // appended correction via queue.submitCorrection.
 
+import { safeSrc } from "../safe-src.js";
 import * as store from "../store.js";
 import { t, currentLanguage } from "../i18n.js";
 import * as queue from "../queue.js";
@@ -429,7 +430,7 @@ function snapshotBaseline(item) {
 
 function thumbHtml(entry) {
   if (entry.photoDataUrl) {
-    return `<div class="results-thumb-wrap"><img class="results-thumb" src="${entry.photoDataUrl}" alt="" /></div>`;
+    return `<div class="results-thumb-wrap"><img class="results-thumb" src="${safeSrc(entry.photoDataUrl)}" alt="" /></div>`;
   }
   if (typeof entry.analysisDescription === "string" && entry.analysisDescription.trim() !== "") {
     return `

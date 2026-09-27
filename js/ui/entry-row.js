@@ -1,6 +1,7 @@
 // entry-row.js — RecentEntryRow, shared by Today (§5.4.3) and Progress/History (§6.2).
 // Three states (pending / failed / completed), swipeable to delete, tap-routed per §5.4.4.
 
+import { safeSrc } from "../safe-src.js";
 import { entryState } from "../queue.js";
 import { isGroupedEntry } from "../store.js";
 import { ANALYSIS_MODES } from "../api.js";
@@ -30,7 +31,7 @@ function pendingRampInfo(entry) {
 function pendingRowHtml(entry) {
   const pct = pendingRampInfo(entry);
   const thumbInner = entry.photoDataUrl
-    ? `<img src="${entry.photoDataUrl}" alt="" /><div class="scrim"></div>`
+    ? `<img src="${safeSrc(entry.photoDataUrl)}" alt="" /><div class="scrim"></div>`
     : `${icon("textBubbleFill", { size: 20, color: "rgba(255,255,255,0.55)" })}`;
   const ring = ringGauge({
     size: 34,
@@ -76,14 +77,14 @@ export function groupThumbHtml(entry, { className = "entry-thumb" } = {}) {
   const n = Array.isArray(entry.analysisItems) ? entry.analysisItems.length : Array.isArray(entry.items) ? entry.items.length : 0;
   const count = n > 1 ? `<span class="group-count" aria-hidden="true">${n}</span>` : "";
   if (entry.photoDataUrl) {
-    return `<div class="${className} is-group has-photo"><img src="${entry.photoDataUrl}" alt="" /><span class="group-badge">${icon("layersFill", { size: 11, color: "#fff" })}${n > 1 ? n : ""}</span></div>`;
+    return `<div class="${className} is-group has-photo"><img src="${safeSrc(entry.photoDataUrl)}" alt="" /><span class="group-badge">${icon("layersFill", { size: 11, color: "#fff" })}${n > 1 ? n : ""}</span></div>`;
   }
   return `<div class="${className} is-group">${icon("layersFill", { size: 22, color: "#fff" })}${count}</div>`;
 }
 
 function completedRowHtml(entry) {
   const thumb = entry.photoDataUrl
-    ? `<img src="${entry.photoDataUrl}" alt="" />`
+    ? `<img src="${safeSrc(entry.photoDataUrl)}" alt="" />`
     : icon("forkKnife", { size: 18, color: "var(--sc-secondary)" });
   const thumbBox = isGroupedEntry(entry) ? groupThumbHtml(entry) : `<div class="entry-thumb">${thumb}</div>`;
   const macroChips = MACRO_META.map(

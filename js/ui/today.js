@@ -1,5 +1,6 @@
 // today.js — Home tab (TodayView.swift), SPEC-UI.md §5.
 
+import { safeSrc } from "../safe-src.js";
 import * as store from "../store.js";
 import { t, weekdayLabels, formatDate } from "../i18n.js";
 import * as queue from "../queue.js";
@@ -85,7 +86,7 @@ export function render(container) {
         <div class="today-header-right">
           <div class="streak-pill">${icon("flameFill", { size: 18, color: "var(--sc-streak-flame)" })}<span class="streak-count">${streakCount}</span></div>
           <button type="button" class="home-avatar" id="home-avatar" aria-label="${t("tabs.profile")}">
-            ${store.getProfile().avatar ? `<img src="${store.getProfile().avatar}" alt="" />` : icon("personFill", { size: 18 })}
+            ${store.getProfile().avatar ? `<img src="${safeSrc(store.getProfile().avatar)}" alt="" />` : icon("personFill", { size: 18 })}
           </button>
         </div>
       </div>
@@ -486,7 +487,7 @@ function doodleCardHtml() {
   if (!nano) {
     ensureNanoDoodle(state, variant, profile.avatar ?? null).then((url) => {
       const holder = document.getElementById("doodle-figure");
-      if (url && holder) holder.innerHTML = `<img class="nano-doodle" src="${url}" alt="" />`;
+      if (url && holder) holder.innerHTML = `<img class="nano-doodle" src="${safeSrc(url)}" alt="" />`;
     });
   }
 
@@ -534,7 +535,7 @@ function doodleCardHtml() {
 
   return `
     <div class="doodle-card${card.tone ? ` tone-${card.tone}` : ""}">
-      <div id="doodle-figure">${nano ? `<img class="nano-doodle" src="${nano}" alt="" />` : doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
+      <div id="doodle-figure">${nano ? `<img class="nano-doodle" src="${safeSrc(nano)}" alt="" />` : doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
       <div class="doodle-text" id="doodle-text">
         <div class="doodle-title">${card.title}</div>
         <div class="doodle-sub">${card.body}</div>

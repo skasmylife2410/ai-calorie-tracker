@@ -11,6 +11,7 @@
 // change what was shared. Posts must carry a photo, shrunk on the phone to ~320px before
 // upload. Everything older than FEED_DAYS is deleted by /api/weekly (and hidden here before that).
 
+import { isSafeDataImage } from "../js/safe-src.js";
 import { checkAuth } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
 import { resolveGroup } from "./_groups.js";
@@ -49,7 +50,7 @@ export function cleanItem(kind, item = {}) {
     note: str(item.note, 200),
   };
   if (kind === "meal") {
-    const photo = typeof item.photo === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
+    const photo = typeof item.photo === "string" && isSafeDataImage(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
     const items = Array.isArray(item.items)
       ? item.items.slice(0, 12).map((i) => ({ name: str(i.name, 60), gramsEstimate: num(i.gramsEstimate), calories: num(i.calories), proteinG: num(i.proteinG), carbsG: num(i.carbsG), fatG: num(i.fatG), micros: boundedMicros(i.micros) }))
       : [];

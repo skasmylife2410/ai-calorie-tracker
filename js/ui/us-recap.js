@@ -1,6 +1,7 @@
 // us-recap.js — your Friday recommendation at the top of Us. Private: it's fetched for the
 // signed-in person only, and the meal photos come from this phone's own log, never the server.
 
+import { safeSrc } from "../safe-src.js";
 import { myRecap } from "../social.js";
 import * as store from "../store.js";
 import { t, formatNumber } from "../i18n.js";
@@ -59,7 +60,7 @@ function mealHtml(meal, lang) {
   const day = esc(shortDay(meal.day, lang));
   const kcal = `${formatNumber(meal.calories)} kcal`;
   return photo
-    ? `<figure class="rc-meal"><img src="${photo}" alt="${esc(meal.name)}" loading="lazy"><figcaption>${day}<br>${kcal}</figcaption></figure>`
+    ? `<figure class="rc-meal"><img src="${safeSrc(photo)}" alt="${esc(meal.name)}" loading="lazy"><figcaption>${day}<br>${kcal}</figcaption></figure>`
     : `<div class="rc-chip"><span class="rc-chip-name">${esc(meal.name)}</span><span class="rc-chip-meta">${day}, ${kcal}</span></div>`;
 }
 

@@ -2,6 +2,7 @@
 // shelf of the last 20 distinct foods. Logging applies a servings multiplier, so "arepa ×2" is
 // two taps. Replaces the old saved.js recents-only sheet (SPEC-UI.md §9 superseded).
 
+import { safeSrc } from "../safe-src.js";
 import * as store from "../store.js";
 import { openResultsSheet } from "./results.js";
 import { groupThumbHtml } from "./entry-row.js";
@@ -68,7 +69,7 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
         const thumb = Array.isArray(f.items) && f.items.length > 1
           ? groupThumbHtml(f, { className: "fav-thumb" })
           : f.photoDataUrl
-          ? `<img class="fav-thumb" src="${f.photoDataUrl}" alt="">`
+          ? `<img class="fav-thumb" src="${safeSrc(f.photoDataUrl)}" alt="">`
           : `<div class="fav-thumb"></div>`;
         return `
           <div class="fav-row" data-id="${f.id}">

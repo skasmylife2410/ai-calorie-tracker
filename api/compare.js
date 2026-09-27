@@ -6,6 +6,7 @@
 // Response: { me, people: [{ owner, goals|null, days: { "YYYY-MM-DD": {calories, proteinG,
 //             carbsG, fatG, meals, water} } }] }  |  { errorType }
 
+import { isSafeDataImage } from "../js/safe-src.js";
 import { checkAuth, parseUsers, DEFAULT_OWNER } from "./_auth.js";
 import { resolveGroup, membersOf } from "./_groups.js";
 import { resolveUserGoals } from "../js/nutrition.js";
@@ -131,7 +132,7 @@ export default async function handler(req, res) {
     // make everyone's phone fetch something from elsewhere.
     const displayName = typeof profile?.data?.displayName === "string" ? profile.data.displayName.trim().slice(0, 40) : "";
     const raw = profile?.data?.avatar;
-    const avatar = typeof raw === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(raw) && raw.length < 120000 ? raw : null;
+    const avatar = typeof raw === "string" && isSafeDataImage(raw) && raw.length < 120000 ? raw : null;
     return { owner, name: displayName || null, avatar, goals: goalsFrom(profile?.data), days: {} };
   });
   const byOwner = Object.fromEntries(people.map((p) => [p.owner, p]));

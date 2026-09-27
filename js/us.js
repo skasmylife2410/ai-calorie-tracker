@@ -2,6 +2,7 @@
 // exercise; nothing here writes. Uses the same passcode the main
 // app stored on this device; never writes anything.
 
+import { safeSrc } from "./safe-src.js";
 import { getStoredToken, setStoredToken } from "./net.js";
 import { t, initI18n, formatNumber, formatDate, currentLanguage } from "./i18n.js";
 import { doodleSvg } from "./ui/doodle.js";
@@ -82,7 +83,7 @@ function avatarHtml(p, i, size = 40) {
   const c = COLORS[i % COLORS.length];
   const mine = p.owner === data.me;
   const inner = p.avatar
-    ? `<img src="${p.avatar}" alt="" />`
+    ? `<img src="${safeSrc(p.avatar)}" alt="" />`
     : `<span>${escHtml(titleCase(p.owner).slice(0, 1))}</span>`;
   return `
     <button type="button" class="us-avatar${mine ? " is-mine" : ""}" ${mine ? 'data-edit-avatar="1"' : "disabled"}

@@ -1,6 +1,7 @@
 // us-social.js — the parts of the Us tab that are about each other rather than numbers:
 // writing someone a note, and the feed of shared meals and ideas.
 
+import { safeSrc } from "../safe-src.js";
 import { sendNote, listShares, deleteShare, addComment, deleteComment } from "../social.js";
 import { t, formatNumber } from "../i18n.js";
 
@@ -91,10 +92,10 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
     const isOpen = open.has(s.id);
     return `
       <article class="feed-card" data-id="${esc(s.id)}">
-        <img class="feed-thumb" src="${d.photo}" alt="${esc(d.name)}" loading="lazy">
+        <img class="feed-thumb" src="${safeSrc(d.photo)}" alt="${esc(d.name)}" loading="lazy">
         <div class="feed-main">
           <header class="feed-head">
-            <span class="feed-av" style="--av:${colorOf(s.owner)}">${av ? `<img src="${av}" alt="">` : esc(nameOf(s.owner).slice(0, 1))}</span>
+            <span class="feed-av" style="--av:${colorOf(s.owner)}">${av ? `<img src="${safeSrc(av)}" alt="">` : esc(nameOf(s.owner).slice(0, 1))}</span>
             <span class="feed-who">${esc(nameOf(s.owner))}</span>
             <span class="feed-when">${agoLabel(s.created_at)}</span>
           </header>
