@@ -48,3 +48,23 @@ test("Mono's light marker colours keep at least 3:1 contrast on white and on the
   const sec = light.match(/--mn-sec: (#[0-9A-Fa-f]{6})/)[1];
   assert.ok(ratio(sec, "#FFFFFF") >= 4.5, "secondary text meets AA on white");
 });
+
+test("Mono Dark: every surface keeps ink, secondary text and markers readable", () => {
+  const css = readFileSync(new URL("../css/mono.css", import.meta.url), "utf8");
+  const start = css.indexOf(':root[data-theme="mono"][data-mode="dark"] {');
+  const dark = css.slice(start, css.indexOf("}", start));
+  const hex = (name) => dark.match(new RegExp(`--mn-${name}: (#[0-9A-Fa-f]{6})`))?.[1];
+  const lum = (h) => {
+    const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  const surfaces = ["bg", "card", "raised", "control"].map(hex);
+  assert.ok(surfaces.every(Boolean), "dark defines page, card, raised and control");
+  for (let i = 1; i < surfaces.length; i++) assert.ok(lum(surfaces[i]) > lum(surfaces[i - 1]), "each surface is lighter than the one beneath it");
+  for (const s of surfaces) {
+    assert.ok(ratio(hex("ink"), s) >= 7, `ink on ${s}`);
+    assert.ok(ratio(hex("sec"), s) >= 4.5, `secondary text on ${s}`);
+    for (const m of ["protein", "carbs", "fat", "water", "flame", "over", "good", "violet"]) assert.ok(ratio(hex(m), s) >= 3, `${m} on ${s}`);
+  }
+});

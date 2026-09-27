@@ -28,7 +28,12 @@ working and stays selectable in Profile › Appearance. Every visual change is c
 **Mono Light, Mono Dark and Classic**.
 
 Mono, in the spirit of Nothing OS:
-- Black and white. Page `#F2F2F2` / cards `#FFF` in light; `#000` / `#111` in dark.
+- Black and white. Light: page `#F2F2F2`, cards `#FFF`. Dark is composed, not inverted: surfaces
+  step lighter as they come forward: page `#0A0A0A`, card `#151515`, sheet/bar `#1D1D1D`,
+  control `#282828`. Dark ink is a soft `#F2F2F2`, not pure white.
+- Selected states are an ink ring on the control surface, not a solid fill; solid ink/white is
+  reserved for the one primary action on a screen. Big emphasis blocks are raised cards, not
+  white slabs.
 - Dot-matrix numerals (Doto, self-hosted) for the numbers people come to read; everything
   else is the system sans. Small labels: quiet uppercase sans with light tracking.
 - A faint dot grid behind the page, flat cards with 1px hairlines (no drop shadows, no
@@ -54,15 +59,20 @@ over-goal, and chart series that need telling apart. Everything else is ink.
   what they sit on. Compute it; don't eyeball it.
 - The classic marker colours fail on white (carbs 2.2, streak 2.2, water 2.8), so Mono Light
   uses deeper shades of the same hues; on black the originals pass and are kept.
-- Secondary text is `#6E6E73` on white (5.1:1), `#9A9A9A` on black (7.5:1). The old
-  `#8E8E93` fails on white; don't reintroduce it for text.
-- `tests/theme.test.mjs` checks the Mono Light marker ratios. Extend it when adding a marker.
+- Secondary text is `#5C5C60` in light (≥ 4.7:1 on every light surface, grey chips included)
+  and `#A3A3A8` in dark (≥ 5.4:1 on every dark surface). `#8E8E93` and `#6E6E73` fail on
+  light grey chips; don't reintroduce them for text.
+- `tests/theme.test.mjs` checks the Mono marker and text ratios in light and dark. Extend it
+  when adding a marker or a surface.
+- Before calling a theme change done, run a DOM contrast scan over every tab and sheet in each
+  theme (walk text nodes, blend real backgrounds): screenshots alone miss white-on-white text.
 
 ## 5. What reads as "vibe-coded" (avoid)
 
 - Widely letter-spaced uppercase **monospace** taglines ("S N A P · L O G").
 - A generic bold system-font wordmark with tight negative tracking as the "logo".
 - Gradient-tinted cards, glassy blobs, purple-to-pink gradients, glows, emoji as decoration.
+- Coloured side stripes on cards or rows; colour belongs in a small dot by the label instead.
 - Template-looking output (Canva-style logos, stock illustration).
 - Adding words where a mark or a number would do. The intro has **no text**: just the
   pearl Fluid flow and the flame.

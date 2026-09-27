@@ -7,8 +7,8 @@
    so Classic is untouched. data-mode="light|dark" picks the palette; data-markers="off" turns
    every marker to ink.
 
-   Contrast: text is ink on paper (21:1), secondary text is #6E6E73 on white (5.1:1) or
-   #9A9A9A on black (7.5:1). Markers are non-text graphics and need 3:1 against their
+   Contrast: text is ink on paper (21:1), secondary text is #5C5C60 in light (≥ 4.7:1 on every
+   light surface) or #A3A3A8 in dark (≥ 5.4:1 on every dark surface). Markers are non-text graphics and need 3:1 against their
    background: the classic marker colours fail that on white (carbs 2.2, streak 2.2, water 2.8),
    so light mode uses deeper shades of the same hues (all ≥ 3.3:1 on #F2F2F2 and ≥ 3.6:1 on
    white); on black the originals already pass (≥ 6:1) and are kept. */
@@ -30,8 +30,9 @@
   --mn-raised: #FFFFFF;
   --mn-ink: #000000;
   --mn-on-ink: #FFFFFF;
-  --mn-sec: #6E6E73;
+  --mn-sec: #5C5C60; /* ≥ 4.7:1 on every light surface, incl. grey chips and #DADADA */
   --mn-line: #E2E2E2;
+  --mn-control: #F2F2F2;
   --mn-off: #DADADA;
   --mn-soft: rgba(0, 0, 0, 0.06);
   --mn-grid: rgba(0, 0, 0, 0.085);
@@ -50,18 +51,22 @@
 }
 
 :root[data-theme="mono"][data-mode="dark"] {
-  --mn-bg: #000000;
-  --mn-card: #111111;
-  --mn-raised: #1A1A1A;
-  --mn-ink: #FFFFFF;
-  --mn-on-ink: #000000;
-  --mn-sec: #9A9A9A;
-  --mn-line: #262626;
-  --mn-off: #333333;
+  /* Composed, not inverted: surfaces step lighter as they come forward (page → card →
+     sheet/bar → control), so depth reads without shadows. Ink is a soft white, not #FFF, to
+     cut glare at night. Measured: ink 16–18:1 and secondary 6–8:1 on every step. */
+  --mn-bg: #0A0A0A;
+  --mn-card: #151515;
+  --mn-raised: #1D1D1D;
+  --mn-control: #282828;
+  --mn-ink: #F2F2F2;
+  --mn-on-ink: #0A0A0A;
+  --mn-sec: #A3A3A8;
+  --mn-line: #2A2A2A;
+  --mn-off: #363636;
   --mn-soft: rgba(255, 255, 255, 0.08);
-  --mn-grid: rgba(255, 255, 255, 0.11);
+  --mn-grid: rgba(255, 255, 255, 0.10);
 
-  /* the original marker colours all clear 6:1 on black */
+  /* the original marker colours all clear 4:1 on every dark surface, 5.5:1 on cards */
   --mn-protein: #E85D5D;
   --mn-carbs: #E5A054;
   --mn-fat: #6B8DE3;
@@ -302,3 +307,132 @@
 :root[data-theme="mono"][data-mode="dark"] .fab-dot { box-shadow: 0 0 0 1px var(--mn-line), 0 6px 18px -6px rgba(0,0,0,.8); }
 :root[data-theme="mono"][data-mode="dark"] .fab-dot.is-primary { background-color: var(--mn-ink) !important; color: var(--mn-on-ink) !important; }
 :root[data-theme="mono"] .fab-dot:not(.is-primary):active { background: var(--mn-soft); }
+
+/* =============================================================================================
+   Refinements from the Mono Dark critique (both Mono modes unless marked dark)
+============================================================================================= */
+
+/* Colour on markers, not on text: the Progress deltas are ink with a small coloured dot */
+:root[data-theme="mono"] .pg-delta { background: var(--mn-soft) !important; color: var(--mn-ink) !important; }
+:root[data-theme="mono"] :is(.pg-delta.is-good, .pg-delta.is-bad)::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin: 0 5px 1px 0; vertical-align: middle;
+}
+:root[data-theme="mono"] .pg-delta.is-good::before { background: var(--mn-good); }
+:root[data-theme="mono"] .pg-delta.is-bad::before { background: var(--mn-over); }
+
+/* Progress tiles: no coloured side stripe (a template tell); the metric's colour is a dot by its label */
+:root[data-theme="mono"] .pg-tile:before { display: none; }
+:root[data-theme="mono"] .pg-tile-label::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin: 0 6px 1px 0;
+  vertical-align: middle; background: var(--pg-c);
+}
+
+/* No purple glow under the weight card */
+:root[data-theme="mono"] .wt-hero-v2 { box-shadow: none !important; }
+
+/* No emoji in Mono: the meal-row flame and the activity chips speak in words and icons */
+:root[data-theme="mono"] .entry-cal-row .emoji,
+:root[data-theme="mono"] .ex-emoji { display: none; }
+:root[data-theme="mono"] .ex-row-icon .ex-emoji { display: none; }
+:root[data-theme="mono"] .ex-row-icon .ex-glyph { display: grid; }
+.ex-row-icon .ex-glyph { display: none; place-items: center; color: var(--sc-primary-text); }
+
+/* Focus is an ink ring with a gap, never the browser's blue box */
+:root[data-theme="mono"] :is(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--mn-ink) !important; outline-offset: 2px;
+}
+:root[data-theme="mono"] :is(input, textarea):focus { outline: none; }
+:root[data-theme="mono"] .search-field:focus-within { box-shadow: 0 0 0 2px var(--mn-bg), 0 0 0 3.5px var(--mn-ink) !important; }
+
+/* + menu: the ✕ sits above the scrim so it stays crisp; the rest of the bar steps back */
+:root[data-theme="mono"] .bottom-bar-wrap:has(.fab-btn.open) { z-index: 46; }
+:root[data-theme="mono"] .bottom-bar-wrap:has(.fab-btn.open) :is(.bottom-bar-row, .bottom-bar-backdrop, .bottom-bar-bump) { opacity: 0.35; }
+:root[data-theme="mono"] .fab-arc-caption { padding: 4px 10px; border-radius: 999px; background: var(--mn-raised); color: var(--mn-ink); box-shadow: 0 0 0 1px var(--mn-line); }
+
+/* ---- Dark only ---------------------------------------------------------------------------- */
+
+/* Sheets are a raised layer: lighter than the page, with the cards inside one step lighter again */
+:root[data-theme="mono"][data-mode="dark"] .sheet-panel {
+  --mn-bg: var(--mn-raised);
+  --sc-background: var(--mn-raised);
+  --mn-card: var(--mn-control);
+  --sc-card-bg: var(--mn-control);
+  --sc-card: var(--mn-control);
+  --mn-line: #333333;
+  --mn-off: #404040;
+  background: var(--mn-raised) !important;
+  box-shadow: 0 -1px 0 #333333;
+}
+:root[data-theme="mono"][data-mode="dark"] .sheet-backdrop { background: rgba(0, 0, 0, 0.6); }
+:root[data-theme="mono"][data-mode="dark"] .sheet-panel :where(.card, .ex-card, .servings-card, .fav-list, .meal-item-row, .results-totals-bar,
+  .search-field, .describe-textarea, .empty-recent-box, .ios-section-body, .action-sheet-group, .wt-input-card) {
+  background-color: var(--mn-control) !important;
+}
+
+/* Big emphasis blocks are dark raised cards, not white slabs (their labels were white-on-white) */
+:root[data-theme="mono"][data-mode="dark"] :is(.ex-burn, .rec-header, .ideas-card, .wt-hero-v2) {
+  background: var(--mn-card) !important;
+  color: var(--mn-ink) !important;
+  box-shadow: 0 0 0 1px var(--mn-line) !important;
+}
+:root[data-theme="mono"][data-mode="dark"] .sheet-panel :is(.ex-burn, .rec-header, .ideas-card) { background: var(--mn-control) !important; }
+:root[data-theme="mono"][data-mode="dark"] :is(.ex-burn-unit, .ex-burn-note, .rec-figure-label, .wt-hero-v2 .wt-sub,
+  .wt-hero-v2 .wt-latest, .wt-hero-v2 .wt-big span) { color: var(--mn-sec) !important; }
+:root[data-theme="mono"][data-mode="dark"] :is(.wt-hero-v2 .wt-big, .wt-hero-v2 .wt-empty, .wt-hero-v2 .wt-empty-title,
+  .rec-refresh, .wt-goal-card, .ex-burn-num, .rec-figure) { color: var(--mn-ink) !important; }
+:root[data-theme="mono"][data-mode="dark"] .wt-hero-v2 .wt-goal-set { color: var(--mn-ink) !important; border-color: var(--mn-off) !important; }
+:root[data-theme="mono"][data-mode="dark"] .wt-hero-v2 .wt-add { background: var(--mn-ink) !important; color: var(--mn-on-ink) !important; }
+:root[data-theme="mono"][data-mode="dark"] .wt-goal-card { background: var(--mn-control) !important; }
+:root[data-theme="mono"][data-mode="dark"] .rec-refresh { background: var(--mn-control) !important; }
+
+/* Selected is a ring, not a glaring white fill. Solid white is kept for the one primary action. */
+:root[data-theme="mono"][data-mode="dark"] :is(.ex-chip.is-on, .lang-btn.is-on, .onb-choice.is-on, .mem-chip.is-on, .ctx-chip.is-on,
+  .bf-card.is-on, .wt-ranges button[aria-pressed="true"], .fav-tabs button[aria-pressed="true"], .wt-unit button[aria-pressed="true"],
+  .amount-units button[aria-pressed="true"], .onb-units button[aria-pressed="true"], .meal-item-units button[aria-pressed="true"],
+  .tg-range button[aria-pressed="true"], .us-groups button[aria-pressed="true"], .servings-card.is-multiple .servings-stepper button) {
+  background: var(--mn-control) !important;
+  color: var(--mn-ink) !important;
+  box-shadow: inset 0 0 0 1.5px var(--mn-ink) !important;
+}
+:root[data-theme="mono"][data-mode="dark"] .onb-choice.is-on * { color: inherit; }
+:root[data-theme="mono"][data-mode="dark"] :is(.ex-chip, .lang-btn, .mem-chip, .ctx-chip):not(.is-on) {
+  background: transparent !important; color: var(--mn-sec) !important; box-shadow: inset 0 0 0 1px var(--mn-off) !important;
+}
+
+/* Segmented controls (Us 7/30 days etc.): the unselected option is readable grey */
+:root[data-theme="mono"][data-mode="dark"] .tg-range { background: var(--mn-card); box-shadow: 0 0 0 1px var(--mn-line); }
+:root[data-theme="mono"][data-mode="dark"] .tg-range button { color: var(--mn-sec); }
+
+/* A missed day is shown by its dashed ring; its label stays readable */
+:root[data-theme="mono"] .week-day-col.past-nolog { opacity: 1; }
+:root[data-theme="mono"] .week-day-col.past-nolog .week-day-number { color: var(--mn-sec); }
+
+/* While the + menu is open the tab bar is inactive, not merely dim: taps fall through to the scrim */
+:root[data-theme="mono"] .bottom-bar-wrap:has(.fab-btn.open) .bottom-bar-row { pointer-events: none; }
+:root[data-theme="mono"] .bottom-bar-wrap:has(.fab-btn.open) .tab-btn { visibility: hidden; }
+
+/* Destructive text in dark: a lighter red that still reads as danger (6.7:1 on cards) */
+:root[data-theme="mono"][data-mode="dark"] :is(.acct-btn.is-danger, .navbar-btn.destructive) { color: #FF6B63 !important; }
+
+/* The Us dashboard keeps its own ink and hairline variables; follow the theme's */
+:root[data-theme="mono"] { --tg-ink: var(--mn-ink); --tg-line: var(--mn-line); }
+
+/* Weight card in light: the "kg" after the number sits on the ink card, so it's paper-coloured */
+:root[data-theme="mono"]:not([data-mode="dark"]) .wt-hero-v2 .wt-big span { color: var(--mn-on-ink) !important; opacity: .75; }
+
+/* ---- Us tab ----------------------------------------------------------------------------- */
+/* The mirror chart: each person's colour is a slim bar, and the numbers sit above it in ink
+   (they were white on a pale fill, about 3:1). */
+:root[data-theme="mono"] .tg-side { height: 20px; }
+:root[data-theme="mono"] .tg-side .fill { top: auto; bottom: 0; height: 5px; border-radius: 3px; box-shadow: none; }
+:root[data-theme="mono"] .tg-side .num { top: 0; transform: none; font-size: 11px; color: var(--mn-ink) !important; }
+:root[data-theme="mono"] .tg-side .goal { top: auto; bottom: -3px; height: 11px; }
+/* Day labels, remaining calories and avatar initials are text: ink, not colour */
+:root[data-theme="mono"] :is(.tg-day strong, .tg-row.is-weekend .tg-day strong, .us-axis-day.is-weekend) { color: var(--mn-ink) !important; }
+:root[data-theme="mono"] .us-left { color: var(--mn-ink) !important; }
+:root[data-theme="mono"] .us-avatar { color: var(--mn-ink); background: var(--mn-control); box-shadow: 0 0 0 2px var(--mn-card), 0 0 0 3.5px var(--av); }
+:root[data-theme="mono"] .us-avatar-edit { background: var(--mn-ink); color: var(--mn-on-ink); box-shadow: 0 0 0 2px var(--mn-card); }
+/* no coloured side stripe on each person's row */
+:root[data-theme="mono"] .us-row::before { display: none; }
+:root[data-theme="mono"] :is(.tg-today, .tg-mirror, .tg-table) { box-shadow: 0 0 0 1px var(--mn-line) !important; }
+:root[data-theme="mono"] .tg-table tbody tr:nth-child(odd) { background: var(--mn-soft); }

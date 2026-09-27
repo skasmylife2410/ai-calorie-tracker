@@ -109,7 +109,7 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
 
       const renderChips = () => {
         els.activities.innerHTML = ACTIVITIES.map(
-          (a) => `<button type="button" class="ex-chip${a.key === activity ? " is-on" : ""}" data-activity="${a.key}">${a.emoji} ${activityLabel(a.key)}</button>`
+          (a) => `<button type="button" class="ex-chip${a.key === activity ? " is-on" : ""}" data-activity="${a.key}"><span class="ex-emoji" aria-hidden="true">${a.emoji} </span>${activityLabel(a.key)}</button>`
         ).join("");
         els.intensities.innerHTML = INTENSITIES.map(
           (key) => `<button type="button" class="ex-chip${key === intensity ? " is-on" : ""}" data-intensity="${key}">${t(`exercise.${key}`)}</button>`
@@ -258,7 +258,7 @@ export function exerciseRowsHtml(date = new Date()) {
       const label = ACTIVITIES.find((a) => a.key === e.activity)?.emoji ?? "✨";
       return `
         <div class="ex-row card" data-exercise-id="${e.id}">
-          <div class="ex-row-icon">${label}</div>
+          <div class="ex-row-icon"><span class="ex-emoji">${label}</span><span class="ex-glyph">${icon("boltFill", { size: 18 })}</span></div>
           <div class="ex-row-text">
             <div class="ex-row-name">${escapeHtml(e.name || activityLabel(e.activity))}</div>
             <div class="ex-row-sub">${t(e.minutes > 0 ? "exercise.rowSub" : "exercise.rowSubKcal", { minutes: e.minutes, burned: e.caloriesBurned || 0, credit: exerciseCredit(e.caloriesBurned || 0, store.exerciseCreditRatio()) })}</div>

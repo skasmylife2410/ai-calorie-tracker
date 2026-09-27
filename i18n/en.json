@@ -148,7 +148,9 @@
     "burned": "{n} kcal burned",
     "part0": "Morning",
     "part1": "Afternoon",
-    "part2": "Evening"
+    "part2": "Evening",
+    "loadFailed": "Couldn't load this right now. Pull down to refresh, or try again in a minute.",
+    "unconfigured": "Cloud sync isn't set up, so there's nothing to compare yet."
   },
   "profile": {
     "language": "Language",

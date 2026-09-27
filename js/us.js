@@ -48,10 +48,13 @@ async function load() {
     body: JSON.stringify({ from, ...(groupId ? { group: groupId } : {}) }),
   });
   if (res.status === 401) return { unauthorized: true };
-  if (!res.ok) return { error: `The server answered ${res.status}. Pull down to refresh or try again in a minute.` };
+  if (!res.ok) {
+    console.warn(`us.js: /api/compare answered ${res.status}`); // the status is for us, not for people
+    return { error: t("us.loadFailed") };
+  }
   const json = await res.json();
-  if (json.errorType === "unconfigured") return { error: "Cloud sync isn't set up, so there's nothing to compare yet." };
-  if (json.errorType) return { error: json.message || "The dashboard couldn't load. Try again in a minute." };
+  if (json.errorType === "unconfigured") return { error: t("us.unconfigured") };
+  if (json.errorType) return { error: json.message || t("us.loadFailed") };
   return json;
 }
 

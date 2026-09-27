@@ -148,7 +148,9 @@
     "burned": "{n} kcal quemadas",
     "part0": "Mañana",
     "part1": "Tarde",
-    "part2": "Noche"
+    "part2": "Noche",
+    "loadFailed": "No se pudo cargar ahora. Desliza hacia abajo para actualizar o inténtalo en un minuto.",
+    "unconfigured": "La sincronización en la nube no está configurada, así que aún no hay nada que comparar."
   },
   "profile": {
     "language": "Idioma",
