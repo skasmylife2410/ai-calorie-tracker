@@ -4,7 +4,7 @@
 // POST { op: "list" }        -> { ok, suggestions }  own ones; everyone's if you're the owner
 // POST { op: "done", id }    -> { ok }               owner marks one as handled
 
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 import { select, insert, patch, parseBody, newId, restBase } from "./_rest.js";
 import { isAdmin } from "./_members.js";
 
@@ -13,7 +13,7 @@ const PER_DAY = 10;
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
 
 export default async function handler(req, res) {
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "POST") return fail(res, "other", "Method not allowed", 405);
   if (!restBase()) return fail(res, "unconfigured", "Suggestions need Supabase configured.");

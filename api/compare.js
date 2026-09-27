@@ -7,7 +7,7 @@
 //             carbsG, fatG, meals, water} } }] }  |  { errorType }
 
 import { isSafeDataImage } from "../js/safe-src.js";
-import { checkAuth, parseUsers, DEFAULT_OWNER } from "./_auth.js";
+import { requireUser, parseUsers, DEFAULT_OWNER } from "./_auth.js";
 import { resolveGroup, membersOf } from "./_groups.js";
 import { resolveUserGoals } from "../js/nutrition.js";
 
@@ -30,7 +30,8 @@ async function select(table, params) {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Supabase select ${table} HTTP ${res.status}: ${text}`);
+    console.error(`compare: select ${table} HTTP ${res.status}: ${text}`);
+    throw new Error(`Couldn't read the dashboard (${res.status}).`);
   }
   return await res.json();
 }
@@ -66,7 +67,7 @@ function goalsFrom(profileData) {
 const num = (v) => (typeof v === "number" ? v : Number(v) || 0);
 
 export default async function handler(req, res) {
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
 
   if (req.method !== "POST") {

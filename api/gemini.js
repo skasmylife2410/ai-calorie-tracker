@@ -9,7 +9,7 @@
 // Body-size note: the client resizes photos to <=768px longest edge / JPEG q0.8 before base64
 // encoding, so bodies stay well under Vercel's ~4.5MB request-body limit for Node functions.
 
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
@@ -102,6 +102,8 @@ const TRANSCRIBE_SCHEMA = {
 
 // What phones actually record: iPhone -> audio/mp4 (AAC), Android Chrome -> audio/webm (Opus).
 const AUDIO_TYPES = ["audio/webm", "audio/mp4", "audio/aac", "audio/mpeg", "audio/mp3", "audio/ogg", "audio/wav", "audio/x-m4a", "audio/flac"];
+const MAX_IMAGE_BASE64 = 4_000_000; // Vercel caps the whole request at 4.5 MB anyway
+const MAX_TEXT = 1_500;
 const MAX_AUDIO_BASE64 = 3_000_000; // ~2.2 MB of audio: about a minute at phone quality; under Vercel's body limit
 
 function buildTranscribePrompt(lang) {
@@ -327,7 +329,7 @@ function parseRequestBody(req) {
 }
 
 export default async function handler(req, res) {
-  if (!checkAuth(req, res)) return;
+  if (!(await requireUser(req, res))) return;
 
   if (req.method !== "POST") {
     res.status(405).json({ errorType: "other", message: "Method not allowed" });
@@ -336,7 +338,14 @@ export default async function handler(req, res) {
 
   const body = parseRequestBody(req);
   const mode = ["meal", "label", "text", "exercise", "recipes", "transcribe"].includes(body.mode) ? body.mode : "meal";
-  const { image, text } = body;
+  // Bounded inputs: a photo is a base64 string (the app sends ~1 MB at most), a description a
+  // few sentences. Anything else is refused before it can run up the Gemini bill.
+  const image = typeof body.image === "string" && body.image.length <= MAX_IMAGE_BASE64 ? body.image : "";
+  const text = typeof body.text === "string" ? body.text.slice(0, MAX_TEXT) : "";
+  if (typeof body.image === "string" && body.image.length > MAX_IMAGE_BASE64) {
+    res.status(200).json({ errorType: "other", message: "That photo is too large — try again." });
+    return;
+  }
 
   // Mode/input mismatch — fail fast, no network call (mirrors GeminiMealAnalyzer.analyze steps 1-2).
   if (REQUIRES_IMAGE[mode] && !(image && image.length > 0)) {

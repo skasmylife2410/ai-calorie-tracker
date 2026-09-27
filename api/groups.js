@@ -1,13 +1,13 @@
 // api/groups.js — which groups the signed-in person belongs to, and who's in them.
 // POST {} -> { ok, groups: [{ id, name, members: [...] }] }
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 import { parseBody, restBase } from "./_rest.js";
 import { myGroups, membersOf } from "./_groups.js";
 import { select, insert, remove, parseBody as readBody } from "./_rest.js";
 import { isAdmin } from "./_members.js";
 
 export default async function handler(req, res) {
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "POST") return res.status(405).json({ ok: false, errorType: "other", message: "Method not allowed" });
   if (!restBase()) return res.status(200).json({ ok: false, errorType: "unconfigured", message: "Groups need Supabase configured." });

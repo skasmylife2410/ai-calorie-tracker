@@ -12,7 +12,7 @@
 // upload. Everything older than FEED_DAYS is deleted by /api/weekly (and hidden here before that).
 
 import { isSafeDataImage } from "../js/safe-src.js";
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
 import { resolveGroup } from "./_groups.js";
 import { cleanMicros } from "../js/nutrition.js";
@@ -65,7 +65,7 @@ export function cleanItem(kind, item = {}) {
 }
 
 export default async function handler(req, res) {
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "POST") return fail(res, "other", "Method not allowed", 405);
   if (!restBase()) return fail(res, "unconfigured", "Sharing needs Supabase configured.");

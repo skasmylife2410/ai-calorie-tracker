@@ -14,7 +14,7 @@
 // POST { op: "announce", title:{en,es}, body:{en,es}, test? } (admins) -> { ok, sent }
 //      test:true sends only to the admin's own phones, to preview it first.
 
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 import { select, insert, patch, remove, parseBody, newId, restBase } from "./_rest.js";
 import { myGroups, membersOf, sharesGroup } from "./_groups.js";
 import { notify, displayName, publicKey, pushConfigured } from "./_push.js";
@@ -30,7 +30,7 @@ const PER_DAY = 20;
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
 
 export default async function handler(req, res) {
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "POST") return fail(res, "other", "Method not allowed", 405);
   if (!restBase()) return fail(res, "unconfigured", "Notes need Supabase configured.");

@@ -60,8 +60,19 @@ function vercelResShim(res) {
   };
 }
 
+// The same security headers Vercel sends (vercel.json), so a policy that breaks something
+// shows up here first rather than on everyone's phones.
+let SECURITY_HEADERS = [];
+try {
+  const cfg = JSON.parse(await readFile(join(ROOT, "vercel.json"), "utf8"));
+  SECURITY_HEADERS = (cfg.headers ?? []).flatMap((h) => h.headers ?? []).filter((h) => h.key !== "Strict-Transport-Security");
+} catch {
+  // no vercel.json: serve without them
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+  for (const h of SECURITY_HEADERS) res.setHeader(h.key, h.value);
 
   if (url.pathname === "/api/foods") {
     try {

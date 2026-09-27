@@ -10,7 +10,7 @@
 // so five open links when there are five free places means no sixth can be made.
 
 import crypto from "node:crypto";
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 import { select, insert, patch, parseBody, restBase } from "./_rest.js";
 import { maxUsers, isAdmin, INVITE_DAYS } from "./_members.js";
 import { myGroups, membersOf, isMember } from "./_groups.js";
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, valid: problem === null, reason: problem ?? undefined });
     }
 
-    const me = checkAuth(req, res);
+    const me = await requireUser(req, res);
     if (!me) return;
     const admin = isAdmin(me);
     const members = await select("snapcal_users", { select: "username", limit: "100" });

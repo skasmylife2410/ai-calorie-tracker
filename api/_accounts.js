@@ -40,11 +40,16 @@ export function verifyPassword(password, salt, expectedHash) {
 
 function secret() {
   // APP_SECRET signs sessions. Falling back to the old APP_TOKEN keeps a deployment that hasn't
-  // set APP_SECRET yet working rather than locking everyone out.
-  return process.env.APP_SECRET || process.env.APP_TOKEN || "snapcal-dev-secret";
+  // set APP_SECRET yet working rather than locking everyone out. The built-in value is public
+  // (it's in this file), so it is only ever used on a laptop with ALLOW_ANONYMOUS=1: anywhere
+  // else, no secret means no sessions at all rather than sessions anyone could forge.
+  const s = (process.env.APP_SECRET || process.env.APP_TOKEN || "").trim();
+  if (s) return s;
+  return process.env.ALLOW_ANONYMOUS === "1" ? "snapcal-dev-secret" : "";
 }
 
 export function createSession(username, days = SESSION_DAYS) {
+  if (!secret()) throw new Error("APP_SECRET is not set");
   const exp = Date.now() + days * 86400000;
   const body = `${username}.${exp}`;
   return `${body}.${sign(body)}`;
@@ -61,6 +66,7 @@ export function readSession(token) {
   const parts = String(token ?? "").split(".");
   if (parts.length !== 3) return null;
   const [username, exp, mac] = parts;
+  if (!secret()) return null;
   const expected = sign(`${username}.${exp}`);
   const a = Buffer.from(mac);
   const b = Buffer.from(expected);

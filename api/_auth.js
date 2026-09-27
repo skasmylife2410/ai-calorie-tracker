@@ -10,6 +10,7 @@
 // Returns the owner name (a non-empty string, so it is truthy) or false after sending a 401.
 
 import { readSession } from "./_accounts.js";
+import { clientIp, isLocked, recordFailure, tooMany } from "./_limits.js";
 
 export const DEFAULT_OWNER = (process.env.APP_DEFAULT_USER || "aelson").trim().toLowerCase();
 
@@ -60,4 +61,22 @@ export function checkAuth(req, res) {
 
   res.status(401).json({ errorType: "unauthorized", message: "Invalid or missing passcode." });
   return false;
+}
+
+/**
+ * checkAuth() with a brake on guessing: a request carrying a token that is NOT a valid session
+ * (an old passcode, or a guess) is refused once its address has too many recent failures, and a
+ * wrong one is counted. Signed-in sessions never hit the database. Every endpoint uses this.
+ */
+export async function requireUser(req, res) {
+  const provided = String(req.headers?.["x-snapcal-token"] || "").trim();
+  if (provided === "" || readSession(provided)) return checkAuth(req, res);
+  const keys = [`ip:${clientIp(req)}`];
+  if (await isLocked(keys)) {
+    tooMany(res);
+    return false;
+  }
+  const who = checkAuth(req, res);
+  if (!who) await recordFailure(keys);
+  return who;
 }

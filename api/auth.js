@@ -19,6 +19,7 @@ import {
 import { maxUsers as memberCap } from "./_members.js";
 import { inviteProblem, inviteGroup } from "./invites.js";
 import { addMembership } from "./_groups.js";
+import { clientIp, isLocked, recordFailure, tooMany } from "./_limits.js";
 
 function restBase() {
   return (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
@@ -58,10 +59,17 @@ async function writeUser(row, { update = false } = {}) {
     : `${restBase()}/rest/v1/snapcal_users`;
   const res = await fetch(url, {
     method: update ? "PATCH" : "POST",
-    headers: restHeaders(update ? {} : { Prefer: "resolution=merge-duplicates" }),
+    // A new account is a plain insert: if the name was taken a moment ago the database refuses
+    // it (409) instead of overwriting that person's password, as the old upsert would have.
+    headers: restHeaders(),
     body: JSON.stringify(update ? row : [row]),
   });
-  if (!res.ok) throw new Error(`Supabase write failed (${res.status}): ${await res.text().catch(() => "")}`);
+  if (res.status === 409) {
+    const err = new Error("taken");
+    err.code = "taken";
+    throw err;
+  }
+  if (!res.ok) throw new Error(`Supabase write failed (${res.status})`);
 }
 
 const fail = (res, code, message, status = 200) =>
@@ -71,7 +79,12 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return fail(res, "other", "Method not allowed", 405);
   if (!restBase()) return fail(res, "unconfigured", "Accounts need Supabase configured.");
 
-  const body = typeof req.body === "object" && req.body ? req.body : JSON.parse(req.body || "{}");
+  let body;
+  try {
+    body = typeof req.body === "object" && req.body ? req.body : JSON.parse(req.body || "{}");
+  } catch {
+    return fail(res, "other", "Bad request.", 400);
+  }
   const op = String(body.op ?? "login");
 
   if (op === "whoami") {
@@ -141,13 +154,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, token: createSession(username) });
     }
 
+    // Password guesses (login, or a change authorised by the current password) are braked per
+    // account and per address, so neither one name nor one machine can keep trying.
+    const guessKeys = [`user:${username}`, `ip:${clientIp(req)}`];
+    const sessionUser = readSession(req.headers["x-snapcal-token"]);
+    const guessing = op !== "change" || sessionUser !== username;
+    if (guessing && (await isLocked(guessKeys))) return tooMany(res);
+
     const user = await getUser(username);
 
     if (op === "change") {
       // Either a valid session for this user, or the current password, authorises the change.
       const session = readSession(req.headers["x-snapcal-token"]);
       const authorised = session === username || (user && verifyPassword(password, user.salt, user.password_hash));
-      if (!user || !authorised) return fail(res, "unauthorized", "Wrong password.");
+      if (!user || !authorised) {
+        await recordFailure(guessKeys);
+        return fail(res, "unauthorized", "Wrong password.");
+      }
 
       const problem = passwordProblem(body.newPassword);
       if (problem) return fail(res, problem, "New password must be at least 8 characters.");
@@ -160,10 +183,13 @@ export default async function handler(req, res) {
     // login — the same reply for "no such user" and "wrong password", so the form can't be used
     // to find out who has an account.
     if (!user || !verifyPassword(password, user.salt, user.password_hash)) {
+      await recordFailure(guessKeys);
       return fail(res, "badLogin", "Wrong username or password.");
     }
     return res.status(200).json({ ok: true, token: createSession(username), mustChange: user.must_change === true });
   } catch (err) {
-    return fail(res, "other", err?.message ?? String(err));
+    if (err?.code === "taken") return fail(res, "taken", "That username is already taken.");
+    console.error("auth:", err);
+    return fail(res, "other", "Something went wrong. Try again.");
   }
 }

@@ -15,7 +15,11 @@
 // existed for that id/day/id=1, which is correct because the client only ever pushes records it
 // has already determined are newer than what it last pulled).
 
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
+
+const ID_RE = /^[0-9a-zA-Z-]{1,64}$/;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_ROWS = 1000; // per table per push; the app pushes only what changed since last time
 
 function supabaseConfigured() {
   return Boolean((process.env.SUPABASE_URL || "").trim() && ((process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "").trim()));
@@ -57,7 +61,8 @@ async function upsert(table, rows, onConflict) {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      return { ok: false, message: `Supabase upsert ${table} HTTP ${res.status}: ${text}` };
+      console.error(`sync: upsert ${table} HTTP ${res.status}: ${text}`);
+      return { ok: false, message: `Couldn't save ${table.replace("snapcal_", "")} (${res.status}).` };
     }
     return { ok: true };
   } catch (err) {
@@ -72,31 +77,33 @@ async function selectSince(table, owner, since) {
   const res = await fetch(`${restBase()}/rest/v1/${table}?${params.toString()}`, { headers: restHeaders() });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Supabase select ${table} HTTP ${res.status}: ${text}`);
+    console.error(`sync: select ${table} HTTP ${res.status}: ${text}`);
+    throw new Error(`Couldn't read ${table.replace("snapcal_", "")} (${res.status}).`);
   }
   return await res.json();
 }
 
-/** Returns the subset of `ids` that exist in snapcal_food_entries under a different owner. */
-async function foreignIds(ids, owner) {
+/** Returns the subset of `ids` that exist in `table` under a different owner. */
+async function foreignIds(ids, owner, table = "snapcal_food_entries") {
   const valid = ids.filter((id) => typeof id === "string" && /^[0-9a-zA-Z-]{1,64}$/.test(id));
   if (valid.length === 0) return { ok: true, ids: new Set() };
   try {
     const params = new URLSearchParams({ select: "id", id: `in.(${valid.join(",")})`, owner: `neq.${owner}` });
-    const res = await fetch(`${restBase()}/rest/v1/snapcal_food_entries?${params.toString()}`, { headers: restHeaders() });
+    const res = await fetch(`${restBase()}/rest/v1/${table}?${params.toString()}`, { headers: restHeaders() });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      return { ok: false, message: `Supabase select snapcal_food_entries HTTP ${res.status}: ${text}` };
+      console.error(`sync: guard ${table} HTTP ${res.status}: ${text}`);
+      return { ok: false, message: `Couldn't check ${table.replace("snapcal_", "")} (${res.status}).` };
     }
     const rows = await res.json();
     return { ok: true, ids: new Set(rows.map((r) => r.id)) };
   } catch (err) {
-    return { ok: false, message: `Supabase select snapcal_food_entries network error: ${err?.message ?? err}` };
+    return { ok: false, message: `Couldn't check ${table.replace("snapcal_", "")}: network error.` };
   }
 }
 
 export default async function handler(req, res) {
-  const owner = checkAuth(req, res);
+  const owner = await requireUser(req, res);
   if (!owner) return;
 
   if (req.method !== "POST") {
@@ -112,7 +119,22 @@ export default async function handler(req, res) {
   const body = parseRequestBody(req);
 
   if (body.op === "push") {
-    const entryRows = (Array.isArray(body.entries) ? body.entries : []).map((e) => ({
+    // Only well-formed rows are accepted, and only so many per push: ids are the app's own
+    // UUIDs, days are YYYY-MM-DD, and `data` is an object (not a string or array of junk).
+    const rowsOf = (list, needsId = true) => (Array.isArray(list) ? list : [])
+      .filter((r) => r && typeof r === "object"
+        && (!needsId || (typeof r.id === "string" && ID_RE.test(r.id)))
+        && (r.day === undefined || (typeof r.day === "string" && DAY_RE.test(r.day)))
+        && (r.data === undefined || r.data === null || (typeof r.data === "object" && !Array.isArray(r.data))))
+      .slice(0, MAX_ROWS);
+    body.entries = rowsOf(body.entries);
+    body.exercise = rowsOf(body.exercise);
+    body.weight = rowsOf(body.weight);
+    body.favorites = rowsOf(body.favorites);
+    body.water = rowsOf(body.water, false).filter((w) => typeof w.day === "string");
+    if (body.profile && (typeof body.profile !== "object" || Array.isArray(body.profile))) body.profile = null;
+
+    const entryRows = body.entries.map((e) => ({
       owner,
       id: e.id,
       day: e.day,
@@ -156,21 +178,29 @@ export default async function handler(req, res) {
       ? [{ owner, data: body.profile.data ?? {}, updated_at: body.profile.updatedAt }]
       : [];
 
-    // Meal ids are random UUIDs, so they never collide between people. As a guard, refuse to
-    // overwrite a meal id that already belongs to someone else.
-    const guard = await foreignIds(entryRows.map((r) => r.id), owner);
-    if (!guard.ok) {
-      res.status(200).json({ errorType: "other", message: guard.message });
+    // Ids are random UUIDs, so they never collide between people. As a guard, refuse to
+    // overwrite any id-keyed row (meal, exercise, weight, favourite) that belongs to someone
+    // else — an upsert on id would otherwise hand that row to the caller.
+    const guards = await Promise.all([
+      foreignIds(entryRows.map((r) => r.id), owner, "snapcal_food_entries"),
+      foreignIds(exerciseRows.map((r) => r.id), owner, "snapcal_exercise"),
+      foreignIds(weightRows.map((r) => r.id), owner, "snapcal_weight"),
+      foreignIds(favoriteRows.map((r) => r.id), owner, "snapcal_favorites"),
+    ]);
+    const broken = guards.find((g) => !g.ok);
+    if (broken) {
+      res.status(200).json({ errorType: "other", message: broken.message });
       return;
     }
-    const safeEntryRows = entryRows.filter((r) => !guard.ids.has(r.id));
+    const mineOnly = (rows, g) => rows.filter((r) => !g.ids.has(r.id));
+    const safeEntryRows = mineOnly(entryRows, guards[0]);
 
     const [entriesResult, waterResult, exerciseResult, weightResult, favoritesResult, profileResult] = await Promise.all([
       upsert("snapcal_food_entries", safeEntryRows, "id"),
       upsert("snapcal_water", waterRows, "owner,day"),
-      upsert("snapcal_exercise", exerciseRows, "id"),
-      upsert("snapcal_weight", weightRows, "id"),
-      upsert("snapcal_favorites", favoriteRows, "id"),
+      upsert("snapcal_exercise", mineOnly(exerciseRows, guards[1]), "id"),
+      upsert("snapcal_weight", mineOnly(weightRows, guards[2]), "id"),
+      upsert("snapcal_favorites", mineOnly(favoriteRows, guards[3]), "id"),
       upsert("snapcal_profile", profileRows, "owner"),
     ]);
 
@@ -184,7 +214,7 @@ export default async function handler(req, res) {
   }
 
   if (body.op === "pull") {
-    const since = typeof body.since === "string" && body.since.trim() !== "" ? body.since.trim() : undefined;
+    const since = typeof body.since === "string" && !Number.isNaN(Date.parse(body.since)) ? new Date(body.since).toISOString() : undefined;
     const serverTime = new Date().toISOString();
     let entries, water, exercise, weight, favorites, profile;
     try {

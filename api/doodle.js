@@ -11,7 +11,7 @@
 // and the app keeps drawing its built-in doodle. The app caches every result on the phone, so
 // each person costs about three images, once per profile photo.
 
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 
 const MODELS = ["gemini-3.1-flash-lite-image", "gemini-2.5-flash-image"];
 const MAX_PHOTO = 1_400_000; // base64 chars (~1 MB); the app sends a 512px crop
@@ -79,7 +79,7 @@ async function tryModel(model, key, parts) {
 }
 
 export default async function handler(req, res) {
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "POST") return res.status(405).json({ ok: false, errorType: "other", message: "Method not allowed" });
 

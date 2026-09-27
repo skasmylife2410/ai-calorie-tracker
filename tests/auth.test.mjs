@@ -179,3 +179,49 @@ test("a session for an account that no longer exists is refused", async () => {
   await auth(req({ op: "whoami" }, acct.createSession("carmen")), fresh);
   assert.deepEqual(fresh.body, { ok: true, username: "carmen" });
 });
+
+test("security: sessions need a real secret outside local dev", async () => {
+  const acct = await import("../api/_accounts.js");
+  const saved = { s: process.env.APP_SECRET, t: process.env.APP_TOKEN, a: process.env.ALLOW_ANONYMOUS };
+  delete process.env.APP_SECRET; delete process.env.APP_TOKEN; delete process.env.ALLOW_ANONYMOUS;
+  try {
+    assert.throws(() => acct.createSession("maria"));
+    // a token signed with the old public fallback secret must not be accepted
+    const crypto = await import("node:crypto");
+    const body = `maria.${Date.now() + 86400000}`;
+    const forged = `${body}.${crypto.createHmac("sha256", "snapcal-dev-secret").update(body).digest("hex")}`;
+    assert.equal(acct.readSession(forged), null);
+  } finally {
+    if (saved.s !== undefined) process.env.APP_SECRET = saved.s;
+    if (saved.t !== undefined) process.env.APP_TOKEN = saved.t;
+    if (saved.a !== undefined) process.env.ALLOW_ANONYMOUS = saved.a;
+  }
+});
+
+test("security: wrong passcodes are braked after too many failures", async () => {
+  const { requireUser } = await import("../api/_auth.js");
+  const { MAX_FAILURES } = await import("../api/_limits.js");
+  const savedUsers = process.env.APP_USERS, savedUrl = process.env.SUPABASE_URL;
+  process.env.APP_USERS = "maria:2222";
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  let failures = MAX_FAILURES; // the table already holds this many recent failures
+  let recorded = 0;
+  globalThis.fetch = async (url, opts = {}) => {
+    if (opts.method === "POST") { recorded += 1; return { ok: true, json: async () => [] }; }
+    return { ok: true, json: async () => Array.from({ length: failures }, (_, i) => ({ id: i })) };
+  };
+  try {
+    const locked = mockRes();
+    assert.equal(await requireUser({ headers: { "x-snapcal-token": "2222", "x-forwarded-for": "9.9.9.9" } }, locked), false);
+    assert.equal(locked.code, 429, "even the right PIN is refused while locked");
+    failures = 0;
+    const wrong = mockRes();
+    assert.equal(await requireUser({ headers: { "x-snapcal-token": "0000" } }, wrong), false);
+    assert.equal(wrong.code, 401);
+    assert.equal(recorded, 1, "a wrong guess is counted");
+    assert.equal(await requireUser({ headers: { "x-snapcal-token": "2222" } }, mockRes()), "maria");
+  } finally {
+    process.env.APP_USERS = savedUsers ?? ""; if (savedUsers === undefined) delete process.env.APP_USERS;
+    if (savedUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = savedUrl;
+  }
+});

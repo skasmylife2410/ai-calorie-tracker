@@ -22,7 +22,10 @@ export async function insert(table, row) {
     headers: restHeaders({ Prefer: "return=minimal" }),
     body: JSON.stringify([row]),
   });
-  if (!res.ok) throw new Error(`Supabase ${table} write failed (${res.status}): ${await res.text().catch(() => "")}`);
+  if (!res.ok) {
+    console.error(`Supabase ${table} write failed (${res.status}): ${await res.text().catch(() => "")}`);
+    throw new Error(`Couldn't save (${res.status}).`);
+  }
 }
 
 export async function patch(table, filter, fields) {

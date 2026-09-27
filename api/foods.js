@@ -12,7 +12,7 @@
 //    back instantly and never counts against either service again.
 // Both sources run in parallel with a short budget; whichever answers in time is used.
 
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 import { offProductToScannedProduct, usdaFoodToScannedProduct } from "../js/api.js";
 import { rankProducts, normalize } from "../js/foods-local.js";
 
@@ -26,7 +26,7 @@ const OFF_USER_AGENT = "SnapCal/1.0 (personal calorie tracker)";
 const cache = new Map(); // normalized query -> { at, products }
 
 export default async function handler(req, res) {
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "GET") return res.status(405).json({ ok: false, errorType: "other", message: "Method not allowed" });
 

@@ -11,7 +11,7 @@
 //
 // One Vercel function for both jobs keeps the project under the Hobby plan's function limit.
 
-import { checkAuth } from "./_auth.js";
+import { requireUser } from "./_auth.js";
 import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
 import { resolveUserGoals } from "../js/nutrition.js";
@@ -91,6 +91,8 @@ export async function recapFor(owner, win) {
 export async function purgeOldPosts(now = Date.now()) {
   const cutoff = new Date(now - FEED_DAYS * 86400000).toISOString();
   await remove("snapcal_shares", { created_at: `lt.${cutoff}` }); // comments cascade
+  // failed sign-in records only matter for 15 minutes; keep a day for looking back
+  await remove("snapcal_auth_failures", { at: `lt.${new Date(now - 86400000).toISOString()}` }).catch(() => {});
   return cutoff;
 }
 
@@ -120,7 +122,7 @@ export default async function handler(req, res) {
     return res.status(200).json(out);
   }
 
-  const me = checkAuth(req, res);
+  const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "POST") return fail(res, "other", "Method not allowed", 405);
   const body = parseBody(req);
