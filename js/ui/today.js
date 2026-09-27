@@ -22,6 +22,7 @@ import { doodleMessage } from "./doodle-messages.js";
 import { homeCard } from "./home-card.js";
 import { cachedFaceDoodle, makeFaceDoodle } from "./photo-doodle.js";
 import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
+import { renderMealList } from "./today-meals.js";
 
 const MACRO_DEFS = [
   { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", color: "var(--sc-protein)", track: "rgba(232,93,93,0.18)", icon: "fishFill" },
@@ -35,6 +36,15 @@ let swiperPage = 0;
 // calories, nutrients, water
 const PAGE_COUNT = 3;
 let rowCleanups = [];
+
+// "Today's meals" mini tab on Home: closed unless the person opened it last time
+const MEALS_OPEN_KEY = "snapcal.homeMealsOpen";
+const mealsOpen = () => { try { return localStorage.getItem(MEALS_OPEN_KEY) === "1"; } catch { return false; } };
+const setMealsOpen = (on) => { try { localStorage.setItem(MEALS_OPEN_KEY, on ? "1" : "0"); } catch { /* private mode */ } };
+
+// What the calorie card last showed, so a change can count down to the new numbers
+let lastNumbers = null;
+const COUNT_MS = 900;
 // The day the Home tab is showing. null = today (and it snaps back to today on a fresh launch).
 let selectedDayStart = null;
 // Which week the strip is showing: 0 = this week, -1 = last week, and so on. Without this the
@@ -109,6 +119,16 @@ export function render(container) {
         ${Array.from({ length: PAGE_COUNT }, (_, i) => `<span class="swiper-dot${swiperPage === i ? " active" : ""}" data-dot="${i}"></span>`).join("")}
       </div>
 
+      <div class="home-meals">
+        <button type="button" class="mini-tab" id="home-meals-toggle" aria-expanded="${mealsOpen()}" aria-controls="home-meals-list">
+          ${icon("forkKnife", { size: 15 })}
+          <span>${viewingToday ? t("home.todaysMeals") : t("home.daysMeals")}</span>
+          <span class="mini-tab-count">${mealCount}</span>
+          <span class="mini-tab-caret" aria-hidden="true">›</span>
+        </button>
+        <div class="home-meals-list tm-list" id="home-meals-list"${mealsOpen() ? "" : " hidden"}></div>
+      </div>
+
       ${viewingToday ? doodleCardHtml() : ""}
 
       <div class="home-chips">
@@ -124,6 +144,11 @@ export function render(container) {
 
   wireSwiper(container);
   wireWaterButtons(container);
+  wireMealsTab(container, date);
+  countNumbers(container, `${startOfDay(date)}`, [
+    remaining,
+    ...MACRO_DEFS.map((m) => (goals[m.targetKey] ?? 0) - (totals[m.key] ?? 0)),
+  ]);
   container.querySelector("#chip-exercise")?.addEventListener("click", () => openExerciseDaySheet(date, () => render(container)));
   container.querySelector("#chip-ideas")?.addEventListener("click", () => openRecipesSheet());
   container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
@@ -140,6 +165,78 @@ export function render(container) {
 
 }
 
+
+/** The mini tab: tap to show or hide the day's meals right on Home. */
+function wireMealsTab(container, date) {
+  const btn = container.querySelector("#home-meals-toggle");
+  const list = container.querySelector("#home-meals-list");
+  if (!btn || !list) return;
+  const fill = () => rowCleanups.push(renderMealList(list, date, () => render(container)));
+  if (!list.hidden) fill();
+  btn.addEventListener("click", () => {
+    const open = list.hidden;
+    list.hidden = !open;
+    btn.setAttribute("aria-expanded", String(open));
+    setMealsOpen(open);
+    if (open) fill();
+  });
+}
+
+/**
+ * Logging food changes the calorie card; instead of jumping, the numbers count down to their new
+ * values (fast, ~0.9 s, easing out) and the rings sweep with them. Home can redraw several times
+ * in a row (the log, then sync), so a running count carries on across redraws instead of
+ * restarting or snapping. Only for the same day, and never when the phone asks for less motion.
+ */
+let countAnim = null; // { dayKey, from: {nums, offs}, to: {nums, offs}, t0 }
+const easeOut = (p) => 1 - Math.pow(1 - p, 3);
+const lerp = (a, b, e) => a.map((x, i) => (Number.isFinite(x) && Number.isFinite(b[i]) ? x + (b[i] - x) * e : b[i]));
+function countValueAt(anim, now) {
+  const e = easeOut(Math.min(1, (now - anim.t0) / COUNT_MS));
+  return { nums: lerp(anim.from.nums, anim.to.nums, e), offs: lerp(anim.from.offs, anim.to.offs, e) };
+}
+const sameNumbers = (a, b) => a.length === b.length && a.every((n, i) => Math.round(n) === Math.round(b[i]));
+
+function countNumbers(container, dayKey, nums) {
+  const els = [container.querySelector(".calorie-remaining"), ...container.querySelectorAll(".macro-value")];
+  const rings = [...container.querySelectorAll(".calorie-card .ring-progress, .macro-tile .ring-progress")];
+  const offs = rings.map((r) => Number(r.getAttribute("stroke-dashoffset")));
+  const target = { nums, offs };
+  const now = performance.now();
+  const running = countAnim && countAnim.dayKey === dayKey && now - countAnim.t0 < COUNT_MS ? countAnim : null;
+  const prev = lastNumbers?.dayKey === dayKey ? lastNumbers : null;
+  lastNumbers = { dayKey, nums, offs };
+
+  if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { countAnim = null; return; }
+  if (running && sameNumbers(running.to.nums, nums)) {
+    // a redraw with the same numbers: keep the count going on the new elements
+  } else if (running) {
+    countAnim = { dayKey, from: countValueAt(running, now), to: target, t0: now };
+  } else if (prev && !sameNumbers(prev.nums, nums)) {
+    countAnim = { dayKey, from: { nums: prev.nums, offs: prev.offs }, to: target, t0: now };
+  } else {
+    countAnim = null;
+    return;
+  }
+
+  const anim = countAnim;
+  const paint = (at) => {
+    const v = countValueAt(anim, at);
+    els.forEach((el, i) => { if (el) el.textContent = `${roundDisplay(Math.abs(v.nums[i]))}${i > 0 ? "g" : ""}`; });
+    rings.forEach((r, i) => { r.style.transition = "none"; if (Number.isFinite(v.offs[i])) r.setAttribute("stroke-dashoffset", v.offs[i]); });
+  };
+  els.forEach((el) => el?.classList.add("is-counting"));
+  paint(now); // never show the final numbers first and then jump back
+  const step = (at) => {
+    if (countAnim !== anim || !container.contains(els[0])) return; // superseded or redrawn
+    paint(at);
+    if (at - anim.t0 < COUNT_MS) { requestAnimationFrame(step); return; }
+    els.forEach((el) => el?.classList.remove("is-counting"));
+    rings.forEach((r) => { r.style.transition = ""; });
+    countAnim = null;
+  };
+  requestAnimationFrame(step);
+}
 
 /**
  * Swipe removes the meal straight away — no dialog, no edit mode. A toast offers Undo for a few

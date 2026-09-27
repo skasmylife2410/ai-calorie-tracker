@@ -292,26 +292,34 @@ test("people are shown by their chosen name, not their login username", async ()
 });
 
 
-test("only photo meals can be posted, 3 a day", async () => {
+test("one post a day: a meal with its photo, or a short post; kinds and sizes are checked", async () => {
   reset();
   let res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "No photo" } }), res);
   assert.equal(res.body.errorType, "photoOnly");
   res = mockRes(); await shares(as("baby", { op: "share", kind: "idea", item: { name: "Sancocho" } }), res);
-  assert.equal(res.body.errorType, "photoOnly");
-  for (let i = 0; i < 3; i++) {
-    res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: `m${i}`, photo: PHOTO } }), res);
-    assert.equal(res.body.ok, true);
-  }
-  res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "fourth", photo: PHOTO } }), res);
-  assert.equal(res.body.errorType, "limit");
-  assert.equal(DB.snapcal_shares.length, 3);
+  assert.equal(res.body.errorType, "other", "ideas can't be posted any more");
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "post", item: { text: "   " } }), res);
+  assert.equal(res.body.errorType, "empty");
+
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "post", item: { text: "Hola " + "x".repeat(300) } }), res);
+  assert.equal(res.body.ok, true);
+  assert.equal(DB.snapcal_shares[0].data.text.length, 140, "captions are cut to 140 characters");
+  assert.equal(DB.snapcal_shares[0].kind, "post");
+
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "second", photo: PHOTO } }), res);
+  assert.equal(res.body.errorType, "limit", "one post a day, meal or post");
+  assert.equal(DB.snapcal_shares.length, 1);
+
+  res = mockRes(); await shares(as("thayra23", { op: "share", kind: "post", item: { text: "mine", photo: "data:image/png;base64,AA\" onerror=\"x" } }), res);
+  assert.equal(res.body.ok, true, "someone else can still post today");
+  assert.equal(DB.snapcal_shares[1].data.photo, null, "an unsafe photo is dropped");
 });
 
 test("the feed shows the last 7 days only, and old posts are purged with their comments", async () => {
   reset();
   const old = new Date(Date.now() - 8 * 86400000).toISOString();
   DB.snapcal_shares.push({ id: "old", owner: "baby", kind: "meal", group_id: "family", created_at: old, data: { name: "Old", photo: PHOTO } });
-  DB.snapcal_shares.push({ id: "idea", owner: "baby", kind: "idea", group_id: "family", created_at: new Date().toISOString(), data: { name: "Idea" } });
+  DB.snapcal_shares.push({ id: "idea", owner: "aelson", kind: "idea", group_id: "family", created_at: new Date().toISOString(), data: { name: "Idea" } });
   await shares(as("baby", { op: "share", kind: "meal", item: { name: "New", photo: PHOTO }, group: "family" }), mockRes());
   const res = mockRes(); await shares(as("aelson", { op: "list", group: "family" }), res);
   assert.deepEqual(res.body.shares.map((s) => s.data.name), ["New"]);
@@ -321,14 +329,14 @@ test("the feed shows the last 7 days only, and old posts are purged with their c
   assert.deepEqual(DB.snapcal_shares.map((s) => s.id).includes("old"), false);
 });
 
-test("comments: group members only, 200 characters, delete only your own", async () => {
+test("comments: group members only, 100 characters, delete only your own", async () => {
   reset();
   let res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arepa", photo: PHOTO }, group: "family" }), res);
   const id = res.body.id;
 
   res = mockRes(); await shares(as("thayra23", { op: "comment", shareId: id, body: "  Se ve rica!  " + "x".repeat(300) }), res);
   assert.equal(res.body.ok, true);
-  assert.equal(res.body.comment.body.length, 200);
+  assert.equal(res.body.comment.body.length, 100);
   const cid = res.body.comment.id;
 
   res = mockRes(); await shares(as("jasmine", { op: "comment", shareId: id, body: "sneak" }), res);

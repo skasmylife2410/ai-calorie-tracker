@@ -2190,3 +2190,19 @@ body.setup-open { overflow: hidden; }
 .auth-submit.is-danger { background: var(--sc-red, #FF3B30); }
 .mem-remove { margin-left: auto; font: inherit; font-size: 12px; font-weight: 600; color: var(--sc-red, #FF3B30); background: rgba(255, 59, 48, .1); border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer; flex: none; }
 .mem-remove:disabled { opacity: .6; }
+
+/* Home: "Today's meals" mini tab */
+.home-meals { margin: 4px 0 12px; }
+.home-meals > .mini-tab { margin-left: 16px; }
+.mini-tab { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--sc-primary-text); background: var(--sc-secondary-15); border: 0; border-radius: 999px; padding: 7px 12px 7px 11px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mini-tab-count { font-variant-numeric: tabular-nums; font-size: 12px; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--sc-card, #fff); color: var(--sc-secondary); text-align: center; }
+.mini-tab-caret { display: inline-block; transition: transform .2s ease; color: var(--sc-secondary); }
+.mini-tab[aria-expanded="true"] .mini-tab-caret { transform: rotate(90deg); }
+.home-meals-list { margin-top: 10px; }
+.home-meals-list:not([hidden]) { animation: meals-open .22s ease-out; }
+@keyframes meals-open { from { opacity: 0; transform: translateY(-4px); } }
+
+/* calorie card numbers count down instead of jumping */
+.calorie-remaining, .macro-value { font-variant-numeric: tabular-nums; }
+.calorie-remaining.is-counting, .macro-value.is-counting { color: var(--sc-primary-text); }
+@media (prefers-reduced-motion: reduce) { .home-meals-list:not([hidden]) { animation: none; } .mini-tab-caret { transition: none; } }

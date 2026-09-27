@@ -67,7 +67,17 @@ export function render(container) {
   container.querySelector("#tm-next")?.addEventListener("click", () => { if (viewedDay < 0) { viewedDay += 1; render(container); } });
   container.querySelector("#tm-back")?.addEventListener("click", () => { viewedDay = 0; render(container); });
 
-  const list = container.querySelector("#tm-list");
+  cleanups.push(renderMealList(container.querySelector("#tm-list"), today, () => render(container)));
+}
+
+/**
+ * One day's meals as rows: tap to edit, swipe to delete, drag one onto another to group them.
+ * Used by Home's "Today's meals" mini tab (and the old Today screen).
+ * @returns {() => void} cleanup
+ */
+export function renderMealList(list, date, onChange) {
+  const own = [];
+  const meals = store.entriesForDay(date).sort((a, b) => b.timestamp - a.timestamp);
 
   if (meals.length === 0) {
     list.innerHTML = `
@@ -76,11 +86,12 @@ export function render(container) {
         <div class="tm-empty-title">${t("todayTab.emptyTitle")}</div>
         <div class="tm-empty-body">${t("todayTab.emptyBody")}</div>
       </div>`;
-    return;
+    return () => {};
   }
+  list.innerHTML = "";
 
   for (const entry of meals) {
-    cleanups.push(
+    own.push(
       mountEntryRow(list, entry, {
         onShare: !entry.photoDataUrl ? null : async (e) => {
           const { shareMeal } = await import("../social.js");
@@ -94,28 +105,20 @@ export function render(container) {
           if (Array.isArray(fresh?.analysisItems) && fresh.analysisItems.length > 0) {
             openResultsSheet(fresh);
           } else {
-            openAddFoodSheet({ entry: fresh, onSaved: () => render(container) });
+            openAddFoodSheet({ entry: fresh, onSaved: () => onChange() });
           }
         },
         onDelete: (e) => {
           store.deleteFoodEntry(e.id);
-          render(container);
+          onChange();
         },
       })
     );
   }
 
-  cleanups.push(wireMealDrag(list, {
+  own.push(wireMealDrag(list, {
     canDrag: (id) => rowIsGroupable(list, id),
-    onDrop: (src, dst) => groupWithToast(src, dst, () => render(container)),
+    onDrop: (src, dst) => groupWithToast(src, dst, () => onChange()),
   }));
-}
-
-
-/** The day the Today tab is showing, for anything logged from here. */
-export function viewedTabTimestamp() {
-  if (viewedDay === 0) return Date.now();
-  const d = new Date(Date.now() + viewedDay * 86400000);
-  d.setHours(12, 0, 0, 0);
-  return d.getTime();
+  return () => own.forEach((fn) => fn?.());
 }

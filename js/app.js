@@ -20,7 +20,7 @@ import { openExerciseSheet } from "./ui/exercise.js";
 import { viewedTimestamp } from "./ui/today.js";
 import { renderLogin, hasValidSession, consentNeeded, renderConsent } from "./ui/login.js";
 import { render as renderWeight } from "./ui/weight.js";
-import { render as renderTodayMeals, viewedTabTimestamp } from "./ui/today-meals.js";
+
 import { renderUsTab } from "./us.js";
 import { wireTabSwipe } from "./ui/tab-swipe.js";
 import { mountSky } from "./ui/sky.js";
@@ -32,7 +32,6 @@ import { maybeShowWhatsNew } from "./ui/push-ui.js";
 
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
-  { id: "today", labelKey: "todayTab.tab", icon: "forkKnife" },
   { id: "us", labelKey: "us.tab", icon: "personFill" },
   { id: "weight", labelKey: "weight.tab", icon: "scale" },
 ];
@@ -124,6 +123,14 @@ function openFromUrl(href) {
   const whatsNew = url.searchParams.get("whatsnew") === "1";
   if (url.search) history.replaceState(null, "", "/");
   if (!hasProfile) return false;
+  // the old Today tab now lives on Home as the "Today's meals" mini tab
+  if (tab === "today") {
+    try { localStorage.setItem("snapcal.homeMealsOpen", "1"); } catch { /* private mode */ }
+    if (popupOpen) setPopupOpen(false);
+    selectedTab = "home";
+    renderShell();
+    return true;
+  }
   if (tab && TABS.some((x) => x.id === tab)) {
     if (popupOpen) setPopupOpen(false);
     selectedTab = tab;
@@ -274,7 +281,7 @@ function setPopupOpen(open) {
 
 /** Which day new food belongs to: the day the visible tab is showing. */
 function activeTimestamp() {
-  return selectedTab === "today" ? viewedTabTimestamp() : viewedTimestamp();
+  return viewedTimestamp();
 }
 
 function handleTileAction(tileId) {
@@ -313,7 +320,6 @@ function renderCurrentTab() {
   const content = document.getElementById("tab-content");
   if (!content) return;
   if (selectedTab === "home") renderToday(content);
-  else if (selectedTab === "today") renderTodayMeals(content);
   else if (selectedTab === "us") renderUsTab(content);
   else if (selectedTab === "weight") renderWeight(content);
   else if (selectedTab === "progress") renderHistory(content);

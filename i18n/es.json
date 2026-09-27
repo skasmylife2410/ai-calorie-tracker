@@ -32,7 +32,9 @@
     "proteinShort": "Proteína",
     "carbsShort": "Carbos",
     "fatShort": "Grasa",
-    "overShort": "{name} de más"
+    "overShort": "{name} de más",
+    "todaysMeals": "Comidas de hoy",
+    "daysMeals": "Comidas de este día"
   },
   "menu": {
     "favourites": "Favoritos",
@@ -366,7 +368,7 @@
     "sent": "Enviada a {name}",
     "noteHint": "Aparece en su Inicio en lugar del mensaje de siempre.",
     "shared": "Compartido",
-    "shareEmpty": "Aún no hay nada compartido. Toca ↗︎ en una comida con foto para compartirla.",
+    "shareEmpty": "Aún no hay publicaciones. Sé el primero hoy.",
     "share": "Compartir en Nosotros",
     "shareIdea": "Compartir",
     "shareDone": "Compartido",
@@ -383,10 +385,15 @@
     "hideRecipe": "Ocultar receta",
     "idea": "Idea",
     "meal": "Comida",
-    "feedRule": "Solo comidas con foto, 3 al día por persona. Las publicaciones y comentarios se borran solos a los 7 días.",
+    "feedRule": "Una publicación al día cada uno. Comentarios de hasta 100 caracteres. Todo se borra solo a los 7 días.",
     "noComments": "Aún no hay comentarios.",
     "commentPlaceholder": "Escribe un comentario…",
-    "deleteComment": "Borrar comentario"
+    "deleteComment": "Borrar comentario",
+    "postPlaceholder": "¿Qué hay en tu plato hoy?",
+    "addPhoto": "＋ Foto",
+    "post": "Publicar",
+    "postedToday": "Ya publicaste hoy. Mañana podrás publicar otra vez.",
+    "showMore": "Ver {n} más"
   },
   "homeChips": {
     "exercise": "Ejercicio",

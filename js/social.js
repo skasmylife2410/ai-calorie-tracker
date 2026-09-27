@@ -71,6 +71,20 @@ export async function shrinkPhoto(dataUrl, edge = SHARE_EDGE) {
   }
 }
 
+export const POST_MAX = 140;
+export const COMMENT_MAX = 100;
+
+/** Today's post to your group: a short caption, a photo, or both. One a day. */
+export async function createPost(text, photoDataUrl = null, group = null) {
+  const photo = photoDataUrl ? await shrinkPhoto(photoDataUrl) : null;
+  return post("/api/shares", {
+    op: "share",
+    kind: "post",
+    ...(group ? { group } : {}),
+    item: { text: String(text ?? "").trim().slice(0, POST_MAX), photo },
+  });
+}
+
 /** Share one of your logged meals (a snapshot of it). Only meals with a photo can be shared. */
 export async function shareMeal(entry, note = "", group = null) {
   const photo = await shrinkPhoto(entry?.photoDataUrl ?? null);

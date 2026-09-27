@@ -2,7 +2,9 @@
 //
 // POST { op: "list" }                   -> { ok, shares }  your group's, newest first, last 7 days,
 //                                                            each with its comments
-// POST { op: "share", kind, item }      -> { ok, id }      meals with a photo only
+// POST { op: "share", kind, item }      -> { ok, id }      kind "meal" (a logged meal with its photo)
+//                                                            or "post" (a short caption, photo optional)
+//                                                            — one of either per person per day
 // POST { op: "delete", id }             -> { ok }          only your own
 // POST { op: "comment", shareId, body } -> { ok, comment } anyone in the post's group
 // POST { op: "uncomment", id }          -> { ok }          only your own comment
@@ -18,12 +20,14 @@ import { resolveGroup } from "./_groups.js";
 import { cleanMicros } from "../js/nutrition.js";
 import { notify, displayName } from "./_push.js";
 import { membersOf } from "./_groups.js";
+import { localDay } from "./_week.js";
 
 const MAX_PHOTO = 60_000;    // data-URL length; the phone sends ~320px WebP/JPEG, ~15–30 KB
-const PER_DAY = 3;           // posts per person per day
+const PER_DAY = 1;           // posts per person per day (meal or post), by the app's local day
+const POST_MAX = 140;        // caption length for a "post"
 const FEED_SIZE = 20;        // newest posts shown
 const FEED_DAYS = 7;
-const COMMENT_MAX = 200;
+const COMMENT_MAX = 100;
 const COMMENTS_PER_DAY = 40;
 const COMMENTS_PER_POST = 50;
 
@@ -49,6 +53,10 @@ export function cleanItem(kind, item = {}) {
     fatG: num(item.fatG),
     note: str(item.note, 200),
   };
+  if (kind === "post") {
+    const photo = isSafeDataImage(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
+    return { text: str(item.text, POST_MAX), photo };
+  }
   if (kind === "meal") {
     const photo = typeof item.photo === "string" && isSafeDataImage(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
     const items = Array.isArray(item.items)
@@ -81,10 +89,10 @@ export default async function handler(req, res) {
       const since = new Date(Date.now() - FEED_DAYS * 86400000).toISOString();
       const rows = await select("snapcal_shares", {
         select: "id,owner,kind,data,created_at,group_id",
-        group_id: `eq.${group.id}`, kind: "eq.meal",
+        group_id: `eq.${group.id}`, kind: "in.(meal,post)",
         created_at: `gte.${since}`, order: "created_at.desc", limit: String(FEED_SIZE),
       });
-      const shares = rows.filter((r) => r.data?.photo);
+      const shares = rows.filter((r) => (r.kind === "post" ? r.data?.text || r.data?.photo : r.data?.photo));
       const comments = shares.length
         ? await select("snapcal_comments", { select: "id,share_id,owner,body,created_at", share_id: `in.(${shares.map((r) => `"${r.id}"`).join(",")})`, order: "created_at.asc", limit: "500" })
         : [];
@@ -93,28 +101,37 @@ export default async function handler(req, res) {
     }
 
     if (op === "share") {
-      if (body.kind !== "meal") return fail(res, "photoOnly", "Only meals with a photo can be shared.");
-      const kind = "meal";
+      const kind = body.kind === "post" ? "post" : body.kind === "meal" ? "meal" : null;
+      if (!kind) return fail(res, "other", "Unknown kind of post.");
       const data = cleanItem(kind, body.item);
-      if (!data.name) return fail(res, "empty", "It needs a name.");
-      if (!data.photo) return fail(res, "photoOnly", "Only meals with a photo can be shared.");
-
-      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-      const mine = await select("snapcal_shares", { select: "id", owner: `eq.${me}`, created_at: `gte.${today.toISOString()}`, limit: String(PER_DAY + 1) });
-      if (mine.length >= PER_DAY) return fail(res, "limit", `You can share ${PER_DAY} meals a day.`);
+      if (kind === "meal") {
+        if (!data.name) return fail(res, "empty", "It needs a name.");
+        if (!data.photo) return fail(res, "photoOnly", "Only meals with a photo can be shared.");
+      } else if (!data.text && !data.photo) {
+        return fail(res, "empty", "Write something or add a photo.");
+      }
 
       const { group, error } = await resolveGroup(me, typeof body.group === "string" ? body.group : null);
       if (error === "notMember") return fail(res, "notMember", "You're not in that group.");
       if (!group) return fail(res, "noGroup", "You're not in a group yet.");
 
+      // one post a day, counted by the app's local day (not UTC, which would reset mid-evening)
+      const since = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
+      const recent = await select("snapcal_shares", { select: "id,created_at", owner: `eq.${me}`, created_at: `gte.${since}`, limit: "10" });
+      const today = localDay(new Date());
+      if (recent.filter((r) => localDay(new Date(r.created_at)) === today).length >= PER_DAY) {
+        return fail(res, "limit", "You've already posted today. You can post again tomorrow.");
+      }
+
       const id = newId();
       await insert("snapcal_shares", { id, owner: me, kind, data, group_id: group.id });
       // everyone else in this group, and only this group
       const [who, members] = await Promise.all([displayName(me), membersOf(group.id).catch(() => [])]);
-      const kcal = Math.round(data.calories);
       await notify(members.filter((u) => u !== me), (lang) => ({
-        title: lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`,
-        body: `${data.name} · ${kcal} kcal`,
+        title: kind === "post"
+          ? (lang === "es" ? `${who} publicó algo` : `${who} posted`)
+          : (lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`),
+        body: kind === "post" ? (data.text || (lang === "es" ? "Una foto" : "A photo")) : `${data.name} · ${Math.round(data.calories)} kcal`,
         url: "/?tab=us",
         tag: `post-${id}`,
       }));

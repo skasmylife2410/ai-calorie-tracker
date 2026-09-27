@@ -32,7 +32,9 @@
     "proteinShort": "Protein",
     "carbsShort": "Carbs",
     "fatShort": "Fat",
-    "overShort": "{name} over"
+    "overShort": "{name} over",
+    "todaysMeals": "Today's meals",
+    "daysMeals": "Meals this day"
   },
   "menu": {
     "favourites": "Favourites",
@@ -366,7 +368,7 @@
     "sent": "Sent to {name}",
     "noteHint": "It shows on their Home instead of the usual message.",
     "shared": "Shared",
-    "shareEmpty": "Nothing shared yet. Tap ↗︎ on a meal with a photo to share it.",
+    "shareEmpty": "Nothing posted yet. Be the first today.",
     "share": "Share with Us",
     "shareIdea": "Share",
     "shareDone": "Shared",
@@ -383,10 +385,15 @@
     "hideRecipe": "Hide recipe",
     "idea": "Idea",
     "meal": "Meal",
-    "feedRule": "Photo meals only, 3 a day each. Posts and comments delete themselves after 7 days.",
+    "feedRule": "One post a day each. Comments up to 100 characters. Everything deletes itself after 7 days.",
     "noComments": "No comments yet.",
     "commentPlaceholder": "Add a comment…",
-    "deleteComment": "Delete comment"
+    "deleteComment": "Delete comment",
+    "postPlaceholder": "What's on your plate today?",
+    "addPhoto": "＋ Photo",
+    "post": "Post",
+    "postedToday": "You've posted today. Your next post opens tomorrow.",
+    "showMore": "Show {n} more"
   },
   "homeChips": {
     "exercise": "Exercise",
