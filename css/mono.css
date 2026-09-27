@@ -1,0 +1,304 @@
+/* mono.css — the Mono theme (the default look): black and white in the spirit of Nothing OS.
+   Dot-matrix numerals, a faint dot grid behind everything, flat cards with hairline edges, a dot
+   under the active tab. Colour survives only on markers — the macro dots and rings, water,
+   the streak, a day that went over — and even that can be switched off in Profile › Appearance.
+
+   Scoped to :root[data-theme="mono"] (set by js/theme-boot.js before paint, then js/theme.js),
+   so Classic is untouched. data-mode="light|dark" picks the palette; data-markers="off" turns
+   every marker to ink.
+
+   Contrast: text is ink on paper (21:1), secondary text is #6E6E73 on white (5.1:1) or
+   #9A9A9A on black (7.5:1). Markers are non-text graphics and need 3:1 against their
+   background: the classic marker colours fail that on white (carbs 2.2, streak 2.2, water 2.8),
+   so light mode uses deeper shades of the same hues (all ≥ 3.3:1 on #F2F2F2 and ≥ 3.6:1 on
+   white); on black the originals already pass (≥ 6:1) and are kept. */
+
+@font-face {
+  font-family: "Doto";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url(/vendor/fonts/doto/doto-latin-900-normal.woff2) format("woff2"); /* OFL, vendor/fonts/doto/LICENSE */
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Palettes
+--------------------------------------------------------------------------------------------- */
+:root[data-theme="mono"] {
+  --mn-bg: #F2F2F2;
+  --mn-card: #FFFFFF;
+  --mn-raised: #FFFFFF;
+  --mn-ink: #000000;
+  --mn-on-ink: #FFFFFF;
+  --mn-sec: #6E6E73;
+  --mn-line: #E2E2E2;
+  --mn-off: #DADADA;
+  --mn-soft: rgba(0, 0, 0, 0.06);
+  --mn-grid: rgba(0, 0, 0, 0.085);
+
+  /* markers, tuned to ≥ 3:1 on white and on the page grey */
+  --mn-protein: #D14343;
+  --mn-carbs: #B9741F;
+  --mn-fat: #4F74D6;
+  --mn-water: #2F80D9;
+  --mn-flame: #C9661A;
+  --mn-over: #D71921;
+  --mn-good: #1F9A45;
+  --mn-violet: #6E5BD6;
+  --mn-under: #4F74D6;
+  color-scheme: light;
+}
+
+:root[data-theme="mono"][data-mode="dark"] {
+  --mn-bg: #000000;
+  --mn-card: #111111;
+  --mn-raised: #1A1A1A;
+  --mn-ink: #FFFFFF;
+  --mn-on-ink: #000000;
+  --mn-sec: #9A9A9A;
+  --mn-line: #262626;
+  --mn-off: #333333;
+  --mn-soft: rgba(255, 255, 255, 0.08);
+  --mn-grid: rgba(255, 255, 255, 0.11);
+
+  /* the original marker colours all clear 6:1 on black */
+  --mn-protein: #E85D5D;
+  --mn-carbs: #E5A054;
+  --mn-fat: #6B8DE3;
+  --mn-water: #4F9DF1;
+  --mn-flame: #FF952D;
+  --mn-over: #FF453A;
+  --mn-good: #34C759;
+  --mn-violet: #9B8CFF;
+  --mn-under: #6B8DE3;
+  color-scheme: dark;
+}
+
+/* Coloured markers off: pure black & white. Over-goal still reads from its label. */
+:root[data-theme="mono"][data-markers="off"] {
+  --mn-protein: var(--mn-ink);
+  --mn-carbs: var(--mn-ink);
+  --mn-fat: var(--mn-ink);
+  --mn-water: var(--mn-ink);
+  --mn-flame: var(--mn-ink);
+  --mn-over: var(--mn-ink);
+  --mn-good: var(--mn-ink);
+  --mn-violet: var(--mn-ink);
+  --mn-under: var(--mn-sec);
+}
+
+/* The app's own tokens, re-pointed. Everything that already uses them follows for free. */
+:root[data-theme="mono"] {
+  --sc-background: var(--mn-bg);
+  --sc-card-bg: var(--mn-card);
+  --sc-card: var(--mn-card); /* a few newer rules use this name */
+  --sc-primary-text: var(--mn-ink);
+  --sc-secondary: var(--mn-sec);
+  --sc-secondary-14: var(--mn-soft);
+  --sc-secondary-15: var(--mn-soft);
+  --sc-secondary-18: var(--mn-soft);
+  --sc-secondary-35: var(--mn-off);
+  --sc-secondary-40: var(--mn-off);
+
+  --sc-protein: var(--mn-protein);
+  --sc-carbs: var(--mn-carbs);
+  --sc-fat: var(--mn-fat);
+  --sc-water: var(--mn-water);
+  --sc-streak-flame: var(--mn-flame);
+  --sc-protein-track: var(--mn-off);
+  --sc-carbs-track: var(--mn-off);
+  --sc-fat-track: var(--mn-off);
+  --sc-water-track: var(--mn-off);
+
+  --sc-red: var(--mn-over);
+  --sc-orange: var(--mn-flame);
+  --sc-green: var(--mn-good);
+  --sc-blue: var(--mn-ink); /* links and nav buttons are ink, not blue */
+
+  /* area accents were decoration, not markers: ink, except water which is a marker */
+  --sc-accent-calories: var(--mn-ink);
+  --sc-accent-exercise: var(--mn-ink);
+  --sc-accent-water: var(--mn-water);
+  --sc-accent-weight: var(--mn-ink);
+  --sc-accent-ideas: var(--mn-ink);
+  --sc-tint-calories: transparent;
+  --sc-tint-exercise: var(--mn-soft);
+  --sc-tint-water: var(--mn-soft);
+  --sc-tint-weight: transparent;
+  --sc-tint-ideas: var(--mn-soft);
+
+  /* charts on the Progress tab */
+  --mk-on: var(--mn-ink);
+  --mk-over: var(--mn-over);
+  --mk-under: var(--mn-under);
+  --mk-green: var(--mn-good);
+  --mk-violet: var(--mn-violet);
+
+  /* flat: a hairline instead of a drop shadow */
+  --sc-card-shadow: 0 0 0 1px var(--mn-line);
+  --sc-tile-shadow: 0 0 0 1px var(--mn-line);
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Page
+--------------------------------------------------------------------------------------------- */
+:root[data-theme="mono"] #sky { display: none; }
+:root[data-theme="mono"],
+:root[data-theme="mono"] body {
+  background-color: var(--mn-bg);
+  background-image: radial-gradient(circle, var(--mn-grid) 1px, transparent 1.3px);
+  background-size: 14px 14px;
+  background-attachment: fixed;
+  color: var(--mn-ink);
+}
+/* beats the sky's own !important page colour in app.css */
+:root[data-theme="mono"] :is(html, body) { background-color: var(--mn-bg) !important; }
+:root[data-theme="mono"] body { background-image: radial-gradient(circle, var(--mn-grid) 1px, transparent 1.3px) !important; background-size: 14px 14px !important; }
+:root[data-theme="mono"] ::selection { background: var(--mn-ink); color: var(--mn-on-ink); }
+
+/* Dot-matrix numerals for the numbers people come to read */
+:root[data-theme="mono"] :is(.calorie-remaining, .macro-value, .tm-sum-num, .wt-big, .mt-big, .onb-plan-big,
+  .pg-tile-value, .wt-stat-value, .ex-burn-num, .rec-figure, .streak-count, .ex-duration span) {
+  font-family: "Doto", var(--sc-font-rounded) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.02em !important;
+}
+:root[data-theme="mono"] .calorie-remaining { font-size: 52px !important; line-height: 1 !important; }
+:root[data-theme="mono"] .macro-value { font-size: 18px !important; letter-spacing: 0 !important; }
+:root[data-theme="mono"] :is(.calorie-remaining, .macro-value).over { color: var(--mn-over) !important; }
+
+/* Small labels: quiet uppercase, not monospace */
+:root[data-theme="mono"] :is(.calorie-caption, .section-title-small, .pg-tile-label, .wt-stat-label) {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--mn-sec) !important;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Surfaces: flat cards, no tinted gradients
+--------------------------------------------------------------------------------------------- */
+:root[data-theme="mono"] :is(.card, .calorie-card, .macro-tile, .doodle-card, .myth-card, .us-card, .wt-stat, .wt-card,
+  .tm-summary, .ex-row, .wt-hero, .ios-section-body, .home-chip, .feed-card, .rc-card, .bf-card, .plate-card,
+  .onb-plan, .onb-choice, .ex-card, .servings-card, .fav-list, .wt-input-card, .whatsnew-item, .auth-card, .pg-tile) {
+  background: var(--mn-card) !important;
+  box-shadow: 0 0 0 1px var(--mn-line) !important;
+  color: var(--mn-ink);
+}
+:root[data-theme="mono"] .doodle-card :is(svg, path, circle, line, ellipse) { stroke: currentColor; }
+
+/* Filled, attention-grabbing blocks become ink with paper text (in dark: white with black text) */
+:root[data-theme="mono"] :is(.ex-burn, .ideas-card, .rec-header, .wt-add, .fav-log, .wt-hero-v2, .btn-prominent,
+  .water-round-btn, .auth-submit, .onb-next, .acct-btn.is-primary, .feed-btn.is-primary, .onb-install-now, .tg-pin button,
+  .ex-parse, .rec-btn.is-primary, .undo-toast, .push-toast, .voice-icon) {
+  background: var(--mn-ink) !important;
+  color: var(--mn-on-ink) !important;
+  border-color: var(--mn-ink) !important;
+}
+:root[data-theme="mono"] .wt-hero-v2 :is(.wt-big, .wt-empty, .wt-empty-title, .wt-goal-set, .wt-goal-card) { color: var(--mn-on-ink) !important; }
+:root[data-theme="mono"] .wt-hero-v2 .wt-goal-set { border-color: var(--mn-on-ink) !important; }
+:root[data-theme="mono"] .wt-goal-bar span { background: var(--mn-on-ink) !important; }
+:root[data-theme="mono"] :is(.rec-refresh, .wt-goal-card) { color: var(--mn-on-ink) !important; }
+
+/* Selected chips and segmented buttons: ink pill */
+:root[data-theme="mono"] :is(.ex-chip.is-on, .lang-btn.is-on, .onb-choice.is-on, .mem-chip.is-on, .ctx-chip.is-on, .bf-card.is-on,
+  .wt-ranges button[aria-pressed="true"], .fab-dot.is-primary, .onb-install-n, .servings-card.is-multiple .servings-stepper button) {
+  background: var(--mn-ink) !important;
+  color: var(--mn-on-ink) !important;
+}
+:root[data-theme="mono"] :is(.fav-tabs button[aria-pressed="true"], .wt-unit button[aria-pressed="true"], .amount-units button[aria-pressed="true"],
+  .onb-units button[aria-pressed="true"], .meal-item-units button[aria-pressed="true"], .tg-range button[aria-pressed="true"],
+  .us-groups button[aria-pressed="true"]) {
+  background: var(--mn-ink) !important;
+  color: var(--mn-on-ink) !important;
+  box-shadow: none !important;
+}
+:root[data-theme="mono"] .ios-switch:checked { background: var(--mn-ink); }
+:root[data-theme="mono"] .ios-switch::after { background: var(--mn-card); }
+:root[data-theme="mono"][data-mode="dark"] .ios-switch:checked::after { background: #000; }
+
+/* Area-coloured text and chips become ink; the chips' little icons stay as they are */
+:root[data-theme="mono"] :is(.home-chip, .calorie-meals, .section-action, .ex-row-sub, .wt-row-kg, .tm-sum-num, .wt-big span) { color: var(--mn-ink) !important; }
+:root[data-theme="mono"] :is(.fab-tile, .fab-dot) { --c: var(--mn-ink) !important; }
+:root[data-theme="mono"] .fab-tile { color: var(--mn-ink) !important; }
+:root[data-theme="mono"] :is(.myth-q, .chip-myth b) { background: var(--mn-ink) !important; color: var(--mn-on-ink) !important; }
+
+/* ---------------------------------------------------------------------------------------------
+   Home
+--------------------------------------------------------------------------------------------- */
+/* Week: logged days are solid ink dots, today is an ink ring, missed days a dashed outline */
+:root[data-theme="mono"] .week-day-today-backdrop { display: none; }
+:root[data-theme="mono"] .week-day-circle { border: 1px dashed var(--mn-off); background: transparent; }
+:root[data-theme="mono"] .week-day-circle.logged { background: var(--mn-ink); border: 0; }
+:root[data-theme="mono"] .week-day-circle.logged .week-day-number { color: var(--mn-on-ink) !important; }
+:root[data-theme="mono"] .week-day-circle.today { border: 1.5px solid var(--mn-ink); background: transparent; }
+:root[data-theme="mono"] .week-day-col.selected .week-day-circle { border: 2px solid var(--mn-ink); }
+:root[data-theme="mono"] .week-day-label { text-transform: uppercase; letter-spacing: 0.06em; }
+:root[data-theme="mono"] .week-arrow { color: var(--mn-ink); }
+:root[data-theme="mono"] .home-avatar { background: var(--mn-card); color: var(--mn-sec); box-shadow: 0 0 0 1px var(--mn-line); }
+
+/* Big rings are dotted; the solid arcs step aside */
+:root[data-theme="mono"] .ring-wrap svg:has(.ring-dots) :is(.ring-track, .ring-progress) { display: none; }
+:root[data-theme="mono"] .ring-dots { display: inline; }
+:root[data-theme="mono"] .calorie-card .ring-center { color: var(--mn-ink); }
+
+/* Macro tiles: flat, the mini ring carries the marker colour */
+:root[data-theme="mono"] .macro-tile .ring-center .icon { opacity: 0.9; }
+:root[data-theme="mono"] .calorie-streak { color: var(--mn-sec); }
+
+/* Swipe dots under the calorie card */
+:root[data-theme="mono"] :is(.swiper-dot, .page-dot) { background: var(--mn-off) !important; }
+:root[data-theme="mono"] :is(.swiper-dot, .page-dot).active { background: var(--mn-ink) !important; }
+
+/* ---------------------------------------------------------------------------------------------
+   Tab bar and + button
+--------------------------------------------------------------------------------------------- */
+:root[data-theme="mono"] :is(.bottom-bar-backdrop, .bottom-bar-bump) { background: var(--mn-raised); }
+:root[data-theme="mono"] .bottom-bar { filter: none; }
+:root[data-theme="mono"] .bottom-bar-backdrop { box-shadow: 0 0 0 1px var(--mn-line); filter: none; }
+:root[data-theme="mono"] .bottom-bar-bump { box-shadow: none; }
+:root[data-theme="mono"] .tab-btn { color: var(--mn-sec); position: relative; }
+:root[data-theme="mono"] .tab-btn.active { color: var(--mn-ink); }
+:root[data-theme="mono"] .tab-btn.active .tab-icon-pill { background: transparent; }
+:root[data-theme="mono"] .tab-btn.active .tab-label { color: var(--mn-ink) !important; font-weight: 700; }
+:root[data-theme="mono"] .tab-btn.active::after {
+  content: ""; position: absolute; bottom: 1px; left: 50%; width: 4px; height: 4px; margin-left: -2px;
+  border-radius: 50%; background: var(--mn-ink);
+}
+:root[data-theme="mono"] .fab-btn { background: var(--mn-ink) !important; color: var(--mn-on-ink) !important; box-shadow: none !important; }
+
+/* ---------------------------------------------------------------------------------------------
+   Sheets, lists, forms
+--------------------------------------------------------------------------------------------- */
+:root[data-theme="mono"] :is(.navbar-btn, .ios-row.linklike .ios-row-value) { color: var(--mn-ink); }
+:root[data-theme="mono"] .navbar-btn.destructive { color: var(--mn-over); }
+:root[data-theme="mono"] .ios-row + .ios-row::before { border-top-color: var(--mn-line); }
+:root[data-theme="mono"] .navbar { background: var(--mn-bg) !important; box-shadow: 0 1px 0 var(--mn-line); }
+:root[data-theme="mono"] .pg-tile:before { width: 3px; }
+
+/* ---------------------------------------------------------------------------------------------
+   Dark: every surface that was hard-coded white gets the dark card, and the hairlines and
+   washes that assumed a light page are flipped.
+--------------------------------------------------------------------------------------------- */
+:root[data-theme="mono"][data-mode="dark"] :where(.fab-tile, .streak-pill, .empty-recent-box, .ios-section-body, .search-field,
+  .describe-textarea, .meal-item-row, .results-totals-bar, .action-sheet-group, .fav-tabs button[aria-pressed="true"], .fav-list,
+  .servings-card, .ex-card, .ideas-btn, .doodle-card, .auth-card, .auth-input, .wt-card, .wt-input-card, .wt-stat, .calorie-card,
+  .macro-tile, .myth-card, .us-card, .tm-summary, .ex-row, .plate-card, .plate-toggle, .fab-dot, .fab-arc-caption, .home-chip,
+  .onb-choice, .onb-field, .onb-plan, .setup-bar, .sug-input, .bf-card, .whatsnew-item, .onb-install-steps li, .tg-today,
+  .tg-mirror, .tg-table, .tg-pin input, .feed-card, .fc-input, .rc-card, .post-compose, .card, .sheet, .sheet-content,
+  .modal-card, .popover, .wt-hero, .pg-tile) {
+  background-color: var(--mn-card) !important;
+  color: var(--mn-ink);
+}
+:root[data-theme="mono"][data-mode="dark"] :is(.tg-table-wrap.is-wide .tg-table td:first-child, .tg-table-wrap.is-wide .tg-table th:first-child) {
+  background: var(--mn-card) !important;
+}
+:root[data-theme="mono"][data-mode="dark"] :is(input, textarea, select) { color: var(--mn-ink); background-color: transparent; }
+:root[data-theme="mono"][data-mode="dark"] :is(input, textarea)::placeholder { color: var(--mn-sec); }
+:root[data-theme="mono"][data-mode="dark"] .home-avatar { box-shadow: 0 0 0 1px var(--mn-line); }
+:root[data-theme="mono"][data-mode="dark"] .bottom-bar-backdrop { background: var(--mn-raised); }
+:root[data-theme="mono"][data-mode="dark"] .fab-btn { box-shadow: 0 0 0 6px var(--mn-bg) !important; }
+:root[data-theme="mono"][data-mode="dark"] .fab-dot { box-shadow: 0 0 0 1px var(--mn-line), 0 6px 18px -6px rgba(0,0,0,.8); }
+:root[data-theme="mono"][data-mode="dark"] .fab-dot.is-primary { background-color: var(--mn-ink) !important; color: var(--mn-on-ink) !important; }
+:root[data-theme="mono"] .fab-dot:not(.is-primary):active { background: var(--mn-soft); }

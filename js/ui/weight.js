@@ -189,13 +189,13 @@ function tilesHtml(p) {
       chip: had ? deltaChip(cur.proteinHit - prev.proteinHit) : deltaChip(null),
     }),
     tile({
-      key: "logged", color: "#6E5BD6", label: t("prog.tLogged"),
+      key: "logged", color: "var(--mk-violet, #6E5BD6)", label: t("prog.tLogged"),
       value: `${cur.daysLogged}<small>/${cur.total}</small>`,
       sub: t("prog.tLoggedSub", { n: store.streak() }),
       chip: had ? deltaChip(cur.daysLogged - prev.daysLogged) : deltaChip(null),
     }),
     tile({
-      key: "workouts", color: "#1F9E75", label: t("prog.tWorkouts"),
+      key: "workouts", color: "var(--mk-green, #1F9E75)", label: t("prog.tWorkouts"),
       value: `${cur.workouts}`,
       sub: cur.minutes ? t("prog.tWorkoutsSub", { time: hours ? `${hours} h ${mins} min` : `${mins} min`, kcal: formatNumber(cur.burned) }) : t("prog.tWorkoutsNone"),
       chip: had || prev.workouts ? deltaChip(cur.workouts - prev.workouts) : deltaChip(null),
@@ -215,8 +215,8 @@ function tilesHtml(p) {
 
 const TL = { W: 340, L: 62, R: 8, top: 14, chartH: 96, lane: 11, laneGap: 5 };
 const LANES = ["calories", "protein", "workout", "water"];
-const CAL_COLORS = { on: "#2AA66B", over: "#F08A24", under: "#8FB8F0" };
-const WIN_COLORS = { streak: "#6E5BD6", meals: "#F08A24", workouts: "#1F9E75", proteinWeek: "#E85D5D", weightStep: "var(--sc-accent-weight)", halfway: "var(--sc-accent-weight)", goal: "#2AA66B" };
+const CAL_COLORS = { on: "var(--mk-on, #2AA66B)", over: "var(--mk-over, #F08A24)", under: "var(--mk-under, #8FB8F0)" };
+const WIN_COLORS = { streak: "var(--mk-violet, #6E5BD6)", meals: "var(--mk-over, #F08A24)", workouts: "var(--mk-green, #1F9E75)", proteinWeek: "var(--sc-protein, #E85D5D)", weightStep: "var(--sc-accent-weight)", halfway: "var(--sc-accent-weight)", goal: "var(--mk-on, #2AA66B)" };
 
 function timelineHtml(p) {
   const { days, goalKg, wins } = p;
@@ -244,7 +244,7 @@ function timelineHtml(p) {
     const d = days[w.i];
     const onLine = (w.kind === "weightStep" || w.kind === "halfway" || w.kind === "goal") && d.weightAvg !== null;
     const cy = onLine ? y(d.weightAvg) : TL.top - 2;
-    return `<g class="pg-pin"><circle cx="${x(w.i).toFixed(1)}" cy="${cy.toFixed(1)}" r="${onLine ? 4.5 : 3.5}" fill="${WIN_COLORS[w.kind] ?? "#888"}" stroke="#fff" stroke-width="1.5"/></g>`;
+    return `<g class="pg-pin"><circle cx="${x(w.i).toFixed(1)}" cy="${cy.toFixed(1)}" r="${onLine ? 4.5 : 3.5}" fill="${WIN_COLORS[w.kind] ?? "#888"}" stroke="var(--sc-card-bg, #fff)" stroke-width="1.5"/></g>`;
   }).join("");
 
   const lane = (li, name) => {
@@ -253,7 +253,7 @@ function timelineHtml(p) {
       let fill = null, op = 1;
       if (name === "calories" && d.calStatus) fill = CAL_COLORS[d.calStatus];
       if (name === "protein" && d.proteinHit) fill = "var(--sc-protein)";
-      if (name === "workout" && d.workouts) fill = "#1F9E75";
+      if (name === "workout" && d.workouts) fill = "var(--mk-green, #1F9E75)";
       if (name === "water" && d.water) { fill = "var(--sc-water)"; op = d.waterHit ? 1 : 0.35; }
       const gap = cw > 4 ? 1 : 0;
       return fill ? `<rect x="${(TL.L + i * cw + gap / 2).toFixed(2)}" y="${ly}" width="${Math.max(0.6, cw - gap).toFixed(2)}" height="${TL.lane}" rx="${cw > 4 ? 2 : 0}" fill="${fill}" opacity="${op}"/>` : "";

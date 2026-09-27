@@ -18,3 +18,10 @@ test("intro design is a Fluid share hash and the engine is served from our own o
   assert.match(readFileSync(new URL("../js/intro.js", import.meta.url), "utf8"), /import\("\/vendor\/fluid-bg\/core\.js"\)/);
   assert.doesNotMatch(readFileSync(new URL("../vendor/fluid-bg/core.js", import.meta.url), "utf8"), /sourceMappingURL/);
 });
+
+test("intro shows only the flame: no wordmark or tagline", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const intro = html.slice(html.indexOf('<div id="intro"'), html.indexOf('<div id="app-root"'));
+  assert.match(intro, /class="intro-flame"/);
+  assert.doesNotMatch(intro.replace(/<[^>]+>/g, ""), /\S/, "no visible text inside the intro");
+});

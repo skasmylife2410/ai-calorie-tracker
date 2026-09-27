@@ -25,9 +25,9 @@ import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 import { renderMealList } from "./today-meals.js";
 
 const MACRO_DEFS = [
-  { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", color: "var(--sc-protein)", track: "rgba(232,93,93,0.18)", icon: "fishFill" },
-  { key: "carbsG", targetKey: "carbsTargetG", nameKey: "carbs", color: "var(--sc-carbs)", track: "rgba(229,160,84,0.18)", icon: "leafFill" },
-  { key: "fatG", targetKey: "fatTargetG", nameKey: "fat", color: "var(--sc-fat)", track: "rgba(107,141,227,0.18)", icon: "dropFill" },
+  { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", color: "var(--sc-protein)", track: "var(--sc-protein-track, rgba(232,93,93,0.18))", icon: "fishFill" },
+  { key: "carbsG", targetKey: "carbsTargetG", nameKey: "carbs", color: "var(--sc-carbs)", track: "var(--sc-carbs-track, rgba(229,160,84,0.18))", icon: "leafFill" },
+  { key: "fatG", targetKey: "fatTargetG", nameKey: "fat", color: "var(--sc-fat)", track: "var(--sc-fat-track, rgba(107,141,227,0.18))", icon: "dropFill" },
 ];
 
 // Week strip labels follow the active language (Mon/lun…).
@@ -91,16 +91,6 @@ export function render(container) {
 
   container.innerHTML = `
     <div class="today-content">
-      <div class="today-header">
-        <div class="wordmark">${icon("forkKnife", { size: 24 })}<span class="wordmark-text">SnapCal</span></div>
-        <div class="today-header-right">
-          <div class="streak-pill">${icon("flameFill", { size: 18, color: "var(--sc-streak-flame)" })}<span class="streak-count">${streakCount}</span></div>
-          <button type="button" class="home-avatar" id="home-avatar" aria-label="${t("tabs.profile")}">
-            ${store.getProfile().avatar ? `<img src="${safeSrc(store.getProfile().avatar)}" alt="" />` : icon("personFill", { size: 18 })}
-          </button>
-        </div>
-      </div>
-
       ${weekStripHtml(week)}
       ${viewingToday ? "" : `
         <div class="viewing-day">
@@ -110,7 +100,7 @@ export function render(container) {
 
       <div data-own-swipe class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
-          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount)}</div>
+          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount)}</div>
           <div class="swiper-page">${nutrientsPageHtml(store.microsForDay(date))}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
         </div>
@@ -223,7 +213,12 @@ function countNumbers(container, dayKey, nums) {
   const paint = (at) => {
     const v = countValueAt(anim, at);
     els.forEach((el, i) => { if (el) el.textContent = `${roundDisplay(Math.abs(v.nums[i]))}${i > 0 ? "g" : ""}`; });
-    rings.forEach((r, i) => { r.style.transition = "none"; if (Number.isFinite(v.offs[i])) r.setAttribute("stroke-dashoffset", v.offs[i]); });
+    rings.forEach((r, i) => {
+      r.style.transition = "none";
+      if (!Number.isFinite(v.offs[i])) return;
+      r.setAttribute("stroke-dashoffset", v.offs[i]);
+      r.ownerSVGElement?.querySelector(".ring-dots-mask")?.setAttribute("stroke-dashoffset", v.offs[i]); // Mono's dotted ring
+    });
   };
   els.forEach((el) => el?.classList.add("is-counting"));
   paint(now); // never show the final numbers first and then jump back
@@ -313,11 +308,14 @@ function weekStripHtml(week) {
         .join("")}
     </div>
       <button type="button" class="week-arrow${canGoForward ? "" : " is-hidden"}" id="week-next" aria-label="${t("day.nextWeek")}">›</button>
+      <button type="button" class="home-avatar" id="home-avatar" aria-label="${t("tabs.profile")}">
+        ${store.getProfile().avatar ? `<img src="${safeSrc(store.getProfile().avatar)}" alt="" />` : icon("personFill", { size: 16 })}
+      </button>
     </div>
   `;
 }
 
-function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount) {
+function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount = 0) {
   const ringProgress = energy.adjustedTarget > 0 ? totals.calories / energy.adjustedTarget : 0;
   const ring = ringGauge({
     size: 78,
@@ -360,6 +358,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
           <div class="calorie-remaining${overBudget ? " over" : ""}">${roundDisplay(Math.abs(remaining))}</div>
           <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>
           <button type="button" class="calorie-meals" id="see-meals">${t("us.mealsCount", { n: mealCount })} · ${t("day.tapToSee")} ›</button>
+          ${streakCount > 0 ? `<div class="calorie-streak">${icon("flameFill", { size: 13, color: "var(--sc-streak-flame)" })}<span>${t("home.streakLine", { n: streakCount })}</span></div>` : ""}
           ${energy.credit > 0 ? `<div class="calorie-exercise">${t("home.exerciseNote", { goal: energy.baseTarget, credit: energy.credit, burned: energy.burned })}</div>` : ""}
         </div>
         ${ring}
@@ -377,7 +376,7 @@ function waterPageHtml(water) {
     strokeWidth: 14,
     progress,
     color: "var(--sc-water)",
-    trackColor: "rgba(79,157,241,0.15)",
+    trackColor: "var(--sc-water-track, rgba(79,157,241,0.15))",
     centerHtml: icon("dropFill", { size: 30, color: "var(--sc-water)" }),
   });
   return `

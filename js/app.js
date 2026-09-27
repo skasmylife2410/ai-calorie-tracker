@@ -27,6 +27,7 @@ import { render as renderWeight } from "./ui/weight.js";
 import { renderUsTab } from "./us.js";
 import { wireTabSwipe } from "./ui/tab-swipe.js";
 import { mountSky } from "./ui/sky.js";
+import { applyTheme, watchSystemTheme } from "./theme.js";
 import { openRecipesSheet } from "./ui/recipes.js";
 import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
@@ -80,6 +81,8 @@ function profileExists() {
 
 async function boot() {
   mountSky(); // time-of-day glow, first so there's colour before anything else paints
+  applyTheme(store.getProfile()); // Mono or Classic (js/theme-boot.js already did this before paint)
+  watchSystemTheme(store.getProfile);
   queue.sweepIfNeeded(); // reload mid-analysis -> orphaned pendings become retryable-failed
   // Language comes from the profile (so it travels between this person's devices), else the phone.
   await initI18n({ stored: store.getProfile().language });
@@ -102,6 +105,7 @@ async function boot() {
   hasProfile = profileExists();
 
   store.subscribe(() => {
+    applyTheme(store.getProfile()); // a theme picked here or synced from another phone
     renderCurrentTab();
   });
 

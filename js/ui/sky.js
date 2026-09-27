@@ -98,8 +98,9 @@ export function mountSky(root = document.body) {
     s.setProperty("--sky-e1", rgb(glow[0], 0.95));
     s.setProperty("--sky-e2", rgb(glow[1], 0.95));
     s.setProperty("--sky-e3", rgb(glow[2], 0.95));
+    // Mono has its own flat background (js/theme.js owns the status bar colour there)
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", rgb(base));
+    if (meta && document.documentElement.dataset.theme !== "mono") meta.setAttribute("content", rgb(base));
   };
   paint();
   requestAnimationFrame(() => requestAnimationFrame(() => sky.classList.remove("sky-settling")));

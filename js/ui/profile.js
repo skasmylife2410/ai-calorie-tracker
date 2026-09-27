@@ -9,6 +9,7 @@ import { nanoFailure } from "./nano-doodle.js";
 import { setStoredToken } from "../net.js";
 import { roundDisplay } from "../nutrition.js";
 import { wireNumericInput } from "./numeric-field.js";
+import { THEMES, resolveTheme } from "../theme.js";
 import {
   bodyStatsSectionHtml,
   activityLevelSectionHtml,
@@ -71,6 +72,7 @@ export function render(container) {
       ${scanQualityHtml(profile)}
       ${doodlePickHtml()}
       <div class="ios-section" id="push-section"></div>
+      ${appearanceSectionHtml(profile)}
       ${languageSectionHtml()}
       ${syncSectionHtml()}
       <div class="bottom-safe-spacer"></div>
@@ -82,6 +84,7 @@ export function render(container) {
   wireCalculatorSection(container, goals);
   wireSyncSection(container);
   wireLanguage(container);
+  wireAppearance(container);
   renderPushSettings(container.querySelector("#push-section"));
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
@@ -546,6 +549,46 @@ function doodlePickHtml() {
       </div>
       <div class="ios-section-footer">${t("doodlePick.hint")}${nanoFailure()?.errorType === "billing" ? `<br><br>${t("doodlePick.needsBilling")}` : ""}</div>
     </div>`;
+}
+
+/** Appearance: Mono (the default) in light, dark or following the phone, or the Classic look;
+ *  plus whether Mono keeps colour on its markers. Stored on the profile, so it syncs. */
+function appearanceSectionHtml(profile) {
+  const current = THEMES.includes(profile.theme) ? profile.theme : resolveTheme(profile).theme === "mono" ? "mono-light" : "classic";
+  const swatches = {
+    "mono-light": ["#FFFFFF", "#000000", "#D14343"],
+    "mono-dark": ["#000000", "#FFFFFF", "#E85D5D"],
+    "mono-auto": ["#FFFFFF", "#000000"],
+    classic: ["#F7F6F3", "#FF952D", "#6B8DE3"],
+  };
+  const isMono = current !== "classic";
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("appearance.title")}</div>
+      <div class="ios-section-body">
+        ${THEMES.map((id) => `
+          <button type="button" class="ios-row theme-row${id === current ? " is-on" : ""}" data-theme-pick="${id}" aria-pressed="${id === current}">
+            <span class="theme-swatches${id === "mono-auto" ? " split" : ""}">${swatches[id].map((c) => `<i style="background:${c}"></i>`).join("")}</span>
+            <span class="theme-text"><b>${t(`appearance.${id}`)}</b><small>${t(`appearance.${id}Sub`)}</small></span>
+            <span class="theme-radio" aria-hidden="true"></span>
+          </button>`).join("")}
+        <label class="ios-row theme-markers${isMono ? "" : " is-disabled"}">
+          <span class="theme-text"><b>${t("appearance.markers")}</b><small>${t("appearance.markersSub")}</small></span>
+          <input type="checkbox" role="switch" class="ios-switch" id="mono-markers" ${profile.monoMarkers !== false ? "checked" : ""} ${isMono ? "" : "disabled"} />
+        </label>
+      </div>
+      <div class="ios-section-footer">${t("appearance.footer")}</div>
+    </div>
+  `;
+}
+
+function wireAppearance(container) {
+  container.querySelectorAll("[data-theme-pick]").forEach((btn) => {
+    btn.addEventListener("click", () => store.setProfile({ theme: btn.dataset.themePick }));
+  });
+  container.querySelector("#mono-markers")?.addEventListener("change", (e) => {
+    store.setProfile({ monoMarkers: e.target.checked });
+  });
 }
 
 /** Language picker — per person, stored on the profile so it follows them between devices. */

@@ -35,7 +35,8 @@
     "fatShort": "Grasa",
     "overShort": "{name} de más",
     "todaysMeals": "Comidas de hoy",
-    "daysMeals": "Comidas de este día"
+    "daysMeals": "Comidas de este día",
+    "streakLine": "Racha de {n} día|Racha de {n} días"
   },
   "menu": {
     "favourites": "Favoritos",
@@ -862,5 +863,19 @@
       "halfway": "A mitad de camino de tu meta de {kg}",
       "goal": "Meta alcanzada: {kg}"
     }
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "mono-light": "Mono · Claro",
+    "mono-lightSub": "Negro sobre blanco. Color solo en los marcadores.",
+    "mono-dark": "Mono · Oscuro",
+    "mono-darkSub": "Blanco sobre negro. Color solo en los marcadores.",
+    "mono-auto": "Mono · Automático",
+    "mono-autoSub": "Sigue el modo claro u oscuro del teléfono.",
+    "classic": "Clásico",
+    "classicSub": "El aspecto original, cálido y con color.",
+    "markers": "Marcadores de color",
+    "markersSub": "Proteína, carbohidratos, grasa, agua y racha conservan su color. Desactivado es blanco y negro puro.",
+    "footer": "Se guarda en tu perfil, así que se ve igual en cada teléfono donde inicies sesión."
   }
 }
