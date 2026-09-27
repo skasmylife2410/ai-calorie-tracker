@@ -2178,3 +2178,13 @@ body.setup-open { overflow: hidden; }
 .auth-notice { font-size: 14px; line-height: 1.45; color: var(--sc-primary-text); background: var(--sc-secondary-15); border-radius: 12px; padding: 12px 14px; margin: 4px 0 14px; }
 .auth-forgot { margin-top: 6px; }
 .acct-note { font-size: 13px; color: var(--sc-secondary); line-height: 1.45; margin-bottom: 10px; }
+
+/* privacy: consent screen, sign-up checkbox, Profile -> Privacy */
+.consent-list { margin: 4px 0 12px; padding-left: 18px; font-size: 13.5px; line-height: 1.45; color: var(--sc-primary-text); }
+.consent-list li { margin: 6px 0; }
+.consent-link { display: inline-block; font-size: 14px; font-weight: 600; color: var(--sc-blue, #007AFF); text-decoration: none; margin-bottom: 14px; }
+.consent-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--sc-primary-text); margin: 4px 0 14px; cursor: pointer; }
+.consent-check input { width: 20px; height: 20px; flex: none; margin: 0; accent-color: var(--sc-primary-text); }
+.consent-check a { color: var(--sc-blue, #007AFF); font-weight: 600; }
+.privacy-row { text-decoration: none; color: inherit; }
+.auth-submit.is-danger { background: var(--sc-red, #FF3B30); }

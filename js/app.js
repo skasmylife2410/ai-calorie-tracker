@@ -18,7 +18,7 @@ import { openDescribeMealSheet } from "./ui/describe.js";
 import { openFavouritesSheet } from "./ui/favourites.js";
 import { openExerciseSheet } from "./ui/exercise.js";
 import { viewedTimestamp } from "./ui/today.js";
-import { renderLogin, hasValidSession } from "./ui/login.js";
+import { renderLogin, hasValidSession, consentNeeded, renderConsent } from "./ui/login.js";
 import { render as renderWeight } from "./ui/weight.js";
 import { render as renderTodayMeals, viewedTabTimestamp } from "./ui/today-meals.js";
 import { renderUsTab } from "./us.js";
@@ -81,6 +81,9 @@ async function boot() {
     if (!(await hasValidSession())) {
       await renderLogin(appRoot);
     }
+    // Health data needs the person's agreement to the current privacy policy before the app
+    // collects anything; accounts made before the policy existed are asked once here.
+    if (await consentNeeded()) await renderConsent(appRoot);
   } catch (err) {
     console.error("app.js: login failed, continuing unauthenticated", err);
   }

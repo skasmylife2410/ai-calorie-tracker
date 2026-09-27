@@ -63,6 +63,7 @@ export function render(container) {
         <div class="ios-section-footer">${t("displayName.hint")}</div>
       </div>
       ${accountSectionHtml(currentUsername)}
+      ${privacySectionHtml()}
       ${membersSectionHtml()}
       ${inviteSectionHtml()}
       ${accuracySectionHtml(profile)}
@@ -83,6 +84,7 @@ export function render(container) {
   renderPushSettings(container.querySelector("#push-section"));
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
+  wirePrivacy(container);
   wireInvites(container);
   wireMembers(container, currentUsername);
   wireRedo(container);
@@ -196,6 +198,72 @@ function wireAccount(container, username) {
   container.querySelector("#acct-signout")?.addEventListener("click", () => {
     if (globalThis.confirm && !globalThis.confirm(t("auth.signOutConfirm"))) return;
     setStoredToken("");
+    location.reload();
+  });
+}
+
+/** Privacy: the policy, a copy of everything stored, and deleting the account. */
+function privacySectionHtml() {
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("privacy.section")}</div>
+      <div class="ios-section-body">
+        <a class="ios-row privacy-row" href="/privacy.html" target="_blank" rel="noopener"><div class="ios-row-label">${t("privacy.policyLink")}</div><div class="ios-row-value">↗</div></a>
+        <div class="acct-actions">
+          <button type="button" class="acct-btn" id="priv-export">${t("privacy.download")}</button>
+          <button type="button" class="acct-btn is-danger" id="priv-delete">${t("privacy.delete")}</button>
+        </div>
+        <div class="acct-msg" id="priv-msg" style="padding:0 14px 10px"></div>
+        <div class="acct-form hidden" id="priv-delete-form">
+          <div class="acct-note">${t("privacy.deleteWarn")}</div>
+          <input id="priv-delete-pass" class="auth-input" type="password" placeholder="${t("auth.currentPassword")}" autocomplete="current-password" />
+          <button type="button" class="auth-submit is-danger" id="priv-delete-go">${t("privacy.deleteForever")}</button>
+          <div class="acct-msg" id="priv-delete-msg"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function wirePrivacy(container) {
+  const msg = container.querySelector("#priv-msg");
+  container.querySelector("#priv-export")?.addEventListener("click", async () => {
+    msg.classList.remove("is-error");
+    msg.textContent = t("auth.working");
+    const out = await postAuth({ op: "export" });
+    if (!out.ok) { msg.textContent = out.message || t("errors.generic"); msg.classList.add("is-error"); return; }
+    // what's on this phone too (it can hold changes not yet synced)
+    const local = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k.startsWith("snapcal.") && k !== "snapcal.apiToken") local[k] = localStorage.getItem(k);
+      }
+    } catch { /* private mode */ }
+    const blob = new Blob([JSON.stringify({ server: out.data, thisPhone: local }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `snapcal-data-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    msg.textContent = t("privacy.downloaded");
+  });
+
+  const form = container.querySelector("#priv-delete-form");
+  container.querySelector("#priv-delete")?.addEventListener("click", () => form?.classList.toggle("hidden"));
+  container.querySelector("#priv-delete-go")?.addEventListener("click", async () => {
+    const dmsg = container.querySelector("#priv-delete-msg");
+    if (globalThis.confirm && !globalThis.confirm(t("privacy.deleteConfirm"))) return;
+    dmsg.classList.remove("is-error");
+    dmsg.textContent = t("auth.working");
+    const out = await postAuth({ op: "deleteAccount", password: container.querySelector("#priv-delete-pass").value });
+    if (!out.ok) { dmsg.textContent = out.message || t("errors.generic"); dmsg.classList.add("is-error"); return; }
+    // the account is gone: clear this phone too, then back to the sign-in screen
+    try {
+      Object.keys(localStorage).filter((k) => k.startsWith("snapcal.")).forEach((k) => localStorage.removeItem(k));
+    } catch { /* private mode */ }
+    alert(t("privacy.deleted"));
     location.reload();
   });
 }

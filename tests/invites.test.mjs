@@ -65,11 +65,11 @@ test("an invite link lets exactly one person in, once", async () => {
   res = mockRes(); await invites(anon({ op: "check", code }), res);
   assert.deepEqual([res.body.valid, res.body.reason], [true, undefined], "the sign-up screen can check a link without an account");
 
-  res = mockRes(); await auth(anon({ op: "signup", username: "camila", password: "mango12345", invite: code }), res);
+  res = mockRes(); await auth(anon({ op: "signup", consent: true, username: "camila", password: "mango12345", invite: code }), res);
   assert.equal(res.body.ok, true);
   assert.ok(DB.snapcal_users.some((u) => u.username === "camila"));
 
-  res = mockRes(); await auth(anon({ op: "signup", username: "someoneelse", password: "mango12345", invite: code }), res);
+  res = mockRes(); await auth(anon({ op: "signup", consent: true, username: "someoneelse", password: "mango12345", invite: code }), res);
   assert.equal(res.body.errorType, "inviteUsed");
   assert.ok(!DB.snapcal_users.some((u) => u.username === "someoneelse"));
 
@@ -80,16 +80,16 @@ test("an invite link lets exactly one person in, once", async () => {
 test("expired, cancelled and made-up links are refused with a clear reason", async () => {
   reset();
   DB.snapcal_invites.push({ code: "expiredexpiredexpired1", created_by: "aelson", expires_at: "2000-01-01T00:00:00Z", used_by: null, revoked: false });
-  let res = mockRes(); await auth(anon({ op: "signup", username: "late", password: "mango12345", invite: "expiredexpiredexpired1" }), res);
+  let res = mockRes(); await auth(anon({ op: "signup", consent: true, username: "late", password: "mango12345", invite: "expiredexpiredexpired1" }), res);
   assert.equal(res.body.errorType, "inviteExpired");
 
   res = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), res);
   const code = res.body.code;
   await invites(as("aelson", { op: "revoke", code }), mockRes());
-  res = mockRes(); await auth(anon({ op: "signup", username: "cancelled", password: "mango12345", invite: code }), res);
+  res = mockRes(); await auth(anon({ op: "signup", consent: true, username: "cancelled", password: "mango12345", invite: code }), res);
   assert.equal(res.body.errorType, "inviteRevoked");
 
-  res = mockRes(); await auth(anon({ op: "signup", username: "guesser", password: "mango12345", invite: "made-up-code-1234567" }), res);
+  res = mockRes(); await auth(anon({ op: "signup", consent: true, username: "guesser", password: "mango12345", invite: "made-up-code-1234567" }), res);
   assert.equal(res.body.errorType, "badInvite");
 });
 
@@ -127,7 +127,7 @@ test("an invite link puts the new person in the group it was made for, and nowhe
   const code = res.body.code;
   assert.equal(res.body.group, "work");
 
-  res = mockRes(); await auth(anon({ op: "signup", username: "jasmine", password: "mango12345", invite: code }), res);
+  res = mockRes(); await auth(anon({ op: "signup", consent: true, username: "jasmine", password: "mango12345", invite: code }), res);
   assert.equal(res.body.ok, true);
   const joined = DB.snapcal_group_members.filter((m) => m.username === "jasmine");
   assert.deepEqual(joined.map((m) => m.group_id), ["work"], "joins Work only — not Family");

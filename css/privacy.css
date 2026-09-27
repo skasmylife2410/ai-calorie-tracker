@@ -1,0 +1,14 @@
+/* privacy.css — the privacy policy & terms page. Builds on theme.css tokens. */
+body { margin: 0; background: var(--sc-background, #F7F6F3); color: var(--sc-primary-text, #1C1C1E); font-family: var(--sc-font, -apple-system, system-ui, sans-serif); -webkit-font-smoothing: antialiased; }
+.pv { max-width: 680px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 48px; line-height: 1.55; font-size: 15px; }
+.pv-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.pv-back { color: var(--sc-blue, #007AFF); text-decoration: none; font-weight: 600; }
+.pv-lang { display: inline-flex; background: rgba(120,120,128,.12); border-radius: 10px; padding: 2px; }
+.pv-lang button { font: inherit; font-size: 13px; font-weight: 600; border: 0; background: none; padding: 6px 12px; border-radius: 8px; color: inherit; cursor: pointer; }
+.pv-lang button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.pv h1 { font-size: 26px; line-height: 1.2; margin: 18px 0 4px; }
+.pv h2 { font-size: 17px; margin: 28px 0 6px; }
+.pv-date { color: var(--sc-secondary, #6B6B73); font-size: 13px; margin: 0 0 16px; }
+.pv-lead { font-size: 16px; background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,.05); }
+.pv ul { padding-left: 20px; margin: 6px 0; }
+.pv li { margin: 6px 0; }

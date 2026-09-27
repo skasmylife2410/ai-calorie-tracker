@@ -7,6 +7,9 @@
 // POST { op: "setEmail", username, password, email }    -> { ok, email }   "" removes it
 // POST { op: "forgot", identifier, lang }                -> { ok }          same answer either way
 // POST { op: "reset", token, newPassword }               -> { ok, token, username }
+// POST { op: "consent" }                 with session     -> { ok }   agrees to POLICY_VERSION
+// POST { op: "export" }                  with session     -> { ok, data }  everything stored
+// POST { op: "deleteAccount", password } with session     -> { ok }   removes it all
 //
 // Sign-up needs INVITE_CODE, because the app sits on a public URL: without it anyone who found
 // the address could create an account. Sharing the code with someone is how you invite them.
@@ -24,6 +27,8 @@ import { inviteProblem, inviteGroup } from "./invites.js";
 import { addMembership } from "./_groups.js";
 import { clientIp, isLocked, recordFailure, tooMany } from "./_limits.js";
 import { mailConfigured, sendMail, appUrl } from "./_mail.js";
+import { POLICY_VERSION } from "./_policy.js";
+import { exportAccount, deleteAccount } from "./_account-data.js";
 import crypto from "node:crypto";
 
 const EMAIL_RE = /^[^\s@"<>()]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
@@ -106,13 +111,14 @@ export default async function handler(req, res) {
     try {
       const still = await getUser(username);
       if (!still) return fail(res, "unauthorized", "That account no longer exists. Sign in again.");
-      return res.status(200).json({ ok: true, username, email: still.email ?? null, mailOn: mailConfigured() });
+      return res.status(200).json({ ok: true, username, email: still.email ?? null, mailOn: mailConfigured(), needsConsent: still.consent_version !== POLICY_VERSION, policyVersion: POLICY_VERSION });
     } catch {
       return res.status(200).json({ ok: true, username }); // database hiccup: don't sign anyone out
     }
   }
 
   if (op === "forgot") return forgot(req, res, body);
+  if (op === "consent" || op === "export" || op === "deleteAccount") return accountOp(req, res, body, op);
   if (op === "reset") return resetPassword(req, res, body);
 
   const username = normalizeUsername(body.username);
@@ -138,6 +144,8 @@ export default async function handler(req, res) {
       }
       const problem = passwordProblem(password);
       if (problem) return fail(res, problem, "Password must be at least 8 characters.");
+      // Health data (meals, weight, photos) needs explicit agreement before any is collected.
+      if (body.consent !== true) return fail(res, "consent", "Please agree to the privacy policy to create an account.");
       if (await getUser(username)) return fail(res, "taken", "That username is already taken.");
 
       const limit = maxUsers();
@@ -159,7 +167,8 @@ export default async function handler(req, res) {
         }
       }
       const { salt, hash } = hashPassword(password);
-      await writeUser({ username, salt, password_hash: hash, must_change: false, created_at: new Date().toISOString() });
+      const now = new Date().toISOString();
+      await writeUser({ username, salt, password_hash: hash, must_change: false, created_at: now, consent_version: POLICY_VERSION, consent_at: now });
       if (!viaShared) {
         const groupId = await inviteGroup(invite);
         if (groupId) await addMembership(groupId, username);
@@ -310,6 +319,36 @@ async function resetPassword(req, res, body) {
     return res.status(200).json({ ok: true, token: createSession(username), username });
   } catch (err) {
     console.error("reset:", err);
+    return fail(res, "other", "Something went wrong. Try again.");
+  }
+}
+
+/** Consent, data export and account deletion — all for the signed-in person only. */
+async function accountOp(req, res, body, op) {
+  const username = readSession(req.headers["x-snapcal-token"]);
+  if (!username) return fail(res, "unauthorized", "Not signed in", 401);
+  try {
+    if (op === "consent") {
+      const now = new Date().toISOString();
+      await writeUser({ username, consent_version: POLICY_VERSION, consent_at: now }, { update: true });
+      return res.status(200).json({ ok: true, policyVersion: POLICY_VERSION });
+    }
+    if (op === "export") {
+      res.setHeader?.("Cache-Control", "no-store");
+      return res.status(200).json({ ok: true, data: await exportAccount(username) });
+    }
+    // deleteAccount: the password again, so a borrowed unlocked phone can't erase someone
+    const keys = [`user:${username}`, `ip:${clientIp(req)}`];
+    if (await isLocked(keys)) return tooMany(res);
+    const user = await getUser(username);
+    if (!user || !verifyPassword(String(body.password ?? ""), user.salt, user.password_hash)) {
+      await recordFailure(keys);
+      return fail(res, "unauthorized", "Wrong password.");
+    }
+    await deleteAccount(username);
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error(`${op}:`, err);
     return fail(res, "other", "Something went wrong. Try again.");
   }
 }

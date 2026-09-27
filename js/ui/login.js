@@ -29,6 +29,60 @@ export function resetLinkToken() {
   return new URLSearchParams(location.search).get("reset") || "";
 }
 
+let lastWhoami = null;
+
+/** True when the signed-in account hasn't agreed to the current privacy policy yet. */
+export async function consentNeeded() {
+  const out = lastWhoami ?? (await postAuth({ op: "whoami" }));
+  lastWhoami = null;
+  return out?.ok === true && out.needsConsent === true;
+}
+
+/**
+ * Full-screen "before you continue" for the privacy policy. Resolves once they agree; the only
+ * other way out is signing out, so nothing is collected without consent.
+ */
+export function renderConsent(container) {
+  return new Promise((resolve) => {
+    let error = "";
+    let busy = false;
+    const draw = () => {
+      container.innerHTML = `
+        <div class="auth-screen">
+          <div class="auth-card">
+            <div class="auth-brand">SnapCal</div>
+            <h1 class="auth-title">${t("privacy.consentTitle")}</h1>
+            <div class="auth-sub">${t("privacy.consentSub")}</div>
+            <ul class="consent-list">
+              <li>${t("privacy.point1")}</li>
+              <li>${t("privacy.point2")}</li>
+              <li>${t("privacy.point3")}</li>
+              <li>${t("privacy.point4")}</li>
+            </ul>
+            <a class="consent-link" href="/privacy.html" target="_blank" rel="noopener">${t("privacy.read")} ↗</a>
+            <label class="consent-check"><input type="checkbox" id="consent-box" /> <span>${t("privacy.agree")}</span></label>
+            ${error ? `<div class="auth-error">${escapeHtml(error)}</div>` : ""}
+            <button type="button" class="auth-submit" id="consent-go" ${busy ? "disabled" : ""}>${busy ? t("auth.working") : t("privacy.continue")}</button>
+            <button type="button" class="auth-switch" id="consent-out">${t("auth.signOut")}</button>
+          </div>
+        </div>`;
+      container.querySelector("#consent-go").addEventListener("click", async () => {
+        if (!container.querySelector("#consent-box").checked) { error = t("privacy.tickFirst"); draw(); return; }
+        busy = true; draw();
+        const out = await postAuth({ op: "consent" });
+        busy = false;
+        if (!out.ok) { error = out.message || t("errors.generic"); draw(); return; }
+        resolve();
+      });
+      container.querySelector("#consent-out").addEventListener("click", () => {
+        setStoredToken("");
+        location.reload();
+      });
+    };
+    draw();
+  });
+}
+
 /** True when this device holds a session the server still accepts. */
 export async function hasValidSession() {
   // A reset link always goes to the reset screen, even on a phone that is still signed in.
@@ -44,6 +98,7 @@ export async function hasValidSession() {
   if (out.ok && out.username) {
     try { localStorage.setItem("snapcal.username", out.username); } catch { /* private mode */ }
   }
+  lastWhoami = out;
   return out.ok === true;
 }
 
@@ -156,6 +211,8 @@ export function renderLogin(container, { mode = "login" } = {}) {
               <label class="auth-label" for="auth-invite">${t("auth.invite")}</label>
               <input id="auth-invite" class="auth-input" type="text" autocapitalize="none" autocorrect="off" />
               <div class="auth-hint">${t("auth.inviteHint")}</div>` : ""}
+            ${isSignup ? `
+              <label class="consent-check"><input type="checkbox" id="auth-consent" /> <span>${t("privacy.agreeSignup")} <a href="/privacy.html" target="_blank" rel="noopener">${t("privacy.policyLink")}</a></span></label>` : ""}
 
             ${error ? `<div class="auth-error">${escapeHtml(error)}</div>` : ""}
 
@@ -183,13 +240,20 @@ export function renderLogin(container, { mode = "login" } = {}) {
           draw();
           return;
         }
+        const consent = container.querySelector("#auth-consent")?.checked === true;
+        if (current === "signup" && !consent) {
+          error = t("privacy.tickFirst");
+          draw();
+          container.querySelector("#auth-user").value = username;
+          return;
+        }
         busy = true;
         error = "";
         draw();
 
         const out = await postAuth(
           current === "signup"
-            ? { op: "signup", username, password, invite: linkCode || inviteEl?.value.trim() }
+            ? { op: "signup", username, password, invite: linkCode || inviteEl?.value.trim(), consent }
             : { op: "login", username, password }
         );
         busy = false;

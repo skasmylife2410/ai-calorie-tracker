@@ -740,5 +740,27 @@
     "n1Body": "SnapCal can now tell you when someone shares a meal, comments on yours, sends you a note, or your Friday check-in is ready.",
     "n2Title": "You're in control",
     "n2Body": "Turn them on or off anytime in Profile, under Notifications. You only hear about your own groups."
+  },
+  "privacy": {
+    "section": "Privacy",
+    "policyLink": "Privacy policy & terms",
+    "download": "Download my data",
+    "downloaded": "Downloaded. The file has everything stored about you.",
+    "delete": "Delete my account",
+    "deleteWarn": "This permanently deletes your account and everything in it: meals, photos, weight, exercise, notes, shared posts. It can't be undone. Download your data first if you want a copy.",
+    "deleteForever": "Delete everything",
+    "deleteConfirm": "Delete your account and all your data for good?",
+    "deleted": "Your account and data have been deleted.",
+    "consentTitle": "Before you continue",
+    "consentSub": "SnapCal keeps health information about you, so we need your OK first. In short:",
+    "point1": "We store what you log — meals, photos, weight, exercise and body details — to run the app and sync your phones.",
+    "point2": "Meal photos and descriptions are sent to Google's Gemini AI to estimate calories. Google may keep them to improve its products.",
+    "point3": "Your group sees your daily totals and whatever you share. Nothing is sold or used for ads.",
+    "point4": "Calorie numbers are estimates, not medical advice. You can download or delete everything any time in Profile → Privacy.",
+    "read": "Read the full privacy policy & terms",
+    "agree": "I'm 16 or older, I've read the privacy policy and terms, and I agree to SnapCal processing my health data as described.",
+    "agreeSignup": "I'm 16 or older and I agree to the",
+    "continue": "Agree and continue",
+    "tickFirst": "Please tick the box to agree first."
   }
 }

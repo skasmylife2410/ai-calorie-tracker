@@ -1,6 +1,7 @@
 // auth.test.mjs — accounts: hashing, sessions, and every way login can be abused.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { POLICY_VERSION } from "../api/_policy.js";
 
 process.env.APP_SECRET = "test-secret";
 process.env.SUPABASE_URL = "https://example.supabase.co";
@@ -59,24 +60,24 @@ test("sessions are signed, expire, and cannot be forged or re-pointed", () => {
 test("sign-up needs the invite code and a real password", async () => {
   USERS = [];
   let res = mockRes();
-  await auth(req({ op: "signup", username: "thayra23", password: "cumbia7431", invite: "wrong" }), res);
+  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "cumbia7431", invite: "wrong" }), res);
   assert.equal(res.body.errorType, "badInvite");
 
   res = mockRes();
-  await auth(req({ op: "signup", username: "thayra23", password: "short", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "short", invite: "arepa" }), res);
   assert.equal(res.body.errorType, "tooShort");
 
   res = mockRes();
-  await auth(req({ op: "signup", username: "Thayra 23!", password: "cumbia7431", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "Thayra 23!", password: "cumbia7431", invite: "arepa" }), res);
   assert.equal(res.body.errorType, "badUsername");
 
   res = mockRes();
-  await auth(req({ op: "signup", username: "THAYRA23", password: "cumbia7431", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "THAYRA23", password: "cumbia7431", invite: "arepa" }), res);
   assert.equal(res.body.ok, true);
   assert.equal(acct.readSession(res.body.token), "thayra23", "usernames are lower-cased");
 
   res = mockRes();
-  await auth(req({ op: "signup", username: "thayra23", password: "otherpassword", invite: "arepa" }), res);
+  await auth(req({ op: "signup", consent: true, username: "thayra23", password: "otherpassword", invite: "arepa" }), res);
   assert.equal(res.body.errorType, "taken");
 });
 
@@ -122,7 +123,7 @@ test("whoami reports the signed-in user and nothing else", async () => {
   let res = mockRes();
   await auth(req({ op: "whoami" }, acct.createSession("aelson")), res);
   // your own username and recovery email, whether email recovery is on — never hashes or salts
-  assert.deepEqual(res.body, { ok: true, username: "aelson", email: null, mailOn: false });
+  assert.deepEqual(res.body, { ok: true, username: "aelson", email: null, mailOn: false, needsConsent: true, policyVersion: POLICY_VERSION });
 
   res = mockRes();
   await auth(req({ op: "whoami" }, "junk"), res);
@@ -141,7 +142,7 @@ test("the account cap stops a leaked invite code letting in a fourth person", as
   process.env.MAX_USERS = "3";
   const signup = async (username) => {
     const res = mockRes();
-    await auth(req({ op: "signup", username, password: "cumbia7431", invite: "arepa" }), res);
+    await auth(req({ op: "signup", consent: true, username, password: "cumbia7431", invite: "arepa" }), res);
     return res.body;
   };
 
@@ -178,7 +179,7 @@ test("a session for an account that no longer exists is refused", async () => {
   // the renamed account works as normal
   const fresh = mockRes();
   await auth(req({ op: "whoami" }, acct.createSession("carmen")), fresh);
-  assert.deepEqual(fresh.body, { ok: true, username: "carmen", email: null, mailOn: false });
+  assert.deepEqual(fresh.body, { ok: true, username: "carmen", email: null, mailOn: false, needsConsent: true, policyVersion: POLICY_VERSION });
 });
 
 test("security: sessions need a real secret outside local dev", async () => {
@@ -207,6 +208,7 @@ test("security: wrong passcodes are braked after too many failures", async () =>
   process.env.SUPABASE_URL = "https://example.supabase.co";
   let failures = MAX_FAILURES; // the table already holds this many recent failures
   let recorded = 0;
+  const savedFetch = globalThis.fetch;
   globalThis.fetch = async (url, opts = {}) => {
     if (opts.method === "POST") { recorded += 1; return { ok: true, json: async () => [] }; }
     return { ok: true, json: async () => Array.from({ length: failures }, (_, i) => ({ id: i })) };
@@ -222,7 +224,21 @@ test("security: wrong passcodes are braked after too many failures", async () =>
     assert.equal(recorded, 1, "a wrong guess is counted");
     assert.equal(await requireUser({ headers: { "x-snapcal-token": "2222" } }, mockRes()), "maria");
   } finally {
+    globalThis.fetch = savedFetch;
     process.env.APP_USERS = savedUsers ?? ""; if (savedUsers === undefined) delete process.env.APP_USERS;
     if (savedUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = savedUrl;
   }
+});
+
+test("privacy: sign-up without consent is refused, and consent is recorded with the policy version", async () => {
+  const { POLICY_VERSION: v } = await import("../api/_policy.js");
+  USERS = [];
+  const res = mockRes();
+  await auth(req({ op: "signup", username: "newbie", password: "longenough", invite: "arepa" }), res);
+  assert.equal(res.body.errorType, "consent");
+  assert.equal(USERS.length, 0, "nothing stored without consent");
+  const ok = mockRes();
+  await auth(req({ op: "signup", username: "newbie", password: "longenough", invite: "arepa", consent: true }), ok);
+  assert.equal(ok.body.ok, true, JSON.stringify(ok.body));
+  assert.equal(USERS.find((u) => u.username === "newbie")?.consent_version, v);
 });

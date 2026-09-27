@@ -740,5 +740,27 @@
     "n1Body": "SnapCal ahora te avisa cuando alguien comparte una comida, comenta la tuya, te manda una nota o tu revisión del viernes está lista.",
     "n2Title": "Tú decides",
     "n2Body": "Actívalas o desactívalas cuando quieras en Perfil, en Notificaciones. Solo te llegan avisos de tus propios grupos."
+  },
+  "privacy": {
+    "section": "Privacidad",
+    "policyLink": "Política de privacidad y términos",
+    "download": "Descargar mis datos",
+    "downloaded": "Descargado. El archivo tiene todo lo que se guarda sobre ti.",
+    "delete": "Eliminar mi cuenta",
+    "deleteWarn": "Esto borra para siempre tu cuenta y todo lo que contiene: comidas, fotos, peso, ejercicio, notas y publicaciones compartidas. No se puede deshacer. Descarga tus datos antes si quieres una copia.",
+    "deleteForever": "Borrar todo",
+    "deleteConfirm": "¿Borrar tu cuenta y todos tus datos para siempre?",
+    "deleted": "Tu cuenta y tus datos se han borrado.",
+    "consentTitle": "Antes de continuar",
+    "consentSub": "SnapCal guarda información de salud sobre ti, así que necesitamos tu permiso primero. En resumen:",
+    "point1": "Guardamos lo que registras —comidas, fotos, peso, ejercicio y datos corporales— para que la app funcione y sincronice tus teléfonos.",
+    "point2": "Las fotos y descripciones de comidas se envían a la IA Gemini de Google para estimar calorías. Google puede conservarlas para mejorar sus productos.",
+    "point3": "Tu grupo ve tus totales diarios y lo que compartas. Nada se vende ni se usa para anuncios.",
+    "point4": "Las calorías son estimaciones, no consejo médico. Puedes descargar o borrar todo cuando quieras en Perfil → Privacidad.",
+    "read": "Leer la política de privacidad y los términos completos",
+    "agree": "Tengo 16 años o más, he leído la política de privacidad y los términos, y acepto que SnapCal trate mis datos de salud como se describe.",
+    "agreeSignup": "Tengo 16 años o más y acepto la",
+    "continue": "Aceptar y continuar",
+    "tickFirst": "Marca la casilla para aceptar primero."
   }
 }
