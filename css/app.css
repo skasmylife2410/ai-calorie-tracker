@@ -2173,3 +2173,8 @@ body.setup-open { overflow: hidden; }
 .whatsnew-note { font-size: 13px; line-height: 1.45; color: var(--sc-secondary); margin: 6px 2px 0; }
 .whatsnew .push-actions { margin-top: 18px; }
 .whatsnew .acct-btn { padding: 14px 0; font-size: 16px; }
+
+/* password recovery */
+.auth-notice { font-size: 14px; line-height: 1.45; color: var(--sc-primary-text); background: var(--sc-secondary-15); border-radius: 12px; padding: 12px 14px; margin: 4px 0 14px; }
+.auth-forgot { margin-top: 6px; }
+.acct-note { font-size: 13px; color: var(--sc-secondary); line-height: 1.45; margin-bottom: 10px; }

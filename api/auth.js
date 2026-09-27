@@ -3,7 +3,10 @@
 // POST { op: "login",  username, password }            -> { ok, token, mustChange }
 // POST { op: "signup", username, password, invite }     -> { ok, token }
 // POST { op: "change", username, password, newPassword }-> { ok, token }
-// POST { op: "whoami" } with x-snapcal-token            -> { ok, username }
+// POST { op: "whoami" } with x-snapcal-token            -> { ok, username, email }
+// POST { op: "setEmail", username, password, email }    -> { ok, email }   "" removes it
+// POST { op: "forgot", identifier, lang }                -> { ok }          same answer either way
+// POST { op: "reset", token, newPassword }               -> { ok, token, username }
 //
 // Sign-up needs INVITE_CODE, because the app sits on a public URL: without it anyone who found
 // the address could create an account. Sharing the code with someone is how you invite them.
@@ -20,6 +23,13 @@ import { maxUsers as memberCap } from "./_members.js";
 import { inviteProblem, inviteGroup } from "./invites.js";
 import { addMembership } from "./_groups.js";
 import { clientIp, isLocked, recordFailure, tooMany } from "./_limits.js";
+import { mailConfigured, sendMail, appUrl } from "./_mail.js";
+import crypto from "node:crypto";
+
+const EMAIL_RE = /^[^\s@"<>()]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
+const RESET_MINUTES = 30;
+const RESETS_PER_WINDOW = 3; // per account, per 15 minutes
+const sha256 = (s) => crypto.createHash("sha256").update(String(s)).digest("hex");
 
 function restBase() {
   return (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
@@ -96,11 +106,14 @@ export default async function handler(req, res) {
     try {
       const still = await getUser(username);
       if (!still) return fail(res, "unauthorized", "That account no longer exists. Sign in again.");
+      return res.status(200).json({ ok: true, username, email: still.email ?? null, mailOn: mailConfigured() });
     } catch {
       return res.status(200).json({ ok: true, username }); // database hiccup: don't sign anyone out
     }
-    return res.status(200).json({ ok: true, username });
   }
+
+  if (op === "forgot") return forgot(req, res, body);
+  if (op === "reset") return resetPassword(req, res, body);
 
   const username = normalizeUsername(body.username);
   const password = String(body.password ?? "");
@@ -163,6 +176,26 @@ export default async function handler(req, res) {
 
     const user = await getUser(username);
 
+    if (op === "setEmail") {
+      // Needs both the session and the current password: otherwise anyone holding an unlocked
+      // phone could point recovery at their own inbox and take the account later.
+      const authorised = sessionUser === username && user && verifyPassword(password, user.salt, user.password_hash);
+      if (!authorised) {
+        await recordFailure(guessKeys);
+        return fail(res, "unauthorized", "Wrong password.");
+      }
+      const email = String(body.email ?? "").trim().toLowerCase();
+      if (email !== "" && (email.length > 254 || !EMAIL_RE.test(email))) return fail(res, "badEmail", "That email address doesn't look right.");
+      const r = await fetch(`${restBase()}/rest/v1/snapcal_users?username=eq.${encodeURIComponent(username)}`, {
+        method: "PATCH",
+        headers: restHeaders(),
+        body: JSON.stringify({ email: email || null }),
+      });
+      if (r.status === 409) return fail(res, "emailTaken", "That email is already used by another account.");
+      if (!r.ok) throw new Error(`Supabase email update failed (${r.status})`);
+      return res.status(200).json({ ok: true, email: email || null });
+    }
+
     if (op === "change") {
       // Either a valid session for this user, or the current password, authorises the change.
       const session = readSession(req.headers["x-snapcal-token"]);
@@ -190,6 +223,93 @@ export default async function handler(req, res) {
   } catch (err) {
     if (err?.code === "taken") return fail(res, "taken", "That username is already taken.");
     console.error("auth:", err);
+    return fail(res, "other", "Something went wrong. Try again.");
+  }
+}
+
+/**
+ * "Forgot password?": emails a single-use reset link if the account has an address on file.
+ * The reply is identical whether or not the account or email exists, so the form can't be used
+ * to find out who uses the app. Only the link's SHA-256 is stored.
+ */
+async function forgot(req, res, body) {
+  if (!mailConfigured() || !appUrl()) return fail(res, "mailOff", "Email recovery isn't set up yet. Ask whoever runs the app to reset your password.");
+  const sent = { ok: true };
+  const id = String(body.identifier ?? "").trim().toLowerCase().slice(0, 254);
+  if (!id) return fail(res, "empty", "Enter your username or email.");
+  const ipKey = `ip:${clientIp(req)}`;
+  if (await isLocked([`reset-${ipKey}`])) return tooMany(res);
+  await recordFailure([`reset-${ipKey}`]); // every request counts toward the address's limit
+
+  try {
+    const field = id.includes("@") ? "email" : "username";
+    const params = new URLSearchParams({ select: "username,email", [field]: `eq.${id}`, limit: "1" });
+    const r = await fetch(`${restBase()}/rest/v1/snapcal_users?${params}`, { headers: restHeaders() });
+    const user = r.ok ? (await r.json())[0] : null;
+    if (!user?.email) return res.status(200).json(sent);
+    if (await isLocked([`reset:${user.username}`], RESETS_PER_WINDOW)) return res.status(200).json(sent);
+    await recordFailure([`reset:${user.username}`]);
+
+    const token = crypto.randomBytes(32).toString("base64url");
+    const expires = new Date(Date.now() + RESET_MINUTES * 60000).toISOString();
+    const ins = await fetch(`${restBase()}/rest/v1/snapcal_password_resets`, {
+      method: "POST",
+      headers: restHeaders({ Prefer: "return=minimal" }),
+      body: JSON.stringify([{ token_hash: sha256(token), username: user.username, expires_at: expires }]),
+    });
+    if (!ins.ok) throw new Error(`reset insert failed (${ins.status})`);
+
+    const link = `${appUrl()}/?reset=${token}`;
+    const es = body.lang === "es";
+    const subject = es ? "Restablece tu contraseña de SnapCal" : "Reset your SnapCal password";
+    const lines = es
+      ? [`Hola ${user.username},`, "Alguien (ojalá tú) pidió restablecer tu contraseña de SnapCal.", `Ábrelo aquí en los próximos ${RESET_MINUTES} minutos:`, link, "Si no fuiste tú, ignora este correo: tu contraseña no cambia."]
+      : [`Hi ${user.username},`, "Someone (hopefully you) asked to reset your SnapCal password.", `Open this within ${RESET_MINUTES} minutes:`, link, "If it wasn't you, ignore this email — your password stays the same."];
+    const html = `<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.5;color:#1c1c1e">
+      <p>${lines[0]}</p><p>${lines[1]}</p>
+      <p><a href="${link}" style="display:inline-block;background:#1c1c1e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:12px;font-weight:600">${es ? "Elegir nueva contraseña" : "Choose a new password"}</a></p>
+      <p style="color:#8e8e93;font-size:13px">${lines[2]}<br>${lines[4]}</p></div>`;
+    await sendMail({ to: user.email, subject, text: lines.join("\n\n"), html });
+  } catch (err) {
+    console.error("forgot:", err);
+  }
+  return res.status(200).json(sent);
+}
+
+/** Sets a new password from a reset link, then signs the person in. */
+async function resetPassword(req, res, body) {
+  const token = String(body.token ?? "");
+  const ipKey = [`ip:${clientIp(req)}`];
+  if (await isLocked(ipKey)) return tooMany(res);
+  const problem = passwordProblem(body.newPassword);
+  if (problem) return fail(res, problem, "Password must be at least 8 characters.");
+  const bad = async () => {
+    await recordFailure(ipKey);
+    return fail(res, "badReset", "That reset link has expired or was already used. Ask for a new one.");
+  };
+  if (!/^[A-Za-z0-9_-]{40,50}$/.test(token)) return bad();
+
+  try {
+    // Claim the link in one conditional update, so it can only ever be used once.
+    const now = new Date().toISOString();
+    const claim = await fetch(`${restBase()}/rest/v1/snapcal_password_resets?token_hash=eq.${sha256(token)}&used_at=is.null&expires_at=gt.${encodeURIComponent(now)}`, {
+      method: "PATCH",
+      headers: restHeaders({ Prefer: "return=representation" }),
+      body: JSON.stringify({ used_at: now }),
+    });
+    const rows = claim.ok ? await claim.json() : [];
+    const username = rows[0]?.username;
+    if (!username) return bad();
+
+    const { salt, hash } = hashPassword(String(body.newPassword));
+    await writeUser({ username, salt, password_hash: hash, must_change: false }, { update: true });
+    // any other links still out there for this account stop working too
+    await fetch(`${restBase()}/rest/v1/snapcal_password_resets?username=eq.${encodeURIComponent(username)}&used_at=is.null`, {
+      method: "PATCH", headers: restHeaders(), body: JSON.stringify({ used_at: now }),
+    });
+    return res.status(200).json({ ok: true, token: createSession(username), username });
+  } catch (err) {
+    console.error("reset:", err);
     return fail(res, "other", "Something went wrong. Try again.");
   }
 }

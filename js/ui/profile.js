@@ -121,7 +121,18 @@ function accountSectionHtml(username) {
     <div class="ios-section">
       <div class="ios-section-header">${t("auth.account")}</div>
       <div class="ios-section-body">
-        <div class="ios-row"><div class="ios-row-label">${t("auth.signedInAs")}</div><div class="ios-row-value">${username || "—"}</div></div>
+        <div class="ios-row"><div class="ios-row-label">${t("auth.signedInAs")}</div><div class="ios-row-value">${escapeHtml(username || "—")}</div></div>
+        <div class="ios-row"><div class="ios-row-label">${t("auth.email")}</div><div class="ios-row-value" id="acct-email-value">…</div></div>
+        <div class="acct-actions">
+          <button type="button" class="acct-btn" id="acct-email">${t("auth.emailButton")}</button>
+        </div>
+        <div class="acct-form hidden" id="acct-email-form">
+          <div class="acct-note">${t("auth.emailWhy")}</div>
+          <input id="acct-email-input" class="auth-input" type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="email" placeholder="${t("auth.emailPlaceholder")}" />
+          <input id="acct-email-pass" class="auth-input" type="password" placeholder="${t("auth.currentPassword")}" autocomplete="current-password" />
+          <button type="button" class="auth-submit" id="acct-email-save">${t("app.save")}</button>
+          <div class="acct-msg" id="acct-email-msg"></div>
+        </div>
         <div class="acct-actions">
           <button type="button" class="acct-btn" id="acct-change">${t("auth.changePassword")}</button>
           <button type="button" class="acct-btn is-danger" id="acct-signout">${t("auth.signOut")}</button>
@@ -137,6 +148,30 @@ function accountSectionHtml(username) {
 }
 
 function wireAccount(container, username) {
+  const emailValue = container.querySelector("#acct-email-value");
+  const emailForm = container.querySelector("#acct-email-form");
+  const emailInput = container.querySelector("#acct-email-input");
+  const showEmail = (email) => {
+    if (emailValue) emailValue.textContent = email || t("auth.emailNone");
+    if (emailInput && email) emailInput.value = email;
+  };
+  postAuth({ op: "whoami" }).then((out) => showEmail(out.ok ? out.email : null));
+  container.querySelector("#acct-email")?.addEventListener("click", () => emailForm?.classList.toggle("hidden"));
+  container.querySelector("#acct-email-save")?.addEventListener("click", async () => {
+    const msg = container.querySelector("#acct-email-msg");
+    msg.classList.remove("is-error");
+    msg.textContent = t("auth.working");
+    const out = await postAuth({ op: "setEmail", username, password: container.querySelector("#acct-email-pass").value, email: emailInput.value.trim() });
+    if (out.ok) {
+      showEmail(out.email);
+      msg.textContent = out.email ? t("auth.emailSaved") : t("auth.emailRemoved");
+      container.querySelector("#acct-email-pass").value = "";
+    } else {
+      msg.textContent = out.message || t("errors.generic");
+      msg.classList.add("is-error");
+    }
+  });
+
   const form = container.querySelector("#acct-form");
   container.querySelector("#acct-change")?.addEventListener("click", () => form?.classList.toggle("hidden"));
 

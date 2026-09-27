@@ -93,6 +93,7 @@ export async function purgeOldPosts(now = Date.now()) {
   await remove("snapcal_shares", { created_at: `lt.${cutoff}` }); // comments cascade
   // failed sign-in records only matter for 15 minutes; keep a day for looking back
   await remove("snapcal_auth_failures", { at: `lt.${new Date(now - 86400000).toISOString()}` }).catch(() => {});
+  await remove("snapcal_password_resets", { expires_at: `lt.${new Date(now - 86400000).toISOString()}` }).catch(() => {});
   return cutoff;
 }
 

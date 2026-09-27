@@ -121,7 +121,8 @@ test("whoami reports the signed-in user and nothing else", async () => {
   USERS = [{ username: "aelson", salt: "s", password_hash: "h", must_change: false }];
   let res = mockRes();
   await auth(req({ op: "whoami" }, acct.createSession("aelson")), res);
-  assert.deepEqual(res.body, { ok: true, username: "aelson" });
+  // your own username and recovery email, whether email recovery is on — never hashes or salts
+  assert.deepEqual(res.body, { ok: true, username: "aelson", email: null, mailOn: false });
 
   res = mockRes();
   await auth(req({ op: "whoami" }, "junk"), res);
@@ -177,7 +178,7 @@ test("a session for an account that no longer exists is refused", async () => {
   // the renamed account works as normal
   const fresh = mockRes();
   await auth(req({ op: "whoami" }, acct.createSession("carmen")), fresh);
-  assert.deepEqual(fresh.body, { ok: true, username: "carmen" });
+  assert.deepEqual(fresh.body, { ok: true, username: "carmen", email: null, mailOn: false });
 });
 
 test("security: sessions need a real secret outside local dev", async () => {

@@ -17,17 +17,17 @@ export function clientIp(req) {
   return fwd || String(req.headers?.["x-real-ip"] ?? "").trim() || "unknown";
 }
 
-/** True when any of `keys` has too many recent failures. */
-export async function isLocked(keys) {
+/** True when any of `keys` has `max` or more recent failures. */
+export async function isLocked(keys, max = MAX_FAILURES) {
   if (!restBase() || keys.length === 0) return false;
   const since = new Date(Date.now() - WINDOW_MINUTES * 60000).toISOString();
   try {
     const counts = await Promise.all(keys.map(async (key) => {
-      const params = new URLSearchParams({ select: "id", key: `eq.${key}`, at: `gte.${since}`, limit: String(MAX_FAILURES) });
+      const params = new URLSearchParams({ select: "id", key: `eq.${key}`, at: `gte.${since}`, limit: String(max) });
       const r = await fetch(`${restBase()}/rest/v1/snapcal_auth_failures?${params}`, { headers: restHeaders() });
       return r.ok ? (await r.json()).length : 0;
     }));
-    return counts.some((n) => n >= MAX_FAILURES);
+    return counts.some((n) => n >= max);
   } catch {
     return false;
   }
