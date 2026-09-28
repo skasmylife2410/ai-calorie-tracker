@@ -11,18 +11,28 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-export async function postAuth(payload) {
+export async function postAuth(payload, { timeoutMs = 0 } = {}) {
+  // A stalled connection (weak signal, a captive Wi-Fi page) doesn't fail, it just never answers.
+  // Callers that can't afford to wait forever pass a timeout, and it counts as being offline.
+  const controller = timeoutMs > 0 && typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     const res = await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-snapcal-token": getStoredToken() },
       body: JSON.stringify(payload),
+      ...(controller ? { signal: controller.signal } : {}),
     });
     return await res.json();
   } catch (err) {
     return { ok: false, errorType: "network", message: t("errors.offline") };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
+
+/** How long opening the app waits for the server before carrying on from what's on the phone. */
+export const BOOT_AUTH_TIMEOUT_MS = 5000;
 
 /** The token from a password-reset email link (?reset=...), if the app was opened from one. */
 export function resetLinkToken() {
@@ -33,7 +43,7 @@ let lastWhoami = null;
 
 /** True when the signed-in account hasn't agreed to the current privacy policy yet. */
 export async function consentNeeded() {
-  const out = lastWhoami ?? (await postAuth({ op: "whoami" }));
+  const out = lastWhoami ?? (await postAuth({ op: "whoami" }, { timeoutMs: BOOT_AUTH_TIMEOUT_MS }));
   lastWhoami = null;
   return out?.ok === true && out.needsConsent === true;
 }
@@ -88,7 +98,14 @@ export async function hasValidSession() {
   // A reset link always goes to the reset screen, even on a phone that is still signed in.
   if (resetLinkToken()) return false;
   if (!getStoredToken()) return false;
-  const out = await postAuth({ op: "whoami" });
+  const out = await postAuth({ op: "whoami" }, { timeoutMs: BOOT_AUTH_TIMEOUT_MS });
+  // No answer (offline, or a connection that stalls): keep the signed-in session and open the
+  // app from what's on the phone. The server still checks the session on every request, so
+  // nothing is let through; the alternative was a blank screen until the network came back.
+  if (out.errorType === "network") {
+    lastWhoami = out; // so the consent check below doesn't wait on the network a second time
+    return true;
+  }
   if (!out.ok && out.errorType === "unauthorized") {
     // stale session (e.g. the account was renamed): clear it so the sign-in screen appears
     setStoredToken("");

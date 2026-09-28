@@ -1,7 +1,10 @@
 // sw.js — minimal service worker: network-first for everything, cache-fallback for the app
 // shell, enough for PWA installability. Bump CACHE_VERSION to bust caches on deploy.
 
-const CACHE_VERSION = "snapcal-v8";
+const CACHE_VERSION = "snapcal-v9";
+const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
+const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
+let stalledUntil = 0;
 
 const APP_SHELL = [
   "/i18n/en.json",
@@ -72,24 +75,35 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return; // POST /api/gemini etc. always hit the network
   if (new URL(request.url).pathname.startsWith("/api/")) return; // live data, never the shell cache
 
-  // Network-first, cache-fallback (fresh code wins; offline still boots the shell).
+  // Network-first, cache-fallback (fresh code wins; offline still boots the shell). A connection
+  // that stalls instead of failing (weak signal, a captive Wi-Fi page) used to hold the app on a
+  // blank screen for as long as it stalled, so after STALL_MS a cached copy is served instead;
+  // the network answer still lands in the cache for next time.
+  const network = fetch(request).then((response) => {
+    if (response.ok && new URL(request.url).origin === self.location.origin) {
+      const clone = response.clone();
+      caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+    }
+    return response;
+  });
+  const fallback = () =>
+    caches.match(request).then((cached) => cached || (request.mode === "navigate" ? caches.match("/index.html") : undefined));
+  // The app's files load in waves (page, then scripts, then what they import); once the network
+  // has stalled, each wave shouldn't wait out its own timer too.
+  const wait = Date.now() < stalledUntil ? 0 : STALL_MS;
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok && new URL(request.url).origin === self.location.origin) {
-          const clone = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      })
-      .catch(() =>
-        caches.match(request).then((cached) => {
-          if (cached) return cached;
-          if (request.mode === "navigate") return caches.match("/index.html");
-          return Response.error();
-        })
-      )
+    new Promise((resolve) => {
+      let done = false;
+      const finish = (r) => { if (!done && r) { done = true; resolve(r); } };
+      const timer = setTimeout(() => {
+        fallback().then((r) => { if (r && wait > 0) stalledUntil = Date.now() + STALLED_FOR_MS; finish(r); });
+      }, wait);
+      network
+        .then((r) => { clearTimeout(timer); if (!done) stalledUntil = 0; finish(r); })
+        .catch(() => { clearTimeout(timer); fallback().then((r) => finish(r || Response.error())); });
+    })
   );
+  event.waitUntil(network.catch(() => {}));
 });
 
 // ---------------------------------------------------------------------------
