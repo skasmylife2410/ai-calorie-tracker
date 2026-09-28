@@ -37,17 +37,24 @@ export async function markNoteSeen(id) {
 export const listShares = (group = null) => post("/api/shares", { op: "list", ...(group ? { group } : {}) });
 export const deleteShare = (id) => post("/api/shares", { op: "delete", id });
 
-export const addComment = (shareId, body) => post("/api/shares", { op: "comment", shareId, body });
+/** A comment is words, a photo, or both. The photo is shrunk to COMMENT_EDGE before upload. */
+export async function addComment(shareId, body, photoDataUrl = null) {
+  const photo = photoDataUrl ? await shrinkPhoto(photoDataUrl, COMMENT_EDGE) : null;
+  if (photoDataUrl && !photo) return { ok: false, errorType: "photo", message: null };
+  return post("/api/shares", { op: "comment", shareId, body, ...(photo ? { photo } : {}) });
+}
 export const deleteComment = (id) => post("/api/shares", { op: "uncomment", id });
 
 /** Your own Friday recommendation (private — the server only ever returns the signed-in person's). */
 export const myRecap = (lang = "en") => post("/api/weekly", { op: "mine", lang });
 
-export const SHARE_EDGE = 320;
+export const SHARE_EDGE = 720;   // posts fill the card width, so they need to be sharp on a 3x screen
+export const COMMENT_EDGE = 480; // photo replies show smaller, inside the thread
 
 /**
  * Shrinks a photo for the feed: longest edge SHARE_EDGE px, WebP where the browser can write it
- * (Safari falls back to JPEG). A feed post ends up ~15–30 KB instead of the 60–150 KB log photo.
+ * (Safari falls back to JPEG). A post photo ends up ~50–120 KB, a comment photo ~20–60 KB; the
+ * server's limits (api/shares.js) sit above both.
  */
 export async function shrinkPhoto(dataUrl, edge = SHARE_EDGE) {
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return null;

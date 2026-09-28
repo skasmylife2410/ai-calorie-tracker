@@ -398,7 +398,19 @@
     "post": "Publicar",
     "postedToday": "Ya publicaste hoy. Mañana podrás publicar otra vez.",
     "showMore": "Ver {n} más",
-    "tab": "Compartido"
+    "tab": "Compartido",
+    "viewAll": "Ver los {n} comentarios",
+    "showLess": "Ver menos comentarios",
+    "commentsCount": "{n} comentario|{n} comentarios",
+    "comment": "Comentar",
+    "firstComment": "Sé el primero en comentar…",
+    "sharePlaceholder": "Comparte algo con {group}…",
+    "addPhotoLabel": "Añadir una foto",
+    "removePhoto": "Quitar la foto",
+    "photoBy": "Foto de {name}",
+    "photoHidden": "Foto sin cargar: ahora hay demasiadas fotos en el muro.",
+    "photoFailed": "No se pudo añadir esa foto. Prueba con otra.",
+    "deletePost": "Borrar publicación"
   },
   "homeChips": {
     "exercise": "Ejercicio",

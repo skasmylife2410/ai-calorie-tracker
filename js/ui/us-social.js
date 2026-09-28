@@ -4,6 +4,7 @@
 import { safeSrc } from "../safe-src.js";
 import { sendNote, listShares, deleteShare, addComment, deleteComment, createPost, POST_MAX, COMMENT_MAX } from "../social.js";
 import { t, formatNumber } from "../i18n.js";
+import { icon } from "./icons.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const title = (s) => String(s ?? "").replace(/(^|[-_])([a-z])/g, (_, sep, c) => (sep ? " " : "") + c.toUpperCase());
@@ -62,13 +63,28 @@ function toast(text) {
   setTimeout(() => el.remove(), 2600);
 }
 
+/** Reads a picked image file as a data URL (the caller shrinks it before upload). */
+function readPhoto(file) {
+  return new Promise((resolve) => {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+const COMMENTS_SHOWN = 2; // the latest few sit under each post; "View all" opens the rest in place
+
 /**
- * Renders the Shared feed into `host`: compact photo posts, each with its comments.
- * @param {{me:string, people:Array<{owner:string, avatar?:string}>, colors:string[]}} ctx
+ * Renders the Shared feed into `host`. Each post reads as a post: who and when, the photo at full
+ * width, the meal or caption, then its conversation. The latest comments are part of the post
+ * (no hidden panel), every post has its own "Add a comment" line, and a comment can carry a photo.
+ * @param {{me:string, people:Array<{owner:string, avatar?:string}>, colors:string[], group?:string|null, groupName?:string}} ctx
  */
-export async function renderFeed(host, { me, people, colors, group = null }) {
+export async function renderFeed(host, { me, people, colors, group = null, groupName = "" }) {
   const nameOf = (owner) => people.find((p) => p.owner === owner)?.name || title(owner);
-  host.innerHTML = `<h2 class="tg-h2">${t("social.shared")}</h2><div class="post-compose" id="post-compose"></div><div class="feed-list"><p class="tg-note">…</p></div><p class="feed-rule">${t("social.feedRule")}</p>`;
+  host.innerHTML = `<div class="post-compose" id="post-compose"></div><p class="feed-rule">${t("social.feedRule")}</p><div class="feed-list"><p class="tg-note">…</p></div>`;
   const list = host.querySelector(".feed-list");
   const composer = host.querySelector("#post-compose");
   const out = await listShares(group);
@@ -80,50 +96,77 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
 
   const colorOf = (owner) => colors[Math.max(0, people.findIndex((p) => p.owner === owner)) % colors.length];
   const avatarOf = (owner) => people.find((p) => p.owner === owner)?.avatar ?? null;
-  const open = new Set();
+  const expanded = new Set(); // posts whose whole thread is open
+  const drafts = new Map();   // shareId -> { text, photo } so a redraw never loses what you typed
+
+  const avHtml = (owner, cls = "feed-av") => {
+    const av = avatarOf(owner);
+    return `<span class="${cls}" style="--av:${colorOf(owner)}">${av ? `<img src="${safeSrc(av)}" alt="">` : esc(nameOf(owner).slice(0, 1))}</span>`;
+  };
 
   const commentHtml = (c) => `
     <li class="fc-item" data-cid="${esc(c.id)}">
-      <span class="fc-who">${esc(nameOf(c.owner))}</span> ${esc(c.body)}
-      ${c.owner === me ? `<button type="button" class="fc-del" data-cdel="${esc(c.id)}" aria-label="${t("social.deleteComment")}">×</button>` : ""}
+      ${avHtml(c.owner, "fc-av")}
+      <div class="fc-body">
+        ${c.body ? `<p class="fc-text"><b class="fc-who">${esc(nameOf(c.owner))}</b> ${esc(c.body)}</p>` : `<p class="fc-text"><b class="fc-who">${esc(nameOf(c.owner))}</b></p>`}
+        ${c.photo ? `<img class="fc-photo" src="${safeSrc(c.photo)}" alt="${t("social.photoBy", { name: esc(nameOf(c.owner)) })}" loading="lazy">` : ""}
+        ${c.photoHidden ? `<p class="fc-hidden">${t("social.photoHidden")}</p>` : ""}
+        <small class="fc-when">${agoLabel(c.created_at)}</small>
+      </div>
+      ${c.owner === me ? `<button type="button" class="fc-del" data-cdel="${esc(c.id)}" aria-label="${t("social.deleteComment")}">${icon("xmark", { size: 12 })}</button>` : ""}
     </li>`;
+
+  const addCommentHtml = (s, count) => {
+    const d = drafts.get(s.id) ?? {};
+    return `
+      <div class="fc-compose${d.photo ? " has-photo" : ""}" data-compose="${esc(s.id)}">
+        ${avHtml(me, "fc-av")}
+        <input type="text" class="fc-input" maxlength="${COMMENT_MAX}" value="${esc(d.text ?? "")}"
+          placeholder="${count ? t("social.commentPlaceholder") : t("social.firstComment")}" aria-label="${t("social.commentPlaceholder")}">
+        ${d.photo ? `<span class="fc-thumb"><img src="${safeSrc(d.photo)}" alt=""><button type="button" class="fc-thumb-x" data-unphoto="${esc(s.id)}" aria-label="${t("social.removePhoto")}">${icon("xmark", { size: 10 })}</button></span>` : ""}
+        <input type="file" accept="image/*" class="fc-file" hidden>
+        <button type="button" class="fc-cam" data-cphoto="${esc(s.id)}" aria-label="${t("social.addPhotoLabel")}">${icon("cameraFill", { size: 17 })}</button>
+        <button type="button" class="fc-send" data-send="${esc(s.id)}" aria-label="${t("social.send")}" ${d.text?.trim() || d.photo ? "" : "hidden"}>${icon("chevronRight", { size: 14 })}</button>
+      </div>
+      <div class="fc-err" role="status"></div>`;
+  };
 
   const cardHtml = (s) => {
     const d = s.data ?? {};
     const mine = s.owner === me;
-    const av = avatarOf(s.owner);
     const comments = s.comments ?? [];
-    const isOpen = open.has(s.id);
     const isPost = s.kind === "post";
+    const all = expanded.has(s.id);
+    const shown = all ? comments : comments.slice(-COMMENTS_SHOWN);
+    const hiddenCount = comments.length - shown.length;
     return `
       <article class="feed-card${isPost ? " is-post" : ""}${d.photo ? "" : " no-photo"}" data-id="${esc(s.id)}">
-        ${d.photo ? `<img class="feed-thumb" src="${safeSrc(d.photo)}" alt="${esc(d.name || d.text || "")}" loading="lazy">` : ""}
+        <header class="feed-head">
+          ${avHtml(s.owner)}
+          <span class="feed-who">${esc(nameOf(s.owner))}</span>
+          <span class="feed-when">${agoLabel(s.created_at)}</span>
+          ${mine ? `<button type="button" class="feed-del" data-del="${esc(s.id)}" aria-label="${t("social.deletePost")}">${icon("trashFill", { size: 15 })}</button>` : ""}
+        </header>
+        ${d.photo ? `<img class="feed-photo" src="${safeSrc(d.photo)}" alt="${esc(d.name || d.text || "")}" loading="lazy">` : ""}
+        ${d.photoHidden ? `<p class="fc-hidden feed-photo-hidden">${t("social.photoHidden")}</p>` : ""}
         <div class="feed-main">
-          <header class="feed-head">
-            <span class="feed-av" style="--av:${colorOf(s.owner)}">${av ? `<img src="${safeSrc(av)}" alt="">` : esc(nameOf(s.owner).slice(0, 1))}</span>
-            <span class="feed-who">${esc(nameOf(s.owner))}</span>
-            <span class="feed-when">${agoLabel(s.created_at)}</span>
-          </header>
-          ${isPost ? `<div class="feed-text">${esc(d.text)}</div>` : `
-          <div class="feed-name">${esc(d.name)}</div>
-          <div class="feed-macros">${formatNumber(d.calories)} kcal, ${formatNumber(d.proteinG)} g protein</div>
-          ${d.note ? `<div class="feed-note">“${esc(d.note)}”</div>` : ""}`}
-          <footer class="feed-actions">
-            ${isPost ? "" : `<button type="button" class="feed-btn is-primary" data-log="${esc(s.id)}">${t("social.logThis")}</button>`}
-            <button type="button" class="feed-btn" data-talk="${esc(s.id)}" aria-expanded="${isOpen}">💬 ${comments.length || ""}</button>
-            ${mine ? `<button type="button" class="feed-btn" data-del="${esc(s.id)}">${t("social.remove")}</button>` : ""}
-          </footer>
-        </div>
-        ${isOpen ? `
-          <div class="feed-comments">
-            <ul class="fc-list">${comments.map(commentHtml).join("") || `<li class="fc-empty">${t("social.noComments")}</li>`}</ul>
-            <div class="fc-compose">
-              <input type="text" class="fc-input" maxlength="${COMMENT_MAX}" placeholder="${t("social.commentPlaceholder")}" aria-label="${t("social.commentPlaceholder")}">
-              <button type="button" class="feed-btn is-primary" data-send="${esc(s.id)}">${t("social.send")}</button>
+          ${isPost ? `<p class="feed-text">${esc(d.text)}</p>` : `
+            <div class="feed-title"><span class="feed-name">${esc(d.name)}</span><span class="feed-kcal">${formatNumber(d.calories)}</span><span class="feed-unit">kcal</span></div>
+            <div class="feed-macros">
+              <span><i style="background:var(--sc-protein)"></i>${formatNumber(d.proteinG)} g ${t("home.proteinShort").toLowerCase()}</span>
+              <span><i style="background:var(--sc-carbs)"></i>${formatNumber(d.carbsG)} g ${t("home.carbsShort").toLowerCase()}</span>
+              <span><i style="background:var(--sc-fat)"></i>${formatNumber(d.fatG)} g ${t("home.fatShort").toLowerCase()}</span>
             </div>
-            <div class="fc-count"><span class="fc-n">0</span>/${COMMENT_MAX}</div>
-            <div class="fc-err" role="status"></div>
-          </div>` : ""}
+            ${d.note ? `<p class="feed-note">${esc(d.note)}</p>` : ""}`}
+          <div class="feed-actions">
+            <span class="feed-count">${icon("textBubbleFill", { size: 15 })}${comments.length ? t("social.commentsCount", { n: comments.length }) : t("social.comment")}</span>
+            ${isPost ? "" : `<button type="button" class="feed-btn feed-log" data-log="${esc(s.id)}">${icon("plus", { size: 12 })} ${t("social.logThis")}</button>`}
+          </div>
+          ${hiddenCount > 0 ? `<button type="button" class="fc-all" data-all="${esc(s.id)}">${t("social.viewAll", { n: comments.length })}</button>` : ""}
+          ${all && comments.length > COMMENTS_SHOWN ? `<button type="button" class="fc-all" data-all="${esc(s.id)}">${t("social.showLess")}</button>` : ""}
+          ${shown.length ? `<ul class="fc-list">${shown.map(commentHtml).join("")}</ul>` : ""}
+          ${addCommentHtml(s, comments.length)}
+        </div>
       </article>`;
   };
 
@@ -134,32 +177,43 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
     }
     let photo = null;
     composer.innerHTML = `
-      <textarea class="pc-text" rows="2" maxlength="${POST_MAX}" placeholder="${t("social.postPlaceholder")}" aria-label="${t("social.postPlaceholder")}"></textarea>
-      <div class="pc-row">
+      <div class="pc-line">
+        ${avHtml(me, "fc-av pc-av")}
+        <textarea class="pc-text" rows="1" maxlength="${POST_MAX}" placeholder="${groupName ? t("social.sharePlaceholder", { group: esc(groupName) }) : t("social.postPlaceholder")}" aria-label="${t("social.postPlaceholder")}"></textarea>
         <input type="file" accept="image/*" class="pc-file" hidden>
-        <button type="button" class="feed-btn pc-photo">${t("social.addPhoto")}</button>
-        <img class="pc-preview" alt="" hidden>
+        <button type="button" class="pc-photo" aria-label="${t("social.addPhotoLabel")}">${icon("cameraFill", { size: 17 })}</button>
+      </div>
+      <div class="pc-preview-wrap" hidden><img class="pc-preview" alt=""><button type="button" class="pc-unphoto" aria-label="${t("social.removePhoto")}">${icon("xmark", { size: 12 })}</button></div>
+      <div class="pc-row" hidden>
         <span class="pc-count"><span class="pc-n">0</span>/${POST_MAX}</span>
         <button type="button" class="feed-btn is-primary pc-send" disabled>${t("social.post")}</button>
       </div>
       <div class="fc-err pc-err" role="status"></div>`;
     const text = composer.querySelector(".pc-text");
     const file = composer.querySelector(".pc-file");
+    const wrap = composer.querySelector(".pc-preview-wrap");
     const preview = composer.querySelector(".pc-preview");
+    const row = composer.querySelector(".pc-row");
     const sendBtn = composer.querySelector(".pc-send");
     const refresh = () => {
       composer.querySelector(".pc-n").textContent = String(text.value.length);
       sendBtn.disabled = !text.value.trim() && !photo;
+      const active = Boolean(text.value.trim() || photo || document.activeElement === text);
+      row.hidden = !active;
+      composer.classList.toggle("is-open", active);
+      text.rows = active ? 2 : 1;
     };
     text.addEventListener("input", refresh);
+    text.addEventListener("focus", refresh);
+    text.addEventListener("blur", () => setTimeout(refresh, 150));
     composer.querySelector(".pc-photo").addEventListener("click", () => file.click());
-    file.addEventListener("change", () => {
-      const f = file.files?.[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => { photo = String(reader.result); preview.src = photo; preview.hidden = false; refresh(); };
-      reader.readAsDataURL(f);
+    file.addEventListener("change", async () => {
+      photo = await readPhoto(file.files?.[0]);
+      file.value = "";
+      if (photo) { preview.src = photo; wrap.hidden = false; }
+      refresh();
     });
+    composer.querySelector(".pc-unphoto").addEventListener("click", () => { photo = null; wrap.hidden = true; preview.removeAttribute("src"); refresh(); });
     sendBtn.addEventListener("click", async () => {
       sendBtn.disabled = true;
       sendBtn.textContent = "…";
@@ -186,6 +240,11 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
     wire();
   };
 
+  const redrawKeepingFocus = (shareId) => {
+    draw();
+    if (shareId) list.querySelector(`[data-compose="${CSS.escape(shareId)}"] .fc-input`)?.focus();
+  };
+
   const wire = () => {
     list.querySelectorAll("[data-log]").forEach((b) => b.addEventListener("click", async () => {
       const s = out.shares.find((x) => x.id === b.dataset.log);
@@ -208,33 +267,51 @@ export async function renderFeed(host, { me, people, colors, group = null }) {
       out.shares = out.shares.filter((x) => x.id !== b.dataset.del);
       draw();
     }));
-    list.querySelectorAll("[data-talk]").forEach((b) => b.addEventListener("click", () => {
-      const id = b.dataset.talk;
-      if (open.has(id)) open.delete(id); else open.add(id);
+    list.querySelectorAll("[data-all]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.all;
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
       draw();
-      if (open.has(id)) list.querySelector(`[data-id="${CSS.escape(id)}"] .fc-input`)?.focus();
     }));
-    list.querySelectorAll("[data-send]").forEach((b) => {
-      const card = b.closest(".feed-card");
-      const input = card.querySelector(".fc-input");
+    list.querySelectorAll("[data-compose]").forEach((row) => {
+      const id = row.dataset.compose;
+      const input = row.querySelector(".fc-input");
+      const file = row.querySelector(".fc-file");
+      const sendBtn = row.querySelector(".fc-send");
+      const err = row.nextElementSibling;
+      const draft = () => drafts.get(id) ?? {};
+      const update = (patch) => drafts.set(id, { ...draft(), ...patch });
+      input.addEventListener("input", () => {
+        update({ text: input.value });
+        sendBtn.hidden = !input.value.trim() && !draft().photo;
+      });
+      row.querySelector("[data-cphoto]").addEventListener("click", () => file.click());
+      file.addEventListener("change", async () => {
+        const photo = await readPhoto(file.files?.[0]);
+        file.value = "";
+        if (!photo) return;
+        update({ photo });
+        redrawKeepingFocus(id);
+      });
+      row.querySelector("[data-unphoto]")?.addEventListener("click", () => { update({ photo: null }); redrawKeepingFocus(id); });
       const send = async () => {
-        const text = input.value.trim();
-        if (!text) return;
-        b.disabled = true;
-        const res = await addComment(b.dataset.send, text);
+        const { text = "", photo = null } = draft();
+        if (!text.trim() && !photo) return;
+        sendBtn.disabled = true;
+        input.disabled = true;
+        const res = await addComment(id, text.trim(), photo);
         if (!res.ok) {
-          card.querySelector(".fc-err").textContent = res.message || t("errors.generic");
-          b.disabled = false;
+          err.textContent = res.message || (res.errorType === "photo" ? t("social.photoFailed") : t("errors.generic"));
+          sendBtn.disabled = false;
+          input.disabled = false;
           return;
         }
-        const s = out.shares.find((x) => x.id === b.dataset.send);
+        const s = out.shares.find((x) => x.id === id);
         s.comments = [...(s.comments ?? []), res.comment];
-        draw();
-        list.querySelector(`[data-id="${CSS.escape(s.id)}"] .fc-input`)?.focus();
+        drafts.delete(id);
+        redrawKeepingFocus(id);
       };
-      b.addEventListener("click", send);
+      sendBtn.addEventListener("click", send);
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
-      input.addEventListener("input", () => { card.querySelector(".fc-n").textContent = String(input.value.length); });
     });
     list.querySelectorAll("[data-cdel]").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;

@@ -54,5 +54,5 @@ export async function render(container) {
       render(container);
     }));
   }
-  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid), group: data.group?.id ?? null });
+  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid), group: data.group?.id ?? null, groupName: data.group?.name ?? "" });
 }

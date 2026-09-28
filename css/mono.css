@@ -163,7 +163,7 @@
 
 /* Dot-matrix numerals for the numbers people come to read */
 :root[data-theme="mono"] :is(.calorie-remaining, .macro-value, .tm-sum-num, .wt-big, .mt-big, .onb-plan-big,
-  .pg-tile-value, .wt-stat-value, .ex-burn-num, .rec-figure, .streak-count, .ex-duration span) {
+  .pg-tile-value, .wt-stat-value, .ex-burn-num, .rec-figure, .streak-count, .ex-duration span, .feed-kcal) {
   font-family: "Doto", var(--sc-font-rounded) !important;
   font-weight: 900 !important;
   letter-spacing: 0.02em !important;
@@ -436,3 +436,8 @@
 :root[data-theme="mono"] .us-row::before { display: none; }
 :root[data-theme="mono"] :is(.tg-today, .tg-mirror, .tg-table) { box-shadow: 0 0 0 1px var(--mn-line) !important; }
 :root[data-theme="mono"] .tg-table tbody tr:nth-child(odd) { background: var(--mn-soft); }
+
+/* Shared: the text fields are borderless inside their card, so focus rings the whole line */
+:root[data-theme="mono"] :is(.pc-text, .feed-card .fc-input):focus-visible { outline: none !important; }
+:root[data-theme="mono"] .post-compose:focus-within { box-shadow: 0 0 0 1.5px var(--mn-ink) !important; }
+:root[data-theme="mono"] .feed-card .fc-compose:focus-within { border-top-color: var(--mn-ink); }

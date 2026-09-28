@@ -498,3 +498,68 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 
 /* Shared tab: the tab title already says "Shared", so the feed's own heading would repeat it */
 .shared-tab .us-feed > .tg-h2 { display: none; }
+
+/* ---- Shared feed, v2: posts read as posts, comments are part of them ------------------------ */
+.shared-tab .feed-list { gap: 12px; }
+.feed-card { display: block; padding: 0; overflow: hidden; border-radius: 20px; background: var(--sc-card-bg, #fff); }
+.feed-card .feed-head { padding: 10px 12px; gap: 8px; }
+.feed-av { width: 28px; height: 28px; font-size: 12px; color: var(--tg-ink); background: var(--sc-secondary-15, rgba(0,0,0,.06)); box-shadow: 0 0 0 1.5px var(--av); }
+.feed-who { font-size: 14px; }
+.feed-when { margin-left: 0; }
+.feed-del { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: none; color: var(--sc-secondary, #5C5C60); border-radius: 10px; cursor: pointer; }
+.feed-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--sc-secondary-15, rgba(0,0,0,.05)); }
+.feed-photo-hidden { margin: 0 12px; }
+.feed-main { padding: 10px 12px 12px; }
+.feed-title { display: flex; align-items: baseline; gap: 6px; }
+.feed-title .feed-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; margin: 0; -webkit-line-clamp: 2; }
+.feed-kcal { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.feed-unit { font-size: 11px; color: var(--sc-secondary, #5C5C60); }
+.feed-macros { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.feed-macros i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.feed-note { font-size: 14px; margin: 6px 0 0; line-height: 1.4; overflow-wrap: anywhere; }
+.feed-text { font-size: 16px; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
+.feed-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.feed-count { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--tg-ink); }
+.feed-log { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; background: transparent !important; color: var(--tg-ink) !important; box-shadow: inset 0 0 0 1.5px var(--tg-ink) !important; }
+.fc-all { display: block; margin: 8px 0 0; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 13px; color: var(--sc-secondary, #5C5C60); cursor: pointer; }
+.feed-card .fc-list { margin-top: 8px; gap: 10px; }
+.fc-item { align-items: flex-start; gap: 8px; }
+.fc-av { width: 24px; height: 24px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden; font-size: 10.5px; font-weight: 700;
+  color: var(--tg-ink); background: var(--sc-secondary-15, rgba(0,0,0,.06)); box-shadow: 0 0 0 1.5px var(--av); }
+.fc-av img { width: 100%; height: 100%; object-fit: cover; }
+.fc-body { flex: 1; min-width: 0; }
+.fc-text { margin: 0; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.fc-who { font-weight: 700; }
+.fc-photo { display: block; width: min(180px, 70%); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; margin: 5px 0 2px; background: var(--sc-secondary-15, rgba(0,0,0,.05)); }
+.fc-hidden { font-size: 12px; color: var(--sc-secondary, #5C5C60); margin: 4px 0; }
+.fc-when { display: block; font-size: 11.5px; color: var(--sc-secondary, #5C5C60); margin-top: 1px; }
+.fc-del { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; flex: none; }
+.feed-card .fc-compose { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--tg-line); }
+.feed-card .fc-input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; font-size: 16px; color: var(--tg-ink); }
+.feed-card .fc-input::placeholder { color: var(--sc-secondary, #5C5C60); }
+.feed-card .fc-input:focus { outline: none; }
+.fc-cam, .fc-send, .pc-photo { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border: 0; border-radius: 11px; background: none; color: var(--tg-ink); cursor: pointer; }
+.fc-send { border-radius: 50%; background: var(--tg-ink); color: var(--sc-card-bg, #fff); }
+.fc-send[hidden] { display: none; }
+.fc-thumb { position: relative; flex: none; }
+.fc-thumb img { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; display: block; }
+.fc-thumb-x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--tg-ink); color: var(--sc-card-bg, #fff); cursor: pointer; }
+/* composer: one line until you use it */
+.post-compose { padding: 8px 10px; border-radius: 20px; }
+.pc-line { display: flex; align-items: center; gap: 8px; }
+.pc-line .pc-text { flex: 1; min-width: 0; font-size: 16px; padding: 6px 0; }
+.pc-line .pc-text::placeholder { color: var(--sc-secondary, #5C5C60); }
+.post-compose:not(.is-open) .pc-photo { background: var(--sc-secondary-15, rgba(0,0,0,.06)); }
+.pc-preview-wrap { position: relative; margin-top: 8px; }
+.pc-preview-wrap[hidden] { display: none; }
+.pc-preview-wrap .pc-preview { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; display: block; }
+.pc-unphoto { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; border: 0; display: grid; place-items: center; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; }
+.pc-row[hidden] { display: none; }
+.pc-row { justify-content: flex-end; }
+/* the rule line clears the tab bar instead of hiding behind it */
+.shared-tab .feed-rule { margin: 14px 4px 0; text-align: center; }
+.shared-tab .bottom-safe-spacer { height: calc(var(--sc-bar-footprint, 107px) + 24px + env(safe-area-inset-bottom)); }
+.pc-text:focus-visible, .feed-card .fc-input:focus-visible { outline: none; }
+.post-compose:focus-within { box-shadow: 0 0 0 1.5px var(--tg-ink); }
+.shared-tab .feed-rule { margin: -2px 4px 12px; text-align: left; }

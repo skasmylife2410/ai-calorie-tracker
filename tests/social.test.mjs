@@ -9,7 +9,7 @@ delete process.env.ALLOW_ANONYMOUS;
 
 const { createSession } = await import("../api/_accounts.js");
 const { default: notes } = await import("../api/notes.js");
-const { default: shares, cleanItem } = await import("../api/shares.js");
+const { default: shares, cleanItem, fitPhotos } = await import("../api/shares.js");
 
 const mockRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
 const PHOTO = "data:image/webp;base64," + "A".repeat(2000);
@@ -166,7 +166,7 @@ test("shared items are cleaned: bad photos dropped, numbers bounded, lists cappe
   assert.equal(meal.items.length, 12);
   assert.equal("extra" in meal, false);
 
-  const big = cleanItem("meal", { name: "a", photo: "data:image/jpeg;base64," + "A".repeat(70000) });
+  const big = cleanItem("meal", { name: "a", photo: "data:image/jpeg;base64," + "A".repeat(200000) });
   assert.equal(big.photo, null, "oversized photos are dropped");
 
   const idea = cleanItem("idea", { name: "Sancocho", ingredients: Array(40).fill("x"), steps: ["a", "", "b"] });
@@ -362,4 +362,41 @@ test("Friday recommendations are private to their owner", async () => {
   assert.equal(res.body.recap.headline, "baby's");
   res = mockRes(); await weekly({ method: "GET", headers: {}, query: { force: "1" } }, res);
   assert.equal(res.code, 401, "the job needs the cron secret");
+});
+
+test("a comment can be a photo, words, or both; oversized or non-image photos are refused", async () => {
+  reset();
+  let res = mockRes(); await shares(as("baby", { op: "share", kind: "post", item: { text: "Chili night" }, group: "family" }), res);
+  const id = res.body.id;
+
+  res = mockRes(); await shares(as("thayra23", { op: "comment", shareId: id, body: "", photo: PHOTO }), res);
+  assert.equal(res.body.ok, true, "a photo on its own is a comment");
+  assert.equal(res.body.comment.photo, PHOTO);
+  assert.equal(res.body.comment.body, "");
+
+  res = mockRes(); await shares(as("thayra23", { op: "comment", shareId: id, body: "mine", photo: "data:image/jpeg;base64," + "A".repeat(120000) }), res);
+  assert.equal(res.body.errorType, "photoTooBig", "a photo past the comment limit is refused, not silently dropped");
+
+  res = mockRes(); await shares(as("thayra23", { op: "comment", shareId: id, body: "x", photo: "https://evil.example/p.png" }), res);
+  assert.equal(res.body.errorType, "photoTooBig", "only inline image data is accepted");
+
+  res = mockRes(); await shares(as("thayra23", { op: "comment", shareId: id, body: "   " }), res);
+  assert.equal(res.body.errorType, "empty");
+
+  res = mockRes(); await shares(as("baby", { op: "list", group: "family" }), res);
+  assert.equal(res.body.shares[0].comments[0].photo, PHOTO, "the feed carries comment photos");
+});
+
+test("the feed answer keeps photos within its size budget, newest first", () => {
+  const photo = (n) => "data:image/jpeg;base64," + "A".repeat(n);
+  const shares = [
+    { id: "new", data: { photo: photo(600) }, comments: [{ id: "c1", photo: photo(300) }, { id: "c2", photo: photo(300) }] },
+    { id: "old", data: { photo: photo(600) }, comments: [] },
+  ];
+  fitPhotos(shares, 1300);
+  assert.ok(shares[0].data.photo, "the newest post keeps its photo");
+  assert.ok(shares[0].comments[1].photo, "the newest comment keeps its photo");
+  assert.ok(shares[0].comments[0].photo, "both comments fit");
+  assert.equal(shares[1].data.photo, null, "past the budget, older photos are left out");
+  assert.equal(shares[1].data.photoHidden, true, "and marked, so the app can say so");
 });
