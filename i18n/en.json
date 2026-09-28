@@ -150,7 +150,23 @@
     "part1": "Afternoon",
     "part2": "Evening",
     "loadFailed": "Couldn't load this right now. Pull down to refresh, or try again in a minute.",
-    "unconfigured": "Cloud sync isn't set up, so there's nothing to compare yet."
+    "unconfigured": "Cloud sync isn't set up, so there's nothing to compare yet.",
+    "kcalLeft": "{n} left",
+    "kcalOver": "+{n} over",
+    "goalShort": "goal",
+    "keyEaten": "Eaten · gaps split morning, afternoon, evening",
+    "keyOver": "Over goal",
+    "keyGoal": "Goal",
+    "keyNear": "Within 10% of goal",
+    "keyMissing": "Not logged",
+    "avgKcal": "avg kcal",
+    "statLogged": "{n} logged",
+    "statNear": "{n} near goal",
+    "statProtein": "{n} g protein",
+    "statWater": "{n} glasses a day",
+    "statWorkouts": "{n} workout|{n} workouts",
+    "weekChart": "{name}: average {avg} kcal over {d} days",
+    "keyEatenShort": "Eaten"
   },
   "profile": {
     "language": "Language",
@@ -683,7 +699,17 @@
     "empty": "Log a meal to see fiber, sugar, sodium and more.",
     "noneShort": "No nutrient data — tap to add",
     "more": "Fiber, sugar, sodium…",
-    "moreHint": "Leave a box empty if you don't know it."
+    "moreHint": "Leave a box empty if you don't know it.",
+    "over": "over",
+    "stripHint": "≤ limit · / goal",
+    "short": {
+      "sodiumMg": "Sodium",
+      "addedSugarG": "Sugar",
+      "satFatG": "Sat. fat",
+      "fiberG": "Fiber",
+      "potassiumMg": "Potassium"
+    },
+    "stripOpen": "Show all nutrients"
   },
   "group": {
     "hint": "Tip: hold a meal and drop it on another to group them.",
@@ -891,5 +917,18 @@
     "markers": "Coloured markers",
     "markersSub": "Protein, carbs, fat, water and streak keep their colours. Off is pure black & white.",
     "footer": "Saved to your profile, so every phone you sign in on looks the same."
+  },
+  "food": {
+    "fruit": "Fruit",
+    "veg": "Vegetables",
+    "meat": "Meat & poultry",
+    "fish": "Fish & seafood",
+    "egg": "Eggs",
+    "dairy": "Dairy",
+    "grain": "Bread & grains",
+    "bowl": "Rice, pasta & bowls",
+    "sweet": "Sweets & snacks",
+    "drink": "Drinks",
+    "plate": "Mixed plate"
   }
 }

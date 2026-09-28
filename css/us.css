@@ -563,3 +563,57 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .pc-text:focus-visible, .feed-card .fc-input:focus-visible { outline: none; }
 .post-compose:focus-within { box-shadow: 0 0 0 1.5px var(--tg-ink); }
 .shared-tab .feed-rule { margin: -2px 4px 12px; text-align: left; }
+
+/* --- Today: kcal bar with the goal inside it (over/under read in the bar itself) --- */
+.us-bar { display: none; }
+.us-kbar { position: relative; height: 22px; border-radius: 7px; background: var(--pc-soft, rgba(16,16,20,.08)); }
+.us-kseg { position: absolute; top: 0; bottom: 0; background: var(--pc, var(--tg-ink)); box-shadow: inset -2px 0 0 #fff; }
+.us-kseg:first-child { border-radius: 7px 0 0 7px; }
+.us-kseg.is-over {
+  background: var(--tg-over) repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 3px, transparent 3px 7px);
+  border-radius: 0 7px 7px 0; box-shadow: none;
+}
+.us-kgoal { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--tg-ink); z-index: 1; }
+.us-klabel {
+  position: absolute; top: 0; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 500; color: var(--tg-ink); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.us-klabel b { font-size: 12px; font-weight: 800; }
+.us-klabel.is-rev { top: 3px; bottom: 3px; padding: 0 6px; border-radius: 5px; background: var(--tg-ink); color: #fff; }
+.us-legend { flex-wrap: wrap; row-gap: 4px; }
+.us-legend i.k-eaten { background: var(--tg-ink); }
+.us-legend i.k-over { background: var(--tg-over); }
+.us-legend i.k-goal { width: 2px; height: 12px; border-radius: 1px; background: var(--tg-ink); }
+.us-legend i.k-near { background: transparent; box-shadow: inset 0 0 0 1.5px var(--tg-ink); }
+.us-legend i.k-miss { background: transparent; border: 1px dashed var(--sc-secondary, #6B6B73); }
+
+/* --- Last N days: one small bar chart per person --- */
+.us-week { padding: 14px 16px 12px; }
+.us-week + .us-week { border-top: 1px solid var(--tg-line); }
+.us-week-head { display: flex; align-items: center; gap: 7px; }
+.us-week-head b { font-size: 14px; }
+.us-week-head small { font-size: 11px; color: var(--sc-secondary, #6B6B73); }
+.us-week-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.us-week-avg { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.us-wchart { position: relative; display: flex; gap: 6px; align-items: flex-end; height: 88px; margin: 8px 0 6px; padding-top: 8px; }
+.us-wgoal { position: absolute; left: 0; right: 0; height: 0; border-top: 1.5px dashed var(--sc-secondary, #6B6B73); pointer-events: none; }
+.us-wgoal em { position: absolute; left: 0; top: -14px; font-size: 9.5px; font-style: normal; color: var(--sc-secondary, #6B6B73); }
+.us-wcol { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.us-wcol small { font-size: 10px; line-height: 14px; height: 14px; color: var(--sc-secondary, #6B6B73); white-space: nowrap; }
+.us-wcol.is-today small { color: var(--tg-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.us-wbar { height: 64px; width: 14px; max-width: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.us-weat { background: var(--pc, var(--tg-ink)); border-radius: 0 0 4px 4px; }
+.us-weat:first-child { border-radius: 4px; }
+.us-wover { background: var(--tg-over); border-radius: 4px 4px 0 0; box-shadow: inset 0 -2px 0 #fff; }
+.us-wcol.is-near .us-weat { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--tg-ink); }
+.us-wcol.is-near small { color: var(--tg-ink); font-weight: 700; }
+.us-wmiss { height: 100%; border: 1.5px dashed var(--sc-secondary-15, rgba(16,16,20,.2)); border-radius: 4px; }
+.us-week.is-many .us-wchart { gap: 2px; }
+.us-week.is-many .us-wbar { width: 8px; }
+.us-week.is-many .us-wcol small { overflow: visible; }
+.us-wstats { display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 11.5px; color: var(--sc-secondary, #6B6B73); }
+.us-wstats b { color: var(--tg-ink); font-weight: 700; }
+/* over the goal is the app's red, never a person's colour (Alex's pink matched the old over pink) */
+.us-kseg.is-over, .us-wover, .us-legend i.k-over { background-color: var(--sc-red, #FF3B30); }
+/* thirty thin bars: the near-goal ring gets busy, so the bold date carries it */
+.us-week.is-many .us-wcol.is-near .us-weat { box-shadow: none; }

@@ -11,7 +11,7 @@ import { openActionSheet } from "./action-sheet.js";
 import { openResultsSheet } from "./results.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
-import { nutrientsPageHtml } from "./micros.js";
+import { nutrientsPageHtml, nutrientsStripHtml } from "./micros.js";
 import { openRecipesSheet } from "./recipes.js";
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
@@ -89,6 +89,7 @@ export function render(container) {
   const remaining = energy.remaining;
   const overBudget = remaining < 0;
 
+  const microsDay = store.microsForDay(date);
   container.innerHTML = `
     <div class="today-content">
       ${weekStripHtml(week)}
@@ -100,8 +101,8 @@ export function render(container) {
 
       <div data-own-swipe class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
-          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount)}</div>
-          <div class="swiper-page">${nutrientsPageHtml(store.microsForDay(date))}</div>
+          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay)}</div>
+          <div class="swiper-page">${nutrientsPageHtml(microsDay)}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
         </div>
       </div>
@@ -315,7 +316,7 @@ function weekStripHtml(week) {
   `;
 }
 
-function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount = 0) {
+function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount = 0, microsDay = null) {
   const ringProgress = energy.adjustedTarget > 0 ? totals.calories / energy.adjustedTarget : 0;
   const ring = ringGauge({
     size: 78,
@@ -364,6 +365,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
         ${ring}
       </div>
       <div class="macro-row">${macroTiles}</div>
+      ${nutrientsStripHtml(microsDay)}
     </div>
   `;
 }
@@ -418,6 +420,8 @@ function wireSwiper(container) {
   };
   requestAnimationFrame(fitHeight);
   track?.addEventListener("transitionend", fitHeight);
+  // the nutrients card on the first page opens the full nutrients page
+  container.querySelector("#nutr-strip")?.addEventListener("click", () => container.querySelector('.swiper-dot[data-dot="1"]')?.click());
   dots.forEach((dot) => {
     dot.addEventListener("click", () => {
       swiperPage = Number(dot.dataset.dot);

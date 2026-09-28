@@ -97,6 +97,53 @@ function avatarHtml(p, i, size = 40) {
     </button>`;
 }
 
+/**
+ * Today's calories as one bar with the goal drawn inside it. The goal line sits at GOAL_AT% of
+ * the track so there is room past it: what's eaten up to the goal is the person's fill (ink in
+ * Mono), split by thin gaps into morning, afternoon and evening; anything past the goal carries
+ * on in striped red. The label says "N left" or "+N over" in words, so colour is never the only
+ * cue, and moves inside the fill (reversed) when the empty track is too short for it.
+ */
+const GOAL_AT = 80;
+export function kcalBarHtml(d, goal, c = COLORS[0]) {
+  const style = `--pc:${c.solid};--pc-soft:${c.soft}`;
+  if (!(goal > 0)) return `<div class="us-kbar" style="${style}"></div>`;
+  const eaten = Math.max(0, d.calories || 0);
+  const scale = (v) => (v / goal) * GOAL_AT;
+  let parts = ["morning", "afternoon", "evening"].map((k) => Math.max(0, d[k] || 0));
+  const sum = parts.reduce((a, b) => a + b, 0);
+  if (sum <= 0) parts = [eaten];
+  else if (sum < eaten) parts[parts.length - 1] += eaten - sum; // older rows without the split
+  const within = Math.min(eaten, goal);
+  let used = 0;
+  const segs = [];
+  for (const [n, v] of parts.entries()) {
+    const take = Math.min(v, within - used);
+    if (take <= 0) continue;
+    const w = scale(take);
+    if (w > 0.4) segs.push(`<span class="us-kseg" style="left:${scale(used).toFixed(2)}%;width:${w.toFixed(2)}%" title="${t(`partOfDay.${["morning", "afternoon", "evening"][n] ?? "morning"}`)}: ${fmt(v)}"></span>`);
+    used += take;
+  }
+  const overKcal = Math.round(eaten - goal);
+  const fillEnd = scale(within);
+  let over = "";
+  let label;
+  if (overKcal > 0) {
+    const overW = Math.min(100 - GOAL_AT, scale(overKcal));
+    over = `<span class="us-kseg is-over" style="left:${GOAL_AT}%;width:${overW.toFixed(2)}%"></span>`;
+    const text = t("us.kcalOver", { n: `<b>${fmt(overKcal)}</b>` });
+    label = 100 - GOAL_AT - overW >= 18
+      ? `<span class="us-klabel" style="left:${(GOAL_AT + overW + 1.5).toFixed(2)}%">${text}</span>`
+      : `<span class="us-klabel is-rev" style="right:${100 - GOAL_AT + 2}%">${text}</span>`;
+  } else {
+    const text = t("us.kcalLeft", { n: `<b>${fmt(goal - eaten)}</b>` });
+    label = GOAL_AT - fillEnd >= 24
+      ? `<span class="us-klabel" style="left:${(fillEnd + 2).toFixed(2)}%">${text}</span>`
+      : `<span class="us-klabel is-rev" style="right:${(100 - fillEnd + 2).toFixed(2)}%">${text}</span>`;
+  }
+  return `<div class="us-kbar" style="${style}" role="img" aria-label="${fmt(eaten)} / ${fmt(goal)} kcal">${segs.join("")}${over}<i class="us-kgoal" style="left:${GOAL_AT}%"></i>${label}</div>`;
+}
+
 function todayHtml(people) {
   const key = localDateString(Date.now());
 
@@ -107,9 +154,6 @@ function todayHtml(people) {
     const d = p.days[key] || EMPTY_DAY;
     const goal = p.goals?.calories;
     const pGoal = p.goals?.proteinG;
-    const ratio = goal > 0 ? Math.max(0, Math.min(1.15, d.calories / goal)) : 0;
-    const over = goal && d.calories > goal;
-    const left = goal ? Math.max(0, Math.round(goal - d.calories)) : null;
 
     return `
       <div class="us-row">
@@ -121,17 +165,9 @@ function todayHtml(people) {
           <span class="us-eaten">${fmt(d.calories)}</span>
           ${goal ? `<span class="us-goal">/ ${fmt(goal)}</span>` : ""}
         </div>
-        <div class="us-bar" style="background:${c.soft}" title="${t("partOfDay.legend")}">
-          ${["morning", "afternoon", "evening"].map((part, n) => {
-            const kcal = d[part] ?? 0;
-            const w = goal > 0 ? Math.max(0, Math.min(115, (kcal / goal) * 100)) : 0;
-            return w > 0 ? `<span class="us-seg seg-${n}" style="width:${w}%;background:${c.solid}" title="${t(`partOfDay.${part}`)}: ${fmt(kcal)}"></span>` : "";
-          }).join("")}
-        </div>
+        ${kcalBarHtml(d, goal, c)}
         <div class="us-row-foot">
-          <span>${pGoal ? `${fmt(d.proteinG)} / ${fmt(pGoal)} g` : `${fmt(d.proteinG)} g`}</span>
-          <span class="us-extra">${t("us.mealsCount", { n: d.meals })}${d.sessions ? ` · ${t("us.sessionsCount", { n: d.sessions })}` : ""} · ${t("us.glassesOfWater", { n: d.water })}</span>
-          ${left !== null ? `<span class="us-left" style="color:${over ? "var(--tg-over)" : c.solid}">${over ? `+${fmt(d.calories - goal)}` : `${fmt(left)} left`}</span>` : ""}
+          <span class="us-extra">${pGoal ? `${fmt(d.proteinG)} / ${fmt(pGoal)} g` : `${fmt(d.proteinG)} g`} · ${t("us.mealsCount", { n: d.meals })}${d.sessions ? ` · ${t("us.sessionsCount", { n: d.sessions })}` : ""} · ${t("us.glassesOfWater", { n: d.water })}</span>
         </div>
       </div>`;
   });
@@ -140,9 +176,9 @@ function todayHtml(people) {
     <h2 class="tg-h2">${t("us.today")}</h2>
     <div class="us-card">${rows.join("")}</div>
     <div class="us-legend">
-      <span><i class="seg-key seg-0"></i>${t("partOfDay.morning")}</span>
-      <span><i class="seg-key seg-1"></i>${t("partOfDay.afternoon")}</span>
-      <span><i class="seg-key seg-2"></i>${t("partOfDay.evening")}</span>
+      <span><i class="k-eaten"></i>${t("us.keyEaten")}</span>
+      <span><i class="k-over"></i>${t("us.keyOver")}</span>
+      <span><i class="k-goal"></i>${t("us.keyGoal")}</span>
     </div>
   </section>`;
 }
@@ -348,41 +384,78 @@ function mirrorHtml(people, days) {
   </section>`;
 }
 
+/**
+ * Last N days as one small bar chart per person (it was a table of averages). Each day is a thin
+ * ink bar up to the goal, with anything over the goal stacked on top in red; a day within 10% of
+ * the goal gets a ring, a day with nothing logged is a dashed empty slot (so a gap never looks
+ * like a light day), and the dashed line is the goal. The averages sit on one line underneath.
+ */
+const WEEK_H = 64;
+export function weekChartHtml(p, i, days) {
+  const c = COLORS[i % COLORS.length];
+  const ordered = [...days].reverse(); // oldest -> newest, left to right
+  const goal = p.goals?.calories || 0;
+  const logged = days.map((d) => p.days[d.key]).filter((d) => d && d.meals > 0);
+  const avg = (k) => (logged.length ? logged.reduce((s, d) => s + (d[k] || 0), 0) / logged.length : 0);
+  const near = goal ? logged.filter((d) => Math.abs(d.calories - goal) <= goal * 0.1).length : null;
+  const water = days.reduce((s, d) => s + (p.days[d.key]?.water || 0), 0) / days.length;
+  const sessions = days.reduce((n, d) => n + (p.days[d.key]?.sessions || 0), 0);
+  const top = Math.max(goal * 1.25, ...logged.map((d) => d.calories), 1);
+  const h = (v) => (v / top) * WEEK_H;
+  const many = ordered.length > 14;
+  const todayKey = localDateString(Date.now());
+
+  const cols = ordered.map(({ ts, key }, idx) => {
+    const d = p.days[key];
+    const tick = many ? ((ordered.length - 1 - idx) % 7 === 0 ? `${new Date(ts).getMonth() + 1}/${new Date(ts).getDate()}` : "") : formatDate(ts, { weekday: "narrow" });
+    const label = `<small>${escHtml(tick)}</small>`;
+    const when = escHtml(dayLabel(ts, key));
+    if (!d || !(d.meals > 0)) {
+      return `<div class="us-wcol is-missing${key === todayKey ? " is-today" : ""}" title="${when}: ${escHtml(t("us.keyMissing"))}"><div class="us-wbar"><span class="us-wmiss"></span></div>${label}</div>`;
+    }
+    const within = goal ? Math.min(d.calories, goal) : d.calories;
+    const over = goal ? Math.max(0, d.calories - goal) : 0;
+    const status = goal && Math.abs(d.calories - goal) <= goal * 0.1 ? " is-near" : over > 0 ? " is-over" : "";
+    const overH = Math.min(h(over), WEEK_H - h(within));
+    return `<div class="us-wcol${status}${key === todayKey ? " is-today" : ""}" title="${when}: ${fmt(d.calories)} kcal"><div class="us-wbar">${over > 0 ? `<span class="us-wover" style="height:${overH.toFixed(1)}px"></span>` : ""}<span class="us-weat" style="height:${Math.max(2, h(within)).toFixed(1)}px"></span></div>${label}</div>`;
+  }).join("");
+
+  const stat = (text, value) => `<span>${text.replace(value, `<b>${value}</b>`)}</span>`;
+  const loggedTxt = `${logged.length}/${days.length}`;
+  const stats = [
+    stat(t("us.statLogged", { n: loggedTxt }), loggedTxt),
+    near !== null ? stat(t("us.statNear", { n: near }), formatNumber(near)) : "",
+    logged.length ? stat(t("us.statProtein", { n: Math.round(avg("proteinG")) }), formatNumber(Math.round(avg("proteinG")))) : "",
+    stat(t("us.statWater", { n: water.toFixed(1) }), water.toFixed(1)),
+    sessions ? stat(t("us.statWorkouts", { n: sessions }), formatNumber(sessions)) : "",
+  ].join("");
+  const name = escHtml(p.name || titleCase(p.owner));
+  const avgKcal = logged.length ? fmt(avg("calories")) : "–";
+
+  return `
+    <div class="us-week${many ? " is-many" : ""}" style="--pc:${c.solid}">
+      <div class="us-week-head">
+        <span class="us-week-dot" style="background:${c.solid}"></span><b>${name}</b>
+        <span class="us-spacer"></span><span class="us-week-avg">${avgKcal}</span><small>${t("us.avgKcal")}</small>
+      </div>
+      <div class="us-wchart" role="img" aria-label="${escHtml(t("us.weekChart", { name: p.name || titleCase(p.owner), avg: avgKcal, d: days.length }))}">
+        ${goal ? `<i class="us-wgoal" style="bottom:${(h(goal) + 17).toFixed(1)}px"><em>${t("us.goalShort")}</em></i>` : ""}
+        ${cols}
+      </div>
+      <div class="us-wstats">${stats}</div>
+    </div>`;
+}
+
 function summaryHtml(people, days) {
-  const stats = people.map((p) => {
-    const logged = days.map((d) => p.days[d.key]).filter((d) => d && d.meals > 0);
-    const avg = (k) => (logged.length ? logged.reduce((s, d) => s + d[k], 0) / logged.length : 0);
-    const goal = p.goals?.calories;
-    const onTarget = goal ? logged.filter((d) => Math.abs(d.calories - goal) <= goal * 0.1).length : null;
-    const water = days.map((d) => p.days[d.key]?.water || 0);
-    const sessions = days.reduce((n, d) => n + (p.days[d.key]?.sessions || 0), 0);
-    return {
-      sessions,
-      logged: logged.length,
-      kcal: avg("calories"),
-      protein: avg("proteinG"),
-      onTarget,
-      water: water.reduce((s, v) => s + v, 0) / days.length,
-    };
-  });
-  const row = (label, fn) => `<tr><td>${label}</td>${stats.map((s) => `<td>${fn(s)}</td>`).join("")}</tr>`;
   return `<section class="tg-section">
     <h2 class="tg-h2">${t("us.lastNDays", { n: days.length })}</h2>
-    <div class="tg-table-wrap${people.length > 3 ? " is-wide" : ""}" style="--cols:${people.length}"><table class="tg-table">
-      <thead><tr><th></th>${people.map((p, i) => {
-        const c = COLORS[i % COLORS.length];
-        return `<th><span class="tg-th-name"><i style="background:${c.solid}"></i>${escHtml(p.name || titleCase(p.owner))}</span></th>`;
-      }).join("")}</tr></thead>
-      <tbody>
-        ${row(t("us.daysLogged"), (s) => `${s.logged} / ${days.length}`)}
-        ${row(t("us.avgCalories"), (s) => (s.logged ? fmt(s.kcal) : "–"))}
-        ${row(t("us.avgProtein"), (s) => (s.logged ? `${fmt(s.protein)} g` : "–"))}
-        ${row(t("us.daysNearGoal"), (s) => (s.onTarget === null ? "–" : `${s.onTarget}`))}
-        ${row(t("us.exercise"), (s) => (s.sessions ? t("us.sessionsCount", { n: s.sessions }) : "–"))}
-        ${row(t("us.waterPerDay"), (s) => s.water.toFixed(1))}
-      </tbody>
-    </table></div>
-    <p class="tg-note">${t("us.nearGoalNote")}</p>
+    <div class="us-card us-weeks">${people.map((p, i) => weekChartHtml(p, i, days)).join("")}</div>
+    <div class="us-legend">
+      <span><i class="k-eaten"></i>${t("us.keyEatenShort")}</span>
+      <span><i class="k-over"></i>${t("us.keyOver")}</span>
+      <span><i class="k-near"></i>${t("us.keyNear")}</span>
+      <span><i class="k-miss"></i>${t("us.keyMissing")}</span>
+    </div>
   </section>`;
 }
 

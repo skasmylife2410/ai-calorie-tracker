@@ -2302,3 +2302,43 @@ body.setup-open { overflow: hidden; }
 .ios-switch:checked { background: var(--sc-green); }
 .ios-switch:checked::after { transform: translateX(20px); }
 .ios-switch:focus-visible { outline: 2px solid var(--sc-blue); outline-offset: 2px; }
+
+/* Meal rows without a photo: a glyph for the kind of food, and the kind in words by the kcal */
+.entry-thumb.is-food { color: var(--sc-primary-text); }
+.entry-thumb.is-food .food-icon { width: 22px; height: 22px; }
+.entry-cal-row { gap: 6px; flex-wrap: nowrap; min-width: 0; }
+.entry-kcal { flex: none; }
+.entry-kind { font-size: 12px; font-weight: 500; color: var(--sc-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-kind::before { content: "·"; margin-right: 6px; }
+
+/* Home: nutrients next to the macros, as numbers with thin bars (not more rings) */
+.nutr-strip {
+  display: block; width: auto; margin: 0 14px; padding: 10px 10px 9px; text-align: left; font: inherit; color: var(--sc-primary-text);
+  border: 0; border-radius: 18px; background: var(--sc-card-bg, #fff); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.ns-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.ns-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sc-secondary); }
+.ns-hint { font-size: 10.5px; color: var(--sc-secondary); white-space: nowrap; }
+.ns-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+.ns-item { display: flex; flex-direction: column; min-width: 0; }
+.ns-name, .ns-sub { font-size: 10px; line-height: 1.25; color: var(--sc-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-value { font-size: 10px; color: var(--sc-secondary); white-space: nowrap; margin: 1px 0 5px; font-variant-numeric: tabular-nums; }
+.ns-value b { font-size: 13px; font-weight: 800; color: var(--sc-primary-text); }
+.ns-bar { position: relative; display: block; height: 4px; border-radius: 2px; background: var(--sc-secondary-15); }
+.ns-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--sc-primary-text); }
+.ns-tick { position: absolute; top: -3px; bottom: -3px; width: 1.5px; margin-left: -.75px; background: var(--sc-primary-text); z-index: 1; }
+.ns-sub { margin-top: 4px; }
+.ns-item.is-over .ns-fill { background: var(--sc-red); }
+.ns-item.is-over .ns-sub { color: var(--sc-primary-text); font-weight: 700; }
+.ns-value { overflow: hidden; }
+@media (max-width: 389px) {
+  .nutr-strip { padding-left: 10px; padding-right: 10px; }
+  .ns-grid { gap: 4px; }
+  .ns-value { font-size: 9px; }
+  .ns-value b { font-size: 12px; }
+}
+/* the smallest phones: the unit is in the name's tooltip and on the full page */
+@media (max-width: 340px) { .ns-unit { display: none; } }
+/* the doodle card gives up some height so Home still fits one screen */
+.doodle-card { min-height: 76px; max-height: 220px; }
+@media (max-height: 700px) { .doodle-card { min-height: 64px; } }

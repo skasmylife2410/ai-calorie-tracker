@@ -6,6 +6,7 @@ import { entryState } from "../queue.js";
 import { isGroupedEntry } from "../store.js";
 import { ANALYSIS_MODES } from "../api.js";
 import { icon } from "./icons.js";
+import { foodCategory, foodIconSvg } from "./food-icons.js";
 import { ringGauge } from "./ring.js";
 import { t } from "../i18n.js";
 
@@ -83,10 +84,13 @@ export function groupThumbHtml(entry, { className = "entry-thumb" } = {}) {
 }
 
 function completedRowHtml(entry) {
-  const thumb = entry.photoDataUrl
-    ? `<img src="${safeSrc(entry.photoDataUrl)}" alt="" />`
-    : icon("forkKnife", { size: 18, color: "var(--sc-secondary)" });
-  const thumbBox = isGroupedEntry(entry) ? groupThumbHtml(entry) : `<div class="entry-thumb">${thumb}</div>`;
+  // No photo: a glyph for the kind of food (fruit, meat, a drink…), sorted from the names.
+  const kind = foodCategory(entry);
+  const thumbBox = isGroupedEntry(entry)
+    ? groupThumbHtml(entry)
+    : entry.photoDataUrl
+      ? `<div class="entry-thumb"><img src="${safeSrc(entry.photoDataUrl)}" alt="" /></div>`
+      : `<div class="entry-thumb is-food" data-food="${kind}">${foodIconSvg(kind, { size: 22 })}</div>`;
   const macroChips = MACRO_META.map(
     (m) => `
       <div class="macro-chip">
@@ -101,7 +105,7 @@ function completedRowHtml(entry) {
         <div class="entry-name">${escapeHtml(entry.name)}</div>
         <div class="entry-time">${formatTime(entry.timestamp)}</div>
       </div>
-      <div class="entry-cal-row"><span class="emoji">\u{1F525}</span><span>${Math.round(entry.calories)} calories</span></div>
+      <div class="entry-cal-row"><span class="entry-kcal">${Math.round(entry.calories)} kcal</span><span class="entry-kind">${t(`food.${kind}`)}</span></div>
       <div class="macro-chip-row">${macroChips}</div>
     </div>
   `;

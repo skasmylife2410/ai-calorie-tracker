@@ -150,7 +150,23 @@
     "part1": "Tarde",
     "part2": "Noche",
     "loadFailed": "No se pudo cargar ahora. Desliza hacia abajo para actualizar o inténtalo en un minuto.",
-    "unconfigured": "La sincronización en la nube no está configurada, así que aún no hay nada que comparar."
+    "unconfigured": "La sincronización en la nube no está configurada, así que aún no hay nada que comparar.",
+    "kcalLeft": "quedan {n}",
+    "kcalOver": "+{n} de más",
+    "goalShort": "meta",
+    "keyEaten": "Comido · los cortes separan mañana, tarde y noche",
+    "keyOver": "Sobre la meta",
+    "keyGoal": "Meta",
+    "keyNear": "A menos del 10% de la meta",
+    "keyMissing": "Sin registro",
+    "avgKcal": "kcal prom.",
+    "statLogged": "{n} registrados",
+    "statNear": "{n} cerca de la meta",
+    "statProtein": "{n} g proteína",
+    "statWater": "{n} vasos al día",
+    "statWorkouts": "{n} entreno|{n} entrenos",
+    "weekChart": "{name}: promedio de {avg} kcal en {d} días",
+    "keyEatenShort": "Comido"
   },
   "profile": {
     "language": "Idioma",
@@ -683,7 +699,17 @@
     "empty": "Registra una comida para ver fibra, azúcar, sodio y más.",
     "noneShort": "Sin datos de nutrientes: toca para añadir",
     "more": "Fibra, azúcar, sodio…",
-    "moreHint": "Deja la casilla vacía si no lo sabes."
+    "moreHint": "Deja la casilla vacía si no lo sabes.",
+    "over": "de más",
+    "stripHint": "≤ límite · / meta",
+    "short": {
+      "sodiumMg": "Sodio",
+      "addedSugarG": "Azúcar",
+      "satFatG": "Gr. sat.",
+      "fiberG": "Fibra",
+      "potassiumMg": "Potasio"
+    },
+    "stripOpen": "Ver todos los nutrientes"
   },
   "group": {
     "hint": "Truco: mantén presionada una comida y suéltala sobre otra para agruparlas.",
@@ -891,5 +917,18 @@
     "markers": "Marcadores de color",
     "markersSub": "Proteína, carbohidratos, grasa, agua y racha conservan su color. Desactivado es blanco y negro puro.",
     "footer": "Se guarda en tu perfil, así que se ve igual en cada teléfono donde inicies sesión."
+  },
+  "food": {
+    "fruit": "Fruta",
+    "veg": "Verduras",
+    "meat": "Carne y aves",
+    "fish": "Pescado y mariscos",
+    "egg": "Huevos",
+    "dairy": "Lácteos",
+    "grain": "Pan y cereales",
+    "bowl": "Arroz, pasta y bowls",
+    "sweet": "Dulces y snacks",
+    "drink": "Bebidas",
+    "plate": "Plato mixto"
   }
 }
