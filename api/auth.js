@@ -14,7 +14,7 @@
 // Sign-up needs a single-use invite link (api/invites.js), because the app sits on a public URL:
 // without one anyone who found the address could create an account. Only the admin makes links.
 //
-// There is also a hard cap on how many accounts can exist (MAX_USERS, default 3). The invite code
+// There is also a hard cap on how many accounts can exist (MAX_USERS, default 25 — see api/_members.js). The invite code
 // can leak — someone forwards it, it is overheard — and the cap means that even then nobody new
 // can get in. Raise it by setting MAX_USERS in Vercel; deleting an account frees a slot.
 

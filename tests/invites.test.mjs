@@ -50,8 +50,8 @@ globalThis.fetch = async (url, opts = {}) => {
   if (m === "PATCH") { const f = JSON.parse(opts.body); const hit = rows.filter((r) => ok(r, u.searchParams)); hit.forEach((r) => Object.assign(r, f)); return { ok: true, json: async () => hit, text: async () => "" }; }
 };
 
-test("the group holds 8 by default and aelson manages invites", () => {
-  assert.equal(maxUsers(), 8);
+test("SnapCal holds 25 accounts by default and aelson manages invites", () => {
+  assert.equal(maxUsers(), 25);
   assert.equal(isAdmin("aelson"), true);
   assert.equal(isAdmin("baby"), false);
 });
@@ -105,14 +105,15 @@ test("only the owner can create or cancel links", async () => {
   assert.equal(res.code, 401);
 });
 
-test("five open links fill the five free places; a sixth can't be made", async () => {
+test("open links fill exactly the free places; one more can't be made", async () => {
   reset();
-  for (let i = 0; i < 5; i++) {
+  const free = maxUsers() - 3; // the fixture starts with three accounts
+  for (let i = 0; i < free; i++) {
     const r = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), r);
     assert.equal(r.body.ok, true, `link ${i + 1}`);
   }
-  const sixth = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), sixth);
-  assert.equal(sixth.body.errorType, "full");
+  const extra = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), extra);
+  assert.equal(extra.body.errorType, "full");
 
   // cancelling one frees a place again
   const code = DB.snapcal_invites[0].code;

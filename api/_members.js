@@ -1,9 +1,9 @@
 // api/_members.js — who may manage the group, and how big it can get.
 
-/** Total accounts allowed. Three original members + five invited. MAX_USERS in Vercel overrides. */
+/** Total accounts allowed, open invite links included. MAX_USERS in Vercel overrides. */
 export function maxUsers() {
   const n = Number(process.env.MAX_USERS);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 8;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 25;
 }
 
 /**
