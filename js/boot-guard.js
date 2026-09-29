@@ -20,6 +20,7 @@
     var t = e && e.target;
     if (t && t !== window && (t.src || t.href)) {
       note("load failed: " + (t.src || t.href)); // a script or stylesheet that didn't arrive
+      if (!failedScript && t.tagName === "SCRIPT") failedScript = t.src;
       return;
     }
     var where = e && e.filename ? " @ " + String(e.filename).replace(location.origin, "") + ":" + e.lineno + ":" + e.colno : "";
@@ -50,11 +51,34 @@
     return /^es/i.test(navigator.language || "");
   }
 
+  var failedScript = null;
+
+  function device() {
+    var ua = navigator.userAgent || "";
+    var os = ua.match(/(?:iPhone|CPU) OS (\d+[._]\d+)/) || ua.match(/Android (\d+(?:\.\d+)?)/) || ua.match(/Mac OS X (\d+[._]\d+)/);
+    var ver = ua.match(/Version\/(\d+\.\d+)/);
+    return (os ? (/iPhone|CPU/.test(ua) ? "iOS " : /Android/.test(ua) ? "Android " : "macOS ") + os[1].replace("_", ".") : "") + (ver ? " · Safari " + ver[1] : "") +
+      (navigator.standalone ? " · home screen" : "");
+  }
+
+  // "load failed" is all Safari says when a module script won't run. Importing the same file
+  // again makes the browser tell us the real reason: a syntax it doesn't know, a file that
+  // didn't arrive, a wrong content type. If the import succeeds the app simply starts.
+  function probe(url) {
+    try {
+      return import(url).then(function () { return "probe: import ok"; }, function (e) {
+        return "probe: " + (e && e.name ? e.name + ": " : "") + (e && e.message ? e.message : String(e));
+      });
+    } catch (e) {
+      return Promise.resolve("probe unavailable: " + (e && e.message ? e.message : String(e)));
+    }
+  }
+
   function report() {
     if (reported) return;
     reported = true;
     var msg = (errors.length ? errors.join("\n---\n") : "app did not draw (no error caught)") +
-      "\n[after " + Math.round((Date.now() - began) / 1000) + "s, sw=" + (navigator.serviceWorker && navigator.serviceWorker.controller ? "yes" : "no") + "]";
+      "\n[" + device() + " · after " + Math.round((Date.now() - began) / 1000) + "s · sw=" + (navigator.serviceWorker && navigator.serviceWorker.controller ? "yes" : "no") + "]";
     try {
       fetch("/api/auth", {
         method: "POST",
@@ -101,7 +125,16 @@
       "<button type=\"button\" data-act=\"retry\" style=\"" + btn + "background:#000;color:#fff\">" + (es ? "Intentar de nuevo" : "Try again") + "</button>" +
       "<button type=\"button\" data-act=\"repair\" style=\"" + btn + "background:#fff;color:#000;box-shadow:inset 0 0 0 1.5px #000\">" + (es ? "Reparar la app" : "Repair the app") + "</button>" +
       "<div style=\"max-width:320px;font-size:11px;color:#5C5C60;word-break:break-word;white-space:pre-wrap\"></div>";
-    box.lastChild.textContent = errors.length ? errors[0].split("\n")[0] : "";
+    var detail = box.lastChild;
+    detail.textContent = (errors.length ? errors[0].split("\n")[0] + "\n" : "") + device();
+    if (failedScript) {
+      probe(failedScript).then(function (why) {
+        note(why);
+        detail.textContent += "\n" + why;
+        reported = false; // send again, now with the reason
+        report();
+      });
+    }
     box.querySelector("[data-act=retry]").onclick = function () { location.reload(); };
     box.querySelector("[data-act=repair]").onclick = function () { this.disabled = true; repair(); };
     (document.body || document.documentElement).appendChild(box);

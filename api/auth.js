@@ -120,8 +120,9 @@ export default async function handler(req, res) {
   // The phone's app failed to open (js/boot-guard.js): keep the error text for diagnosis.
   // Signed-in sessions only (checked without the database), short text, never an error reply.
   if (op === "clientError") {
-    const username = readSession(req.headers["x-snapcal-token"]);
-    if (!username) return res.status(200).json({ ok: true });
+    // A phone that never got to sign in (or opened the link in a fresh browser) still needs
+    // its failure heard; those rows are kept under "anon".
+    const username = readSession(req.headers["x-snapcal-token"]) || "anon";
     const message = String(body.message ?? "").slice(0, 2000);
     const ua = String(req.headers["user-agent"] ?? "").slice(0, 300);
     if (message) {
