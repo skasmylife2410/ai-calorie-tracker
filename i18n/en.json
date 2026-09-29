@@ -964,7 +964,8 @@
     "opt": {
       "meals": "Meal names",
       "streak": "Streak",
-      "weight": "My weight"
+      "weight": "My weight",
+      "doodle": "Doodle"
     },
     "leftN": "{n} left",
     "overN": "{n} over",
@@ -986,7 +987,11 @@
     "workouts": "workouts",
     "weightWeek": "{u} this week",
     "waterPerDay": "{n} glasses of water a day",
-    "button": "Share your day or week"
+    "button": "Share your day or week",
+    "holdHint": "Press and hold the image to save or share it.",
+    "download": "Download",
+    "done": "Done",
+    "drawFailed": "Couldn't draw the image. Share as text instead."
   },
   "install": {
     "sheetTitle": "Home Screen",

@@ -1,7 +1,7 @@
 // api/doodle.js — draws each person's doodle with Nano Banana (Gemini's image model).
 //
 // POST { state, variant, photo? }  ->  { ok, image, mime }  |  { ok:false, errorType, message }
-//   state:   "strong" | "wellFed" | "idle"   — which pose
+//   state:   "strong" | "wellFed" | "idle" | "showoff"   — which pose ("showoff" is for shared summaries)
 //   variant: "a" | "b"                        — him / her
 //   photo:   optional base64 JPEG (no data: prefix) of the profile picture, so the doodle
 //            looks like the person
@@ -19,6 +19,7 @@ const MAX_PHOTO = 1_400_000; // base64 chars (~1 MB); the app sends a 512px crop
 const POSES = {
   strong: "standing tall and proud, flexing one arm and holding a small dumbbell in the other hand, big confident smile",
   wellFed: "sitting back on a small couch looking happily full and a little sleepy, eyes half-closed, one hand resting on the tummy, content smile",
+  showoff: "showing off after a great week: cool sunglasses, chest out, flexing both arms up high, a small medal on the chest, a few sparkle marks around, playful swagger",
   idle: "a little rounder than usual and slouching, looking bored and sluggish, holding a phone, mildly sheepish expression — gentle and funny, never mean",
 };
 
@@ -87,7 +88,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(200).json({ ok: false, errorType: "badKey", message: "No Gemini key set." });
 
   const body = typeof req.body === "object" && req.body ? req.body : JSON.parse(req.body || "{}");
-  const state = ["strong", "wellFed", "idle"].includes(body.state) ? body.state : "strong";
+  const state = ["strong", "wellFed", "idle", "showoff"].includes(body.state) ? body.state : "strong";
   const variant = body.variant === "b" ? "b" : "a";
   const photo = typeof body.photo === "string" && body.photo.length > 0 && body.photo.length <= MAX_PHOTO ? body.photo : null;
 

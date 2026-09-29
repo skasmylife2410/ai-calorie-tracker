@@ -75,6 +75,27 @@ function strongSvg(variant, streakGrowth) {
     </g>`;
 }
 
+/** Showing off, for the shared summary: sunglasses, both arms flexed, a medal, a few sparkles. */
+function showoffSvg(variant) {
+  return `
+    <g>
+      <path d="M14 20v9M9.5 24.5h9M104 12v9M99.5 16.5h9M103 62v7M99.5 65.5h7" stroke-width="3"/>
+      <circle cx="60" cy="26" r="15"/>
+      ${hair(variant)}
+      <path d="M48.5 22.5h10v4.5c0 2.6-1.8 4-4.4 4h-1.2c-2.6 0-4.4-1.4-4.4-4zM61.5 22.5h10v4.5c0 2.6-1.8 4-4.4 4h-1.2c-2.6 0-4.4-1.4-4.4-4z" fill="${INK}" stroke-width="2"/>
+      <path d="M58.5 24h3" stroke-width="2.4"/>
+      <path d="M52.5 34c4.5 4 10.5 4 15 0" stroke-width="3"/>
+      <path d="M46 52c0-7 6-11 14-11s14 4 14 11v18c0 4-3 7-7 7H53c-4 0-7-3-7-7z"/>
+      <path d="M55 42l5 9 5-9" stroke-width="2.4"/>
+      <circle cx="60" cy="57" r="5" fill="${INK}" stroke="none"/>
+      <path d="M46 54L29 49l3-15M74 54l17-5-3-15" stroke-width="4"/>
+      <path d="M26 46c-3-3-3-8 1-10M94 46c3-3 3-8-1-10" stroke-width="3"/>
+      <circle cx="32" cy="31" r="4.5" fill="${INK}" stroke="none"/>
+      <circle cx="88" cy="31" r="4.5" fill="${INK}" stroke="none"/>
+      <path d="M54 77l-5 28M66 77l5 28M49 105l-7 7M71 105l7 7"/>
+    </g>`;
+}
+
 function wellFedSvg(variant) {
   return `
     <g>
@@ -114,7 +135,7 @@ function idleSvg(variant) {
  */
 export function doodleSvg({ state = "strong", streak = 0, variant = "a", size = 120, animate = false, face = null } = {}) {
   let body =
-    state === "wellFed" ? wellFedSvg(variant) : state === "idle" ? idleSvg(variant) : strongSvg(variant, growth(streak));
+    state === "wellFed" ? wellFedSvg(variant) : state === "idle" ? idleSvg(variant) : state === "showoff" ? showoffSvg(variant) : strongSvg(variant, growth(streak));
   if (face) body = withFace(body, state, face);
   return `
     <svg class="doodle${animate ? " doodle-animate" : ""}" data-state="${state}" width="${size}" height="${Math.round(size * 1.08)}"
@@ -129,7 +150,7 @@ export function doodleSvg({ state = "strong", streak = 0, variant = "a", size = 
  * Swaps the drawn eyes and mouth for a sketch of the person's photo, clipped to the head circle.
  * The head's outline and the hair stay, so it still reads as the same character.
  */
-const HEAD = { strong: [60, 26, 15], wellFed: [52, 58, 14], idle: [60, 28, 15] };
+const HEAD = { strong: [60, 26, 15], wellFed: [52, 58, 14], idle: [60, 28, 15], showoff: [60, 26, 15] };
 let faceSeq = 0;
 
 function withFace(body, state, face) {

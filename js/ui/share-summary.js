@@ -11,6 +11,9 @@ import { startOfDay, addDays, localDateString } from "../nutrition.js";
 import { foodCategory, foodIconSvg } from "./food-icons.js";
 import { iconSvg } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
+import { doodleSvg } from "./doodle.js";
+import { cachedFaceDoodle } from "./photo-doodle.js";
+import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 
 const W = 1080, H = 1350, PAD = 84;
 const INK = "#000000", SEC = "#5C5C60", LINE = "#E2E2E2", TRACK = "#EDEDED";
@@ -126,13 +129,19 @@ export function summaryText(s, { meals = true, streak = true, weight = false } =
 // The card (canvas)
 // ---------------------------------------------------------------------------
 
-const svgImage = (svg) => new Promise((resolve) => {
+const svgImage = (svg) => within(new Promise((resolve) => {
   const img = new Image();
   img.onload = () => resolve(img);
   img.onerror = () => resolve(null);
   const xml = /xmlns=/.test(svg) ? svg : svg.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
-});
+}), 3000);
+const urlImage = (src) => within(new Promise((resolve) => {
+  const img = new Image();
+  img.onload = () => resolve(img);
+  img.onerror = () => resolve(null);
+  img.src = src;
+}), 3000);
 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -151,9 +160,27 @@ function fitText(ctx, text, max) {
   return `${s.trimEnd()}…`;
 }
 
+/**
+ * The "showing off" doodle for the card: the person's Nano Banana drawing of that pose when one
+ * exists, else the built-in doodle (with their face sketch if they've set a photo).
+ */
+function showoffDoodle() {
+  const p = store.getProfile();
+  const variant = p.doodleVariant === "b" ? "b" : "a";
+  const nano = cachedNanoDoodle("showoff", variant, p.avatar ?? null);
+  if (nano) return { kind: "img", src: nano };
+  const face = p.avatar ? cachedFaceDoodle(p.avatar) : null;
+  const svg = doodleSvg({ state: "showoff", variant, size: 300, face })
+    .replaceAll("var(--sc-primary-text)", INK).replaceAll("var(--sc-secondary)", SEC);
+  return { kind: "svg", svg };
+}
+
+/** Resolves after `ms` at most, so one slow piece can never keep the card from being drawn. */
+const within = (promise, ms, fallback = null) => Promise.race([promise, new Promise((r) => setTimeout(() => r(fallback), ms))]);
+
 /** Draws the card and resolves to a PNG blob. */
 export async function renderCard(s, opts = {}) {
-  try { await document.fonts?.load?.('900 120px "Doto"'); } catch { /* falls back to the sans */ }
+  try { await within(document.fonts?.load?.('900 120px "Doto"') ?? Promise.resolve(), 2500); } catch { /* falls back to the sans */ }
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
@@ -176,8 +203,22 @@ export async function renderCard(s, opts = {}) {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 
   // the big number
-  ctx.fillStyle = INK; ctx.font = `900 190px "Doto", ${SANS}`;
-  ctx.fillText(formatNumber(s.kind === "day" ? s.eaten : s.avgCalories), PAD - 6, 360);
+  ctx.fillStyle = INK; ctx.font = `900 ${opts.doodle === false ? 190 : 164}px "Doto", ${SANS}`;
+  const bigText = formatNumber(s.kind === "day" ? s.eaten : s.avgCalories);
+  ctx.fillText(bigText, PAD - 6, 360);
+  if (opts.doodle !== false) {
+    // the doodle showing off, in the room to the right of the big number
+    const room = W - PAD - (PAD + ctx.measureText(bigText).width + 24);
+    const size = Math.min(340, room);
+    if (size >= 150) {
+      const d = showoffDoodle();
+      const im = d.kind === "img" ? await urlImage(d.src) : await svgImage(d.svg);
+      if (im) {
+        const h = size * (im.height && im.width ? im.height / im.width : 1.08);
+        ctx.drawImage(im, W - PAD - size + 10, 118 + Math.max(0, (330 - h) / 2), size, Math.min(h, 340));
+      }
+    }
+  }
   ctx.fillStyle = SEC; ctx.font = `400 44px ${SANS}`;
   ctx.fillText(s.kind === "day" ? t("share.ofGoal", { goal: formatNumber(s.goal) }) : t("share.avgOfGoal", { goal: formatNumber(s.goal) }), PAD, 428);
 
@@ -296,9 +337,20 @@ export async function renderCard(s, opts = {}) {
 // The sheet
 // ---------------------------------------------------------------------------
 
+/** Tells the server when sharing didn't work on a phone, so it can be fixed (api/auth "clientError"). */
+function reportShareProblem(message) {
+  try {
+    fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-snapcal-token": localStorage.getItem("snapcal.apiToken") || "" },
+      body: JSON.stringify({ op: "clientError", message: `${message}\n[${navigator.userAgent}]` }),
+    }).catch(() => {});
+  } catch { /* diagnostics only */ }
+}
+
 function readOpts() {
-  try { return { meals: true, streak: true, weight: false, ...(JSON.parse(localStorage.getItem(OPTS_KEY) || "{}") || {}) }; }
-  catch { return { meals: true, streak: true, weight: false }; }
+  try { return { doodle: true, meals: true, streak: true, weight: false, ...(JSON.parse(localStorage.getItem(OPTS_KEY) || "{}") || {}) }; }
+  catch { return { doodle: true, meals: true, streak: true, weight: false }; }
 }
 function saveOpts(o) { try { localStorage.setItem(OPTS_KEY, JSON.stringify(o)); } catch { /* private mode */ } }
 
@@ -321,7 +373,7 @@ export function openShareSheet({ date = new Date() } = {}) {
           </div>
           <div class="share-preview"><img id="share-img" alt="${t("share.previewAlt")}" /></div>
           <div class="share-opts">
-            ${["meals", "streak", "weight"].map((k) => `<label><input type="checkbox" data-opt="${k}" ${opts[k] ? "checked" : ""}/> ${t(`share.opt.${k}`)}</label>`).join("")}
+            ${["doodle", "meals", "streak", "weight"].map((k) => `<label><input type="checkbox" data-opt="${k}" ${opts[k] ? "checked" : ""}/> ${t(`share.opt.${k}`)}</label>`).join("")}
           </div>
           <button type="button" class="share-primary" id="share-image" disabled>${iconSvg("share", { size: 18 })}<span>${t("share.image")}</span></button>
           <div class="share-actions">
@@ -341,8 +393,10 @@ export function openShareSheet({ date = new Date() } = {}) {
         imageBtn.disabled = true;
         const s = kind === "day" ? daySummary(date) : weekSummary(date);
         text = summaryText(s, opts);
-        const blob = await renderCard(s, opts);
-        if (mine !== drawing || !blob) return;
+        let blob = null;
+        try { blob = await renderCard(s, opts); } catch (err) { reportShareProblem(`draw card: ${err?.message ?? err}`); }
+        if (mine !== drawing) return;
+        if (!blob) { say(t("share.drawFailed")); return; }
         if (url) URL.revokeObjectURL(url);
         url = URL.createObjectURL(blob);
         img.src = url;
@@ -362,26 +416,38 @@ export function openShareSheet({ date = new Date() } = {}) {
         redraw();
       }));
 
+      // The image itself, big, to press and hold: on iPhone that always offers Save / Share,
+      // even where the share menu won't take a file (or a Home Screen app can't "download").
+      const showToHold = () => {
+        const hold = document.createElement("div");
+        hold.className = "share-hold";
+        hold.innerHTML = `<img src="${url}" alt="${t("share.previewAlt")}" /><p>${t("share.holdHint")}</p>
+          <div class="share-actions"><a class="share-ghost" href="${url}" download="${file.name}">${t("share.download")}</a><button type="button" class="share-primary" data-done>${t("share.done")}</button></div>`;
+        hold.querySelector("[data-done]").addEventListener("click", () => hold.remove());
+        panel.appendChild(hold);
+      };
+
       imageBtn.addEventListener("click", async () => {
         if (!file) return;
-        try {
-          if (navigator.canShare?.({ files: [file] })) {
+        let why = "no file sharing on this browser";
+        if (navigator.canShare?.({ files: [file] })) {
+          try {
             await navigator.share({ files: [file] });
             return;
+          } catch (err) {
+            if (err?.name === "AbortError") return; // they closed the share menu
+            why = `${err?.name ?? "Error"}: ${err?.message ?? err}`;
           }
-        } catch (err) {
-          if (err?.name === "AbortError") return; // they closed the share menu
         }
-        // no file sharing here (most desktop browsers): save the image instead
-        const a = document.createElement("a");
-        a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
-        say(t("share.saved"));
+        reportShareProblem(`share image: ${why}`);
+        showToHold();
       });
       panel.querySelector("#share-text").addEventListener("click", async () => {
         try {
           if (navigator.share) { await navigator.share({ text }); return; }
         } catch (err) {
           if (err?.name === "AbortError") return;
+          reportShareProblem(`share text: ${err?.name ?? "Error"}: ${err?.message ?? err}`);
         }
         copy();
       });
@@ -393,6 +459,11 @@ export function openShareSheet({ date = new Date() } = {}) {
 
       wireNavBar(panel, { onLeading: () => close() });
       redraw();
+      const p = store.getProfile();
+      const variant = p.doodleVariant === "b" ? "b" : "a";
+      if (!cachedNanoDoodle("showoff", variant, p.avatar ?? null) && cachedNanoDoodle("strong", variant, p.avatar ?? null)) {
+        ensureNanoDoodle("showoff", variant, p.avatar ?? null).then((got) => { if (got && panel.isConnected) redraw(); }).catch(() => {});
+      }
     },
     onClosed() { /* object URLs are released with the page */ },
   });

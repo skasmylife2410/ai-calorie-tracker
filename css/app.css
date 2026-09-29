@@ -2390,3 +2390,10 @@ body.setup-open { overflow: hidden; }
 .install-card-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--sc-secondary); font-size: 20px; line-height: 1; padding: 0; }
 .install-body { padding: 4px 16px calc(24px + env(safe-area-inset-bottom)); }
 .ios-row-button { width: 100%; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+/* Share fallback: the image big, to press and hold (iPhone offers Save / Share from there) */
+.share-hold { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); background: var(--sc-background, #F2F2F2); }
+.share-hold img { width: min(82vw, 360px); aspect-ratio: 4 / 5; border-radius: 18px; box-shadow: 0 0 0 1px var(--sc-secondary-15, rgba(0,0,0,.1)); -webkit-touch-callout: default; user-select: auto; }
+.share-hold p { margin: 0; font-size: 15px; font-weight: 600; text-align: center; }
+.share-hold .share-actions { width: 100%; max-width: 360px; }
+.share-hold a.share-ghost { text-align: center; text-decoration: none; }

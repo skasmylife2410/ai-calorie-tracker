@@ -964,7 +964,8 @@
     "opt": {
       "meals": "Nombres de comidas",
       "streak": "Racha",
-      "weight": "Mi peso"
+      "weight": "Mi peso",
+      "doodle": "Muñequito"
     },
     "leftN": "quedan {n}",
     "overN": "{n} de más",
@@ -986,7 +987,11 @@
     "workouts": "entrenos",
     "weightWeek": "{u} esta semana",
     "waterPerDay": "{n} vasos de agua al día",
-    "button": "Comparte tu día o semana"
+    "button": "Comparte tu día o semana",
+    "holdHint": "Mantén presionada la imagen para guardarla o compartirla.",
+    "download": "Descargar",
+    "done": "Listo",
+    "drawFailed": "No se pudo crear la imagen. Compártelo como texto."
   },
   "install": {
     "sheetTitle": "Pantalla de inicio",
