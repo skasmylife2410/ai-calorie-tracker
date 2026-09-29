@@ -2397,3 +2397,4 @@ body.setup-open { overflow: hidden; }
 .share-hold p { margin: 0; font-size: 15px; font-weight: 600; text-align: center; }
 .share-hold .share-actions { width: 100%; max-width: 360px; }
 .share-hold a.share-ghost { text-align: center; text-decoration: none; }
+.share-trouble { align-self: center; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--sc-primary-text); text-decoration: underline; text-underline-offset: 3px; padding: 4px 8px; }

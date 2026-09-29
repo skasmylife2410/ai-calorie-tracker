@@ -991,7 +991,8 @@
     "holdHint": "Mantén presionada la imagen para guardarla o compartirla.",
     "download": "Descargar",
     "done": "Listo",
-    "drawFailed": "No se pudo crear la imagen. Compártelo como texto."
+    "drawFailed": "No se pudo crear la imagen. Compártelo como texto.",
+    "trouble": "¿Problemas al compartir? Guarda la imagen"
   },
   "install": {
     "sheetTitle": "Pantalla de inicio",

@@ -991,7 +991,8 @@
     "holdHint": "Press and hold the image to save or share it.",
     "download": "Download",
     "done": "Done",
-    "drawFailed": "Couldn't draw the image. Share as text instead."
+    "drawFailed": "Couldn't draw the image. Share as text instead.",
+    "trouble": "Trouble sharing to an app? Save the image instead"
   },
   "install": {
     "sheetTitle": "Home Screen",

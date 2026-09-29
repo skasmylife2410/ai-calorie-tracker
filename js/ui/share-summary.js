@@ -178,7 +178,11 @@ function showoffDoodle() {
 /** Resolves after `ms` at most, so one slow piece can never keep the card from being drawn. */
 const within = (promise, ms, fallback = null) => Promise.race([promise, new Promise((r) => setTimeout(() => r(fallback), ms))]);
 
-/** Draws the card and resolves to a PNG blob. */
+/**
+ * Draws the card and resolves to a JPEG blob. JPEG, not PNG: WhatsApp on iPhone answers
+ * "Couldn't share, please try again" to PNGs handed over by the browser, and the card has no
+ * transparency to lose (it is drawn on white).
+ */
 export async function renderCard(s, opts = {}) {
   try { await within(document.fonts?.load?.('900 120px "Doto"') ?? Promise.resolve(), 2500); } catch { /* falls back to the sans */ }
   const canvas = document.createElement("canvas");
@@ -330,7 +334,7 @@ export async function renderCard(s, opts = {}) {
     footer(s.waterPerDay > 0 ? t("share.waterPerDay", { n: s.waterPerDay }) : "");
   }
 
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92));
 }
 
 // ---------------------------------------------------------------------------
@@ -381,6 +385,7 @@ export function openShareSheet({ date = new Date() } = {}) {
             <button type="button" class="share-ghost" id="share-copy">${t("share.copy")}</button>
           </div>
           <p class="share-hint" id="share-hint">${t("share.hint")}</p>
+          <button type="button" class="share-trouble" id="share-trouble">${t("share.trouble")}</button>
         </div>`;
 
       const img = panel.querySelector("#share-img");
@@ -401,7 +406,7 @@ export function openShareSheet({ date = new Date() } = {}) {
         url = URL.createObjectURL(blob);
         img.src = url;
         const stamp = kind === "day" ? localDateString(s.date) : `week-${localDateString(s.to)}`;
-        file = new File([blob], `snapcal-${stamp}.png`, { type: "image/png" });
+        file = new File([blob], `snapcal-${stamp}.jpg`, { type: "image/jpeg" });
         imageBtn.disabled = false;
       };
 
@@ -426,6 +431,8 @@ export function openShareSheet({ date = new Date() } = {}) {
         hold.querySelector("[data-done]").addEventListener("click", () => hold.remove());
         panel.appendChild(hold);
       };
+
+      panel.querySelector("#share-trouble").addEventListener("click", () => { if (file) showToHold(); });
 
       imageBtn.addEventListener("click", async () => {
         if (!file) return;
