@@ -13,6 +13,7 @@ import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
 import { nutrientsPageHtml, nutrientsStripHtml } from "./micros.js";
 import { openRecipesSheet } from "./recipes.js";
+import { openShareSheet } from "./share-summary.js";
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
 import { inbox, noteToShow, markNoteSeen } from "../social.js";
@@ -127,7 +128,7 @@ export function render(container) {
           ${icon("boltFill", { size: 16 })}<span>${exerciseMinutes(date) > 0 ? t("homeChips.exerciseMin", { n: exerciseMinutes(date) }) : t("homeChips.exercise")}</span>
         </button>
         ${viewingToday ? `<button type="button" class="home-chip chip-ideas" id="chip-ideas">${icon("wandAndStars", { size: 16 })}<span>${t("homeChips.ideas")}</span></button>` : ""}
-        ${viewingToday ? `<button type="button" class="home-chip chip-myth" id="chip-myth"><b>?</b><span>${t("homeChips.myth")}</span></button>` : ""}
+        ${viewingToday ? `<button type="button" class="home-chip chip-myth is-round" id="chip-myth" aria-label="${t("homeChips.mythLabel")}"><b>?</b></button>` : ""}
       </div>
       <div class="bottom-safe-spacer"></div>
     </div>
@@ -143,6 +144,7 @@ export function render(container) {
   container.querySelector("#chip-exercise")?.addEventListener("click", () => openExerciseDaySheet(date, () => render(container)));
   container.querySelector("#chip-ideas")?.addEventListener("click", () => openRecipesSheet());
   container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
+  container.querySelector("#share-summary")?.addEventListener("click", (e) => { e.stopPropagation(); openShareSheet({ date }); });
   wireDaySelection(container);
   if (viewingToday) showNoteIfAny(container);
   container.querySelector("#card-more")?.addEventListener("click", () => { cardRevealed = true; render(container); });
@@ -355,6 +357,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
   return `
     <div class="calories-page">
       <div class="calorie-card card">
+        <button type="button" class="calorie-share" id="share-summary" aria-label="${t("share.button")}">${icon("share", { size: 16 })}</button>
         <div class="calorie-left">
           <div class="calorie-remaining${overBudget ? " over" : ""}">${roundDisplay(Math.abs(remaining))}</div>
           <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>

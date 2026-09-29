@@ -7,6 +7,7 @@ import { t, formatNumber, currentLanguage } from "../i18n.js";
 import { suggestRecipes } from "../api.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
+import { recipePreferences } from "../diets.js";
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -20,7 +21,7 @@ export function openRecipesSheet({ date = new Date() } = {}) {
       const totals = store.totalsForDay(date);
       const caloriesLeft = Math.max(0, energy.remaining);
       const proteinLeft = Math.max(0, Math.round(goals.proteinTargetG - totals.proteinG));
-      const preferences = store.getProfile().recipePreferences ?? [];
+      const preferences = recipePreferences(store.getProfile()); // diets from setup / Profile
 
       let state = { kind: "loading" };
       let expanded = new Set();

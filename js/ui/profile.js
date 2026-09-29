@@ -1,5 +1,6 @@
 // profile.js — Profile / Settings tab (ProfileSettingsView in ContentView.swift), SPEC-UI.md §3.
 
+import { DIETS, cleanDiets, toggleDiet } from "../diets.js";
 import * as store from "../store.js";
 import { renderPushSettings } from "./push-ui.js";
 import * as sync from "../sync.js";
@@ -51,6 +52,7 @@ export function render(container) {
       ${bodyStatsSectionHtml(profile)}
       ${activityLevelSectionHtml(profile)}
       ${goalSectionHtml(profile)}
+      ${dietSectionHtml(profile)}
       ${goals.hasValidStats ? calculatorSectionHtml(goals) : ""}
       ${suggestSectionHtml()}
       ${redoSectionHtml()}
@@ -104,9 +106,33 @@ export function render(container) {
   container.querySelectorAll("[data-learn]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ useLearnedTdee: b.dataset.learn === "on" }); render(container); })
   );
+  container.querySelectorAll("[data-diet]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const cur = store.getProfile().diets;
+      store.setProfile({ diets: b.dataset.diet === "none" ? [] : toggleDiet(cur, b.dataset.diet) });
+      render(container);
+    })
+  );
   container.querySelectorAll("[data-doodle]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ doodleVariant: b.dataset.doodle }); render(container); })
   );
+}
+
+/** Diet: vegan, gluten-free… Used by "What should I eat?"; logging is never restricted. */
+function dietSectionHtml(profile) {
+  const diets = cleanDiets(profile.diets);
+  const chip = (key, on, label) => `<button type="button" class="diet-chip${on ? " is-on" : ""}" data-diet="${key}" aria-pressed="${on}">${label}</button>`;
+  return `
+    <div class="ios-section">
+      <div class="ios-section-header">${t("diet.section")}</div>
+      <div class="ios-section-body diet-section-body">
+        <div class="diet-chips" role="group" aria-label="${t("diet.section")}">
+          ${chip("none", diets.length === 0, t("diet.none"))}
+          ${DIETS.map((d) => chip(d, diets.includes(d), t(`diet.${d}`))).join("")}
+        </div>
+      </div>
+      <div class="ios-section-footer">${t("diet.footer")}</div>
+    </div>`;
 }
 
 function syncStatusLabel({ state, lastSyncAt }) {

@@ -45,7 +45,7 @@
     "scan": "Scan food",
     "describe": "Describe meal",
     "exercise": "Exercise",
-    "ideas": "Ideas"
+    "ideas": "What should I eat?"
   },
   "meal": {
     "title": "Edit Meal",
@@ -104,7 +104,7 @@
     "rowSubKcal": "−{burned} kcal ({credit} counted)"
   },
   "ideas": {
-    "title": "Ideas",
+    "title": "What should I eat?",
     "kcalLeft": "kcal left",
     "proteinLeft": "protein left",
     "refresh": "↻ New ideas",
@@ -432,8 +432,9 @@
   "homeChips": {
     "exercise": "Exercise",
     "exerciseMin": "{n} min",
-    "ideas": "Ideas",
-    "myth": "Myth"
+    "ideas": "What should I eat?",
+    "myth": "Myth",
+    "mythLabel": "Myth or fact"
   },
   "accuracy": {
     "exTitle": "Exercise calories",
@@ -931,5 +932,60 @@
     "sweet": "Sweets & snacks",
     "drink": "Drinks",
     "plate": "Mixed plate"
+  },
+  "diet": {
+    "title": "How do you eat?",
+    "sub": "Pick any that apply. “What should I eat?” will only suggest food that fits.",
+    "none": "No restrictions",
+    "vegetarian": "Vegetarian",
+    "vegan": "Vegan",
+    "pescatarian": "Pescatarian",
+    "lowcarb": "Keto / low-carb",
+    "glutenfree": "Gluten-free",
+    "dairyfree": "Dairy-free",
+    "halal": "Halal",
+    "kosher": "Kosher",
+    "later": "You can change this any time in Profile.",
+    "section": "Diet",
+    "footer": "“What should I eat?” only suggests food that fits. You can still log anything."
+  },
+  "share": {
+    "title": "Share",
+    "today": "Today",
+    "week": "This week",
+    "previewAlt": "Preview of the summary image",
+    "image": "Share image",
+    "asText": "Share as text",
+    "copy": "Copy text",
+    "hint": "Opens your phone's share menu: WhatsApp, Messages, Instagram, Mail, Notes…",
+    "saved": "Image saved to your downloads.",
+    "copied": "Copied — paste it anywhere.",
+    "copyFailed": "Couldn't copy on this browser.",
+    "opt": {
+      "meals": "Meal names",
+      "streak": "Streak",
+      "weight": "My weight"
+    },
+    "leftN": "{n} left",
+    "overN": "{n} over",
+    "macrosLine": "Protein {p} g · Carbs {c} g · Fat {f} g",
+    "streakN": "{n}-day streak",
+    "weekAvg": "Average {n} kcal a day (goal {goal})",
+    "weekLogged": "{n}/7 days logged",
+    "weekNear": "{n} near goal",
+    "weekProtein": "Average protein {n} g",
+    "ofGoal": "of {goal} kcal",
+    "avgOfGoal": "avg kcal · goal {goal}",
+    "protein": "protein",
+    "carbs": "carbs",
+    "fat": "fat",
+    "moreN": "+ {n} more",
+    "daysLogged": "days logged",
+    "nearGoal": "near goal",
+    "avgProtein": "avg protein",
+    "workouts": "workouts",
+    "weightWeek": "{u} this week",
+    "waterPerDay": "{n} glasses of water a day",
+    "button": "Share your day or week"
   }
 }

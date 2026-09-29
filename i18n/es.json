@@ -45,7 +45,7 @@
     "scan": "Escanear comida",
     "describe": "Describir comida",
     "exercise": "Ejercicio",
-    "ideas": "Ideas"
+    "ideas": "¿Qué como?"
   },
   "meal": {
     "title": "Editar comida",
@@ -104,7 +104,7 @@
     "rowSubKcal": "−{burned} kcal ({credit} contadas)"
   },
   "ideas": {
-    "title": "Ideas",
+    "title": "¿Qué como?",
     "kcalLeft": "kcal restantes",
     "proteinLeft": "proteína restante",
     "refresh": "↻ Otras ideas",
@@ -432,8 +432,9 @@
   "homeChips": {
     "exercise": "Ejercicio",
     "exerciseMin": "{n} min",
-    "ideas": "Ideas",
-    "myth": "Mito"
+    "ideas": "¿Qué como?",
+    "myth": "Mito",
+    "mythLabel": "Mito o realidad"
   },
   "accuracy": {
     "exTitle": "Calorías del ejercicio",
@@ -931,5 +932,60 @@
     "sweet": "Dulces y snacks",
     "drink": "Bebidas",
     "plate": "Plato mixto"
+  },
+  "diet": {
+    "title": "¿Cómo comes?",
+    "sub": "Elige las que apliquen. “¿Qué como?” solo sugerirá comida que encaje.",
+    "none": "Sin restricciones",
+    "vegetarian": "Vegetariana",
+    "vegan": "Vegana",
+    "pescatarian": "Pescetariana",
+    "lowcarb": "Keto / baja en carbohidratos",
+    "glutenfree": "Sin gluten",
+    "dairyfree": "Sin lácteos",
+    "halal": "Halal",
+    "kosher": "Kosher",
+    "later": "Puedes cambiarlo cuando quieras en Perfil.",
+    "section": "Dieta",
+    "footer": "“¿Qué como?” solo sugiere comida que encaje. Puedes seguir registrando lo que sea."
+  },
+  "share": {
+    "title": "Compartir",
+    "today": "Hoy",
+    "week": "Esta semana",
+    "previewAlt": "Vista previa de la imagen del resumen",
+    "image": "Compartir imagen",
+    "asText": "Compartir como texto",
+    "copy": "Copiar texto",
+    "hint": "Abre el menú para compartir del teléfono: WhatsApp, Mensajes, Instagram, Correo, Notas…",
+    "saved": "Imagen guardada en tus descargas.",
+    "copied": "Copiado: pégalo donde quieras.",
+    "copyFailed": "No se pudo copiar en este navegador.",
+    "opt": {
+      "meals": "Nombres de comidas",
+      "streak": "Racha",
+      "weight": "Mi peso"
+    },
+    "leftN": "quedan {n}",
+    "overN": "{n} de más",
+    "macrosLine": "Proteína {p} g · Carbohidratos {c} g · Grasa {f} g",
+    "streakN": "racha de {n} días",
+    "weekAvg": "Promedio {n} kcal al día (meta {goal})",
+    "weekLogged": "{n}/7 días registrados",
+    "weekNear": "{n} cerca de la meta",
+    "weekProtein": "Proteína promedio {n} g",
+    "ofGoal": "de {goal} kcal",
+    "avgOfGoal": "kcal prom. · meta {goal}",
+    "protein": "proteína",
+    "carbs": "carbohidratos",
+    "fat": "grasa",
+    "moreN": "+ {n} más",
+    "daysLogged": "días registrados",
+    "nearGoal": "cerca de la meta",
+    "avgProtein": "proteína prom.",
+    "workouts": "entrenos",
+    "weightWeek": "{u} esta semana",
+    "waterPerDay": "{n} vasos de agua al día",
+    "button": "Comparte tu día o semana"
   }
 }

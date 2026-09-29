@@ -9,12 +9,13 @@
 // (see nutrition.js), which for a muscular woman at 62 kg is worth over 100 kcal a day.
 
 import * as store from "../store.js";
+import { DIETS, cleanDiets, toggleDiet } from "../diets.js";
 import { isStandalone, platform, canPromptInstall, promptInstall, onInstallChange, SHARE_ICON, ADD_ICON, MENU_ICON, PHONE_ICON } from "../install.js";
 import { resolveUserGoals, estimateBodyFatPct, leanMassKg } from "../nutrition.js";
 import { BF_RANGES, silhouetteSvg, navyBodyFat, rangeFor } from "../bodyfat.js";
 import { t, currentLanguage, setLanguage, formatNumber } from "../i18n.js";
 
-const BASE_STEPS = ["lang", "about", "size", "build", "activity", "goal", "plan"];
+const BASE_STEPS = ["lang", "about", "size", "build", "activity", "goal", "diet", "plan"];
 
 const ACTIVITY = [
   { key: "sedentary", labelKey: "activity.sedentary" },
@@ -35,6 +36,7 @@ const DEFAULTS = {
   activityLevel: "light",
   goal: "lose",         // lose | maintain | gain
   rate: "normal",       // slow | normal | fast
+  diets: [],            // js/diets.js keys; empty = no restrictions
 };
 
 let draft = { ...DEFAULTS };
@@ -57,6 +59,7 @@ export function draftFromProfile(profile, latest = store.latestWeight()) {
     activityLevel: profile.activityLevel ?? DEFAULTS.activityLevel,
     goal: profile.goal ?? (Number(profile.targetDeltaKcal) > 0 ? "gain" : Number(profile.targetDeltaKcal) < 0 ? "lose" : "maintain"),
     rate: profile.goalRate ?? DEFAULTS.rate,
+    diets: cleanDiets(profile.diets),
   };
 }
 
@@ -120,6 +123,7 @@ export function render(container, onComplete, { redo = false } = {}) {
       weightUnit: draft.units === "imperial" ? "lb" : "kg",
       doodleVariant: draft.sex === "female" ? "b" : "a",
       language: currentLanguage(),
+      diets: cleanDiets(draft.diets),
       hasCompletedOnboarding: true,
     });
     // First point on the weight chart, so the trend can start immediately. On a redo this
@@ -269,6 +273,18 @@ export function render(container, onComplete, { redo = false } = {}) {
             <p class="onb-note">${t("onb.ratePerWeek", { n: (Math.round(kgPerWeek * 100) / 100).toFixed(2) })} · ${t("onb.rateNote")}</p>`}`;
       }
 
+      case "diet": {
+        const none = draft.diets.length === 0;
+        return `
+          <h1 class="onb-title">${t("diet.title")}</h1>
+          <p class="onb-sub">${t("diet.sub")}</p>
+          <div class="diet-chips" role="group" aria-label="${t("diet.title")}">
+            <button type="button" class="diet-chip${none ? " is-on" : ""}" data-diet="none" aria-pressed="${none}">${t("diet.none")}</button>
+            ${DIETS.map((d) => { const on = draft.diets.includes(d); return `<button type="button" class="diet-chip${on ? " is-on" : ""}" data-diet="${d}" aria-pressed="${on}">${t(`diet.${d}`)}</button>`; }).join("")}
+          </div>
+          <p class="onb-note">${t("diet.later")}</p>`;
+      }
+
       case "plan": {
         const g = goals();
         const lean = leanMassKg({ weightKg: draft.weightKg, bodyFatPct: draft.bodyFatPct, build: draft.build, sex: draft.sex });
@@ -316,6 +332,11 @@ export function render(container, onComplete, { redo = false } = {}) {
       if (name === "build") { draft.build = v; draft.bodyFatPct = null; }
       if (name === "activity") draft.activityLevel = v;
       if (name === "goal") (["slow", "normal", "fast"].includes(v) ? (draft.rate = v) : (draft.goal = v));
+      draw();
+    }));
+
+    body.querySelectorAll("[data-diet]").forEach((b) => b.addEventListener("click", () => {
+      draft.diets = b.dataset.diet === "none" ? [] : toggleDiet(draft.diets, b.dataset.diet);
       draw();
     }));
 
