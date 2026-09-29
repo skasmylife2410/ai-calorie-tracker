@@ -14,6 +14,7 @@ import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
 import { nutrientsPageHtml, nutrientsStripHtml } from "./micros.js";
 import { openRecipesSheet } from "./recipes.js";
 import { openShareSheet } from "./share-summary.js";
+import { shouldOfferInstall, installCardHtml, wireInstallCard } from "./install-guide.js";
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
 import { inbox, noteToShow, markNoteSeen } from "../social.js";
@@ -111,6 +112,8 @@ export function render(container) {
         ${Array.from({ length: PAGE_COUNT }, (_, i) => `<span class="swiper-dot${swiperPage === i ? " active" : ""}" data-dot="${i}"></span>`).join("")}
       </div>
 
+      ${viewingToday && shouldOfferInstall() ? installCardHtml() : ""}
+
       <div class="home-meals">
         <button type="button" class="mini-tab" id="home-meals-toggle" aria-expanded="${mealsOpen()}" aria-controls="home-meals-list">
           ${icon("forkKnife", { size: 15 })}
@@ -144,6 +147,7 @@ export function render(container) {
   container.querySelector("#chip-exercise")?.addEventListener("click", () => openExerciseDaySheet(date, () => render(container)));
   container.querySelector("#chip-ideas")?.addEventListener("click", () => openRecipesSheet());
   container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
+  wireInstallCard(container, () => render(container));
   container.querySelector("#share-summary")?.addEventListener("click", (e) => { e.stopPropagation(); openShareSheet({ date }); });
   wireDaySelection(container);
   if (viewingToday) showNoteIfAny(container);

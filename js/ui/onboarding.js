@@ -10,7 +10,8 @@
 
 import * as store from "../store.js";
 import { DIETS, cleanDiets, toggleDiet } from "../diets.js";
-import { isStandalone, platform, canPromptInstall, promptInstall, onInstallChange, SHARE_ICON, ADD_ICON, MENU_ICON, PHONE_ICON } from "../install.js";
+import { isStandalone, onInstallChange } from "../install.js";
+import { installGuideHtml, wireInstallGuide, defaultInstallFor } from "./install-guide.js";
 import { resolveUserGoals, estimateBodyFatPct, leanMassKg } from "../nutrition.js";
 import { BF_RANGES, silhouetteSvg, navyBodyFat, rangeFor } from "../bodyfat.js";
 import { t, currentLanguage, setLanguage, formatNumber } from "../i18n.js";
@@ -97,7 +98,7 @@ export function render(container, onComplete, { redo = false } = {}) {
   // and not when someone is only redoing their plan from Profile.
   const STEPS = redo || isStandalone() ? BASE_STEPS : [...BASE_STEPS, "install"];
   const LAST = STEPS[STEPS.length - 1];
-  let installFor = platform() === "android" ? "android" : "ios";
+  let installFor = defaultInstallFor();
   let stopInstallWatch = null;
 
   const goals = () => resolveUserGoals({
@@ -299,25 +300,11 @@ export function render(container, onComplete, { redo = false } = {}) {
           ${lean > 0 ? `<p class="onb-note">${t("onb.planLean", { n: Math.round(lean * 10) / 10 })}</p>` : ""}
           <p class="onb-note">${t("onb.planLearn")}</p>`;
       }
-      case "install": {
-        const ios = installFor === "ios";
-        const steps = ios
-          ? [t("onb.ios1"), t("onb.ios2", { icon: SHARE_ICON }), t("onb.ios3", { icon: ADD_ICON }), t("onb.ios4")]
-          : [t("onb.android1", { icon: MENU_ICON }), t("onb.android2", { icon: PHONE_ICON }), t("onb.android3")];
-        const oneTap = !ios && canPromptInstall();
+      case "install":
         return `
           <h1 class="onb-title">${t("onb.installTitle")}</h1>
           <p class="onb-sub">${t("onb.installSub")}</p>
-          <div class="onb-units onb-platform" role="group" aria-label="${t("onb.installWhich")}">
-            <button type="button" data-platform="ios" aria-pressed="${ios}">iPhone</button>
-            <button type="button" data-platform="android" aria-pressed="${!ios}">Android</button>
-          </div>
-          ${oneTap ? `<button type="button" class="onb-install-now" id="onb-install-now">${PHONE_ICON}<span>${t("onb.installNow")}</span></button><p class="onb-note">${t("onb.installOrByHand")}</p>` : ""}
-          <ol class="onb-install-steps">
-            ${steps.map((s, i) => `<li><span class="onb-install-n">${i + 1}</span><span class="onb-install-text">${s}</span></li>`).join("")}
-          </ol>
-          <p class="onb-note">${ios ? t("onb.iosNote") : t("onb.androidNote")}</p>`;
-      }
+          ${installGuideHtml(installFor)}`;
       default:
         return "";
     }
@@ -340,11 +327,8 @@ export function render(container, onComplete, { redo = false } = {}) {
       draw();
     }));
 
-    body.querySelectorAll("[data-platform]").forEach((b) => b.addEventListener("click", () => { installFor = b.dataset.platform; draw(); }));
-    body.querySelector("#onb-install-now")?.addEventListener("click", async () => {
-      if (await promptInstall()) finish(); // installed: nothing left to explain
-      else draw();
-    });
+    // installed from the one-tap button: nothing left to explain
+    wireInstallGuide(body, { setFor: (v) => { installFor = v; }, redraw: draw, onInstalled: finish });
     if (name === "install" && !stopInstallWatch) stopInstallWatch = onInstallChange(() => { if (STEPS[step] === "install") draw(); });
 
     body.querySelectorAll("[data-units]").forEach((b) => b.addEventListener("click", () => { draft.units = b.dataset.units; draw(); }));

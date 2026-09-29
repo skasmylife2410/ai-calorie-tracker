@@ -540,10 +540,10 @@
     "installNow": "Install SnapCal",
     "installOrByHand": "Or do it yourself:",
     "ios1": "Open this page in <b>Safari</b>.",
-    "ios2": "Tap <b>Share</b> {icon} at the bottom of the screen (at the top on iPad).",
+    "ios2": "Tap <b>•••</b> next to the address bar, then <b>Share</b> {icon}. On older iPhones, Share is at the bottom of the screen.",
     "ios3": "Scroll down and tap <b>Add to Home Screen</b> {icon}.",
     "ios4": "Tap <b>Add</b>. SnapCal is now on your Home Screen — open it from there.",
-    "iosNote": "In Chrome on iPhone, the Share button is in the address bar.",
+    "iosNote": "In Chrome on iPhone, Share is in the address bar.",
     "android1": "In Chrome, tap the menu {icon} at the top right.",
     "android2": "Tap <b>Install app</b> or <b>Add to Home screen</b> {icon}.",
     "android3": "Tap <b>Install</b>. SnapCal appears with your apps — open it from there.",
@@ -987,5 +987,14 @@
     "weightWeek": "{u} this week",
     "waterPerDay": "{n} glasses of water a day",
     "button": "Share your day or week"
+  },
+  "install": {
+    "sheetTitle": "Home Screen",
+    "cardTitle": "Add SnapCal to your Home Screen",
+    "cardSub": "Opens like an app · see how",
+    "cardCta": "Show me how",
+    "cardDismiss": "Not now",
+    "profileSection": "App",
+    "profileRow": "Add to Home Screen"
   }
 }

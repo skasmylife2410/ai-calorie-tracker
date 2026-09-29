@@ -1,6 +1,8 @@
 // profile.js — Profile / Settings tab (ProfileSettingsView in ContentView.swift), SPEC-UI.md §3.
 
 import { DIETS, cleanDiets, toggleDiet } from "../diets.js";
+import { isStandalone } from "../install.js";
+import { openInstallSheet } from "./install-guide.js";
 import * as store from "../store.js";
 import { renderPushSettings } from "./push-ui.js";
 import * as sync from "../sync.js";
@@ -74,6 +76,15 @@ export function render(container) {
       ${scanQualityHtml(profile)}
       ${doodlePickHtml()}
       <div class="ios-section" id="push-section"></div>
+      ${isStandalone() ? "" : `
+      <div class="ios-section">
+        <div class="ios-section-header">${t("install.profileSection")}</div>
+        <div class="ios-section-body">
+          <button type="button" class="ios-row ios-row-button" id="install-row">
+            <div class="ios-row-label">${t("install.profileRow")}</div><div class="ios-row-spacer"></div><div class="ios-row-value">›</div>
+          </button>
+        </div>
+      </div>`}
       ${appearanceSectionHtml(profile)}
       ${languageSectionHtml()}
       ${syncSectionHtml()}
@@ -106,6 +117,7 @@ export function render(container) {
   container.querySelectorAll("[data-learn]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ useLearnedTdee: b.dataset.learn === "on" }); render(container); })
   );
+  container.querySelector("#install-row")?.addEventListener("click", () => openInstallSheet());
   container.querySelectorAll("[data-diet]").forEach((b) =>
     b.addEventListener("click", () => {
       const cur = store.getProfile().diets;

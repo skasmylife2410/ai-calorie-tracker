@@ -540,10 +540,10 @@
     "installNow": "Instalar SnapCal",
     "installOrByHand": "O hazlo tú:",
     "ios1": "Abre esta página en <b>Safari</b>.",
-    "ios2": "Toca <b>Compartir</b> {icon} abajo en la pantalla (arriba en iPad).",
+    "ios2": "Toca <b>•••</b> junto a la barra de direcciones y luego <b>Compartir</b> {icon}. En iPhones más antiguos, Compartir está abajo en la pantalla.",
     "ios3": "Desliza hacia abajo y toca <b>Agregar a inicio</b> {icon}.",
     "ios4": "Toca <b>Agregar</b>. SnapCal ya está en tu pantalla de inicio: ábrela desde ahí.",
-    "iosNote": "En Chrome para iPhone, el botón Compartir está en la barra de direcciones.",
+    "iosNote": "En Chrome para iPhone, Compartir está en la barra de direcciones.",
     "android1": "En Chrome, toca el menú {icon} arriba a la derecha.",
     "android2": "Toca <b>Instalar app</b> o <b>Agregar a la pantalla principal</b> {icon}.",
     "android3": "Toca <b>Instalar</b>. SnapCal aparece con tus apps: ábrela desde ahí.",
@@ -987,5 +987,14 @@
     "weightWeek": "{u} esta semana",
     "waterPerDay": "{n} vasos de agua al día",
     "button": "Comparte tu día o semana"
+  },
+  "install": {
+    "sheetTitle": "Pantalla de inicio",
+    "cardTitle": "Agrega SnapCal a tu inicio",
+    "cardSub": "Se abre como una app · ver cómo",
+    "cardCta": "Ver cómo",
+    "cardDismiss": "Ahora no",
+    "profileSection": "App",
+    "profileRow": "Agregar a la pantalla de inicio"
   }
 }
