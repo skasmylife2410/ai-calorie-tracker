@@ -23,6 +23,10 @@ export const COLORS = [
   { solid: "var(--tg-f)", soft: "var(--tg-f-soft)" },
   { solid: "var(--tg-g)", soft: "var(--tg-g-soft)" },
   { solid: "var(--tg-h)", soft: "var(--tg-h-soft)" },
+  { solid: "var(--tg-i)", soft: "var(--tg-i-soft)" },
+  { solid: "var(--tg-j)", soft: "var(--tg-j-soft)" },
+  { solid: "var(--tg-k)", soft: "var(--tg-k-soft)" },
+  { solid: "var(--tg-l)", soft: "var(--tg-l-soft)" },
 ];
 let range = 7;
 let data = null;
@@ -607,8 +611,9 @@ function render() {
     body.innerHTML = `<p class="tg-note">No one is set up yet. Add people to APP_USERS in Vercel.</p>`;
     return;
   }
-  // Up to eight people: the group's cap. Rows and sparklines stack; the table scrolls sideways.
-  if (people.length > 8) people.length = 8;
+  // Everyone in the group (accounts are capped at 25, api/_members.js). Rows and charts stack,
+  // one per person; colours repeat past twelve, and every row carries the person's name.
+  if (people.length > 25) people.length = 25;
   const days = dayList(range);
   // Two people still get the mirror chart — it reads beautifully head to head. Three or more
   // get sparklines, which stay legible however many rows there are.

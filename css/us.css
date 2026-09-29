@@ -373,12 +373,16 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .note-input { margin: 8px 16px 0; width: calc(100% - 32px); }
 .note-meta { display: flex; gap: 10px; justify-content: space-between; margin: 6px 16px 0; font-size: 12px; color: var(--sc-secondary, #6B6B73); }
 
-/* --- up to eight people --- */
+/* --- person colours: twelve distinct (each ≥ 3:1 on white and on the Mono Dark card) --- */
 :root {
   --tg-e: #7B5AD9; --tg-e-soft: rgba(123,90,217,.16);
   --tg-f: #0E9AA7; --tg-f-soft: rgba(14,154,167,.16);
   --tg-g: #C0508E; --tg-g-soft: rgba(192,80,142,.14);
   --tg-h: #5B7A2E; --tg-h-soft: rgba(91,122,46,.16);
+  --tg-i: #5563DE; --tg-i-soft: rgba(85,99,222,.16);
+  --tg-j: #A0694A; --tg-j-soft: rgba(160,105,74,.16);
+  --tg-k: #6B8795; --tg-k-soft: rgba(107,135,149,.16);
+  --tg-l: #A88C14; --tg-l-soft: rgba(168,140,20,.16);
 }
 .tg-table-wrap.is-wide { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 24px; }
 .tg-table-wrap.is-wide .tg-table { table-layout: auto; min-width: calc(140px + var(--cols, 4) * 90px); }
