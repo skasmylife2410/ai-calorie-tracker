@@ -165,7 +165,18 @@ export function sweepIfNeeded() {
   hasSweptThisSession = true;
 
   for (const entry of store.allFoodEntries()) {
-    if (entry.isPending === true) {
+    // Cut off mid-analysis (the app was closed or the phone suspended it), or failed only
+    // because the connection dropped: try again by itself, a couple of times per meal, before
+    // leaving it as "Analysis failed — tap to retry".
+    const cutOff = entry.isPending === true;
+    const droppedConnection = entry.analysisFailed === true && /^Gemini network error/.test(entry.analysisFailureReason ?? "");
+    const tries = Number(entry.autoRetries) || 0;
+    if ((cutOff || droppedConnection) && canRetry(entry) && tries < AUTO_RETRY_LIMIT) {
+      store.updateFoodEntry(entry.id, { autoRetries: tries + 1 });
+      retry(entry.id);
+      continue;
+    }
+    if (cutOff) {
       store.updateFoodEntry(entry.id, {
         isPending: false,
         analysisFailed: true,
@@ -174,6 +185,8 @@ export function sweepIfNeeded() {
     }
   }
 }
+
+const AUTO_RETRY_LIMIT = 2;
 
 // ---------------------------------------------------------------------------
 // Completion callback hook
@@ -236,8 +249,39 @@ function isDocumentForeground() {
 // Core pipeline: analyze -> ground (inside analyzeMeal) -> finalize (handle outcome)
 // ---------------------------------------------------------------------------
 
+const NETWORK_RETRIES = 3;
+const RETRY_DELAYS_MS = [2000, 6000, 15000];
+
+/** Resolves when the app is on screen (at once if it already is). */
+function whenVisible() {
+  if (typeof document === "undefined" || document.visibilityState !== "hidden") return Promise.resolve();
+  return new Promise((resolve) => {
+    const on = () => {
+      if (document.visibilityState === "hidden") return;
+      document.removeEventListener("visibilitychange", on);
+      resolve();
+    };
+    document.addEventListener("visibilitychange", on);
+  });
+}
+
+const isNetworkFailure = (outcome) =>
+  !outcome.success && (outcome.errorType === "network" || /^Gemini network error/.test(outcome.reason ?? ""));
+
+/**
+ * Analyse, and ride out a lost connection: phones suspend an app in the background (people
+ * leave while "We'll notify you when done!" is showing) and the request dies with it. A
+ * network failure keeps the meal pending, waits until the app is on screen again and retries,
+ * instead of turning it into "Analysis failed".
+ */
 async function runAnalysis(entryId, { imageDataUrl, description, mode }) {
-  const outcome = await analyzeMeal({ mode, imageDataUrl, text: description });
+  let outcome = await analyzeMeal({ mode, imageDataUrl, text: description });
+  for (let attempt = 0; attempt < NETWORK_RETRIES && isNetworkFailure(outcome); attempt += 1) {
+    await whenVisible();
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt] ?? 15000));
+    if (!store.getFoodEntry(entryId)) return; // deleted while waiting
+    outcome = await analyzeMeal({ mode, imageDataUrl, text: description });
+  }
   handleOutcome(entryId, mode, outcome);
 }
 

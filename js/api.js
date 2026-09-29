@@ -638,6 +638,8 @@ export function microsFromRaw(raw) {
  * either {ok:true, items} or {ok:false, errorType, message}.
  * @param {{mode:"meal"|"label"|"text", imageDataUrl?:string, text?:string}} params
  */
+const GEMINI_TIMEOUT_MS = 75_000;
+
 export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
   let image;
   if (imageDataUrl) {
@@ -645,15 +647,23 @@ export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
     image = commaIdx === -1 ? imageDataUrl : imageDataUrl.slice(commaIdx + 1);
   }
 
+  // The server gives up at 60 s; a request still open well after that is dead (a phone that
+  // suspended the app mid-request can hold it for minutes), so it counts as a network error
+  // and the queue retries it instead of waiting on it.
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS) : null;
   let res;
   try {
     res = await apiFetch("/api/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode, image, text }),
+      ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (err) {
     return { ok: false, errorType: "network", message: `Gemini network error: ${err.message ?? err}` };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 
   let body;
@@ -780,7 +790,7 @@ export async function analyzeMeal({ mode, imageDataUrl, text }) {
 
   const outcome = await analyzeWithGemini({ mode, imageDataUrl, text });
   if (!outcome.ok) {
-    return { success: false, reason: outcome.message };
+    return { success: false, reason: outcome.message, errorType: outcome.errorType };
   }
 
   const items = outcome.items.map(mapRawItemToAnalyzedItem);
