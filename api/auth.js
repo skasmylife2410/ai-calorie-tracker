@@ -117,6 +117,25 @@ export default async function handler(req, res) {
   }
   const op = String(body.op ?? "login");
 
+  // The phone's app failed to open (js/boot-guard.js): keep the error text for diagnosis.
+  // Signed-in sessions only (checked without the database), short text, never an error reply.
+  if (op === "clientError") {
+    const username = readSession(req.headers["x-snapcal-token"]);
+    if (!username) return res.status(200).json({ ok: true });
+    const message = String(body.message ?? "").slice(0, 2000);
+    const ua = String(req.headers["user-agent"] ?? "").slice(0, 300);
+    if (message) {
+      try {
+        await fetch(`${restBase()}/rest/v1/snapcal_client_errors`, {
+          method: "POST",
+          headers: restHeaders({ Prefer: "return=minimal" }),
+          body: JSON.stringify([{ owner: username, message, ua }]),
+        });
+      } catch { /* diagnostics only */ }
+    }
+    return res.status(200).json({ ok: true });
+  }
+
   if (op === "whoami") {
     const username = readSession(req.headers["x-snapcal-token"]);
     if (!username) return fail(res, "unauthorized", "Not signed in");

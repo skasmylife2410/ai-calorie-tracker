@@ -80,12 +80,21 @@ function profileExists() {
 // ---------------------------------------------------------------------------
 
 async function boot() {
-  mountSky(); // time-of-day glow, first so there's colour before anything else paints
-  applyTheme(store.getProfile()); // Mono or Classic (js/theme-boot.js already did this before paint)
-  watchSystemTheme(store.getProfile);
-  queue.sweepIfNeeded(); // reload mid-analysis -> orphaned pendings become retryable-failed
+  // None of these extras may stop the app from opening: each one failing is logged and skipped
+  // (a blank page was the result when one threw on a phone).
+  const soft = (label, fn) => {
+    try { return fn(); } catch (err) { console.error(`app.js: ${label} failed`, err); return undefined; }
+  };
+  soft("sky", () => mountSky()); // time-of-day glow, first so there's colour before anything else paints
+  soft("theme", () => applyTheme(store.getProfile())); // Mono or Classic (js/theme-boot.js already did this before paint)
+  soft("system theme", () => watchSystemTheme(store.getProfile));
+  soft("sweep", () => queue.sweepIfNeeded()); // reload mid-analysis -> orphaned pendings become retryable-failed
   // Language comes from the profile (so it travels between this person's devices), else the phone.
-  await initI18n({ stored: store.getProfile().language });
+  try {
+    await initI18n({ stored: store.getProfile().language });
+  } catch (err) {
+    console.error("app.js: languages failed to load", err);
+  }
   onLanguageChange(() => renderShell());
   // Accounts: no valid session -> the login screen owns the app until they sign in.
   // Anything that throws in here must NOT leave a blank page, so the whole thing is guarded:
