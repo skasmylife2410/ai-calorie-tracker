@@ -12,6 +12,7 @@ import { foodCategory, foodIconSvg } from "./food-icons.js";
 import { iconSvg } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { doodleSvg } from "./doodle.js";
+import { updatePending } from "../updater.js";
 import { cachedFaceDoodle } from "./photo-doodle.js";
 import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 
@@ -341,6 +342,11 @@ export async function renderCard(s, opts = {}) {
 // The sheet
 // ---------------------------------------------------------------------------
 
+/** Holds off automatic updates (js/updater.js) for `ms` from now; 0 releases the hold. */
+function busyFor(ms) {
+  globalThis.__snapcalBusyUntil = ms > 0 ? Date.now() + ms : 0;
+}
+
 /** Tells the server when sharing didn't work on a phone, so it can be fixed (api/auth "clientError"). */
 function reportShareProblem(message) {
   try {
@@ -406,7 +412,10 @@ export function openShareSheet({ date = new Date() } = {}) {
         url = URL.createObjectURL(blob);
         img.src = url;
         const stamp = kind === "day" ? localDateString(s.date) : `week-${localDateString(s.to)}`;
-        file = new File([blob], `snapcal-${stamp}.jpg`, { type: "image/jpeg" });
+        // a full copy of the bytes, so the file doesn't depend on this page while another app reads it
+        const bytes = await blob.arrayBuffer();
+        if (mine !== drawing) return;
+        file = new File([bytes], `snapcal-${stamp}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
         imageBtn.disabled = false;
       };
 
@@ -438,12 +447,21 @@ export function openShareSheet({ date = new Date() } = {}) {
         if (!file) return;
         let why = "no file sharing on this browser";
         if (navigator.canShare?.({ files: [file] })) {
+          busyFor(3 * 60 * 1000); // no automatic update may reload the page mid-share
+          let wentHidden = false;
+          const onHide = () => { if (document.visibilityState === "hidden") wentHidden = true; };
+          document.addEventListener("visibilitychange", onHide);
+          const started = Date.now();
           try {
             await navigator.share({ files: [file] });
+            reportShareProblem(`share image ok (info): ${file.type} ${Math.round(file.size / 1024)} KB, ${Math.round((Date.now() - started) / 1000)} s, went to background: ${wentHidden}, update waiting: ${updatePending()}`);
+            busyFor(30 * 1000); // the other app may still be reading it
             return;
           } catch (err) {
-            if (err?.name === "AbortError") return; // they closed the share menu
+            if (err?.name === "AbortError") { busyFor(0); return; } // they closed the share menu
             why = `${err?.name ?? "Error"}: ${err?.message ?? err}`;
+          } finally {
+            document.removeEventListener("visibilitychange", onHide);
           }
         }
         reportShareProblem(`share image: ${why}`);
@@ -451,7 +469,7 @@ export function openShareSheet({ date = new Date() } = {}) {
       });
       panel.querySelector("#share-text").addEventListener("click", async () => {
         try {
-          if (navigator.share) { await navigator.share({ text }); return; }
+          if (navigator.share) { busyFor(60 * 1000); await navigator.share({ text }); busyFor(15 * 1000); return; }
         } catch (err) {
           if (err?.name === "AbortError") return;
           reportShareProblem(`share text: ${err?.name ?? "Error"}: ${err?.message ?? err}`);

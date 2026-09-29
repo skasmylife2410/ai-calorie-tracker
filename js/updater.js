@@ -34,6 +34,9 @@ async function fetchVersion() {
 /** True when reloading now would interrupt nothing. */
 export function safeToReload(doc = globalThis.document) {
   if (!doc) return false;
+  // Sharing hands a file to another app, which reads it after SnapCal goes to the background;
+  // reloading then would empty the share. Wait until it's done, hidden or not.
+  if ((globalThis.__snapcalBusyUntil ?? 0) > Date.now()) return false;
   if (doc.visibilityState === "hidden") return true;
   if (doc.querySelector(".sheet-panel, .fullscreen-cover, .auth-screen, .onb")) return false;
   const el = doc.activeElement;
@@ -66,6 +69,9 @@ async function check({ force = false, immediate = false } = {}) {
     if (immediate) reloadWhenSafe();
   }
 }
+
+/** True when a newer version is waiting to be applied (for diagnostics). */
+export const updatePending = () => pending;
 
 /** A natural pause (switching tabs): apply a waiting update now if nothing would be lost. */
 export function applyIfPending() {

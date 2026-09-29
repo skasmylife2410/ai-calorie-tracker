@@ -42,3 +42,12 @@ test("reloading waits for a moment that loses nothing", () => {
   assert.equal(safeToReload(fakeDoc({ typed: "half a comment" })), false, "text waiting to be sent");
   assert.equal(safeToReload(fakeDoc({ focused: { tagName: "BUTTON" } })), true);
 });
+
+test("never reloads while a share is handing a file to another app, even in the background", async () => {
+  const { safeToReload } = await import("../js/updater.js");
+  const hiddenDoc = { visibilityState: "hidden", querySelector: () => null, querySelectorAll: () => [], activeElement: null };
+  globalThis.__snapcalBusyUntil = Date.now() + 60_000;
+  assert.equal(safeToReload(hiddenDoc), false);
+  globalThis.__snapcalBusyUntil = 0;
+  assert.equal(safeToReload(hiddenDoc), true);
+});
