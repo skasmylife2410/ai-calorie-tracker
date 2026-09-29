@@ -24,9 +24,19 @@ function hashOf(str) {
 }
 
 const keyFor = (state, variant, avatar) => `${PREFIX}${hashOf(avatar)}.${variant}.${state}`;
+// ".v2": the paper is fully cleared (see cleanPaper). Doodles saved before that are cleaned on the
+// phone the first time they're needed, without asking the model to draw them again.
+const cleanKey = (state, variant, avatar) => `${keyFor(state, variant, avatar)}.v2`;
 
 export function cachedNanoDoodle(state, variant, avatar) {
-  try { return localStorage.getItem(keyFor(state, variant, avatar)); } catch { return null; }
+  try { return localStorage.getItem(cleanKey(state, variant, avatar)); } catch { return null; }
+}
+
+function store(state, variant, avatar, url) {
+  try {
+    localStorage.setItem(cleanKey(state, variant, avatar), url);
+    localStorage.removeItem(keyFor(state, variant, avatar)); // the old copy, if any
+  } catch { /* storage full: still show it this time */ }
 }
 
 /** Why the last attempt failed, if it's still within the cool-off — for the Profile screen. */
@@ -44,6 +54,16 @@ export function nanoFailure() {
 export async function ensureNanoDoodle(state, variant, avatar) {
   const cached = cachedNanoDoodle(state, variant, avatar);
   if (cached) return cached;
+  // Saved before the paper was cleared properly: clean that copy instead of drawing a new one.
+  let old = null;
+  try { old = localStorage.getItem(keyFor(state, variant, avatar)); } catch { /* private mode */ }
+  if (old) {
+    try {
+      const cleaned = await cleanPaper(old);
+      store(state, variant, avatar, cleaned);
+      return cleaned;
+    } catch { /* fall through and draw it again */ }
+  }
   if (nanoFailure()) return null;
   if (inFlight) return inFlight.then(() => cachedNanoDoodle(state, variant, avatar));
 
@@ -61,7 +81,7 @@ export async function ensureNanoDoodle(state, variant, avatar) {
         return null;
       }
       const small = await shrink(`data:${out.mime};base64,${out.image}`, OUT_SIZE);
-      try { localStorage.setItem(keyFor(state, variant, avatar), small); } catch { /* storage full: still show it this time */ }
+      store(state, variant, avatar, small);
       return small;
     } catch {
       return null;
@@ -86,20 +106,43 @@ async function toJpegBase64(dataUrl, size) {
 }
 
 async function shrink(dataUrl, size) {
+  return cleanPaper(dataUrl, size);
+}
+
+/**
+ * The model draws on paper that is white-ish but rarely pure white. Measure the paper from the
+ * picture's edges, then keep only what is clearly darker than it (the ink, and any accent),
+ * with smooth edges; everything paper-coloured becomes fully transparent. Leftover paper haze
+ * was invisible on a white card but showed as a box in dark mode, or when a phone's browser
+ * recolours pictures for its own dark mode.
+ */
+export async function cleanPaper(dataUrl, size = OUT_SIZE) {
   const img = await load(dataUrl);
   const scale = Math.min(1, size / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement("canvas");
-  c.width = Math.round(img.naturalWidth * scale);
-  c.height = Math.round(img.naturalHeight * scale);
+  c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  c.height = Math.max(1, Math.round(img.naturalHeight * scale));
   const ctx = c.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(img, 0, 0, c.width, c.height);
-  // The model draws on white. Turn the paper transparent — ink keeps its opacity, near-white
-  // fades out smoothly — so the doodle sits on any card or background with no box around it.
   const px = ctx.getImageData(0, 0, c.width, c.height);
   const d = px.data;
+  const w = c.width, h = c.height;
+
+  // paper: the typical lightness along the border (already-transparent pixels count as white)
+  const edge = [];
+  const sample = (x, y) => {
+    const i = (y * w + x) * 4;
+    edge.push(d[i + 3] < 40 ? 255 : Math.min(d[i], d[i + 1], d[i + 2]));
+  };
+  for (let x = 0; x < w; x += 2) { sample(x, 0); sample(x, h - 1); }
+  for (let y = 0; y < h; y += 2) { sample(0, y); sample(w - 1, y); }
+  edge.sort((a, b) => a - b);
+  const paper = Math.max(170, edge[Math.floor(edge.length / 2)] ?? 255);
+
   for (let i = 0; i < d.length; i += 4) {
-    const lightness = Math.min(d[i], d[i + 1], d[i + 2]);
-    if (lightness > 200) d[i + 3] = Math.round(d[i + 3] * Math.max(0, (255 - lightness) / 55));
+    const dark = paper - Math.min(d[i], d[i + 1], d[i + 2]);         // how much darker than the paper
+    const ink = Math.max(0, Math.min(1, (dark - 18) / 70));           // within ~18 of paper: gone
+    d[i + 3] = Math.round(d[i + 3] * ink);
   }
   ctx.putImageData(px, 0, 0);
   const webp = c.toDataURL("image/webp", 0.85);

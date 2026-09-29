@@ -217,7 +217,17 @@ export async function renderCard(s, opts = {}) {
     const size = Math.min(340, room);
     if (size >= 150) {
       const d = showoffDoodle();
-      const im = d.kind === "img" ? await urlImage(d.src) : await svgImage(d.svg);
+      let im = d.kind === "img" ? await urlImage(d.src) : await svgImage(d.svg);
+      if (im && d.kind === "img") {
+        // Nano Banana's drawing in plain ink, like the rest of the card
+        const ink = document.createElement("canvas");
+        ink.width = im.width; ink.height = im.height;
+        const ic = ink.getContext("2d");
+        ic.drawImage(im, 0, 0);
+        ic.globalCompositeOperation = "source-in";
+        ic.fillStyle = INK; ic.fillRect(0, 0, ink.width, ink.height);
+        im = ink;
+      }
       if (im) {
         const h = size * (im.height && im.width ? im.height / im.width : 1.08);
         ctx.drawImage(im, W - PAD - size + 10, 118 + Math.max(0, (330 - h) / 2), size, Math.min(h, 340));

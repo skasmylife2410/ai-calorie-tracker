@@ -582,6 +582,19 @@ function formatViewedDay(date) {
 }
 
 
+/**
+ * The Nano Banana drawing. In Mono it's used as a shape filled with the theme's ink (black on
+ * light, near-white on dark), so it stays black-and-white and crisp in both modes; phones that
+ * recolour pictures for their own dark mode leave a shape like this alone. Classic shows it as is.
+ */
+function nanoFigureHtml(url) {
+  const src = safeSrc(url);
+  if (document.documentElement.dataset.theme === "mono") {
+    return `<span class="nano-doodle nano-mask" role="img" aria-label="doodle" style="-webkit-mask-image:url('${src}');mask-image:url('${src}')"></span>`;
+  }
+  return `<img class="nano-doodle" src="${src}" alt="" />`;
+}
+
 /** The doodle card: the character, drawn with your face if you've set a photo, and a message
  *  written for you from your own numbers. A new message every 12 hours. */
 function doodleCardHtml() {
@@ -594,7 +607,7 @@ function doodleCardHtml() {
   if (!nano) {
     ensureNanoDoodle(state, variant, profile.avatar ?? null).then((url) => {
       const holder = document.getElementById("doodle-figure");
-      if (url && holder) holder.innerHTML = `<img class="nano-doodle" src="${safeSrc(url)}" alt="" />`;
+      if (url && holder) holder.innerHTML = nanoFigureHtml(url);
     });
   }
 
@@ -642,7 +655,7 @@ function doodleCardHtml() {
 
   return `
     <div class="doodle-card${card.tone ? ` tone-${card.tone}` : ""}">
-      <div id="doodle-figure">${nano ? `<img class="nano-doodle" src="${safeSrc(nano)}" alt="" />` : doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
+      <div id="doodle-figure">${nano ? nanoFigureHtml(nano) : doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
       <div class="doodle-text" id="doodle-text">
         <div class="doodle-title">${card.title}</div>
         <div class="doodle-sub">${card.body}</div>
