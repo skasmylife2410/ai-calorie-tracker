@@ -408,8 +408,18 @@ export function openShareSheet({ date = new Date() } = {}) {
         try { blob = await renderCard(s, opts); } catch (err) { reportShareProblem(`draw card: ${err?.message ?? err}`); }
         if (mine !== drawing) return;
         if (!blob) { say(t("share.drawFailed")); return; }
-        if (url) URL.revokeObjectURL(url);
-        url = URL.createObjectURL(blob);
+        // A data: URL, not a blob: link. Pressing and holding the picture (the fallback for apps
+        // that refuse the share) must hand over a real JPEG; from a blob: link iPhone passes on
+        // a page link, and Instagram answers "file type not supported".
+        const dataUrl = await new Promise((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(String(r.result));
+          r.onerror = () => resolve(null);
+          r.readAsDataURL(blob);
+        });
+        if (mine !== drawing) return;
+        if (!dataUrl) { say(t("share.drawFailed")); return; }
+        url = dataUrl;
         img.src = url;
         const stamp = kind === "day" ? localDateString(s.date) : `week-${localDateString(s.to)}`;
         // a full copy of the bytes, so the file doesn't depend on this page while another app reads it
@@ -445,6 +455,7 @@ export function openShareSheet({ date = new Date() } = {}) {
 
       imageBtn.addEventListener("click", async () => {
         if (!file) return;
+        reportShareProblem(`share tap (info): canShare files: ${Boolean(navigator.canShare?.({ files: [file] }))}, ${file.type} ${Math.round(file.size / 1024)} KB, home screen app: ${Boolean(globalThis.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone)}`);
         let why = "no file sharing on this browser";
         if (navigator.canShare?.({ files: [file] })) {
           busyFor(3 * 60 * 1000); // no automatic update may reload the page mid-share
