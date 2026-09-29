@@ -289,5 +289,20 @@ export function initSync() {
     scheduleDebouncedSync();
   });
 
-  syncNow();
+  firstSync = syncNow();
+}
+
+let firstSync = null;
+
+/**
+ * Resolves once the first sync after opening has finished (or failed), or after `timeoutMs`.
+ * The app waits on this before deciding a signed-in phone with nothing saved is a new person:
+ * a fresh install or a cleared browser has no profile until the server's copy arrives, and
+ * deciding too early ran first-time setup again, whose answers then replaced the real goals.
+ */
+export function whenFirstSynced(timeoutMs = 8000) {
+  return Promise.race([
+    (firstSync ?? Promise.resolve()).catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
 }

@@ -2342,3 +2342,6 @@ body.setup-open { overflow: hidden; }
 /* the doodle card gives up some height so Home still fits one screen */
 .doodle-card { min-height: 76px; max-height: 220px; }
 @media (max-height: 700px) { .doodle-card { min-height: 64px; } }
+
+/* Signed in on a fresh phone: a quiet line while the account's data arrives */
+.boot-wait { min-height: 100vh; display: grid; place-items: center; font-size: 15px; color: var(--sc-secondary); }

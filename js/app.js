@@ -5,7 +5,8 @@
 import * as store from "./store.js";
 import { t as translate, initI18n, onLanguageChange } from "./i18n.js";
 import * as queue from "./queue.js";
-import { initSync } from "./sync.js";
+import { initSync, whenFirstSynced } from "./sync.js";
+import { getStoredToken } from "./net.js";
 import { foodLookup } from "./api.js";
 import { icon } from "./ui/icons.js";
 import { render as renderToday } from "./ui/today.js";
@@ -67,6 +68,16 @@ let hasProfile = false;
 
 const appRoot = document.getElementById("app-root");
 
+/** A full profile (weight and height set), as the server holds for anyone who finished setup. */
+function accountProfileArrived() {
+  try {
+    const p = JSON.parse(localStorage.getItem("snapcal.userProfile") || "null");
+    return Boolean(p && Number(p.weightKg) > 0 && Number(p.heightCm) > 0);
+  } catch {
+    return false;
+  }
+}
+
 function profileExists() {
   try {
     return localStorage.getItem("snapcal.userProfile") !== null;
@@ -112,8 +123,23 @@ async function boot() {
 
   initSync();
   hasProfile = profileExists();
+  // Signed in but nothing on this phone (a reinstall, another browser, cleared data): the
+  // account may well exist already. Wait for its data before offering first-time setup;
+  // otherwise setup's answers are newer than the real profile and overwrite it everywhere.
+  if (!hasProfile && getStoredToken()) {
+    appRoot.innerHTML = `<div class="boot-wait" role="status">${translate("app.loadingAccount")}</div>`;
+    await whenFirstSynced(8000);
+    hasProfile = profileExists();
+  }
 
   store.subscribe(() => {
+    // The account's profile arrived after setup was already showing (slow network): step out
+    // of setup into the app instead of letting it overwrite the real profile.
+    if (!hasProfile && accountProfileArrived()) {
+      hasProfile = true;
+      renderShell();
+      return;
+    }
     applyTheme(store.getProfile()); // a theme picked here or synced from another phone
     renderCurrentTab();
   });

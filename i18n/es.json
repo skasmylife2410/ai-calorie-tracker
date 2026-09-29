@@ -8,7 +8,8 @@
     "retry": "Reintentar",
     "add": "+ Añadir",
     "log": "Registrar",
-    "updated": "SnapCal se actualizó"
+    "updated": "SnapCal se actualizó",
+    "loadingAccount": "Cargando tu cuenta…"
   },
   "home": {
     "caloriesLeft": "Calorías restantes",
