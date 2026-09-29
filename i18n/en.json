@@ -196,7 +196,7 @@
     "title": "Profile",
     "sync": "Sync",
     "status": "Status",
-    "syncNow": "Tap to sync now.",
+    "syncNow": "Syncs by itself when you open the app and every few minutes. Tap to sync now.",
     "dailyGoals": "Daily goals",
     "bodyStats": "Body stats",
     "activityLevel": "Activity level",

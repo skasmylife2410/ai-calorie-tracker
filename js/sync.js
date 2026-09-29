@@ -290,6 +290,32 @@ export function initSync() {
   });
 
   firstSync = syncNow();
+  lastAutoSync = Date.now();
+
+  // Phones rarely restart the app; they resume it. Without these, changes from another phone
+  // (or fixed on the server) only arrived after someone tapped "sync now" in Profile.
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") syncIfStale();
+    });
+    globalThis.addEventListener?.("online", () => syncIfStale(0));
+    setInterval(() => {
+      if (document.visibilityState === "visible") syncIfStale();
+    }, AUTO_SYNC_EVERY_MS);
+  }
+}
+
+const AUTO_SYNC_EVERY_MS = 2 * 60 * 1000; // while the app is on screen
+const RESUME_GAP_MS = 20 * 1000;          // coming back to the app syncs at most this often
+let lastAutoSync = 0;
+
+/** A sync unless one ran very recently (or `gap` is 0). Never stacks: syncNow() de-dupes. */
+function syncIfStale(gap = RESUME_GAP_MS) {
+  if (unconfigured) return;
+  const now = Date.now();
+  if (now - lastAutoSync < gap) return;
+  lastAutoSync = now;
+  syncNow();
 }
 
 let firstSync = null;

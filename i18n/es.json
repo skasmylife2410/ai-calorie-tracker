@@ -196,7 +196,7 @@
     "title": "Perfil",
     "sync": "Sincronización",
     "status": "Estado",
-    "syncNow": "Toca para sincronizar ahora.",
+    "syncNow": "Se sincroniza sola al abrir la app y cada pocos minutos. Toca para sincronizar ahora.",
     "dailyGoals": "Metas diarias",
     "bodyStats": "Datos corporales",
     "activityLevel": "Nivel de actividad",
