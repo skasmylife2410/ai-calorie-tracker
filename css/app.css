@@ -2408,3 +2408,15 @@ body.setup-open { overflow: hidden; }
 .food-suspect { display: flex; gap: 8px; align-items: flex-start; color: var(--sc-primary-text); }
 .food-suspect-mark { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--sc-red); }
 .ns-hint.is-partial { color: var(--sc-primary-text); }
+
+/* "What should I eat?" as the thinking-monkey GIF: the GIF fills the pill, cropped to the face.
+   The words stay underneath (hidden from view while the GIF shows) and come back if it can't load. */
+.home-chip.chip-ideas.has-gif { position: relative; overflow: hidden; padding: 0; isolation: isolate; }
+.chip-ideas-words { display: inline-flex; align-items: center; gap: 6px; }
+.chip-ideas-gif { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; z-index: 1; }
+.chip-ideas-gif[data-gif-dead] { display: none; }
+.home-chip.chip-ideas.has-gif::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); z-index: 2; pointer-events: none; }
+/* a little taller than the old chips so the monkey's face and finger both fit */
+.home-chips .home-chip { height: 54px; border-radius: 17px; }
+.home-chips .home-chip.is-round { width: 54px; }
+@media (max-width: 374px) { .home-chips .home-chip { height: 50px; } .home-chips .home-chip.is-round { width: 50px; } }

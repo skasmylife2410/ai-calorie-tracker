@@ -12,6 +12,7 @@ import { openResultsSheet } from "./results.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { icon } from "./icons.js";
 import { t, formatDate } from "../i18n.js";
+import { deleteWithUndo } from "./undo-delete.js";
 
 export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
   openSheet({
@@ -48,11 +49,7 @@ export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
                   if (Array.isArray(fresh?.analysisItems) && fresh.analysisItems.length > 0) openResultsSheet(fresh);
                   else openAddFoodSheet({ entry: fresh, onSaved: () => { draw(); onChange?.(); } });
                 },
-                onDelete: (e) => {
-                  store.deleteFoodEntry(e.id);
-                  draw();
-                  onChange?.();
-                },
+                onDelete: (e) => deleteWithUndo(e, () => { draw(); onChange?.(); }),
               })
             );
           }

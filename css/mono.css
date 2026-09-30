@@ -480,3 +480,6 @@
 :root[data-theme="mono"] .gif-topics button { background: var(--mn-card); box-shadow: inset 0 0 0 1px var(--mn-line); color: var(--mn-ink); }
 :root[data-theme="mono"] .gif-topics button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--mn-ink); }
 :root[data-theme="mono"] .gif-pick, :root[data-theme="mono"] .note-gif-img { background: var(--mn-soft); }
+/* the monkey in black and white, like the rest of Mono; the hairline matches the other chips */
+:root[data-theme="mono"] .chip-ideas-gif { filter: grayscale(1) contrast(1.06); }
+:root[data-theme="mono"] .home-chip.chip-ideas.has-gif::after { box-shadow: inset 0 0 0 1px var(--mn-line); }

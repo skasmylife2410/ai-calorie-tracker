@@ -9,6 +9,7 @@ import { wireMealDrag, groupWithToast, rowIsGroupable } from "./meal-drag.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { openResultsSheet } from "./results.js";
 import { icon } from "./icons.js";
+import { deleteWithUndo } from "./undo-delete.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 
 let cleanups = [];
@@ -108,10 +109,7 @@ export function renderMealList(list, date, onChange) {
             openAddFoodSheet({ entry: fresh, onSaved: () => onChange() });
           }
         },
-        onDelete: (e) => {
-          store.deleteFoodEntry(e.id);
-          onChange();
-        },
+        onDelete: (e) => deleteWithUndo(e, onChange),
       })
     );
   }

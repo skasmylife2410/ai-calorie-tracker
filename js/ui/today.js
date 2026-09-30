@@ -18,7 +18,8 @@ import { shouldOfferInstall, installCardHtml, wireInstallCard } from "./install-
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
 import { inbox, noteToShow, markNoteSeen } from "../social.js";
-import { gifImgHtml } from "../gif.js";
+import { gifImgHtml, THINKING_MONKEY } from "../gif.js";
+import { deleteWithUndo } from "./undo-delete.js";
 import { currentLanguage } from "../i18n.js";
 import { doodleSvg, doodleState, daysSinceLastLog } from "./doodle.js";
 import { doodleMessage } from "./doodle-messages.js";
@@ -131,7 +132,7 @@ export function render(container) {
         <button type="button" class="home-chip chip-ex" id="chip-exercise">
           ${icon("boltFill", { size: 16 })}<span>${exerciseMinutes(date) > 0 ? t("homeChips.exerciseMin", { n: exerciseMinutes(date) }) : t("homeChips.exercise")}</span>
         </button>
-        ${viewingToday ? `<button type="button" class="home-chip chip-ideas" id="chip-ideas">${icon("wandAndStars", { size: 16 })}<span>${t("homeChips.ideas")}</span></button>` : ""}
+        ${viewingToday ? `<button type="button" class="home-chip chip-ideas has-gif" id="chip-ideas" aria-label="${t("homeChips.ideas")}"><span class="chip-ideas-words" aria-hidden="true">${icon("wandAndStars", { size: 16 })}<span>${t("homeChips.ideas")}</span></span>${gifImgHtml(THINKING_MONKEY, { cls: "chip-ideas-gif", alt: "" })}</button>` : ""}
         ${viewingToday ? `<button type="button" class="home-chip chip-myth is-round" id="chip-myth" aria-label="${t("homeChips.mythLabel")}"><b>?</b></button>` : ""}
       </div>
       <div class="bottom-safe-spacer"></div>
@@ -239,41 +240,6 @@ function countNumbers(container, dayKey, nums) {
     countAnim = null;
   };
   requestAnimationFrame(step);
-}
-
-/**
- * Swipe removes the meal straight away — no dialog, no edit mode. A toast offers Undo for a few
- * seconds, which is friendlier than a confirm box and much faster when clearing several rows.
- */
-let undoTimer = null;
-function removeWithUndo(entry, container) {
-  const snapshot = { ...entry };
-  store.deleteFoodEntry(entry.id);
-  render(container);
-  showUndoToast(snapshot, container);
-}
-
-function showUndoToast(snapshot, container) {
-  document.getElementById("undo-toast")?.remove();
-  clearTimeout(undoTimer);
-
-  const toast = document.createElement("div");
-  toast.id = "undo-toast";
-  toast.className = "undo-toast";
-  toast.innerHTML = `
-    <span class="undo-text">${t("undo.removed", { name: snapshot.name ?? "" })}</span>
-    <button type="button" class="undo-btn">${t("undo.action")}</button>`;
-  document.body.appendChild(toast);
-
-  toast.querySelector(".undo-btn").addEventListener("click", () => {
-    // Re-add with the original timestamp so it lands back on the same day, not today.
-    store.addFoodEntry({ ...snapshot, id: undefined });
-    toast.remove();
-    clearTimeout(undoTimer);
-    render(container);
-  });
-
-  undoTimer = setTimeout(() => toast.remove(), 5000);
 }
 
 function weekStripHtml(week) {
@@ -514,7 +480,7 @@ export function handleRowTap(entry, container) {
             openAddFoodSheet({ entry: store.getFoodEntry(entry.id) });
           },
         },
-        { label: t("app.delete"), destructive: true, onSelect: () => store.deleteFoodEntry(entry.id) },
+        { label: t("app.delete"), destructive: true, onSelect: () => deleteWithUndo(entry) },
         { label: t("app.cancel"), cancel: true },
       ],
     });

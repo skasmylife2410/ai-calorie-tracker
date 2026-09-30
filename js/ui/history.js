@@ -6,6 +6,7 @@ import { roundDisplay } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { mountEntryRow } from "./entry-row.js";
 import { handleRowTap } from "./today.js";
+import { deleteWithUndo } from "./undo-delete.js";
 
 let rowCleanups = [];
 
@@ -56,7 +57,7 @@ export function render(container) {
     for (const entry of group.entries) {
       const cleanup = mountEntryRow(rowsEl, entry, {
         onTap: (e) => handleRowTap(e, container),
-        onDelete: (e) => store.deleteFoodEntry(e.id),
+        onDelete: (e) => deleteWithUndo(e, () => render(container)),
       });
       rowCleanups.push(cleanup);
     }

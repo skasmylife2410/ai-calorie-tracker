@@ -264,6 +264,19 @@ export function deleteFoodEntry(id) {
   return true;
 }
 
+/**
+ * Puts a just-deleted entry back exactly as it was (photo, items, nutrients, time), under a new
+ * id: the old id's deletion may already have synced, and a fresh id can't collide with it.
+ */
+export function restoreFoodEntry(snapshot) {
+  if (!snapshot) return null;
+  const entry = { ...snapshot, id: generateId(), updatedAt: Date.now() };
+  const entries = allFoodEntriesRaw();
+  entries.push(entry);
+  saveFoodEntries(entries);
+  return entry;
+}
+
 // ---------------------------------------------------------------------------
 // Grouping — drop one logged meal onto another and they become one meal whose foods are the
 // items, so Edit Meal still shows each food and a grouped meal can be hearted and re-logged.

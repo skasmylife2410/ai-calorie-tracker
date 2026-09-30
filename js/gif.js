@@ -62,7 +62,10 @@ if (typeof document !== "undefined" && !globalThis.__snapcalGifFallback) {
     const [next, ...rest] = img.dataset.gifNext.split(" ").filter(Boolean);
     img.dataset.gifNext = rest.join(" ");
     if (next) img.src = next;
-    else report(`GIF didn't load from any address: ${failed.join(" | ")}`);
+    else {
+      img.dataset.gifDead = ""; // lets a place that has words underneath show them instead
+      report(`GIF didn't load from any address: ${failed.join(" | ")}`);
+    }
   }, true);
   document.addEventListener("load", (e) => {
     const img = e.target;
@@ -78,6 +81,9 @@ export function gifImgHtml(gif, { cls = "gif-img", size = "small", alt = "GIF" }
   const [first, ...rest] = gifSources(g, size);
   return `<img class="${cls}" src="${first}" data-gif-next="${rest.join(" ")}" width="${g.w}" height="${g.h}" style="aspect-ratio:${g.w}/${g.h}" alt="${esc(alt)}" loading="lazy" decoding="async">`;
 }
+
+/** Home's "What should I eat?" button: the thinking monkey (Barbary macaque, finger to mouth). */
+export const THINKING_MONKEY = { id: "4AwFO4f2VLo2fIFFA2", w: 200, h: 200 };
 
 /** The quick words under the search box: label key -> what is searched (English finds more). */
 export const GIF_TOPICS = [
