@@ -476,3 +476,7 @@
 :root[data-theme="mono"] .onb-install-text svg { color: var(--mn-ink); }
 :root[data-theme="mono"] .food-suspect { color: var(--mn-ink); }
 :root[data-theme="mono"] .food-suspect-mark { background: var(--mn-over); }
+:root[data-theme="mono"] .gif-search { background: var(--mn-control); }
+:root[data-theme="mono"] .gif-topics button { background: var(--mn-card); box-shadow: inset 0 0 0 1px var(--mn-line); color: var(--mn-ink); }
+:root[data-theme="mono"] .gif-topics button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--mn-ink); }
+:root[data-theme="mono"] .gif-pick, :root[data-theme="mono"] .note-gif-img { background: var(--mn-soft); }

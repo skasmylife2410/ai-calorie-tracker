@@ -370,7 +370,7 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .fc-compose { display: flex; gap: 6px; margin-top: 8px; }
 .fc-input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 7px 11px; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); background: #fff; }
 .fc-err { font-size: 12px; color: #C0392B; margin-top: 4px; min-height: 0; }
-.note-input { margin: 8px 16px 0; width: calc(100% - 32px); }
+.describe-textarea.note-input { display: block; margin: 8px 16px 0; width: calc(100% - 32px); box-sizing: border-box; }
 .note-meta { display: flex; gap: 10px; justify-content: space-between; margin: 6px 16px 0; font-size: 12px; color: var(--sc-secondary, #6B6B73); }
 
 /* --- person colours: twelve distinct (each ≥ 3:1 on white and on the Mono Dark card) --- */
@@ -621,3 +621,32 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .us-kseg.is-over, .us-wover, .us-legend i.k-over { background-color: var(--sc-red, #FF3B30); }
 /* thirty thin bars: the near-goal ring gets busy, so the bold date carries it */
 .us-week.is-many .us-wcol.is-near .us-weat { box-shadow: none; }
+
+/* GIFs (GIPHY) in posts, comments and notes. Each <img> carries its own aspect-ratio inline. */
+.gif-glyph { display: inline-block; font: 800 10.5px/1.15 var(--sc-font, system-ui); letter-spacing: .04em; padding: 1px 3px; border: 1.7px solid currentColor; border-radius: 5px; }
+.feed-gif { max-height: 440px; object-fit: cover; }
+.fc-gif { width: min(170px, 70%); height: auto; object-fit: cover; }
+.pc-preview-wrap.is-gif .pc-preview { aspect-ratio: auto; max-height: 260px; width: auto; max-width: 100%; }
+.note-gif { position: relative; width: 180px; margin: 10px 16px 0; }
+.note-gif[hidden] { display: none; }
+.note-gif-img { display: block; width: 100%; height: auto; border-radius: 14px; background: var(--sc-secondary-15, rgba(0,0,0,.06)); }
+.note-tools { display: flex; margin: 10px 16px 0; }
+.note-gif-btn { display: inline-flex; align-items: center; gap: 7px; }
+.doodle-card .note-gif-img { width: 132px; margin-top: 6px; }
+
+/* the picker sheet */
+.gif-sheet .gif-body { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px calc(14px + env(safe-area-inset-bottom)); }
+.gif-sheet .gif-body > * { flex: none; }
+.gif-search { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 42px; border-radius: 12px; background: var(--sc-secondary-15, rgba(0,0,0,.06)); color: var(--sc-secondary); }
+.gif-search input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 17px; color: var(--sc-primary-text); outline: none; -webkit-appearance: none; }
+.gif-search input::placeholder { color: var(--sc-secondary); }
+.gif-topics { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px; }
+.gif-topics::-webkit-scrollbar { display: none; }
+.gif-topics button { flex: none; height: 34px; padding: 0 13px; border-radius: 17px; border: 0; font: 600 14px var(--sc-font, system-ui); color: var(--sc-primary-text); background: var(--sc-card-bg, #fff); box-shadow: inset 0 0 0 1px var(--sc-secondary-15, rgba(0,0,0,.1)); cursor: pointer; }
+.gif-topics button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--sc-primary-text); }
+.gif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; min-height: 320px; }
+.gif-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.gif-pick { display: block; padding: 0; border: 0; border-radius: 12px; overflow: hidden; background: var(--sc-secondary-15, rgba(0,0,0,.06)); cursor: pointer; }
+.gif-pick .gif-img { display: block; width: 100%; height: auto; }
+.gif-note { grid-column: 1 / -1; text-align: center; color: var(--sc-secondary); font-size: 15px; margin: 40px 0; }
+.gif-credit { margin: 4px 0 0; text-align: center; font: 700 11px var(--sc-font, system-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--sc-secondary); }

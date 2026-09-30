@@ -1009,5 +1009,24 @@
     "cardDismiss": "Ahora no",
     "profileSection": "App",
     "profileRow": "Agregar a la pantalla de inicio"
+  },
+  "gif": {
+    "search": "Buscar en GIPHY",
+    "topics": "Temas rápidos de GIF",
+    "topic": {
+      "trending": "Tendencias",
+      "yum": "Qué rico",
+      "proud": "Orgullo",
+      "gym": "Gym",
+      "highFive": "Choca esos cinco",
+      "tired": "Cansancio"
+    },
+    "credit": "Con la tecnología de GIPHY",
+    "unconfigured": "Los GIF todavía no están configurados.",
+    "none": "No hay GIF para eso. Prueba otra palabra.",
+    "add": "GIF",
+    "change": "Cambiar GIF",
+    "remove": "Quitar GIF",
+    "by": "GIF de {name}"
   }
 }

@@ -25,7 +25,7 @@ export function noteToShow(notes, now = Date.now()) {
   return (notes ?? []).find((n) => !n.seen_at && now - Date.parse(n.created_at) < 48 * 3600 * 1000) ?? null;
 }
 
-export const sendNote = (to, body) => post("/api/notes", { op: "send", to, body });
+export const sendNote = (to, body, gif = null) => post("/api/notes", { op: "send", to, body, ...(gif ? { gif } : {}) });
 export const notePeople = () => post("/api/notes", { op: "people" });
 
 export async function markNoteSeen(id) {
@@ -38,11 +38,14 @@ export const listShares = (group = null) => post("/api/shares", { op: "list", ..
 export const deleteShare = (id) => post("/api/shares", { op: "delete", id });
 
 /** A comment is words, a photo, or both. The photo is shrunk to COMMENT_EDGE before upload. */
-export async function addComment(shareId, body, photoDataUrl = null) {
+export async function addComment(shareId, body, photoDataUrl = null, gif = null) {
   const photo = photoDataUrl ? await shrinkPhoto(photoDataUrl, COMMENT_EDGE) : null;
   if (photoDataUrl && !photo) return { ok: false, errorType: "photo", message: null };
-  return post("/api/shares", { op: "comment", shareId, body, ...(photo ? { photo } : {}) });
+  return post("/api/shares", { op: "comment", shareId, body, ...(photo ? { photo } : gif ? { gif } : {}) });
 }
+
+/** GIPHY search through the server (trending when `q` is empty). -> {ok, gifs:[{id,w,h}]} */
+export const searchGifs = (q = "", lang = "en") => post("/api/shares", { op: "gifs", q, lang });
 export const deleteComment = (id) => post("/api/shares", { op: "uncomment", id });
 
 /** Your own Friday recommendation (private — the server only ever returns the signed-in person's). */
@@ -81,14 +84,14 @@ export async function shrinkPhoto(dataUrl, edge = SHARE_EDGE) {
 export const POST_MAX = 140;
 export const COMMENT_MAX = 100;
 
-/** Today's post to your group: a short caption, a photo, or both. One a day. */
-export async function createPost(text, photoDataUrl = null, group = null) {
+/** Today's post to your group: a short caption, a photo or a GIF, or words with either. One a day. */
+export async function createPost(text, photoDataUrl = null, group = null, gif = null) {
   const photo = photoDataUrl ? await shrinkPhoto(photoDataUrl) : null;
   return post("/api/shares", {
     op: "share",
     kind: "post",
     ...(group ? { group } : {}),
-    item: { text: String(text ?? "").trim().slice(0, POST_MAX), photo },
+    item: { text: String(text ?? "").trim().slice(0, POST_MAX), photo, ...(!photo && gif ? { gif } : {}) },
   });
 }
 

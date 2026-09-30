@@ -18,6 +18,7 @@ import { shouldOfferInstall, installCardHtml, wireInstallCard } from "./install-
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
 import { inbox, noteToShow, markNoteSeen } from "../social.js";
+import { gifImgHtml } from "../gif.js";
 import { currentLanguage } from "../i18n.js";
 import { doodleSvg, doodleState, daysSinceLastLog } from "./doodle.js";
 import { doodleMessage } from "./doodle-messages.js";
@@ -773,7 +774,8 @@ async function showNoteIfAny(container) {
   const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   host.innerHTML = `
     <div class="note-from">✉︎ ${t("social.fromName", { name: esc(who) })}</div>
-    <div class="note-body">${esc(note.body)}</div>
+    ${note.gif ? gifImgHtml(note.gif, { cls: "note-gif-img", alt: t("gif.by", { name: who }) }) : ""}
+    ${note.body ? `<div class="note-body">${esc(note.body)}</div>` : ""}
     <button type="button" class="note-dismiss" id="note-dismiss">${t("social.dismiss")}</button>`;
   host.closest(".doodle-card")?.classList.add("has-note");
   host.querySelector("#note-dismiss")?.addEventListener("click", async () => {

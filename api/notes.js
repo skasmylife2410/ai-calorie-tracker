@@ -1,6 +1,6 @@
 // api/notes.js — members leave each other a note that shows on the recipient's Home.
 //
-// POST { op: "send", to, body }   -> { ok }            (you can't send to yourself)
+// POST { op: "send", to, body, gif? } -> { ok }        (you can't send to yourself; words, a GIF or both)
 // POST { op: "inbox" }            -> { ok, notes }     newest first, last 7 days, to you
 // POST { op: "seen", id }         -> { ok }            mark one of YOUR notes as read
 // POST { op: "people" }           -> { ok, people }    who you can send to
@@ -19,6 +19,7 @@ import { select, insert, patch, remove, parseBody, newId, restBase } from "./_re
 import { myGroups, membersOf, sharesGroup } from "./_groups.js";
 import { notify, displayName, publicKey, pushConfigured } from "./_push.js";
 import { isAdmin } from "./_members.js";
+import { cleanGif } from "../js/gif.js";
 import { restHeaders } from "./_rest.js";
 
 /** Push services the app may hand us; anything else is refused so the server can't be aimed elsewhere. */
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
     if (op === "inbox") {
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
       const notes = await select("snapcal_notes", {
-        select: "id,from_user,body,created_at,seen_at",
+        select: "id,from_user,body,gif,created_at,seen_at",
         to_user: `eq.${me}`,
         created_at: `gte.${since}`,
         order: "created_at.desc",
@@ -70,7 +71,8 @@ export default async function handler(req, res) {
     if (op === "send") {
       const to = String(body.to ?? "").trim().toLowerCase();
       const text = String(body.body ?? "").trim().replace(/\s+/g, " ");
-      if (!text) return fail(res, "empty", "Write something first.");
+      const gif = cleanGif(body.gif);
+      if (!text && !gif) return fail(res, "empty", "Write something first.");
       if (text.length > MAX_LEN) return fail(res, "tooLong", `Keep it under ${MAX_LEN} characters.`);
       if (to === me) return fail(res, "self", "You can't send a note to yourself.");
 
@@ -85,9 +87,9 @@ export default async function handler(req, res) {
       const sentToday = await select("snapcal_notes", { select: "id", from_user: `eq.${me}`, created_at: `gte.${today.toISOString()}`, limit: String(PER_DAY + 1) });
       if (sentToday.length >= PER_DAY) return fail(res, "limit", "That's enough notes for today.");
 
-      await insert("snapcal_notes", { id: newId(), from_user: me, to_user: to, body: text });
+      await insert("snapcal_notes", { id: newId(), from_user: me, to_user: to, body: text, ...(gif ? { gif } : {}) });
       const who = await displayName(me);
-      await notify([to], (lang) => ({ title: lang === "es" ? `Nota de ${who}` : `Note from ${who}`, body: text, url: "/", tag: `note-${me}` }));
+      await notify([to], (lang) => ({ title: lang === "es" ? `Nota de ${who}` : `Note from ${who}`, body: text || "GIF", url: "/", tag: `note-${me}` }));
       return res.status(200).json({ ok: true });
     }
 

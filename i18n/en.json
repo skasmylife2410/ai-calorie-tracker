@@ -1009,5 +1009,24 @@
     "cardDismiss": "Not now",
     "profileSection": "App",
     "profileRow": "Add to Home Screen"
+  },
+  "gif": {
+    "search": "Search GIPHY",
+    "topics": "Quick GIF topics",
+    "topic": {
+      "trending": "Trending",
+      "yum": "Yum",
+      "proud": "Proud",
+      "gym": "Gym",
+      "highFive": "High five",
+      "tired": "Tired"
+    },
+    "credit": "Powered by GIPHY",
+    "unconfigured": "GIFs aren't set up yet.",
+    "none": "No GIFs for that. Try another word.",
+    "add": "GIF",
+    "change": "Change GIF",
+    "remove": "Remove GIF",
+    "by": "GIF from {name}"
   }
 }

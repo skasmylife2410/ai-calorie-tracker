@@ -1,7 +1,7 @@
 // sw.js — minimal service worker: network-first for everything, cache-fallback for the app
 // shell, enough for PWA installability. Bump CACHE_VERSION to bust caches on deploy.
 
-const CACHE_VERSION = "snapcal-v18";
+const CACHE_VERSION = "snapcal-v19";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -33,6 +33,8 @@ const APP_SHELL = [
   "/js/ui/entry-row.js",
   "/js/ui/food-icons.js",
   "/js/ui/share-summary.js",
+  "/js/gif.js",
+  "/js/ui/gif-picker.js",
   "/js/diets.js",
   "/js/ui/install-guide.js",
   "/js/ui/numeric-field.js",
@@ -77,6 +79,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return; // POST /api/gemini etc. always hit the network
+  if (new URL(request.url).origin !== self.location.origin) return; // GIFs from GIPHY: the browser's own cache
   if (new URL(request.url).pathname.startsWith("/api/")) return; // live data, never the shell cache
 
   // Network-first, cache-fallback (fresh code wins; offline still boots the shell). A connection

@@ -9,6 +9,9 @@
 // POST { op: "comment", shareId, body, photo? } -> { ok, comment } anyone in the post's group;
 //                                                            a comment is words, a photo, or both
 // POST { op: "uncomment", id }          -> { ok }          only your own comment
+// POST { op: "gifs", q?, lang? }         -> { ok, gifs }    GIPHY search (trending when q is empty),
+//                                                            PG-rated; [{id, w, h}] (see js/gif.js)
+// Posts and comments may carry a `gif` ({id, w, h}) instead of, or as well as, words.
 //
 // A shared item is a snapshot: editing or deleting the meal in your log afterwards doesn't
 // change what was shared. Photos are shrunk on the phone before upload (posts ~720px, comment
@@ -19,6 +22,7 @@ import { requireUser } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
 import { resolveGroup } from "./_groups.js";
 import { cleanMicros } from "../js/nutrition.js";
+import { cleanGif, gifsFromGiphy } from "../js/gif.js";
 import { notify, displayName } from "./_push.js";
 import { membersOf } from "./_groups.js";
 import { localDay } from "./_week.js";
@@ -81,7 +85,8 @@ export function cleanItem(kind, item = {}) {
   };
   if (kind === "post") {
     const photo = isSafeDataImage(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
-    return { text: str(item.text, POST_MAX), photo };
+    const gif = photo ? null : cleanGif(item.gif); // a photo or a GIF, not both
+    return { text: str(item.text, POST_MAX), photo, ...(gif ? { gif } : {}) };
   }
   if (kind === "meal") {
     const photo = typeof item.photo === "string" && isSafeDataImage(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
@@ -108,6 +113,8 @@ export default async function handler(req, res) {
   const op = String(body.op ?? "list");
 
   try {
+    if (op === "gifs") return await searchGifs(res, body);
+
     if (op === "list") {
       const { group, error } = await resolveGroup(me, typeof body.group === "string" ? body.group : null);
       if (error === "notMember") return fail(res, "notMember", "You're not in that group.");
@@ -118,9 +125,9 @@ export default async function handler(req, res) {
         group_id: `eq.${group.id}`, kind: "in.(meal,post)",
         created_at: `gte.${since}`, order: "created_at.desc", limit: String(FEED_SIZE),
       });
-      const shares = rows.filter((r) => (r.kind === "post" ? r.data?.text || r.data?.photo : r.data?.photo));
+      const shares = rows.filter((r) => (r.kind === "post" ? r.data?.text || r.data?.photo || r.data?.gif : r.data?.photo));
       const comments = shares.length
-        ? await select("snapcal_comments", { select: "id,share_id,owner,body,photo,created_at", share_id: `in.(${shares.map((r) => `"${r.id}"`).join(",")})`, order: "created_at.asc", limit: "500" })
+        ? await select("snapcal_comments", { select: "id,share_id,owner,body,photo,gif,created_at", share_id: `in.(${shares.map((r) => `"${r.id}"`).join(",")})`, order: "created_at.asc", limit: "500" })
         : [];
       for (const sh of shares) sh.comments = comments.filter((c) => c.share_id === sh.id);
       fitPhotos(shares);
@@ -134,7 +141,7 @@ export default async function handler(req, res) {
       if (kind === "meal") {
         if (!data.name) return fail(res, "empty", "It needs a name.");
         if (!data.photo) return fail(res, "photoOnly", "Only meals with a photo can be shared.");
-      } else if (!data.text && !data.photo) {
+      } else if (!data.text && !data.photo && !data.gif) {
         return fail(res, "empty", "Write something or add a photo.");
       }
 
@@ -158,7 +165,7 @@ export default async function handler(req, res) {
         title: kind === "post"
           ? (lang === "es" ? `${who} publicó algo` : `${who} posted`)
           : (lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`),
-        body: kind === "post" ? (data.text || (lang === "es" ? "Una foto" : "A photo")) : `${data.name} · ${Math.round(data.calories)} kcal`,
+        body: kind === "post" ? (data.text || (data.gif ? "GIF" : lang === "es" ? "Una foto" : "A photo")) : `${data.name} · ${Math.round(data.calories)} kcal`,
         url: "/?tab=shared",
         tag: `post-${id}`,
       }));
@@ -177,7 +184,8 @@ export default async function handler(req, res) {
       const text = str(body.body, COMMENT_MAX);
       const photo = isSafeDataImage(body.photo) && String(body.photo).length <= MAX_COMMENT_PHOTO ? body.photo : null;
       if (body.photo && !photo) return fail(res, "photoTooBig", "That photo couldn't be added. Try another one.");
-      if (!shareId || (!text && !photo)) return fail(res, "empty", "Write something or add a photo.");
+      const gif = photo ? null : cleanGif(body.gif);
+      if (!shareId || (!text && !photo && !gif)) return fail(res, "empty", "Write something or add a photo.");
       const [post] = await select("snapcal_shares", { select: "id,group_id,created_at,owner,data->>name", id: `eq.${shareId}`, limit: "1" });
       if (!post || Date.parse(post.created_at) < Date.now() - FEED_DAYS * 86400000) return fail(res, "gone", "That post is gone.");
       const { group, error } = await resolveGroup(me, post.group_id);
@@ -189,7 +197,7 @@ export default async function handler(req, res) {
       ]);
       if (mineToday.length >= COMMENTS_PER_DAY) return fail(res, "limit", "That's a lot of comments for one day.");
       if (onPost.length >= COMMENTS_PER_POST) return fail(res, "limit", "This post has reached its comment limit.");
-      const comment = { id: newId(), share_id: shareId, owner: me, body: text, ...(photo ? { photo } : {}), created_at: new Date().toISOString() };
+      const comment = { id: newId(), share_id: shareId, owner: me, body: text, ...(photo ? { photo } : {}), ...(gif ? { gif } : {}), created_at: new Date().toISOString() };
       await insert("snapcal_comments", comment);
       // The post's owner, plus anyone who already commented on it — never the commenter.
       const earlier = await select("snapcal_comments", { select: "owner", share_id: `eq.${shareId}`, limit: "60" }).catch(() => []);
@@ -200,7 +208,7 @@ export default async function handler(req, res) {
         title: mine
           ? (lang === "es" ? `${who} comentó tu comida` : `${who} commented on your meal`)
           : (lang === "es" ? `${who} también comentó · ${meal}` : `${who} also commented · ${meal}`),
-        body: text || (lang === "es" ? "Una foto" : "A photo"),
+        body: text || (gif ? "GIF" : lang === "es" ? "Una foto" : "A photo"),
         url: "/?tab=shared",
         tag: `comments-${shareId}`,
       });
@@ -218,5 +226,37 @@ export default async function handler(req, res) {
     return fail(res, "other", "Unknown operation.");
   } catch (err) {
     return fail(res, "other", err?.message ?? String(err));
+  }
+}
+
+// --- GIF search --------------------------------------------------------------------------------
+const GIF_CACHE_MS = 30 * 60 * 1000;
+const gifCache = new Map(); // "lang|query" -> { at, gifs }
+
+async function searchGifs(res, body) {
+  const key = (process.env.GIPHY_API_KEY || "").trim();
+  if (!key) return fail(res, "unconfigured", "GIFs aren't set up yet.");
+  const q = str(body.q, 50);
+  const lang = body.lang === "es" ? "es" : "en";
+  const cacheKey = `${lang}|${q.toLowerCase()}`;
+  const hit = gifCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < GIF_CACHE_MS) return res.status(200).json({ ok: true, gifs: hit.gifs });
+
+  const params = new URLSearchParams({ api_key: key, limit: "24", rating: "pg", bundle: "messaging_non_clips" });
+  if (q) { params.set("q", q); params.set("lang", lang); }
+  const url = `https://api.giphy.com/v1/gifs/${q ? "search" : "trending"}?${params}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const r = await fetch(url, { signal: controller.signal });
+    if (!r.ok) return fail(res, "unavailable", `GIPHY answered ${r.status}.`);
+    const gifs = gifsFromGiphy(await r.json());
+    if (gifCache.size > 200) gifCache.delete(gifCache.keys().next().value);
+    gifCache.set(cacheKey, { at: Date.now(), gifs });
+    return res.status(200).json({ ok: true, gifs });
+  } catch {
+    return fail(res, "unavailable", "GIPHY couldn't be reached.");
+  } finally {
+    clearTimeout(timer);
   }
 }

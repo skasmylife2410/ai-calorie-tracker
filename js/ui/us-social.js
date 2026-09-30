@@ -5,6 +5,11 @@ import { safeSrc } from "../safe-src.js";
 import { sendNote, listShares, deleteShare, addComment, deleteComment, createPost, POST_MAX, COMMENT_MAX } from "../social.js";
 import { t, formatNumber } from "../i18n.js";
 import { icon } from "./icons.js";
+import { gifImgHtml, gifUrl } from "../gif.js";
+import { openGifPicker } from "./gif-picker.js";
+
+/** The "GIF" mark on buttons: the letters in a small rounded box, drawn like the other glyphs. */
+export const GIF_GLYPH = `<span class="gif-glyph" aria-hidden="true">GIF</span>`;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const title = (s) => String(s ?? "").replace(/(^|[-_])([a-z])/g, (_, sep, c) => (sep ? " " : "") + c.toUpperCase());
@@ -27,20 +32,33 @@ export async function openNoteSheet(to) {
         ${navBar({ title: t("social.noteTo", { name: title(to) }), leading: { label: t("app.cancel") }, trailing: { label: t("social.send"), bold: true, disabled: true } })}
         <div class="sheet-panel-body">
           <textarea class="describe-textarea note-input" id="note-input" rows="4" maxlength="200" placeholder="${t("social.notePlaceholder")}"></textarea>
+          <div class="note-gif" id="note-gif" hidden></div>
+          <div class="note-tools"><button type="button" class="feed-btn note-gif-btn" id="note-gif-btn">${GIF_GLYPH}<span class="note-gif-label">${t("gif.add")}</span></button></div>
           <div class="note-meta"><span id="note-count">0/200</span><span>${t("social.noteHint")}</span></div>
           <div class="voice-msg" id="note-err"></div>
         </div>`;
       const input = panel.querySelector("#note-input");
       const sendBtn = panel.querySelector('[data-nav="trailing"]');
-      input.addEventListener("input", () => {
+      let gif = null;
+      const refresh = () => {
         panel.querySelector("#note-count").textContent = `${input.value.length}/200`;
-        sendBtn.disabled = input.value.trim() === "";
+        sendBtn.disabled = input.value.trim() === "" && !gif;
+        const box = panel.querySelector("#note-gif");
+        box.hidden = !gif;
+        box.innerHTML = gif ? `${gifImgHtml(gif, { cls: "note-gif-img" })}<button type="button" class="pc-unphoto" id="note-ungif" aria-label="${t("gif.remove")}">${icon("xmark", { size: 12 })}</button>` : "";
+        box.querySelector("#note-ungif")?.addEventListener("click", () => { gif = null; refresh(); });
+        panel.querySelector(".note-gif-label").textContent = gif ? t("gif.change") : t("gif.add");
+      };
+      input.addEventListener("input", refresh);
+      panel.querySelector("#note-gif-btn").addEventListener("click", async () => {
+        const g = await openGifPicker();
+        if (g) { gif = g; refresh(); }
       });
       wireNavBar(panel, {
         onLeading: () => close(),
         onTrailing: async () => {
           sendBtn.disabled = true;
-          const out = await sendNote(to, input.value);
+          const out = await sendNote(to, input.value, gif);
           if (!out.ok) {
             panel.querySelector("#note-err").textContent = out.message || t("errors.generic");
             sendBtn.disabled = false;
@@ -111,6 +129,7 @@ export async function renderFeed(host, { me, people, colors, group = null, group
         ${c.body ? `<p class="fc-text"><b class="fc-who">${esc(nameOf(c.owner))}</b> ${esc(c.body)}</p>` : `<p class="fc-text"><b class="fc-who">${esc(nameOf(c.owner))}</b></p>`}
         ${c.photo ? `<img class="fc-photo" src="${safeSrc(c.photo)}" alt="${t("social.photoBy", { name: esc(nameOf(c.owner)) })}" loading="lazy">` : ""}
         ${c.photoHidden ? `<p class="fc-hidden">${t("social.photoHidden")}</p>` : ""}
+        ${!c.photo && c.gif ? gifImgHtml(c.gif, { cls: "fc-photo fc-gif", alt: t("gif.by", { name: nameOf(c.owner) }) }) : ""}
         <small class="fc-when">${agoLabel(c.created_at)}</small>
       </div>
       ${c.owner === me ? `<button type="button" class="fc-del" data-cdel="${esc(c.id)}" aria-label="${t("social.deleteComment")}">${icon("xmark", { size: 12 })}</button>` : ""}
@@ -119,14 +138,16 @@ export async function renderFeed(host, { me, people, colors, group = null, group
   const addCommentHtml = (s, count) => {
     const d = drafts.get(s.id) ?? {};
     return `
-      <div class="fc-compose${d.photo ? " has-photo" : ""}" data-compose="${esc(s.id)}">
+      <div class="fc-compose${d.photo || d.gif ? " has-photo" : ""}" data-compose="${esc(s.id)}">
         ${avHtml(me, "fc-av")}
         <input type="text" class="fc-input" maxlength="${COMMENT_MAX}" value="${esc(d.text ?? "")}"
           placeholder="${count ? t("social.commentPlaceholder") : t("social.firstComment")}" aria-label="${t("social.commentPlaceholder")}">
         ${d.photo ? `<span class="fc-thumb"><img src="${safeSrc(d.photo)}" alt=""><button type="button" class="fc-thumb-x" data-unphoto="${esc(s.id)}" aria-label="${t("social.removePhoto")}">${icon("xmark", { size: 10 })}</button></span>` : ""}
+        ${!d.photo && d.gif ? `<span class="fc-thumb"><img src="${gifUrl(d.gif)}" alt="" referrerpolicy="no-referrer"><button type="button" class="fc-thumb-x" data-unphoto="${esc(s.id)}" aria-label="${t("gif.remove")}">${icon("xmark", { size: 10 })}</button></span>` : ""}
         <input type="file" accept="image/*" class="fc-file" hidden>
+        <button type="button" class="fc-cam fc-gifbtn" data-cgif="${esc(s.id)}" aria-label="${t("gif.add")}">${GIF_GLYPH}</button>
         <button type="button" class="fc-cam" data-cphoto="${esc(s.id)}" aria-label="${t("social.addPhotoLabel")}">${icon("cameraFill", { size: 17 })}</button>
-        <button type="button" class="fc-send" data-send="${esc(s.id)}" aria-label="${t("social.send")}" ${d.text?.trim() || d.photo ? "" : "hidden"}>${icon("chevronRight", { size: 14 })}</button>
+        <button type="button" class="fc-send" data-send="${esc(s.id)}" aria-label="${t("social.send")}" ${d.text?.trim() || d.photo || d.gif ? "" : "hidden"}>${icon("chevronRight", { size: 14 })}</button>
       </div>
       <div class="fc-err" role="status"></div>`;
   };
@@ -140,7 +161,7 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     const shown = all ? comments : comments.slice(-COMMENTS_SHOWN);
     const hiddenCount = comments.length - shown.length;
     return `
-      <article class="feed-card${isPost ? " is-post" : ""}${d.photo ? "" : " no-photo"}" data-id="${esc(s.id)}">
+      <article class="feed-card${isPost ? " is-post" : ""}${d.photo || d.gif ? "" : " no-photo"}" data-id="${esc(s.id)}">
         <header class="feed-head">
           ${avHtml(s.owner)}
           <span class="feed-who">${esc(nameOf(s.owner))}</span>
@@ -149,8 +170,9 @@ export async function renderFeed(host, { me, people, colors, group = null, group
         </header>
         ${d.photo ? `<img class="feed-photo" src="${safeSrc(d.photo)}" alt="${esc(d.name || d.text || "")}" loading="lazy">` : ""}
         ${d.photoHidden ? `<p class="fc-hidden feed-photo-hidden">${t("social.photoHidden")}</p>` : ""}
+        ${!d.photo && d.gif ? gifImgHtml(d.gif, { cls: "feed-photo feed-gif", size: "large", alt: t("gif.by", { name: nameOf(s.owner) }) }) : ""}
         <div class="feed-main">
-          ${isPost ? `<p class="feed-text">${esc(d.text)}</p>` : `
+          ${isPost ? (d.text ? `<p class="feed-text">${esc(d.text)}</p>` : "") : `
             <div class="feed-title"><span class="feed-name">${esc(d.name)}</span><span class="feed-kcal">${formatNumber(d.calories)}</span><span class="feed-unit">kcal</span></div>
             <div class="feed-macros">
               <span><i style="background:var(--sc-protein)"></i>${formatNumber(d.proteinG)} g ${t("home.proteinShort").toLowerCase()}</span>
@@ -176,11 +198,13 @@ export async function renderFeed(host, { me, people, colors, group = null, group
       return;
     }
     let photo = null;
+    let gif = null; // a photo or a GIF: picking one replaces the other
     composer.innerHTML = `
       <div class="pc-line">
         ${avHtml(me, "fc-av pc-av")}
         <textarea class="pc-text" rows="1" maxlength="${POST_MAX}" placeholder="${groupName ? t("social.sharePlaceholder", { group: esc(groupName) }) : t("social.postPlaceholder")}" aria-label="${t("social.postPlaceholder")}"></textarea>
         <input type="file" accept="image/*" class="pc-file" hidden>
+        <button type="button" class="pc-photo pc-gif" aria-label="${t("gif.add")}">${GIF_GLYPH}</button>
         <button type="button" class="pc-photo" aria-label="${t("social.addPhotoLabel")}">${icon("cameraFill", { size: 17 })}</button>
       </div>
       <div class="pc-preview-wrap" hidden><img class="pc-preview" alt=""><button type="button" class="pc-unphoto" aria-label="${t("social.removePhoto")}">${icon("xmark", { size: 12 })}</button></div>
@@ -197,8 +221,8 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     const sendBtn = composer.querySelector(".pc-send");
     const refresh = () => {
       composer.querySelector(".pc-n").textContent = String(text.value.length);
-      sendBtn.disabled = !text.value.trim() && !photo;
-      const active = Boolean(text.value.trim() || photo || document.activeElement === text);
+      sendBtn.disabled = !text.value.trim() && !photo && !gif;
+      const active = Boolean(text.value.trim() || photo || gif || document.activeElement === text);
       row.hidden = !active;
       composer.classList.toggle("is-open", active);
       text.rows = active ? 2 : 1;
@@ -206,18 +230,29 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     text.addEventListener("input", refresh);
     text.addEventListener("focus", refresh);
     text.addEventListener("blur", () => setTimeout(refresh, 150));
-    composer.querySelector(".pc-photo").addEventListener("click", () => file.click());
+    composer.querySelector(".pc-photo:not(.pc-gif)").addEventListener("click", () => file.click());
     file.addEventListener("change", async () => {
       photo = await readPhoto(file.files?.[0]);
       file.value = "";
-      if (photo) { preview.src = photo; wrap.hidden = false; }
+      if (photo) { gif = null; preview.src = photo; wrap.hidden = false; wrap.classList.remove("is-gif"); }
       refresh();
     });
-    composer.querySelector(".pc-unphoto").addEventListener("click", () => { photo = null; wrap.hidden = true; preview.removeAttribute("src"); refresh(); });
+    composer.querySelector(".pc-gif").addEventListener("click", async () => {
+      const g = await openGifPicker();
+      if (!g) return;
+      gif = g;
+      photo = null;
+      preview.src = gifUrl(g);
+      preview.referrerPolicy = "no-referrer";
+      wrap.hidden = false;
+      wrap.classList.add("is-gif");
+      refresh();
+    });
+    composer.querySelector(".pc-unphoto").addEventListener("click", () => { photo = null; gif = null; wrap.hidden = true; preview.removeAttribute("src"); refresh(); });
     sendBtn.addEventListener("click", async () => {
       sendBtn.disabled = true;
       sendBtn.textContent = "…";
-      const res = await createPost(text.value, photo, group);
+      const res = await createPost(text.value, photo, group, gif);
       if (!res.ok) {
         composer.querySelector(".pc-err").textContent = res.message || t("errors.generic");
         sendBtn.textContent = t("social.post");
@@ -282,23 +317,29 @@ export async function renderFeed(host, { me, people, colors, group = null, group
       const update = (patch) => drafts.set(id, { ...draft(), ...patch });
       input.addEventListener("input", () => {
         update({ text: input.value });
-        sendBtn.hidden = !input.value.trim() && !draft().photo;
+        sendBtn.hidden = !input.value.trim() && !draft().photo && !draft().gif;
       });
       row.querySelector("[data-cphoto]").addEventListener("click", () => file.click());
       file.addEventListener("change", async () => {
         const photo = await readPhoto(file.files?.[0]);
         file.value = "";
         if (!photo) return;
-        update({ photo });
+        update({ photo, gif: null });
         redrawKeepingFocus(id);
       });
-      row.querySelector("[data-unphoto]")?.addEventListener("click", () => { update({ photo: null }); redrawKeepingFocus(id); });
+      row.querySelector("[data-cgif]").addEventListener("click", async () => {
+        const gif = await openGifPicker();
+        if (!gif) return;
+        update({ gif, photo: null });
+        redrawKeepingFocus(id);
+      });
+      row.querySelector("[data-unphoto]")?.addEventListener("click", () => { update({ photo: null, gif: null }); redrawKeepingFocus(id); });
       const send = async () => {
-        const { text = "", photo = null } = draft();
-        if (!text.trim() && !photo) return;
+        const { text = "", photo = null, gif = null } = draft();
+        if (!text.trim() && !photo && !gif) return;
         sendBtn.disabled = true;
         input.disabled = true;
-        const res = await addComment(id, text.trim(), photo);
+        const res = await addComment(id, text.trim(), photo, gif);
         if (!res.ok) {
           err.textContent = res.message || (res.errorType === "photo" ? t("social.photoFailed") : t("errors.generic"));
           sendBtn.disabled = false;
