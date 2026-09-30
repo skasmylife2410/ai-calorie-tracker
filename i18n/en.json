@@ -1027,6 +1027,7 @@
     "add": "GIF",
     "change": "Change GIF",
     "remove": "Remove GIF",
-    "by": "GIF from {name}"
+    "by": "GIF from {name}",
+    "homeTitle": "Pick the button's GIF"
   }
 }

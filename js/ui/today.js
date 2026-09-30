@@ -18,7 +18,8 @@ import { shouldOfferInstall, installCardHtml, wireInstallCard } from "./install-
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
 import { inbox, noteToShow, markNoteSeen } from "../social.js";
-import { gifImgHtml, THINKING_MONKEY } from "../gif.js";
+import { gifImgHtml } from "../gif.js";
+import { homeGifImgHtml, wireHomeGifChip } from "./home-gif.js";
 import { deleteWithUndo } from "./undo-delete.js";
 import { currentLanguage } from "../i18n.js";
 import { doodleSvg, doodleState, daysSinceLastLog } from "./doodle.js";
@@ -132,7 +133,7 @@ export function render(container) {
         <button type="button" class="home-chip chip-ex" id="chip-exercise">
           ${icon("boltFill", { size: 16 })}<span>${exerciseMinutes(date) > 0 ? t("homeChips.exerciseMin", { n: exerciseMinutes(date) }) : t("homeChips.exercise")}</span>
         </button>
-        ${viewingToday ? `<button type="button" class="home-chip chip-ideas has-gif" id="chip-ideas" aria-label="${t("homeChips.ideas")}"><span class="chip-ideas-words" aria-hidden="true">${icon("wandAndStars", { size: 16 })}<span>${t("homeChips.ideas")}</span></span>${gifImgHtml(THINKING_MONKEY, { cls: "chip-ideas-gif", alt: "" })}</button>` : ""}
+        ${viewingToday ? `<button type="button" class="home-chip chip-ideas has-gif" id="chip-ideas" aria-label="${t("homeChips.ideas")}"><span class="chip-ideas-words" aria-hidden="true">${icon("wandAndStars", { size: 16 })}<span>${t("homeChips.ideas")}</span></span>${homeGifImgHtml()}</button>` : ""}
         ${viewingToday ? `<button type="button" class="home-chip chip-myth is-round" id="chip-myth" aria-label="${t("homeChips.mythLabel")}"><b>?</b></button>` : ""}
       </div>
       <div class="bottom-safe-spacer"></div>
@@ -147,7 +148,7 @@ export function render(container) {
     ...MACRO_DEFS.map((m) => (goals[m.targetKey] ?? 0) - (totals[m.key] ?? 0)),
   ]);
   container.querySelector("#chip-exercise")?.addEventListener("click", () => openExerciseDaySheet(date, () => render(container)));
-  container.querySelector("#chip-ideas")?.addEventListener("click", () => openRecipesSheet());
+  wireHomeGifChip(container.querySelector("#chip-ideas"), () => openRecipesSheet());
   container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
   wireInstallCard(container, () => render(container));
   container.querySelector("#share-summary")?.addEventListener("click", (e) => { e.stopPropagation(); openShareSheet({ date }); });
@@ -621,7 +622,7 @@ function doodleCardHtml() {
   const card = homeCard({ ctx, username, lang });
 
   return `
-    <div class="doodle-card${card.tone ? ` tone-${card.tone}` : ""}">
+    <div class="doodle-card${card.tone ? ` tone-${card.tone}` : ""}${card.answer && cardRevealed ? " is-open" : ""}">
       <div id="doodle-figure">${nano ? nanoFigureHtml(nano) : doodleSvg({ state, streak, variant, size: face ? 100 : 86, face })}</div>
       <div class="doodle-text" id="doodle-text">
         <div class="doodle-title">${card.title}</div>

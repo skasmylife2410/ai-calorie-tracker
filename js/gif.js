@@ -82,8 +82,11 @@ export function gifImgHtml(gif, { cls = "gif-img", size = "small", alt = "GIF" }
   return `<img class="${cls}" src="${first}" data-gif-next="${rest.join(" ")}" width="${g.w}" height="${g.h}" style="aspect-ratio:${g.w}/${g.h}" alt="${esc(alt)}" loading="lazy" decoding="async">`;
 }
 
-/** Home's "What should I eat?" button: the thinking monkey (Barbary macaque, finger to mouth). */
-export const THINKING_MONKEY = { id: "4AwFO4f2VLo2fIFFA2", w: 200, h: 200 };
+/**
+ * Home's "What should I eat?" button shows a GIF: a cow chewing, found by this search until
+ * someone holds the button and picks their own (kept on the phone, see ui/home-gif.js).
+ */
+export const HOME_GIF_QUERY = "cow chewing";
 
 /** The quick words under the search box: label key -> what is searched (English finds more). */
 export const GIF_TOPICS = [

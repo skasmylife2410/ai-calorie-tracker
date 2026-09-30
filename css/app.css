@@ -2420,3 +2420,11 @@ body.setup-open { overflow: hidden; }
 .home-chips .home-chip { height: 54px; border-radius: 17px; }
 .home-chips .home-chip.is-round { width: 54px; }
 @media (max-width: 374px) { .home-chips .home-chip { height: 50px; } .home-chips .home-chip.is-round { width: 50px; } }
+/* A revealed myth answer is longer than the card's usual height: the card grows to hold it
+   (it used to spill above and below), with the words starting at the top and the figure centred. */
+.doodle-card.is-open { max-height: none !important; flex: 0 0 auto; align-items: flex-start; padding-top: 16px !important; padding-bottom: 16px !important; }
+.doodle-card.is-open #doodle-figure { align-self: center; }
+.doodle-card.is-open .card-answer p { margin-bottom: 0; }
+/* the button is held to choose its GIF: no text selection or "save image" menu on the way */
+.home-chip.chip-ideas { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.chip-ideas-gif { pointer-events: none; }

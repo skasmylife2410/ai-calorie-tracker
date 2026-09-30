@@ -9,22 +9,25 @@ import { GIF_TOPICS, gifImgHtml, cleanGif } from "../gif.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-/** @returns {Promise<{id:string, w:number, h:number}|null>} null when closed without picking */
-export function openGifPicker() {
+/**
+ * @param {{query?:string, title?:string}} [opts] start on a search instead of trending
+ * @returns {Promise<{id:string, w:number, h:number}|null>} null when closed without picking
+ */
+export function openGifPicker({ query = "", title = "GIF" } = {}) {
   return new Promise((resolve) => {
     let picked = null;
     openSheet({
       render(panel, close) {
         panel.classList.add("gif-sheet");
         panel.innerHTML = `
-          ${navBar({ title: "GIF", leading: { label: t("app.cancel") } })}
+          ${navBar({ title: esc(title), leading: { label: t("app.cancel") } })}
           <div class="sheet-panel-body gif-body">
             <label class="gif-search">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></svg>
-              <input type="search" id="gif-q" enterkeyhint="search" autocomplete="off" placeholder="${t("gif.search")}" aria-label="${t("gif.search")}">
+              <input type="search" id="gif-q" enterkeyhint="search" autocomplete="off" value="${esc(query)}" placeholder="${t("gif.search")}" aria-label="${t("gif.search")}">
             </label>
             <div class="gif-topics" role="group" aria-label="${t("gif.topics")}">
-              ${GIF_TOPICS.map((g, i) => `<button type="button" data-topic="${i}" aria-pressed="${i === 0}">${t(`gif.topic.${g.key}`)}</button>`).join("")}
+              ${GIF_TOPICS.map((g, i) => `<button type="button" data-topic="${i}" aria-pressed="${!query && i === 0}">${t(`gif.topic.${g.key}`)}</button>`).join("")}
             </div>
             <div class="gif-grid" id="gif-grid" aria-live="polite"></div>
             <p class="gif-credit">${t("gif.credit")}</p>
@@ -73,7 +76,7 @@ export function openGifPicker() {
           }, 350);
         });
         input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
-        load("");
+        load(query);
       },
       onClosed() { resolve(picked); },
     });

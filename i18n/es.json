@@ -1027,6 +1027,7 @@
     "add": "GIF",
     "change": "Cambiar GIF",
     "remove": "Quitar GIF",
-    "by": "GIF de {name}"
+    "by": "GIF de {name}",
+    "homeTitle": "Elige el GIF del botón"
   }
 }
