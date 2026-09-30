@@ -2396,7 +2396,7 @@ body.setup-open { overflow: hidden; }
 .share-hold img { width: min(82vw, 360px); aspect-ratio: 4 / 5; border-radius: 18px; box-shadow: 0 0 0 1px var(--sc-secondary-15, rgba(0,0,0,.1)); -webkit-touch-callout: default; user-select: auto; }
 .share-hold p { margin: 0; font-size: 15px; font-weight: 600; text-align: center; }
 .share-hold .share-actions { width: 100%; max-width: 360px; }
-.share-hold a.share-ghost { text-align: center; text-decoration: none; }
+.share-hold a.share-ghost { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .share-trouble { align-self: center; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--sc-primary-text); text-decoration: underline; text-underline-offset: 3px; padding: 4px 8px; }
 /* Nano Banana doodle in Mono: the drawing is the shape, the theme's ink is the colour */
 .nano-doodle.nano-mask { aspect-ratio: 1 / 1; background: currentColor; color: var(--sc-primary-text);

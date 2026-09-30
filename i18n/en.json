@@ -992,7 +992,8 @@
     "download": "Download",
     "done": "Done",
     "drawFailed": "Couldn't draw the image. Share as text instead.",
-    "trouble": "Trouble sharing to an app? Save the image instead"
+    "trouble": "Trouble sharing to an app? Save the image instead",
+    "operaHint": "Opera can't pass pictures to other apps. Tap Download to save it to your gallery, then share it from there, or open SnapCal in Chrome."
   },
   "install": {
     "sheetTitle": "Home Screen",

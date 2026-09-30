@@ -452,10 +452,10 @@ export function openShareSheet({ date = new Date() } = {}) {
 
       // The image itself, big, to press and hold: on iPhone that always offers Save / Share,
       // even where the share menu won't take a file (or a Home Screen app can't "download").
-      const showToHold = () => {
+      const showToHold = (hintKey = "share.holdHint") => {
         const hold = document.createElement("div");
         hold.className = "share-hold";
-        hold.innerHTML = `<img src="${url}" alt="${t("share.previewAlt")}" /><p>${t("share.holdHint")}</p>
+        hold.innerHTML = `<img src="${url}" alt="${t("share.previewAlt")}" /><p>${t(hintKey)}</p>
           <div class="share-actions"><a class="share-ghost" href="${url}" download="${file.name}">${t("share.download")}</a><button type="button" class="share-primary" data-done>${t("share.done")}</button></div>`;
         hold.querySelector("[data-done]").addEventListener("click", () => hold.remove());
         panel.appendChild(hold);
@@ -467,6 +467,13 @@ export function openShareSheet({ date = new Date() } = {}) {
         if (!file) return;
         reportShareProblem(`share tap (info): canShare files: ${Boolean(navigator.canShare?.({ files: [file] }))}, ${file.type} ${Math.round(file.size / 1024)} KB, home screen app: ${Boolean(globalThis.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone)}`);
         let why = "no file sharing on this browser";
+        // Opera for Android says it can share files but hands other apps a broken one (WhatsApp:
+        // "couldn't share", Instagram: "file type not supported", Messages: nothing). Save it
+        // to the gallery instead and share from there.
+        if (/\bOPR\//.test(navigator.userAgent) && /Android/i.test(navigator.userAgent)) {
+          showToHold("share.operaHint");
+          return;
+        }
         if (navigator.canShare?.({ files: [file] })) {
           busyFor(3 * 60 * 1000); // no automatic update may reload the page mid-share
           let wentHidden = false;

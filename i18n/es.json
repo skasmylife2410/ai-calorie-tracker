@@ -992,7 +992,8 @@
     "download": "Descargar",
     "done": "Listo",
     "drawFailed": "No se pudo crear la imagen. Compártelo como texto.",
-    "trouble": "¿Problemas al compartir? Guarda la imagen"
+    "trouble": "¿Problemas al compartir? Guarda la imagen",
+    "operaHint": "Opera no puede pasar imágenes a otras apps. Toca Descargar para guardarla en tu galería y compártela desde ahí, o abre SnapCal en Chrome."
   },
   "install": {
     "sheetTitle": "Pantalla de inicio",
