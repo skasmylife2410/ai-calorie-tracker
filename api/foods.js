@@ -17,6 +17,7 @@
 import { requireUser } from "./_auth.js";
 import { offProductToScannedProduct, usdaFoodToScannedProduct, lookupBarcodeBoth } from "../js/api.js";
 import { rankProducts, normalize } from "../js/foods-local.js";
+import { cleanGif } from "../js/gif.js";
 
 const SOURCE_TIMEOUT_MS = 4_500;
 const MAX_QUERY = 80;
@@ -28,6 +29,11 @@ const OFF_USER_AGENT = "SnapCal/1.0 (personal calorie tracker)";
 const cache = new Map(); // normalized query -> { at, products }
 
 export default async function handler(req, res) {
+  // GIF pass-through (js/gif.js): an <img> can't send the sign-in header, and the answer is a
+  // public GIPHY picture chosen by a strictly checked id, so this part needs no account.
+  const gifId = new URL(req.url, "http://localhost").searchParams.get("gif");
+  if (gifId !== null) return proxyGif(gifId, res);
+
   const me = await requireUser(req, res);
   if (!me) return;
   if (req.method !== "GET") return res.status(405).json({ ok: false, errorType: "other", message: "Method not allowed" });
@@ -146,4 +152,29 @@ async function getJson(url, options, label) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// --- GIF pass-through --------------------------------------------------------------------------
+const GIF_MAX_BYTES = 4_000_000; // Vercel answers up to 4.5 MB
+
+async function proxyGif(id, res) {
+  if (!cleanGif({ id })) return res.status(400).end();
+  for (const name of ["200w.webp", "200w.gif"]) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    try {
+      const r = await fetch(`https://media.giphy.com/media/${id}/${name}`, { signal: controller.signal });
+      if (!r.ok) continue;
+      const body = Buffer.from(await r.arrayBuffer());
+      if (body.length > GIF_MAX_BYTES) continue;
+      res.setHeader("Content-Type", name.endsWith(".webp") ? "image/webp" : "image/gif");
+      res.setHeader("Cache-Control", "public, max-age=604800, s-maxage=2592000, immutable");
+      return res.status(200).send(body);
+    } catch {
+      // try the next rendition
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return res.status(502).end();
 }

@@ -29,9 +29,11 @@ export function gifSources(gif, size = "small") {
   const g = cleanGif(gif);
   if (!g) return [];
   const m = `https://media.giphy.com/media/${g.id}`;
+  // last: the same GIF through the app's own server, for phones or networks that block GIPHY
+  const own = `/api/foods?gif=${g.id}`;
   return size === "large"
-    ? [`${m}/giphy.webp`, `https://i.giphy.com/${g.id}.webp`, `${m}/giphy.gif`, `${m}/200w.webp`]
-    : [`${m}/200w.webp`, `${m}/200w.gif`, `https://i.giphy.com/${g.id}.webp`, `${m}/giphy.gif`];
+    ? [`${m}/giphy.webp`, `https://i.giphy.com/${g.id}.webp`, `${m}/giphy.gif`, own]
+    : [`${m}/200w.webp`, `${m}/200w.gif`, `https://i.giphy.com/${g.id}.webp`, own];
 }
 
 export function gifUrl(gif, size = "small") {
@@ -42,12 +44,29 @@ export function gifUrl(gif, size = "small") {
 // address. (Inline onerror handlers aren't allowed by the app's content security policy.)
 if (typeof document !== "undefined" && !globalThis.__snapcalGifFallback) {
   globalThis.__snapcalGifFallback = true;
+  let reported = false; // one report per visit is enough to see what's going on
+  const report = (message) => {
+    if (reported) return;
+    reported = true;
+    fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-snapcal-token": globalThis.localStorage?.getItem("snapcal.apiToken") || "" },
+      body: JSON.stringify({ op: "clientError", message }),
+    }).catch(() => {});
+  };
   document.addEventListener("error", (e) => {
     const img = e.target;
-    if (!(img instanceof HTMLImageElement) || !img.dataset.gifNext) return;
-    const [next, ...rest] = img.dataset.gifNext.split(" ");
+    if (!(img instanceof HTMLImageElement) || img.dataset.gifNext === undefined) return;
+    const failed = [...(img.dataset.gifFailed ? img.dataset.gifFailed.split(" ") : []), img.currentSrc || img.src];
+    img.dataset.gifFailed = failed.join(" ");
+    const [next, ...rest] = img.dataset.gifNext.split(" ").filter(Boolean);
     img.dataset.gifNext = rest.join(" ");
     if (next) img.src = next;
+    else report(`GIF didn't load from any address: ${failed.join(" | ")}`);
+  }, true);
+  document.addEventListener("load", (e) => {
+    const img = e.target;
+    if (img instanceof HTMLImageElement && img.dataset.gifFailed) report(`GIF loaded only from ${img.currentSrc || img.src} after: ${img.dataset.gifFailed}`);
   }, true);
 }
 

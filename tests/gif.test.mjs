@@ -39,3 +39,26 @@ test("a post keeps a GIF, but not alongside a photo", () => {
   assert.equal(both.photo, photo);
   assert.equal(both.gif, undefined);
 });
+
+test("the GIF pass-through fetches only GIPHY, by a checked id, without needing an account", async () => {
+  const { default: handler } = await import("../api/foods.js");
+  const call = async (url) => {
+    const res = { code: 0, headers: {}, body: null, setHeader(k, v) { this.headers[k] = v; }, status(c) { this.code = c; return this; }, send(b) { this.body = b; return this; }, end() { return this; }, json(b) { this.body = b; return this; } };
+    await handler({ method: "GET", url, headers: {} }, res);
+    return res;
+  };
+  const asked = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u) => { asked.push(String(u)); return new Response(new Uint8Array([1, 2, 3]), { status: 200 }); };
+  try {
+    const ok = await call("/api/foods?gif=abcdef");
+    assert.equal(ok.code, 200);
+    assert.equal(ok.headers["Content-Type"], "image/webp");
+    assert.deepEqual(asked, ["https://media.giphy.com/media/abcdef/200w.webp"]);
+    const bad = await call("/api/foods?gif=..%2Fsecret");
+    assert.equal(bad.code, 400);
+    assert.equal(asked.length, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
