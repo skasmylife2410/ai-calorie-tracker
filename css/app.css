@@ -2213,6 +2213,7 @@ body.setup-open { overflow: hidden; }
 .mini-tab-caret { display: inline-block; transition: transform .2s ease; color: var(--sc-secondary); }
 .mini-tab[aria-expanded="true"] .mini-tab-caret { transform: rotate(90deg); }
 .home-meals-list { margin-top: 10px; }
+.home-meals-list[hidden] { display: none; } /* .tm-list sets display: grid, which would otherwise override hidden */
 .home-meals-list:not([hidden]) { animation: meals-open .22s ease-out; }
 @keyframes meals-open { from { opacity: 0; transform: translateY(-4px); } }
 
