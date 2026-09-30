@@ -5,7 +5,7 @@
 // Verbatim URLs/params/constants per SPEC-LOGIC.md §3, §7, §8, §9, §10.
 
 import { apiFetch } from "./net.js";
-import { cleanMicros, scaleMicros } from "./nutrition.js";
+import { cleanMicros, scaleMicros, MICRO_KEYS } from "./nutrition.js";
 
 // Open Food Facts asks apps to identify themselves with a contact email — put YOURS here.
 const OFF_USER_AGENT = "SnapCal/1.0 (personal calorie tracker; you@example.com)";
@@ -65,7 +65,7 @@ export function configureUsdaApiKey(key) {
  * macros is missing (incomplete/dropped); otherwise picks per-serving (only if a serving_size
  * string AND all 4 per-serving nutriments are present) else per-100g.
  */
-export function parseBasis(nutriments, servingSize) {
+export function parseBasis(nutriments, servingSize, servingQuantity) {
   const n = nutriments ?? {};
 
   const kcal100g =
@@ -103,11 +103,37 @@ export function parseBasis(nutriments, servingSize) {
       proteinG: proteinServing,
       carbsG: carbsServing,
       fatG: fatServing,
-      micros: offMicros(n, "_serving"),
+      micros: servingMicros(n, servingSize, servingQuantity),
     };
   }
 
   return { servingDescription: "per 100 g", calories: kcal100g, proteinG: protein100g, carbsG: carbs100g, fatG: fat100g, micros: offMicros(n, "_100g") };
+}
+
+/**
+ * Grams (or ml) in one serving: OFF's serving_quantity when it has one, else the number in
+ * serving_size ("30 g", "1 cup (240 ml)"). Null when the serving isn't given by weight.
+ */
+export function servingGrams(servingSize, servingQuantity) {
+  const q = lenientNumber(servingQuantity);
+  if (q !== undefined && q > 0) return q;
+  const s = String(servingSize ?? "");
+  const m = s.match(/\(\s*(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i) ?? s.match(/(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i);
+  const v = m ? Number(m[1].replace(",", ".")) : NaN;
+  return v > 0 ? v : null;
+}
+
+/**
+ * Per-serving micros. OFF often has the four macros per serving but leaves sugars, fiber and
+ * sodium only per 100 g; those are worked out from the serving weight instead of dropped.
+ */
+function servingMicros(n, servingSize, servingQuantity) {
+  const own = offMicros(n, "_serving") ?? {};
+  const grams = servingGrams(servingSize, servingQuantity);
+  const from100 = grams ? scaleMicros(offMicros(n, "_100g"), grams / 100) ?? {} : {};
+  const out = {};
+  for (const k of MICRO_KEYS) out[k] = own[k] ?? from100[k] ?? null;
+  return cleanMicros(out);
 }
 
 /**
@@ -142,7 +168,7 @@ function offBrand(product) {
 }
 
 export function offProductToScannedProduct(barcode, product) {
-  const basis = parseBasis(product.nutriments, product.serving_size);
+  const basis = parseBasis(product.nutriments, product.serving_size, product.serving_quantity);
   if (!basis) return null;
   return {
     barcode,
@@ -161,11 +187,11 @@ export function offProductToScannedProduct(barcode, product) {
  * GET https://world.openfoodfacts.org/api/v3/product/{barcode}.json
  * @returns {Promise<{status:"complete", product:object}|{status:"notFound"}|{status:"incompleteData"}|{status:"failed", message:string}>}
  */
-export async function offLookupBarcode(barcode) {
+export async function offLookupBarcode(barcode, { timeoutMs = OFF_TIMEOUT_MS } = {}) {
   const url = `https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(barcode)}.json`;
   let res;
   try {
-    res = await fetchWithTimeout(url, { headers: { "User-Agent": OFF_USER_AGENT } }, OFF_TIMEOUT_MS);
+    res = await fetchWithTimeout(url, { headers: { "User-Agent": OFF_USER_AGENT } }, timeoutMs);
   } catch (err) {
     return { status: "failed", message: `OFF network error: ${err.message ?? err}` };
   }
@@ -429,16 +455,16 @@ export async function usdaSearchByName(query) {
  * FDC has no direct barcode endpoint — filters foods[] by normalized gtinUpc match.
  * @returns {Promise<{status:"found", product:object}|{status:"notFound"}|{status:"failed", message:string}>}
  */
-export async function usdaLookupBarcode(barcode) {
+export async function usdaLookupBarcode(barcode, { apiKey = usdaApiKey(), timeoutMs = USDA_TIMEOUT_MS } = {}) {
   const normalizedTarget = normalizedDigits(barcode);
   if (normalizedTarget === "") return { status: "notFound" };
 
-  const params = new URLSearchParams({ api_key: usdaApiKey(), query: barcode, dataType: "Branded" });
+  const params = new URLSearchParams({ api_key: apiKey, query: barcode, dataType: "Branded" });
   const url = `https://api.nal.usda.gov/fdc/v1/foods/search?${params.toString()}`;
 
   let res;
   try {
-    res = await fetchWithTimeout(url, {}, USDA_TIMEOUT_MS);
+    res = await fetchWithTimeout(url, {}, timeoutMs);
   } catch (err) {
     return { status: "failed", message: `USDA network error: ${err.message ?? err}` };
   }
@@ -460,34 +486,94 @@ export async function usdaLookupBarcode(barcode) {
 }
 
 // ---------------------------------------------------------------------------
-// §10 FoodLookupService — barcode fallback CHAIN orchestrator (OFF -> USDA)
+// §10 FoodLookupService — barcode lookup across Open Food Facts and USDA Branded
 // ---------------------------------------------------------------------------
+//
+// Open Food Facts is written by volunteers and is sometimes wrong (a milk entered per cup but
+// saved as per 100 g comes out 1.7× too high). USDA Branded Foods is what US and Canadian
+// manufacturers submit from their own labels, so for North American barcodes it is asked at the
+// same time and preferred. Either source's numbers are checked against the calories their own
+// protein, carbs and fat add up to; a product that doesn't add up is marked `suspect` and the
+// Add Food sheet says to check the label.
+
+/** UPC-A (12 digits) or an EAN-13 that is a UPC with a leading 0: sold in the US or Canada. */
+export function isNorthAmericanCode(barcode) {
+  const d = (String(barcode ?? "").match(/\d/g) ?? []).join("");
+  return d.length === 12 || (d.length === 13 && d[0] === "0");
+}
 
 /**
+ * Do the calories roughly match 4·protein + 4·carbs + 9·fat? Labels round, and fiber, alcohol
+ * and sugar alcohols move the sum, so only a gap over 30% counts; tiny amounts always pass.
+ */
+export function macrosConsistent(p) {
+  const kcal = Number(p?.calories) || 0;
+  const sum = 4 * (Number(p?.proteinG) || 0) + 4 * (Number(p?.carbsG) || 0) + 9 * (Number(p?.fatG) || 0);
+  const hi = Math.max(kcal, sum);
+  if (hi < 40) return true;
+  return Math.abs(kcal - sum) / hi <= 0.3;
+}
+
+/**
+ * Picks the answer from the two lookups (either may be null when it wasn't asked).
+ * North American codes prefer USDA; others prefer Open Food Facts. A product whose numbers add up
+ * beats one that doesn't; when neither does, the preferred one comes back with `suspect: true`.
+ * @returns {{status:"found", product:object}|{status:"notFound"}|{status:"failed", message:string}}
+ */
+export function pickBarcodeResult(barcode, off, usda) {
+  const fromOff = off?.status === "complete" ? { ...off.product, source: "off" } : null;
+  const fromUsda = usda?.status === "found" ? { ...usda.product, source: "usda" } : null;
+  const order = (isNorthAmericanCode(barcode) ? [fromUsda, fromOff] : [fromOff, fromUsda]).filter(Boolean);
+  const good = order.find(macrosConsistent);
+  if (good) return { status: "found", product: { ...good, suspect: false } };
+  if (order.length > 0) return { status: "found", product: { ...order[0], suspect: true } };
+  const failures = [off, usda].filter((r) => r?.status === "failed");
+  if (failures.length > 0 && failures.length === [off, usda].filter(Boolean).length) {
+    return { status: "failed", message: failures.map((r) => r.message).join("; ") };
+  }
+  if (off?.status === "failed") return { status: "failed", message: off.message };
+  return { status: "notFound" };
+}
+
+/**
+ * Both lookups, from wherever this runs (the phone, or api/foods.js with a real USDA key).
+ * USDA is asked alongside OFF for North American codes, and afterwards for any other code only
+ * when OFF has nothing usable, so European products don't spend USDA's rate limit.
+ */
+export async function lookupBarcodeBoth(barcode, { usdaKey, timeoutMs } = {}) {
+  const opts = timeoutMs ? { timeoutMs } : {};
+  const usdaOpts = { ...opts, ...(usdaKey ? { apiKey: usdaKey } : {}) };
+  if (isNorthAmericanCode(barcode)) {
+    const [off, usda] = await Promise.all([offLookupBarcode(barcode, opts), usdaLookupBarcode(barcode, usdaOpts)]);
+    return pickBarcodeResult(barcode, off, usda);
+  }
+  const off = await offLookupBarcode(barcode, opts);
+  if (off.status === "complete" && macrosConsistent(off.product)) return pickBarcodeResult(barcode, off, null);
+  const usda = await usdaLookupBarcode(barcode, usdaOpts);
+  return pickBarcodeResult(barcode, off, usda);
+}
+
+/**
+ * Barcode lookup for the scanner. Asks the app's own /api/foods first (a real USDA key and a
+ * shared cache); if that can't be reached, does both lookups from the phone.
  * @param {string} barcode
  * @returns {Promise<{status:"found", product:object}|{status:"notFound"}|{status:"failed", message:string}>}
  */
 export async function foodLookup(barcode) {
-  const off = await offLookupBarcode(barcode);
-
-  if (off.status === "complete") return { status: "found", product: off.product };
-
-  if (off.status === "notFound" || off.status === "incompleteData") {
-    return fallBackToUsda(barcode);
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
+    const res = await apiFetch(`/api/foods?barcode=${encodeURIComponent(barcode)}`, { signal: controller.signal }).finally(() => clearTimeout(timer));
+    if (res.ok) {
+      const body = await res.json();
+      if (body?.ok && (body.status === "found" || body.status === "notFound")) {
+        return body.status === "found" ? { status: "found", product: body.product } : { status: "notFound" };
+      }
+    }
+  } catch {
+    // offline, or the server is unreachable: look it up from here instead
   }
-
-  // off.status === "failed" — OFF errored outright, but still try USDA.
-  const usda = await usdaLookupBarcode(barcode);
-  if (usda.status === "found") return { status: "found", product: usda.product };
-  if (usda.status === "notFound") return { status: "failed", message: off.message }; // surface ORIGINAL OFF error
-  return { status: "failed", message: `OFF: ${off.message}; USDA: ${usda.message}` };
-}
-
-async function fallBackToUsda(barcode) {
-  const usda = await usdaLookupBarcode(barcode);
-  if (usda.status === "found") return { status: "found", product: usda.product };
-  if (usda.status === "notFound") return { status: "notFound" };
-  return { status: "failed", message: usda.message };
+  return lookupBarcodeBoth(barcode);
 }
 
 // ---------------------------------------------------------------------------

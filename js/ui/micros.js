@@ -82,23 +82,31 @@ export function nutrientsPageHtml(day) {
  * The slim card on Home, right under protein / carbs / fat: five numbers with a thin bar each,
  * so the nutrients are visible without swiping. Sodium, added sugar and saturated fat are limits
  * (a tick marks the limit; past it the bar turns red and says "over"); fiber and potassium are
- * goals that fill up. Tapping it opens the full nutrients page.
+ * goals that fill up. Sugar shows the TOTAL (fruit and milk sugar too, so a day is never "0"),
+ * while its bar and "over" follow the added part, which is what the limit is for.
+ * Tapping it opens the full nutrients page.
  */
-const STRIP = ["sodiumMg", "addedSugarG", "satFatG", "fiberG", "potassiumMg"];
+const STRIP = ["sodiumMg", "sugarG", "satFatG", "fiberG", "potassiumMg"];
+const TRACKS = { sugarG: "addedSugarG" }; // shown value -> the value the bar measures
 const LIMIT_AT = 80; // the limit tick sits at 80% of the bar so going over has room to show
 export function nutrientsStripHtml(day) {
   const totals = day?.totals ?? null;
   const targets = day?.targets ?? {};
   const shortNum = (key, v) => formatMicro(key, v).replace(/\s*(mg|g)$/, "");
+  const isKnown = (v) => v !== null && v !== undefined && Number.isFinite(Number(v));
   const items = STRIP.map((key) => {
-    const target = targets[key];
+    const trackKey = TRACKS[key] ?? key;
+    const target = targets[trackKey];
     const value = totals?.[key] ?? null;
-    const known = value !== null && value !== undefined && Number.isFinite(Number(value));
+    const tracked = totals?.[trackKey] ?? null;
+    const known = isKnown(value);
     const limit = target?.kind === "limit";
-    const ratio = known && target ? Number(value) / target.value : 0;
+    const ratio = isKnown(tracked) && target ? Number(tracked) / target.value : 0;
     const over = limit && ratio > 1;
     const fill = limit ? Math.min(100, ratio * LIMIT_AT) : Math.min(100, ratio * 100);
-    const sub = over ? t("nutrients.over") : target ? `${limit ? "≤" : "/"}${shortNum(key, target.value)}` : "";
+    const sub = over ? t("nutrients.over")
+      : trackKey !== key ? t("nutrients.short.addedSub", { n: isKnown(tracked) ? shortNum(trackKey, tracked) : "—" })
+      : target ? `${limit ? "≤" : "/"}${shortNum(key, target.value)}` : "";
     return `
       <div class="ns-item${over ? " is-over" : ""}${limit ? " is-limit" : " is-goal"}" title="${t(`nutrients.${key}`)}">
         <span class="ns-name">${t(`nutrients.short.${key}`)}</span>
@@ -109,7 +117,7 @@ export function nutrientsStripHtml(day) {
   }).join("");
   return `
     <button type="button" class="nutr-strip card" id="nutr-strip" aria-label="${t("nutrients.stripOpen")}">
-      <span class="ns-head"><span class="ns-title">${t("nutrients.title")}</span><span class="ns-hint">${t("nutrients.stripHint")} ›</span></span>
+      <span class="ns-head"><span class="ns-title">${t("nutrients.title")}</span><span class="ns-hint${day?.missing > 0 ? " is-partial" : ""}">${day?.missing > 0 ? t("nutrients.stripPartial", { n: day.missing }) : t("nutrients.stripHint")} ›</span></span>
       <span class="ns-grid">${items}</span>
     </button>`;
 }

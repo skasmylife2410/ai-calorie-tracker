@@ -37,6 +37,8 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
   let footnote = null;
   if (prefill) {
     footnote = `${prefill.servingDescription} — adjust to what you actually ate`;
+    if (prefill.source === "usda") footnote += `. ${t("edit.fromUsda")}`;
+    else if (prefill.source === "off") footnote += `. ${t("edit.fromOff")}`;
   } else if (prefillBarcode && failureReason) {
     footnote = `Barcode ${prefillBarcode} not found — ${failureReason}. Enter manually`;
   } else if (prefillBarcode) {
@@ -90,6 +92,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
                 ).join("")}
               </div>
               ${footnote ? `<div class="ios-section-footer">${escapeAttr(footnote)}</div>` : ""}
+              ${prefill?.suspect ? `<div class="ios-section-footer food-suspect" id="food-suspect"><i class="food-suspect-mark" aria-hidden="true"></i>${escapeAttr(t("edit.suspect"))}</div>` : ""}
             </div>
             <div class="ios-section">
               <details class="micro-section" id="micro-section"${draft.micros ? " open" : ""}>

@@ -1,6 +1,8 @@
 // api/foods.js — food name search for the search sheet, as one call.
 //
 // GET /api/foods?q=chick  -> { ok, products, partial }
+// GET /api/foods?barcode=0123456789012  -> { ok, status: "found"|"notFound", product? }
+//   (the scanner's lookup: Open Food Facts + USDA Branded with the real key; see js/api.js §10)
 //
 // Why this runs on the server instead of the phone:
 //  - USDA's public DEMO_KEY allows about 10 searches an hour per phone, and search-as-you-type
@@ -13,7 +15,7 @@
 // Both sources run in parallel with a short budget; whichever answers in time is used.
 
 import { requireUser } from "./_auth.js";
-import { offProductToScannedProduct, usdaFoodToScannedProduct } from "../js/api.js";
+import { offProductToScannedProduct, usdaFoodToScannedProduct, lookupBarcodeBoth } from "../js/api.js";
 import { rankProducts, normalize } from "../js/foods-local.js";
 
 const SOURCE_TIMEOUT_MS = 4_500;
@@ -31,6 +33,8 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ ok: false, errorType: "other", message: "Method not allowed" });
 
   const url = new URL(req.url, "http://localhost");
+  const barcode = String(url.searchParams.get("barcode") ?? req.query?.barcode ?? "").replace(/\D/g, "").slice(0, 14);
+  if (barcode) return lookupBarcode(barcode, res);
   const q = String(url.searchParams.get("q") ?? req.query?.q ?? "").trim().replace(/\s+/g, " ").slice(0, MAX_QUERY);
   if (q.length < 2) return res.status(200).json({ ok: true, products: [], partial: false });
 
@@ -52,6 +56,24 @@ export default async function handler(req, res) {
   if (!partial) remember(key, products);
   if (!partial) setCacheHeaders(res);
   return res.status(200).json({ ok: true, products, partial });
+}
+
+async function lookupBarcode(barcode, res) {
+  const key = `barcode:${barcode}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    setCacheHeaders(res);
+    return res.status(200).json({ ok: true, ...hit.products });
+  }
+  const usdaKey = (process.env.USDA_API_KEY || "").trim() || undefined;
+  const out = await lookupBarcodeBoth(barcode, { usdaKey, timeoutMs: 6_000 });
+  if (out.status === "failed") return res.status(502).json({ ok: false, errorType: "unavailable", message: out.message });
+  // only hits are remembered: a product missing today may be added, or a source was just down
+  if (out.status === "found") {
+    remember(key, out);
+    setCacheHeaders(res);
+  }
+  return res.status(200).json({ ok: true, ...out });
 }
 
 function setCacheHeaders(res) {
@@ -100,7 +122,7 @@ async function searchOff(q) {
     q,
     page_size: "25",
     langs: "en,es",
-    fields: "code,product_name,product_name_en,product_name_es,generic_name,brands,nutriments,serving_size",
+    fields: "code,product_name,product_name_en,product_name_es,generic_name,brands,nutriments,serving_size,serving_quantity",
   });
   const out = await getJson(`https://search.openfoodfacts.org/search?${params}`, { headers: { "User-Agent": OFF_USER_AGENT } }, "Open Food Facts");
   if (!out.ok) return out;

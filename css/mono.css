@@ -474,3 +474,5 @@
 :root[data-theme="mono"] .install-card-icon { background: var(--mn-control); color: var(--mn-ink); }
 :root[data-theme="mono"] .install-card-x { color: var(--mn-sec); }
 :root[data-theme="mono"] .onb-install-text svg { color: var(--mn-ink); }
+:root[data-theme="mono"] .food-suspect { color: var(--mn-ink); }
+:root[data-theme="mono"] .food-suspect-mark { background: var(--mn-over); }

@@ -305,7 +305,10 @@
     "food": "Alimento",
     "name": "Nombre",
     "titleEdit": "Editar alimento",
-    "titleAdd": "Añadir alimento"
+    "titleAdd": "Añadir alimento",
+    "fromUsda": "Datos de la etiqueta del fabricante (USDA)",
+    "fromOff": "Datos de Open Food Facts, cargados por voluntarios — conviene mirar el envase",
+    "suspect": "Estos números no cuadran: las calorías no coinciden con la proteína, los carbohidratos y la grasa. Compáralos con el envase o saca una foto de la tabla nutricional."
   },
   "todayTab": {
     "title": "Hoy",
@@ -709,9 +712,12 @@
       "addedSugarG": "Azúcar",
       "satFatG": "Gr. sat.",
       "fiberG": "Fibra",
-      "potassiumMg": "Potasio"
+      "potassiumMg": "Potasio",
+      "sugarG": "Azúcar",
+      "addedSub": "{n} añad."
     },
-    "stripOpen": "Ver todos los nutrientes"
+    "stripOpen": "Ver todos los nutrientes",
+    "stripPartial": "{n} comida sin datos|{n} comidas sin datos"
   },
   "group": {
     "hint": "Truco: mantén presionada una comida y suéltala sobre otra para agruparlas.",

@@ -438,9 +438,18 @@ export function microsForDay(date = new Date()) {
   return {
     totals: sumMicros(known.map((e) => e.micros)),
     meals: logged.length,
-    missing: logged.length - known.length,
+    // a meal counts as missing when any real food in it has no nutrient data (a scanned tortilla
+    // beside an egg that has some), since its totals are then short too
+    missing: logged.filter((e) => !microsComplete(e)).length,
     targets: microTargets({ targetCalories: computeGoals().targetCalories, sex: getProfile().sex }),
   };
+}
+
+/** True when the entry, and every food in it worth counting (15 kcal or more), has nutrient data. */
+export function microsComplete(entry) {
+  if (cleanMicros(entry?.micros) === null) return false;
+  const items = Array.isArray(entry?.analysisItems) ? entry.analysisItems : [];
+  return items.every((i) => (Number(i?.calories) || 0) < 15 || cleanMicros(i?.micros) !== null);
 }
 
 /** Set of start-of-day timestamps that have at least one logged entry (streak + week-strip dots). */

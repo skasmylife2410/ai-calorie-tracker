@@ -305,7 +305,10 @@
     "food": "Food",
     "name": "Name",
     "titleEdit": "Edit Food",
-    "titleAdd": "Add Food"
+    "titleAdd": "Add Food",
+    "fromUsda": "Numbers from the maker's label (USDA)",
+    "fromOff": "Numbers from Open Food Facts, entered by volunteers — worth a glance at the package",
+    "suspect": "These numbers don't add up: the calories don't match the protein, carbs and fat. Check them against the package, or take a photo of the Nutrition Facts label instead."
   },
   "todayTab": {
     "title": "Today",
@@ -709,9 +712,12 @@
       "addedSugarG": "Sugar",
       "satFatG": "Sat. fat",
       "fiberG": "Fiber",
-      "potassiumMg": "Potassium"
+      "potassiumMg": "Potassium",
+      "sugarG": "Sugar",
+      "addedSub": "{n} added"
     },
-    "stripOpen": "Show all nutrients"
+    "stripOpen": "Show all nutrients",
+    "stripPartial": "{n} meal missing data|{n} meals missing data"
   },
   "group": {
     "hint": "Tip: hold a meal and drop it on another to group them.",
