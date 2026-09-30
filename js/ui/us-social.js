@@ -5,7 +5,7 @@ import { safeSrc } from "../safe-src.js";
 import { sendNote, listShares, deleteShare, addComment, deleteComment, createPost, POST_MAX, COMMENT_MAX } from "../social.js";
 import { t, formatNumber } from "../i18n.js";
 import { icon } from "./icons.js";
-import { gifImgHtml, gifUrl } from "../gif.js";
+import { gifImgHtml, gifUrl, gifSources } from "../gif.js";
 import { openGifPicker } from "./gif-picker.js";
 
 /** The "GIF" mark on buttons: the letters in a small rounded box, drawn like the other glyphs. */
@@ -143,7 +143,7 @@ export async function renderFeed(host, { me, people, colors, group = null, group
         <input type="text" class="fc-input" maxlength="${COMMENT_MAX}" value="${esc(d.text ?? "")}"
           placeholder="${count ? t("social.commentPlaceholder") : t("social.firstComment")}" aria-label="${t("social.commentPlaceholder")}">
         ${d.photo ? `<span class="fc-thumb"><img src="${safeSrc(d.photo)}" alt=""><button type="button" class="fc-thumb-x" data-unphoto="${esc(s.id)}" aria-label="${t("social.removePhoto")}">${icon("xmark", { size: 10 })}</button></span>` : ""}
-        ${!d.photo && d.gif ? `<span class="fc-thumb"><img src="${gifUrl(d.gif)}" alt="" referrerpolicy="no-referrer"><button type="button" class="fc-thumb-x" data-unphoto="${esc(s.id)}" aria-label="${t("gif.remove")}">${icon("xmark", { size: 10 })}</button></span>` : ""}
+        ${!d.photo && d.gif ? `<span class="fc-thumb"><img src="${gifUrl(d.gif)}" data-gif-next="${gifSources(d.gif).slice(1).join(" ")}" alt=""><button type="button" class="fc-thumb-x" data-unphoto="${esc(s.id)}" aria-label="${t("gif.remove")}">${icon("xmark", { size: 10 })}</button></span>` : ""}
         <input type="file" accept="image/*" class="fc-file" hidden>
         <button type="button" class="fc-cam fc-gifbtn" data-cgif="${esc(s.id)}" aria-label="${t("gif.add")}">${GIF_GLYPH}</button>
         <button type="button" class="fc-cam" data-cphoto="${esc(s.id)}" aria-label="${t("social.addPhotoLabel")}">${icon("cameraFill", { size: 17 })}</button>
@@ -242,8 +242,8 @@ export async function renderFeed(host, { me, people, colors, group = null, group
       if (!g) return;
       gif = g;
       photo = null;
+      preview.dataset.gifNext = gifSources(g).slice(1).join(" ");
       preview.src = gifUrl(g);
-      preview.referrerPolicy = "no-referrer";
       wrap.hidden = false;
       wrap.classList.add("is-gif");
       refresh();

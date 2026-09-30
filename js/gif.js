@@ -20,11 +20,35 @@ export function cleanGif(raw) {
   return { id, w: dim(raw.w), h: dim(raw.h) };
 }
 
-/** "small" (200 px wide: picker, comments, notes) or "large" (posts, which fill the card). */
-export function gifUrl(gif, size = "small") {
+/**
+ * Addresses to try, best first: "small" (200 px wide: picker, comments, notes) or "large" (posts,
+ * which fill the card). GIPHY serves each GIF under several names and hosts; if one doesn't load
+ * on a phone, the next is tried (see the error listener below).
+ */
+export function gifSources(gif, size = "small") {
   const g = cleanGif(gif);
-  if (!g) return "";
-  return `https://media.giphy.com/media/${g.id}/${size === "large" ? "giphy.webp" : "200w.webp"}`;
+  if (!g) return [];
+  const m = `https://media.giphy.com/media/${g.id}`;
+  return size === "large"
+    ? [`${m}/giphy.webp`, `https://i.giphy.com/${g.id}.webp`, `${m}/giphy.gif`, `${m}/200w.webp`]
+    : [`${m}/200w.webp`, `${m}/200w.gif`, `https://i.giphy.com/${g.id}.webp`, `${m}/giphy.gif`];
+}
+
+export function gifUrl(gif, size = "small") {
+  return gifSources(gif, size)[0] ?? "";
+}
+
+// One listener for every GIF on the page: when an <img data-gif-next> fails, move to the next
+// address. (Inline onerror handlers aren't allowed by the app's content security policy.)
+if (typeof document !== "undefined" && !globalThis.__snapcalGifFallback) {
+  globalThis.__snapcalGifFallback = true;
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.dataset.gifNext) return;
+    const [next, ...rest] = img.dataset.gifNext.split(" ");
+    img.dataset.gifNext = rest.join(" ");
+    if (next) img.src = next;
+  }, true);
 }
 
 /** An <img> for a GIF, sized by its shape so the thread doesn't jump when it loads. */
@@ -32,7 +56,8 @@ export function gifImgHtml(gif, { cls = "gif-img", size = "small", alt = "GIF" }
   const g = cleanGif(gif);
   if (!g) return "";
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  return `<img class="${cls}" src="${gifUrl(g, size)}" width="${g.w}" height="${g.h}" style="aspect-ratio:${g.w}/${g.h}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+  const [first, ...rest] = gifSources(g, size);
+  return `<img class="${cls}" src="${first}" data-gif-next="${rest.join(" ")}" width="${g.w}" height="${g.h}" style="aspect-ratio:${g.w}/${g.h}" alt="${esc(alt)}" loading="lazy" decoding="async">`;
 }
 
 /** The quick words under the search box: label key -> what is searched (English finds more). */
