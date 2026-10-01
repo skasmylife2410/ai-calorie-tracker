@@ -140,7 +140,10 @@ async function boot() {
 
   // Exercise burns are estimated more conservatively now; recalculate the old estimates once,
   // after this phone has the account's exercise from the server.
-  whenFirstSynced(8000).then(() => { try { store.refreshExerciseEstimates(); } catch { /* never block the app */ } });
+  whenFirstSynced(8000).then(() => {
+    try { store.refreshExerciseEstimates(); } catch { /* never block the app */ }
+    try { store.syncLearnedTdeeFlag(); } catch { /* never block the app */ }
+  });
 
   store.subscribe(() => {
     // The account's profile arrived after setup was already showing (slow network): step out

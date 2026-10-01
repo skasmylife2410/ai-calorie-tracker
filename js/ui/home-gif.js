@@ -1,5 +1,6 @@
 // home-gif.js — the GIF on Home's "What should I eat?" button.
-// By default it's the first GIPHY result for a chewing cow (looked up once, then remembered).
+// By default it's the GIF the owner picked (api/auth "homeGif"), else the first GIPHY result for
+// a chewing cow; looked up once a day and remembered in between.
 // Holding the button opens the GIF picker on that search, so anyone can choose the exact GIF
 // they like; that choice is kept on the phone. The words stay under the GIF for screen readers
 // and show whenever there's no GIF yet or it can't load.
@@ -11,7 +12,7 @@ import { openGifPicker } from "./gif-picker.js";
 
 const PICKED_KEY = "snapcal.homeGif";        // the person's own choice
 const DEFAULT_KEY = "snapcal.homeGifDefault"; // the looked-up default: { gif, at }
-const DEFAULT_TTL_MS = 30 * 86400000;         // look again monthly, in case it disappears
+const DEFAULT_TTL_MS = 86400000;              // look again daily, so the owner's new pick spreads
 const HOLD_MS = 550;
 
 const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
@@ -21,8 +22,17 @@ const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 export function homeGif() {
   const picked = cleanGif(read(PICKED_KEY));
   if (picked) return picked;
-  const d = read(DEFAULT_KEY);
-  return d && Date.now() - (d.at || 0) < DEFAULT_TTL_MS ? cleanGif(d.gif) : null;
+  return cleanGif(read(DEFAULT_KEY)?.gif); // a stale default still shows while a fresh one loads
+}
+
+const defaultIsFresh = () => Date.now() - (read(DEFAULT_KEY)?.at || 0) < DEFAULT_TTL_MS;
+
+async function ownersPick() {
+  try {
+    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "homeGif" }) });
+    const out = await r.json();
+    return cleanGif(out?.gif);
+  } catch { return null; }
 }
 
 export function homeGifImgHtml() {
@@ -32,12 +42,17 @@ export function homeGifImgHtml() {
 
 let lookingUp = null;
 async function ensureDefault() {
-  if (homeGif() || lookingUp) return lookingUp;
-  lookingUp = searchGifs(HOME_GIF_QUERY).then((out) => {
-    const first = out?.ok ? cleanGif(out.gifs?.[0]) : null;
-    if (first) write(DEFAULT_KEY, { gif: first, at: Date.now() });
-    return first;
-  }).catch(() => null).finally(() => { lookingUp = null; });
+  if (cleanGif(read(PICKED_KEY)) || defaultIsFresh()) return null;
+  if (lookingUp) return lookingUp;
+  lookingUp = (async () => {
+    let gif = await ownersPick();
+    if (!gif) {
+      const out = await searchGifs(HOME_GIF_QUERY).catch(() => null);
+      gif = out?.ok ? cleanGif(out.gifs?.[0]) : null;
+    }
+    if (gif) write(DEFAULT_KEY, { gif, at: Date.now() });
+    return gif;
+  })().catch(() => null).finally(() => { lookingUp = null; });
   return lookingUp;
 }
 
@@ -49,7 +64,8 @@ function show(chip, gif) {
 /** Tap: `onTap`. Hold (or right-click): choose the GIF. Fills in the default GIF when needed. */
 export function wireHomeGifChip(chip, onTap) {
   if (!chip) return;
-  if (!homeGif()) ensureDefault().then((g) => { if (g && chip.isConnected) show(chip, g); });
+  const shown = homeGif();
+  ensureDefault().then((g) => { if (g && chip.isConnected && g.id !== shown?.id) show(chip, g); });
 
   let timer = null;
   let held = false;

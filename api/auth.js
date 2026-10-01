@@ -22,7 +22,7 @@ import {
   USERNAME_RE, normalizeUsername, hashPassword, verifyPassword,
   createSession, readSession, passwordProblem,
 } from "./_accounts.js";
-import { maxUsers as memberCap } from "./_members.js";
+import { maxUsers as memberCap, isAdmin, ADMIN } from "./_members.js";
 import { inviteProblem, inviteGroup } from "./invites.js";
 import { addMembership } from "./_groups.js";
 import { clientIp, isLocked, recordFailure, tooMany } from "./_limits.js";
@@ -135,6 +135,31 @@ export default async function handler(req, res) {
       } catch { /* diagnostics only */ }
     }
     return res.status(200).json({ ok: true });
+  }
+
+  // Admin only: the latest problems phones reported (start-up failures, GIFs that wouldn't load,
+  // the Home GIF the owner picked), so they can be read in the app instead of the database.
+  if (op === "clientErrors") {
+    const username = readSession(req.headers["x-snapcal-token"]);
+    if (!isAdmin(username)) return fail(res, "forbidden", "Only the owner can see this.");
+    const params = new URLSearchParams({ select: "owner,at,message,ua", order: "at.desc", limit: "60" });
+    const r = await fetch(`${restBase()}/rest/v1/snapcal_client_errors?${params}`, { headers: restHeaders() });
+    const rows = r.ok ? await r.json() : [];
+    return res.status(200).json({ ok: true, rows });
+  }
+
+  // The Home "What should I eat?" GIF: the owner's latest pick becomes everyone's default.
+  if (op === "homeGif") {
+    const params = new URLSearchParams({ select: "message", owner: `eq.${ADMIN}`, message: "like.Home GIF picked:*", order: "at.desc", limit: "1" });
+    try {
+      const r = await fetch(`${restBase()}/rest/v1/snapcal_client_errors?${params}`, { headers: restHeaders() });
+      const [row] = r.ok ? await r.json() : [];
+      const m = /Home GIF picked: ([A-Za-z0-9]{5,40}) \((\d+)x(\d+)\)/.exec(row?.message ?? "");
+      res.setHeader("Cache-Control", "public, max-age=600, s-maxage=600");
+      return res.status(200).json({ ok: true, gif: m ? { id: m[1], w: Number(m[2]), h: Number(m[3]) } : null });
+    } catch {
+      return res.status(200).json({ ok: true, gif: null });
+    }
   }
 
   if (op === "whoami") {

@@ -637,9 +637,22 @@ export function computeGoals() {
   return resolveUserGoals(profile, { learnedTdee: apply ? learned.tdee : null });
 }
 
-/** Share of exercise burn added back to the day's budget: this person's setting, default 0. */
+/** Share of exercise burn added back to the day's budget: this person's setting, else Auto. */
 export function exerciseCreditRatio() {
   return creditRatioFor(getProfile());
+}
+
+/**
+ * Records on the profile whether the target is using a learned maintenance, so Auto exercise
+ * credit (here and on the Us page, which reads the synced profile) can account for it.
+ * Writes only when it changes.
+ */
+export function syncLearnedTdeeFlag() {
+  const profile = getProfile();
+  const learned = profile.useLearnedTdee === false ? null : learnedMaintenanceNow();
+  const on = Boolean(learned && learned.confidence !== "low");
+  if ((profile.learnedTdeeOn === true) !== on) setProfile({ learnedTdeeOn: on });
+  return on;
 }
 
 /**

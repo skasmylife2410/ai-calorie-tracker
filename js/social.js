@@ -14,7 +14,7 @@ async function post(url, body) {
 let inboxCache = { at: 0, notes: [] };
 
 export async function inbox({ fresh = false } = {}) {
-  if (!fresh && Date.now() - inboxCache.at < 60_000) return inboxCache.notes;
+  if (!fresh && Date.now() - inboxCache.at < 60000) return inboxCache.notes;
   const out = await post("/api/notes", { op: "inbox" });
   if (out.ok) inboxCache = { at: Date.now(), notes: out.notes };
   return inboxCache.notes;

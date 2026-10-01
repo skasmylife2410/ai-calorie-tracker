@@ -46,7 +46,7 @@ function keyBytes(b64url) {
 let keyPromise = null;
 /** VAPID public key from the server (null until VAPID keys are set in Vercel). Cached per launch. */
 export function serverKey() {
-  keyPromise ??= post({ op: "pushKey" }).then((o) => (o.ok ? o.key || null : null)).catch(() => null);
+  if (!keyPromise) keyPromise = post({ op: "pushKey" }).then((o) => (o.ok ? o.key || null : null)).catch(() => null);
   return keyPromise;
 }
 

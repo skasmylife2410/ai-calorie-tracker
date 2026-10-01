@@ -71,6 +71,7 @@ export function render(container) {
       ${accountSectionHtml(currentUsername)}
       ${privacySectionHtml()}
       ${membersSectionHtml()}
+      <div class="ios-section" id="diag-section"></div>
       ${inviteSectionHtml()}
       ${accuracySectionHtml(profile)}
       ${scanQualityHtml(profile)}
@@ -104,6 +105,7 @@ export function render(container) {
   wirePrivacy(container);
   wireInvites(container);
   wireMembers(container, currentUsername);
+  wireDiagnostics(container);
   wireRedo(container);
   wireSuggest(container);
   const nameInput = container.querySelector("#display-name");
@@ -115,7 +117,7 @@ export function render(container) {
     b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: b.dataset.excredit === "auto" ? "auto" : Number(b.dataset.excredit) }); render(container); })
   );
   container.querySelectorAll("[data-learn]").forEach((b) =>
-    b.addEventListener("click", () => { store.setProfile({ useLearnedTdee: b.dataset.learn === "on" }); render(container); })
+    b.addEventListener("click", () => { store.setProfile({ useLearnedTdee: b.dataset.learn === "on" }); store.syncLearnedTdeeFlag(); render(container); })
   );
   container.querySelector("#install-row")?.addEventListener("click", () => openInstallSheet());
   container.querySelectorAll("[data-diet]").forEach((b) =>
@@ -398,6 +400,43 @@ function wireRedo(container) {
 }
 
 /** Members and their groups (owner only): fixes anyone who signed up without a group. */
+/**
+ * Owner only: what phones reported recently (start-up failures, GIFs that didn't load, Home GIF
+ * picks), newest first. Hidden for everyone else (the server refuses them anyway).
+ */
+async function wireDiagnostics(container) {
+  const host = container.querySelector("#diag-section");
+  if (!host) return;
+  const { apiFetch } = await import("../net.js");
+  let out;
+  try {
+    const r = await apiFetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "clientErrors" }) });
+    out = await r.json();
+  } catch { out = null; }
+  if (!out?.ok || !host.isConnected) { host.remove(); return; }
+  const device = (ua) => {
+    const s = String(ua ?? "");
+    const os = /Android [\d.]+/.exec(s)?.[0] ?? (/iPhone OS ([\d_]+)/.exec(s) ? `iOS ${/iPhone OS ([\d_]+)/.exec(s)[1].replace(/_/g, ".")}` : /Mac OS X/.test(s) ? "Mac" : /Windows/.test(s) ? "Windows" : "");
+    const br = /OPR\/[\d]+/.exec(s)?.[0]?.replace("OPR/", "Opera ") ?? /SamsungBrowser\/[\d]+/.exec(s)?.[0]?.replace("SamsungBrowser/", "Samsung ") ?? /CriOS\/[\d]+|Chrome\/[\d]+/.exec(s)?.[0]?.replace(/CriOS\/|Chrome\//, "Chrome ") ?? (/Safari/.test(s) ? "Safari" : "");
+    return [os, br].filter(Boolean).join(" · ");
+  };
+  const when = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const rows = out.rows ?? [];
+  host.innerHTML = `
+    <details class="diag">
+      <summary class="ios-section-header">${t("diag.title", { n: rows.length })}</summary>
+      <div class="ios-section-body">
+        ${rows.length ? rows.map((r) => `
+          <div class="diag-row">
+            <div class="diag-top"><b>${escapeHtml(r.owner)}</b><span>${escapeHtml(when(r.at))}</span></div>
+            <div class="diag-msg">${escapeHtml(String(r.message ?? "").slice(0, 400))}</div>
+            <div class="diag-ua">${escapeHtml(device(r.ua))}</div>
+          </div>`).join("") : `<div class="ios-row"><div class="ios-row-label">${t("diag.none")}</div></div>`}
+      </div>
+      <div class="ios-section-footer">${t("diag.hint")}</div>
+    </details>`;
+}
+
 function membersSectionHtml() {
   return `<div class="ios-section" id="members-section"></div>`;
 }

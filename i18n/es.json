@@ -1057,5 +1057,10 @@
     "note_little": "Una cucharadita (5 g, 44 kcal).",
     "note_lot": "Cucharada y media (20 g, 177 kcal).",
     "itemName": "aceite de cocina"
+  },
+  "diag": {
+    "title": "Problemas de la app ({n})",
+    "none": "No hay nada reportado.",
+    "hint": "Lo que reportaron los teléfonos: fallos al abrir, GIF que no cargaron y el GIF de Inicio que elegiste. Solo tú ves esto."
   }
 }

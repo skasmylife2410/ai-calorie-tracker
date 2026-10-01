@@ -119,6 +119,8 @@ test("exercise credit: Auto follows the activity level, never more than 40%", ()
   assert.equal(creditRatioFor({ activityLevel: "light", exerciseCreditPct: 100 }), 0.4, "older 'all' and '50%' are capped at 40%");
   assert.equal(creditRatioFor({ activityLevel: "light", exerciseCreditPct: 50 }), 0.4);
   assert.equal(creditRatioFor({ activityLevel: "sedentary", exerciseCreditPct: "auto" }), 0.4);
+  assert.equal(creditRatioFor({ activityLevel: "sedentary", learnedTdeeOn: true }), 0.1, "a learned maintenance already includes usual workouts");
+  assert.equal(creditRatioFor({ activityLevel: "sedentary", learnedTdeeOn: true, exerciseCreditPct: 40 }), 0.4, "a choice still wins");
   assert.equal(EXERCISE_CREDIT_RATIO, 0.25);
   assert.equal(exerciseCredit(430), 108);
   assert.equal(exerciseCredit(430, 0.4), 172);

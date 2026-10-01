@@ -13,10 +13,10 @@ const OFF_USER_AGENT = "SnapCal/1.0 (personal calorie tracker; you@example.com)"
 // it — there is no web equivalent of setting a custom UA from client JS. We still set it so the
 // header is honored in any environment that does allow it (e.g. a future server-side proxy).
 
-const OFF_TIMEOUT_MS = 10_000;
-const USDA_TIMEOUT_MS = 10_000;
-const GROUNDING_PER_ITEM_TIMEOUT_MS = 3_000;
-const GROUNDING_BATCH_BUDGET_MS = 4_000;
+const OFF_TIMEOUT_MS = 10000;
+const USDA_TIMEOUT_MS = 10000;
+const GROUNDING_PER_ITEM_TIMEOUT_MS = 3000;
+const GROUNDING_BATCH_BUDGET_MS = 4000;
 const GROUNDING_RATIO_MIN = 0.3;
 const GROUNDING_RATIO_MAX = 3.0;
 const USDA_DEMO_KEY = "DEMO_KEY";
@@ -35,7 +35,7 @@ function lenientNumber(value) {
   return undefined;
 }
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 10_000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -562,7 +562,7 @@ export async function lookupBarcodeBoth(barcode, { usdaKey, timeoutMs } = {}) {
 export async function foodLookup(barcode) {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12_000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     const res = await apiFetch(`/api/foods?barcode=${encodeURIComponent(barcode)}`, { signal: controller.signal }).finally(() => clearTimeout(timer));
     if (res.ok) {
       const body = await res.json();
@@ -724,7 +724,7 @@ export function microsFromRaw(raw) {
  * either {ok:true, items} or {ok:false, errorType, message}.
  * @param {{mode:"meal"|"label"|"text", imageDataUrl?:string, text?:string}} params
  */
-const GEMINI_TIMEOUT_MS = 75_000;
+const GEMINI_TIMEOUT_MS = 75000;
 
 export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
   let image;

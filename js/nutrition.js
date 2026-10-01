@@ -305,9 +305,15 @@ export function autoCreditRatio(activityLevel) {
 }
 
 /** The share of exercise added to the budget for a profile: its own choice, else Auto. */
+export const LEARNED_AUTO_CREDIT = 0.1;
 export function creditRatioFor(profile) {
   const raw = profile?.exerciseCreditPct;
-  if (raw === undefined || raw === null || raw === "" || raw === "auto") return autoCreditRatio(profile?.activityLevel);
+  if (raw === undefined || raw === null || raw === "" || raw === "auto") {
+    // A maintenance learned from real intake and weight already includes the workouts this
+    // person usually does; only a little more is added for each one logged.
+    const auto = autoCreditRatio(profile?.activityLevel);
+    return profile?.learnedTdeeOn === true ? Math.min(auto, LEARNED_AUTO_CREDIT) : auto;
+  }
   const pct = Number(raw);
   if (pct === 50 || pct === 100) return EXERCISE_CREDIT_MAX; // older choices, now capped
   const r = pct / 100;

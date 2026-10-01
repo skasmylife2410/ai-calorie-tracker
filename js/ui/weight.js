@@ -57,7 +57,7 @@ function collect() {
 
 export function render(container) {
   const p = collect();
-  const avg = p.cur.weightEnd ?? store.weightSeries(3650).at(-1)?.avg ?? null;
+  const avg = p.cur.weightEnd ?? store.weightSeries(3650).slice(-1)[0]?.avg ?? null;
   const latest = store.latestWeight();
   const series = store.weightSeries(range);
 
@@ -229,7 +229,7 @@ function timelineHtml(p) {
   // weight scale from what's in range (plus the goal when it's close enough to matter)
   const weighed = days.map((d, i) => ({ i, v: d.weightAvg, raw: d.weightKg })).filter((d) => d.v !== null);
   const vals = weighed.flatMap((d) => [d.v, d.raw]);
-  if (goalKg && vals.length && Math.abs(goalKg - vals.at(-1)) < 6) vals.push(goalKg);
+  if (goalKg && vals.length && Math.abs(goalKg - vals[vals.length - 1]) < 6) vals.push(goalKg);
   const min = vals.length ? Math.min(...vals) - 0.5 : 0;
   const max = vals.length ? Math.max(...vals) + 0.5 : 1;
   const y = (v) => TL.top + (1 - (v - min) / Math.max(1, max - min)) * TL.chartH;

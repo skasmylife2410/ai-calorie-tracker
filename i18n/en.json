@@ -1057,5 +1057,10 @@
     "note_little": "About a teaspoon (5 g, 44 kcal).",
     "note_lot": "About 1½ tablespoons (20 g, 177 kcal).",
     "itemName": "cooking oil"
+  },
+  "diag": {
+    "title": "App problems ({n})",
+    "none": "Nothing reported.",
+    "hint": "What phones reported: start-up failures, GIFs that wouldn't load, and the Home GIF you picked. Only you see this."
   }
 }

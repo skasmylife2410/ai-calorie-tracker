@@ -172,7 +172,7 @@ function showoffDoodle() {
   if (nano) return { kind: "img", src: nano };
   const face = p.avatar ? cachedFaceDoodle(p.avatar) : null;
   const svg = doodleSvg({ state: "showoff", variant, size: 300, face })
-    .replaceAll("var(--sc-primary-text)", INK).replaceAll("var(--sc-secondary)", SEC);
+    .split("var(--sc-primary-text)").join(INK).split("var(--sc-secondary)").join(SEC);
   return { kind: "svg", svg };
 }
 
