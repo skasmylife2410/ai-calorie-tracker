@@ -171,7 +171,9 @@
     "statWater": "{n} vasos al día",
     "statWorkouts": "{n} entreno|{n} entrenos",
     "weekChart": "{name}: promedio de {avg} kcal en {d} días",
-    "keyEatenShort": "Comido"
+    "keyEatenShort": "Comido",
+    "boostTitle": "+{n} kcal por ejercicio",
+    "keyBoost": "Extra por ejercicio"
   },
   "profile": {
     "language": "Idioma",

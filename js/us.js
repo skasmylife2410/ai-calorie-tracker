@@ -10,6 +10,7 @@ import { openNoteSheet } from "./ui/us-social.js";
 import { renderRecap } from "./ui/us-recap.js";
 import { renderPushCard } from "./ui/push-ui.js";
 import { localDateString, addDays, startOfDay } from "./nutrition.js";
+import { icon } from "./ui/icons.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
 // container when mounted inside the app.
@@ -109,9 +110,13 @@ function avatarHtml(p, i, size = 40) {
  * cue, and moves inside the fill (reversed) when the empty track is too short for it.
  */
 const GOAL_AT = 80;
-export function kcalBarHtml(d, goal, c = COLORS[0]) {
+export function kcalBarHtml(d, baseGoal, c = COLORS[0]) {
   const style = `--pc:${c.solid};--pc-soft:${c.soft}`;
-  if (!(goal > 0)) return `<div class="us-kbar" style="${style}"></div>`;
+  if (!(baseGoal > 0)) return `<div class="us-kbar" style="${style}"></div>`;
+  // Exercise raises the day's budget: the goal mark moves out by that much, and the stretch it
+  // added shows as a hatched band ending at the mark, so the boost is visible at a glance.
+  const credit = Math.max(0, Math.round(d.credit || 0));
+  const goal = baseGoal + credit;
   const eaten = Math.max(0, d.calories || 0);
   const scale = (v) => (v / goal) * GOAL_AT;
   let parts = ["morning", "afternoon", "evening"].map((k) => Math.max(0, d[k] || 0));
@@ -145,7 +150,10 @@ export function kcalBarHtml(d, goal, c = COLORS[0]) {
       ? `<span class="us-klabel" style="left:${(fillEnd + 2).toFixed(2)}%">${text}</span>`
       : `<span class="us-klabel is-rev" style="right:${(100 - fillEnd + 2).toFixed(2)}%">${text}</span>`;
   }
-  return `<div class="us-kbar" style="${style}" role="img" aria-label="${fmt(eaten)} / ${fmt(goal)} kcal">${segs.join("")}${over}<i class="us-kgoal" style="left:${GOAL_AT}%"></i>${label}</div>`;
+  const boost = credit > 0
+    ? `<span class="us-kboost" style="left:${scale(baseGoal).toFixed(2)}%;width:${(GOAL_AT - scale(baseGoal)).toFixed(2)}%" title="${t("us.boostTitle", { n: fmt(credit) })}"></span>`
+    : "";
+  return `<div class="us-kbar" style="${style}" role="img" aria-label="${fmt(eaten)} / ${fmt(goal)} kcal${credit > 0 ? ` (${t("us.boostTitle", { n: fmt(credit) })})` : ""}">${boost}${segs.join("")}${over}<i class="us-kgoal" style="left:${GOAL_AT}%"></i>${label}</div>`;
 }
 
 function todayHtml(people) {
@@ -167,7 +175,8 @@ function todayHtml(people) {
           ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : `<button type="button" class="us-note-btn" data-note-to="${escHtml(p.owner)}" aria-label="${t("social.writeNote")}">✉︎</button>`}
           <span class="us-spacer"></span>
           <span class="us-eaten">${fmt(d.calories)}</span>
-          ${goal ? `<span class="us-goal">/ ${fmt(goal)}</span>` : ""}
+          ${goal ? `<span class="us-goal">/ ${fmt(goal + (d.credit || 0))}</span>` : ""}
+          ${goal && d.credit > 0 ? `<span class="us-boost" title="${t("us.boostTitle", { n: fmt(d.credit) })}">${icon("boltFill", { size: 11 })}+${fmt(d.credit)}</span>` : ""}
         </div>
         ${kcalBarHtml(d, goal, c)}
         <div class="us-row-foot">
@@ -183,6 +192,7 @@ function todayHtml(people) {
       <span><i class="k-eaten"></i>${t("us.keyEaten")}</span>
       <span><i class="k-over"></i>${t("us.keyOver")}</span>
       <span><i class="k-goal"></i>${t("us.keyGoal")}</span>
+      ${people.some((p) => (p.days[key] || EMPTY_DAY).credit > 0) ? `<span><i class="k-boost"></i>${t("us.keyBoost")}</span>` : ""}
     </div>
   </section>`;
 }

@@ -937,6 +937,29 @@ export function allExerciseEntries() {
 }
 
 /** Adds an exercise entry. caloriesBurned is estimated from the profile weight when omitted. */
+/**
+ * Estimates changed (net of resting burn, everyday METs), so exercise logged with the app's
+ * own estimate is recalculated once. Calories someone typed from a watch or machine are kept.
+ * The new updatedAt makes sync carry the corrected numbers to the server (and the Us page).
+ */
+const EXERCISE_ESTIMATE_VERSION = 2;
+export function refreshExerciseEstimates() {
+  let v = 0;
+  try { v = Number(localStorage.getItem("snapcal.exerciseEstimateV")) || 0; } catch { /* private mode */ }
+  if (v >= EXERCISE_ESTIMATE_VERSION) return 0;
+  const list = allExerciseRaw();
+  let changed = 0;
+  const now = Date.now();
+  for (const e of list) {
+    if (e.kcalEntered === true || !(e.minutes > 0)) continue;
+    const fresh = estimateCaloriesBurned({ activity: e.activity, minutes: e.minutes, intensity: e.intensity, weightKg: getProfile().weightKg });
+    if (fresh !== e.caloriesBurned) { e.caloriesBurned = fresh; e.updatedAt = now; changed += 1; }
+  }
+  if (changed) saveExercise(list);
+  try { localStorage.setItem("snapcal.exerciseEstimateV", String(EXERCISE_ESTIMATE_VERSION)); } catch { /* private mode */ }
+  return changed;
+}
+
 export function addExerciseEntry(fields = {}) {
   const now = Date.now();
   const activity = normalizeActivity(fields.activity);

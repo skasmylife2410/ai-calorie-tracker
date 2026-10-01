@@ -299,9 +299,13 @@ export function exerciseCredit(caloriesBurned, ratio = EXERCISE_CREDIT_RATIO) {
   return Math.round(n * ratio);
 }
 
-/** MET values per activity at moderate intensity (compendium of physical activities, rounded). */
+/**
+ * MET values per activity at moderate intensity (Compendium of Physical Activities, rounded).
+ * Picked for an everyday session, not a hard one: a jog rather than a 6-mph run, weights with
+ * rests between sets, leisure cycling and swimming. "hard" in the sheet scales them up.
+ */
 export const ACTIVITY_METS = Object.freeze({
-  walk: 3.5, run: 9.8, soccer: 7.0, gym: 5.0, cycling: 7.5, swim: 7.0, other: 5.0,
+  walk: 3.5, run: 8.3, soccer: 7.0, gym: 3.5, cycling: 6.8, swim: 6.0, other: 4.0,
 });
 
 export const INTENSITY_FACTORS = Object.freeze({ easy: 0.75, moderate: 1.0, hard: 1.3 });
@@ -326,7 +330,10 @@ export function estimateCaloriesBurned({ activity, minutes, intensity, weightKg 
   const met = ACTIVITY_METS[normalizeActivity(activity)];
   const factor = INTENSITY_FACTORS[normalizeIntensity(intensity)];
   const kg = Number.isFinite(Number(weightKg)) && Number(weightKg) > 0 ? Number(weightKg) : 70;
-  return Math.round(met * factor * kg * (mins / 60));
+  // Net of resting: 1 MET is what the body burns sitting still, and the daily target already
+  // counts that hour. Gross METs (the usual formula, and most apps) count it twice.
+  const net = Math.max(0, met * factor - 1);
+  return Math.round(net * kg * (mins / 60));
 }
 
 export function startOfDay(date) {

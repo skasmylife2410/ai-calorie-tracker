@@ -91,10 +91,12 @@ test("the heart toggles off and reports its state", () => {
 // --- exercise ---------------------------------------------------------------
 
 test("burn is estimated from MET, intensity, weight and duration", () => {
-  // soccer MET 7.0 x hard 1.3 x 80kg x 0.75h = 546
-  assert.equal(estimateCaloriesBurned({ activity: "soccer", minutes: 45, intensity: "hard", weightKg: 80 }), 546);
-  // unknown activity falls back to "other" (MET 5.0); no weight falls back to 70kg
-  assert.equal(estimateCaloriesBurned({ activity: "quidditch", minutes: 60, intensity: "moderate" }), 350);
+  // net of resting: (soccer MET 7.0 x hard 1.3 - 1) x 80kg x 0.75h = 486
+  assert.equal(estimateCaloriesBurned({ activity: "soccer", minutes: 45, intensity: "hard", weightKg: 80 }), 486);
+  // unknown activity falls back to "other" (MET 4.0); no weight falls back to 70kg: (4 - 1) x 70 x 1h
+  assert.equal(estimateCaloriesBurned({ activity: "quidditch", minutes: 60, intensity: "moderate" }), 210);
+  // an hour of gym at 80kg: (3.5 - 1) x 80 = 200, not the 400 the gross formula gave
+  assert.equal(estimateCaloriesBurned({ activity: "gym", minutes: 60, intensity: "moderate", weightKg: 80 }), 200);
   assert.equal(estimateCaloriesBurned({ activity: "run", minutes: 0 }), 0);
 });
 
@@ -114,18 +116,18 @@ test("dayEnergy shows the full burn, and credits it only as far as the setting s
   store.addExerciseEntry({ name: "Soccer", activity: "soccer", minutes: 45, intensity: "moderate" });
 
   let day = store.dayEnergy();
-  assert.equal(day.burned, 420, "the burn is still recorded and shown");
-  assert.equal(day.credit, 210, "by default half of it raises the budget");
-  assert.equal(day.adjustedTarget, 2210);
-  assert.equal(day.remaining, 1410);
+  assert.equal(day.burned, 360, "the burn is still recorded and shown");
+  assert.equal(day.credit, 180, "by default half of it raises the budget");
+  assert.equal(day.adjustedTarget, 2180);
+  assert.equal(day.remaining, 1380);
 
   store.setProfile({ exerciseCreditPct: 0 });
   assert.equal(store.dayEnergy().credit, 0, "unless the person turned it off");
 
   store.setProfile({ exerciseCreditPct: 50 });
   day = store.dayEnergy();
-  assert.equal(day.credit, 210);
-  assert.equal(day.adjustedTarget, 2210);
+  assert.equal(day.credit, 180);
+  assert.equal(day.adjustedTarget, 2180);
 
   store.setProfile({ exerciseCreditPct: 60 }); // not one of the offered choices -> treated as 0
   assert.equal(store.dayEnergy().credit, 0);

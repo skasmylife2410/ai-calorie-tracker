@@ -171,7 +171,9 @@
     "statWater": "{n} glasses a day",
     "statWorkouts": "{n} workout|{n} workouts",
     "weekChart": "{name}: average {avg} kcal over {d} days",
-    "keyEatenShort": "Eaten"
+    "keyEatenShort": "Eaten",
+    "boostTitle": "+{n} kcal from exercise",
+    "keyBoost": "Exercise boost"
   },
   "profile": {
     "language": "Language",
