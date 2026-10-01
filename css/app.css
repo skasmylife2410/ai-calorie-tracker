@@ -2503,5 +2503,5 @@ body.setup-open { overflow: hidden; }
 :root:not([data-theme="mono"]) .chip-myth b { background: var(--sc-accent-water-text); }
 /* a past day with nothing logged: the circle fades, its name stays readable */
 .week-day-col.past-nolog { opacity: 1; }
-.week-day-col.past-nolog .week-day-circle { opacity: .7; }
+.week-day-col.past-nolog .week-day-circle { opacity: 1; } /* the dashed ring already says "nothing logged" */
 :root:not([data-theme="mono"]) .ex-chip.is-on { background: var(--sc-accent-exercise-text); }
