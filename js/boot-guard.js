@@ -14,6 +14,26 @@
     if (!text) return;
     text = String(text).slice(0, 600);
     if (errors.indexOf(text) < 0 && errors.length < 8) errors.push(text);
+    if (SKEW.test(text)) autoRepair();
+  }
+
+  // An update half-arrived: a new file asks an old cached one for something it doesn't have yet
+  // (Safari: "Importing binding name 'x' is not found"; Chrome: "does not provide an export
+  // named"). Clearing the cached files and reloading fixes it, so do that by ourselves, once
+  // per 10 minutes so a real bug can never loop; otherwise the rescue screen still shows.
+  var SKEW = /Importing binding name|does not provide an export named|requested module .* does not provide/i;
+  var autoRepairing = false;
+  function autoRepair() {
+    if (autoRepairing) return;
+    var last = 0;
+    try { last = Number(sessionStorage.getItem("snapcal.autoRepairAt")) || Number(localStorage.getItem("snapcal.autoRepairAt")) || 0; } catch (e) { /* private mode */ }
+    if (Date.now() - last < 10 * 60 * 1000) return;
+    autoRepairing = true;
+    var now = String(Date.now());
+    try { sessionStorage.setItem("snapcal.autoRepairAt", now); localStorage.setItem("snapcal.autoRepairAt", now); } catch (e) { /* private mode */ }
+    errors.push("auto-repair: mixed app versions, clearing cached files");
+    report();
+    setTimeout(repair, 150); // let the report leave first
   }
 
   window.addEventListener("error", function (e) {
