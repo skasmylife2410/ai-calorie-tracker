@@ -287,17 +287,19 @@ export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 })
  * formula burn estimates run high, and TDEE already includes some daily activity, so crediting
  * every burned calorie double-counts. The UI always shows the full burn AND the credited part.
  */
-// Default: half of the estimated burn is added to the day's budget (estimates from apps and
-// watches run high). Profile offers none, a quarter, half or all of it.
-export const EXERCISE_CREDIT_RATIO = 0.5;
-export const EXERCISE_CREDIT_CHOICES = [0, 0.25, 0.5, 1];
+// How much of a workout's estimated burn is added to the day's budget. Never all of it: estimates
+// (ours, apps', watches') run high, and people tend to move less for the rest of a day they
+// trained. 40% at most; Profile offers none, 25% or 40%, and "Auto" (below) is the default.
+export const EXERCISE_CREDIT_RATIO = 0.25;
+export const EXERCISE_CREDIT_CHOICES = [0, 0.25, 0.4];
+export const EXERCISE_CREDIT_MAX = 0.4;
 
 /**
- * "Auto": how much of a workout to add depends on the activity level the target was built with.
- * A sedentary target (x1.2) assumes no exercise, so a workout is all extra; the active levels'
- * multipliers already include regular training, so adding it again would count it twice.
+ * "Auto": how much depends on the activity level the target was built with. A sedentary target
+ * (x1.2) assumes no exercise, so a workout gets the most; the active levels' multipliers already
+ * include regular training, so they get less, and very active none (it would count twice).
  */
-export const AUTO_CREDIT_BY_ACTIVITY = Object.freeze({ sedentary: 1, light: 0.5, moderate: 0.25, veryActive: 0 });
+export const AUTO_CREDIT_BY_ACTIVITY = Object.freeze({ sedentary: 0.4, light: 0.3, moderate: 0.25, veryActive: 0 });
 export function autoCreditRatio(activityLevel) {
   return AUTO_CREDIT_BY_ACTIVITY[normalizeActivityLevel(activityLevel)] ?? EXERCISE_CREDIT_RATIO;
 }
@@ -306,7 +308,9 @@ export function autoCreditRatio(activityLevel) {
 export function creditRatioFor(profile) {
   const raw = profile?.exerciseCreditPct;
   if (raw === undefined || raw === null || raw === "" || raw === "auto") return autoCreditRatio(profile?.activityLevel);
-  const r = Number(raw) / 100;
+  const pct = Number(raw);
+  if (pct === 50 || pct === 100) return EXERCISE_CREDIT_MAX; // older choices, now capped
+  const r = pct / 100;
   return EXERCISE_CREDIT_CHOICES.includes(r) ? r : 0;
 }
 
@@ -342,16 +346,32 @@ export function normalizeIntensity(raw) {
  * kcal = MET x intensity x weightKg x hours. Falls back to 70 kg when the profile has no weight,
  * so the number is still roughly right rather than zero.
  */
-export function estimateCaloriesBurned({ activity, minutes, intensity, weightKg }) {
+/** Activities where you carry your whole body, so the cost rises in step with your weight. */
+const WEIGHT_BEARING = new Set(["walk", "run", "soccer"]);
+
+/**
+ * Calories a session burns on top of what the body burns anyway, for this person.
+ *
+ * - Activity cost: MET x intensity x body mass (1 MET ~ 1 kcal per kg per hour). Walking, running
+ *   and soccer move your whole weight, so they scale with it fully; cycling, swimming and the gym
+ *   much less (the bike and the water carry you, weights load the arms), so they use a damped
+ *   mass, 70 kg x (kg / 70)^0.5.
+ * - Minus this person's own resting burn for that time (Mifflin-St Jeor / 24 per hour) rather
+ *   than the textbook 1 kcal/kg/h, which is too high for people with more body fat and would cut
+ *   their real extra burn short. The daily target already counts the resting part.
+ * Falls back to 70 kg and 1 kcal/kg/h when weight, height or age aren't known.
+ */
+export function estimateCaloriesBurned({ activity, minutes, intensity, weightKg, heightCm, age, sex }) {
   const mins = Number(minutes);
   if (!Number.isFinite(mins) || mins <= 0) return 0;
-  const met = ACTIVITY_METS[normalizeActivity(activity)];
-  const factor = INTENSITY_FACTORS[normalizeIntensity(intensity)];
-  const kg = Number.isFinite(Number(weightKg)) && Number(weightKg) > 0 ? Number(weightKg) : 70;
-  // Net of resting: 1 MET is what the body burns sitting still, and the daily target already
-  // counts that hour. Gross METs (the usual formula, and most apps) count it twice.
-  const net = Math.max(0, met * factor - 1);
-  return Math.round(net * kg * (mins / 60));
+  const kind = normalizeActivity(activity);
+  const met = ACTIVITY_METS[kind] * INTENSITY_FACTORS[normalizeIntensity(intensity)];
+  const kg = Number(weightKg) > 0 ? Number(weightKg) : 70;
+  const mass = WEIGHT_BEARING.has(kind) ? kg : 70 * Math.sqrt(kg / 70);
+  const h = Number(heightCm), a = Number(age);
+  const restingPerHour = h > 0 && a > 0 ? mifflinStJeorBMR(kg, h, a, normalizeSex(sex)) / 24 : kg;
+  const net = Math.max(0, met * mass - restingPerHour);
+  return Math.round(net * (mins / 60));
 }
 
 export function startOfDay(date) {

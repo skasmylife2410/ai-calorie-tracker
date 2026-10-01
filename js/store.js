@@ -938,7 +938,10 @@ export function allExerciseEntries() {
  * own estimate is recalculated once. Calories someone typed from a watch or machine are kept.
  * The new updatedAt makes sync carry the corrected numbers to the server (and the Us page).
  */
-const EXERCISE_ESTIMATE_VERSION = 2;
+const EXERCISE_ESTIMATE_VERSION = 3;
+
+/** What the burn estimate needs to know about the person. */
+export const bodyOf = (p) => ({ weightKg: p?.weightKg, heightCm: p?.heightCm, age: p?.age, sex: p?.sex });
 export function refreshExerciseEstimates() {
   let v = 0;
   try { v = Number(localStorage.getItem("snapcal.exerciseEstimateV")) || 0; } catch { /* private mode */ }
@@ -948,7 +951,7 @@ export function refreshExerciseEstimates() {
   const now = Date.now();
   for (const e of list) {
     if (e.kcalEntered === true || !(e.minutes > 0)) continue;
-    const fresh = estimateCaloriesBurned({ activity: e.activity, minutes: e.minutes, intensity: e.intensity, weightKg: getProfile().weightKg });
+    const fresh = estimateCaloriesBurned({ activity: e.activity, minutes: e.minutes, intensity: e.intensity, ...bodyOf(getProfile()) });
     if (fresh !== e.caloriesBurned) { e.caloriesBurned = fresh; e.updatedAt = now; changed += 1; }
   }
   if (changed) saveExercise(list);
@@ -963,7 +966,7 @@ export function addExerciseEntry(fields = {}) {
   const minutes = Math.max(0, Math.round(Number(fields.minutes) || 0));
   const burned = Number.isFinite(Number(fields.caloriesBurned)) && Number(fields.caloriesBurned) > 0
     ? Math.round(Number(fields.caloriesBurned))
-    : estimateCaloriesBurned({ activity, minutes, intensity, weightKg: getProfile().weightKg });
+    : estimateCaloriesBurned({ activity, minutes, intensity, ...bodyOf(getProfile()) });
   const entry = {
     id: fields.id ?? generateId(),
     name: fields.name ?? "",

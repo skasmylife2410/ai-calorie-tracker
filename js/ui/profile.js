@@ -559,7 +559,7 @@ function accuracySectionHtml(profile) {
       <div class="ios-section-body">
         <div class="lang-row">
           <button type="button" class="lang-btn${auto ? " is-on" : ""}" data-excredit="auto">${t("accuracy.exAuto", { pct })}</button>
-          ${[0, 25, 50, 100].map((v) => `<button type="button" class="lang-btn${!auto && v === pct ? " is-on" : ""}" data-excredit="${v}">${t(`accuracy.ex${v}`)}</button>`).join("")}
+          ${[0, 25, 40].map((v) => `<button type="button" class="lang-btn${!auto && v === pct ? " is-on" : ""}" data-excredit="${v}">${t(`accuracy.ex${v}`)}</button>`).join("")}
         </div>
       </div>
       <div class="ios-section-footer">${t("accuracy.exHint")}</div>

@@ -105,7 +105,6 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
         parse: panel.querySelector("#ex-parse"),
       };
 
-      const weightKg = store.getProfile().weightKg;
 
       const renderChips = () => {
         els.activities.innerHTML = ACTIVITIES.map(
@@ -136,7 +135,7 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
           return;
         }
         saveBtn.disabled = false;
-        const burned = estimateCaloriesBurned({ activity, minutes, intensity, weightKg });
+        const burned = estimateCaloriesBurned({ activity, minutes, intensity, ...store.bodyOf(store.getProfile()) });
         const credit = exerciseCredit(burned, store.exerciseCreditRatio());
         els.burn.innerHTML = `
           <div class="ex-burn-top"><span class="ex-burn-num">−${formatNumber(burned)}</span><span class="ex-burn-unit">${t("exercise.burned")}</span></div>

@@ -103,7 +103,7 @@
     "modeEstimate": "Estimar",
     "modeKcal": "Escribir kcal",
     "kcalLabel": "Calorías quemadas",
-    "kcalHint": "De tu reloj, una máquina del gimnasio o una app de ejercicio.",
+    "kcalHint": "Usa las calorías ACTIVAS de tu reloj o app, no las totales: las totales incluyen lo que quemarías sin moverte, y tu meta ya lo cuenta.",
     "minutesOptional": "Minutos (opcional)",
     "rowSubKcal": "−{burned} kcal ({credit} contadas)"
   },
@@ -449,8 +449,7 @@
     "exTitle": "Calorías del ejercicio",
     "ex0": "Nada",
     "ex25": "25%",
-    "ex50": "50%",
-    "exHint": "Auto depende de tu nivel de actividad: sedentario suma todo el entrenamiento, porque tu meta no cuenta ninguno; ligeramente activo suma la mitad, moderadamente activo un cuarto y muy activo nada, porque esas metas ya incluyen tu entrenamiento. El ejercicio se registra y se muestra igual.",
+    "exHint": "Nunca todo: las estimaciones de gasto se quedan altas y el resto del día uno suele moverse menos cuando entrena. Auto depende de tu nivel de actividad: sedentario suma 40%, ligeramente activo 30%, moderadamente activo 25%, muy activo nada (esa meta ya incluye tu entrenamiento). El ejercicio se registra y se muestra igual.",
     "learnTitle": "Mantenimiento aprendido",
     "learnOn": "Usarlo",
     "learnOff": "Solo fórmula",
@@ -470,8 +469,8 @@
     },
     "exNoteOff": "Registrado, sin sumarlo al presupuesto de hoy: las estimaciones de gasto suelen quedarse altas. Puedes cambiarlo en Perfil.",
     "exNoteOn": "{credit} kcal se suman al presupuesto de hoy (ajuste de {pct}% en Perfil).",
-    "ex100": "Todo",
-    "exAuto": "Auto ({pct}%)"
+    "exAuto": "Auto ({pct}%)",
+    "ex40": "40%"
   },
   "invite": {
     "title": "Invitar personas",

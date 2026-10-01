@@ -103,7 +103,7 @@
     "modeEstimate": "Estimate",
     "modeKcal": "Enter kcal",
     "kcalLabel": "Calories burned",
-    "kcalHint": "From your watch, a gym machine or a fitness app.",
+    "kcalHint": "Use the ACTIVE calories from your watch or app, not the total: the total includes what you'd burn sitting still, which your target already counts.",
     "minutesOptional": "Minutes (optional)",
     "rowSubKcal": "−{burned} kcal ({credit} counted)"
   },
@@ -449,8 +449,7 @@
     "exTitle": "Exercise calories",
     "ex0": "None",
     "ex25": "25%",
-    "ex50": "50%",
-    "exHint": "Auto goes by your activity level: sedentary adds all of a workout, because your target assumes none; lightly active adds half, moderately active a quarter, and very active nothing, since those targets already include your training. Exercise is logged and shown either way.",
+    "exHint": "Never all of it: burn estimates run high, and people tend to move less for the rest of a day they trained. Auto goes by your activity level: sedentary adds 40%, lightly active 30%, moderately active 25%, very active nothing (that target already includes your training). Exercise is logged and shown either way.",
     "learnTitle": "Learned maintenance",
     "learnOn": "Use it",
     "learnOff": "Formula only",
@@ -470,8 +469,8 @@
     },
     "exNoteOff": "Logged, not added to today's budget — burn estimates run high. You can change this in Profile.",
     "exNoteOn": "{credit} kcal of that is added to today's budget ({pct}% setting in Profile).",
-    "ex100": "All",
-    "exAuto": "Auto ({pct}%)"
+    "exAuto": "Auto ({pct}%)",
+    "ex40": "40%"
   },
   "invite": {
     "title": "Invite people",

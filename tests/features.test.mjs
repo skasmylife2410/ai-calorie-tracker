@@ -95,24 +95,34 @@ test("burn is estimated from MET, intensity, weight and duration", () => {
   assert.equal(estimateCaloriesBurned({ activity: "soccer", minutes: 45, intensity: "hard", weightKg: 80 }), 486);
   // unknown activity falls back to "other" (MET 4.0); no weight falls back to 70kg: (4 - 1) x 70 x 1h
   assert.equal(estimateCaloriesBurned({ activity: "quidditch", minutes: 60, intensity: "moderate" }), 210);
-  // an hour of gym at 80kg: (3.5 - 1) x 80 = 200, not the 400 the gross formula gave
-  assert.equal(estimateCaloriesBurned({ activity: "gym", minutes: 60, intensity: "moderate", weightKg: 80 }), 200);
+  // the gym doesn't scale fully with weight: 3.5 x 70 x sqrt(80/70) - 80 = 182 (the gross formula gave 400)
+  assert.equal(estimateCaloriesBurned({ activity: "gym", minutes: 60, intensity: "moderate", weightKg: 80 }), 182);
+  // with height and age, the person's own resting burn is taken off: a heavier body at rest burns
+  // less per kg, so more of a walk is extra
+  const fit = estimateCaloriesBurned({ activity: "walk", minutes: 60, intensity: "moderate", weightKg: 70, heightCm: 178, age: 30, sex: "male" });
+  const heavy = estimateCaloriesBurned({ activity: "walk", minutes: 60, intensity: "moderate", weightKg: 105, heightCm: 170, age: 40, sex: "female" });
+  assert.equal(fit, 176);
+  assert.equal(heavy, 295);
+  // cycling moves the bike, not your weight: much less difference between the two
+  const fitBike = estimateCaloriesBurned({ activity: "cycling", minutes: 60, intensity: "moderate", weightKg: 70, heightCm: 178, age: 30, sex: "male" });
+  const heavyBike = estimateCaloriesBurned({ activity: "cycling", minutes: 60, intensity: "moderate", weightKg: 105, heightCm: 170, age: 40, sex: "female" });
+  assert.ok(heavyBike / fitBike < heavy / fit);
   assert.equal(estimateCaloriesBurned({ activity: "run", minutes: 0 }), 0);
 });
 
-test("exercise credit: Auto follows the activity level; none, a quarter, half or all if chosen", () => {
-  assert.equal(creditRatioFor({ activityLevel: "sedentary" }), 1);
-  assert.equal(creditRatioFor({ activityLevel: "light" }), 0.5);
+test("exercise credit: Auto follows the activity level, never more than 40%", () => {
+  assert.equal(creditRatioFor({ activityLevel: "sedentary" }), 0.4);
+  assert.equal(creditRatioFor({ activityLevel: "light" }), 0.3);
   assert.equal(creditRatioFor({ activityLevel: "moderate" }), 0.25);
   assert.equal(creditRatioFor({ activityLevel: "veryActive" }), 0);
-  assert.equal(creditRatioFor({ activityLevel: "veryActive", exerciseCreditPct: 50 }), 0.5, "a choice beats Auto");
-  assert.equal(creditRatioFor({ activityLevel: "sedentary", exerciseCreditPct: "auto" }), 1);
-  assert.equal(EXERCISE_CREDIT_RATIO, 0.5);
-  assert.equal(exerciseCredit(430), 215, "default: half of the estimate is added to the budget");
-  assert.equal(exerciseCredit(430, 1), 430);
-  assert.equal(exerciseCredit(430, 0.5), 215);
-  assert.equal(exerciseCredit(430, 0.25), 108);
-  assert.equal(exerciseCredit(-100, 0.5), 0);
+  assert.equal(creditRatioFor({ activityLevel: "veryActive", exerciseCreditPct: 25 }), 0.25, "a choice beats Auto");
+  assert.equal(creditRatioFor({ activityLevel: "light", exerciseCreditPct: 100 }), 0.4, "older 'all' and '50%' are capped at 40%");
+  assert.equal(creditRatioFor({ activityLevel: "light", exerciseCreditPct: 50 }), 0.4);
+  assert.equal(creditRatioFor({ activityLevel: "sedentary", exerciseCreditPct: "auto" }), 0.4);
+  assert.equal(EXERCISE_CREDIT_RATIO, 0.25);
+  assert.equal(exerciseCredit(430), 108);
+  assert.equal(exerciseCredit(430, 0.4), 172);
+  assert.equal(exerciseCredit(-100, 0.4), 0);
 });
 
 test("dayEnergy shows the full burn, and credits it only as far as the setting says", () => {
@@ -122,13 +132,13 @@ test("dayEnergy shows the full burn, and credits it only as far as the setting s
   store.addExerciseEntry({ name: "Soccer", activity: "soccer", minutes: 45, intensity: "moderate" });
 
   let day = store.dayEnergy();
-  assert.equal(day.burned, 360, "the burn is still recorded and shown");
-  assert.equal(day.credit, 90, "Auto for a moderately active target: a quarter, the rest is already in it");
-  assert.equal(day.adjustedTarget, 2090);
-  assert.equal(day.remaining, 1290);
+  assert.equal(day.burned, 366, "the burn is still recorded and shown");
+  assert.equal(day.credit, 92, "Auto for a moderately active target: a quarter, the rest is already in it");
+  assert.equal(day.adjustedTarget, 2092);
+  assert.equal(day.remaining, 1292);
 
   store.setProfile({ activityLevel: "sedentary" });
-  assert.equal(store.dayEnergy().credit, 360, "a sedentary target assumes no exercise: all of it counts");
+  assert.equal(store.dayEnergy().credit, 146, "a sedentary target assumes no exercise: the most, 40%");
   store.setProfile({ activityLevel: "veryActive" });
   assert.equal(store.dayEnergy().credit, 0, "a very active target already includes training");
   store.setProfile({ activityLevel: "moderate" });
@@ -136,10 +146,10 @@ test("dayEnergy shows the full burn, and credits it only as far as the setting s
   store.setProfile({ exerciseCreditPct: 0 });
   assert.equal(store.dayEnergy().credit, 0, "unless the person turned it off");
 
-  store.setProfile({ exerciseCreditPct: 50 });
+  store.setProfile({ exerciseCreditPct: 40 });
   day = store.dayEnergy();
-  assert.equal(day.credit, 180);
-  assert.equal(day.adjustedTarget, 2180);
+  assert.equal(day.credit, 146);
+  assert.equal(day.adjustedTarget, 2146);
 
   store.setProfile({ exerciseCreditPct: 60 }); // not one of the offered choices -> treated as 0
   assert.equal(store.dayEnergy().credit, 0);
