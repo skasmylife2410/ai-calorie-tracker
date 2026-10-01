@@ -112,7 +112,7 @@ export function render(container) {
     b.addEventListener("click", () => { store.setProfile({ scanQuality: b.dataset.scanq }); render(container); })
   );
   container.querySelectorAll("[data-excredit]").forEach((b) =>
-    b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: Number(b.dataset.excredit) }); render(container); })
+    b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: b.dataset.excredit === "auto" ? "auto" : Number(b.dataset.excredit) }); render(container); })
   );
   container.querySelectorAll("[data-learn]").forEach((b) =>
     b.addEventListener("click", () => { store.setProfile({ useLearnedTdee: b.dataset.learn === "on" }); render(container); })
@@ -549,6 +549,8 @@ function scanQualityHtml(profile) {
 
 /** Accuracy settings: whether exercise is eaten back, and whether to use learned maintenance. */
 function accuracySectionHtml(profile) {
+  const raw = profile.exerciseCreditPct;
+  const auto = raw === undefined || raw === null || raw === "" || raw === "auto";
   const pct = Math.round(store.exerciseCreditRatio() * 100);
   const learnOn = profile.useLearnedTdee !== false;
   return `
@@ -556,7 +558,8 @@ function accuracySectionHtml(profile) {
       <div class="ios-section-header">${t("accuracy.exTitle")}</div>
       <div class="ios-section-body">
         <div class="lang-row">
-          ${[0, 25, 50, 100].map((v) => `<button type="button" class="lang-btn${v === pct ? " is-on" : ""}" data-excredit="${v}">${t(`accuracy.ex${v}`)}</button>`).join("")}
+          <button type="button" class="lang-btn${auto ? " is-on" : ""}" data-excredit="auto">${t("accuracy.exAuto", { pct })}</button>
+          ${[0, 25, 50, 100].map((v) => `<button type="button" class="lang-btn${!auto && v === pct ? " is-on" : ""}" data-excredit="${v}">${t(`accuracy.ex${v}`)}</button>`).join("")}
         </div>
       </div>
       <div class="ios-section-footer">${t("accuracy.exHint")}</div>

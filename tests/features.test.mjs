@@ -12,7 +12,7 @@ class MemoryStorage {
 globalThis.localStorage = new MemoryStorage();
 
 const store = await import("../js/store.js");
-const { EXERCISE_CREDIT_RATIO, exerciseCredit, estimateCaloriesBurned } = await import("../js/nutrition.js");
+const { EXERCISE_CREDIT_RATIO, exerciseCredit, estimateCaloriesBurned, creditRatioFor } = await import("../js/nutrition.js");
 
 const PROFILE = { weightKg: 80, heightCm: 178, age: 35, sex: "male", activityLevel: "moderate", targetDeltaKcal: 0, customTargetKcal: 2000 };
 
@@ -100,7 +100,13 @@ test("burn is estimated from MET, intensity, weight and duration", () => {
   assert.equal(estimateCaloriesBurned({ activity: "run", minutes: 0 }), 0);
 });
 
-test("half of the exercise burn is added by default; none, a quarter or all if the person chooses", () => {
+test("exercise credit: Auto follows the activity level; none, a quarter, half or all if chosen", () => {
+  assert.equal(creditRatioFor({ activityLevel: "sedentary" }), 1);
+  assert.equal(creditRatioFor({ activityLevel: "light" }), 0.5);
+  assert.equal(creditRatioFor({ activityLevel: "moderate" }), 0.25);
+  assert.equal(creditRatioFor({ activityLevel: "veryActive" }), 0);
+  assert.equal(creditRatioFor({ activityLevel: "veryActive", exerciseCreditPct: 50 }), 0.5, "a choice beats Auto");
+  assert.equal(creditRatioFor({ activityLevel: "sedentary", exerciseCreditPct: "auto" }), 1);
   assert.equal(EXERCISE_CREDIT_RATIO, 0.5);
   assert.equal(exerciseCredit(430), 215, "default: half of the estimate is added to the budget");
   assert.equal(exerciseCredit(430, 1), 430);
@@ -117,9 +123,15 @@ test("dayEnergy shows the full burn, and credits it only as far as the setting s
 
   let day = store.dayEnergy();
   assert.equal(day.burned, 360, "the burn is still recorded and shown");
-  assert.equal(day.credit, 180, "by default half of it raises the budget");
-  assert.equal(day.adjustedTarget, 2180);
-  assert.equal(day.remaining, 1380);
+  assert.equal(day.credit, 90, "Auto for a moderately active target: a quarter, the rest is already in it");
+  assert.equal(day.adjustedTarget, 2090);
+  assert.equal(day.remaining, 1290);
+
+  store.setProfile({ activityLevel: "sedentary" });
+  assert.equal(store.dayEnergy().credit, 360, "a sedentary target assumes no exercise: all of it counts");
+  store.setProfile({ activityLevel: "veryActive" });
+  assert.equal(store.dayEnergy().credit, 0, "a very active target already includes training");
+  store.setProfile({ activityLevel: "moderate" });
 
   store.setProfile({ exerciseCreditPct: 0 });
   assert.equal(store.dayEnergy().credit, 0, "unless the person turned it off");

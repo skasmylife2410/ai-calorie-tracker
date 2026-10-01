@@ -292,6 +292,24 @@ export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 })
 export const EXERCISE_CREDIT_RATIO = 0.5;
 export const EXERCISE_CREDIT_CHOICES = [0, 0.25, 0.5, 1];
 
+/**
+ * "Auto": how much of a workout to add depends on the activity level the target was built with.
+ * A sedentary target (x1.2) assumes no exercise, so a workout is all extra; the active levels'
+ * multipliers already include regular training, so adding it again would count it twice.
+ */
+export const AUTO_CREDIT_BY_ACTIVITY = Object.freeze({ sedentary: 1, light: 0.5, moderate: 0.25, veryActive: 0 });
+export function autoCreditRatio(activityLevel) {
+  return AUTO_CREDIT_BY_ACTIVITY[normalizeActivityLevel(activityLevel)] ?? EXERCISE_CREDIT_RATIO;
+}
+
+/** The share of exercise added to the budget for a profile: its own choice, else Auto. */
+export function creditRatioFor(profile) {
+  const raw = profile?.exerciseCreditPct;
+  if (raw === undefined || raw === null || raw === "" || raw === "auto") return autoCreditRatio(profile?.activityLevel);
+  const r = Number(raw) / 100;
+  return EXERCISE_CREDIT_CHOICES.includes(r) ? r : 0;
+}
+
 /** Calories from exercise that count toward the day's budget (whole calories). */
 export function exerciseCredit(caloriesBurned, ratio = EXERCISE_CREDIT_RATIO) {
   const n = Number(caloriesBurned);

@@ -9,15 +9,8 @@
 import { isSafeDataImage } from "../js/safe-src.js";
 import { requireUser, parseUsers, DEFAULT_OWNER } from "./_auth.js";
 import { resolveGroup, membersOf } from "./_groups.js";
-import { resolveUserGoals, exerciseCredit, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO } from "../js/nutrition.js";
+import { resolveUserGoals, exerciseCredit, creditRatioFor } from "../js/nutrition.js";
 
-/** The share of exercise this person adds to their budget (Profile setting; half if never set). */
-function creditRatio(profileData) {
-  const raw = profileData?.exerciseCreditPct;
-  if (raw === undefined || raw === null || raw === "") return EXERCISE_CREDIT_RATIO;
-  const r = Number(raw) / 100;
-  return EXERCISE_CREDIT_CHOICES.includes(r) ? r : 0;
-}
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -142,7 +135,7 @@ export default async function handler(req, res) {
     const displayName = typeof profile?.data?.displayName === "string" ? profile.data.displayName.trim().slice(0, 40) : "";
     const raw = profile?.data?.avatar;
     const avatar = typeof raw === "string" && isSafeDataImage(raw) && raw.length < 120000 ? raw : null;
-    return { owner, name: displayName || null, avatar, goals: goalsFrom(profile?.data), creditRatio: creditRatio(profile?.data), days: {} };
+    return { owner, name: displayName || null, avatar, goals: goalsFrom(profile?.data), creditRatio: creditRatioFor(profile?.data), days: {} };
   });
   const byOwner = Object.fromEntries(people.map((p) => [p.owner, p]));
   const dayOf = (person, day) =>

@@ -447,10 +447,10 @@
   },
   "accuracy": {
     "exTitle": "Calorías del ejercicio",
-    "ex0": "No sumar",
-    "ex25": "Sumar 25%",
-    "ex50": "Sumar 50%",
-    "exHint": "Se suma la mitad salvo que elijas otra cosa: las estimaciones de apps y relojes suelen quedarse altas, y tu meta ya considera la actividad diaria. El ejercicio se registra y se muestra igual.",
+    "ex0": "Nada",
+    "ex25": "25%",
+    "ex50": "50%",
+    "exHint": "Auto depende de tu nivel de actividad: sedentario suma todo el entrenamiento, porque tu meta no cuenta ninguno; ligeramente activo suma la mitad, moderadamente activo un cuarto y muy activo nada, porque esas metas ya incluyen tu entrenamiento. El ejercicio se registra y se muestra igual.",
     "learnTitle": "Mantenimiento aprendido",
     "learnOn": "Usarlo",
     "learnOff": "Solo fórmula",
@@ -470,7 +470,8 @@
     },
     "exNoteOff": "Registrado, sin sumarlo al presupuesto de hoy: las estimaciones de gasto suelen quedarse altas. Puedes cambiarlo en Perfil.",
     "exNoteOn": "{credit} kcal se suman al presupuesto de hoy (ajuste de {pct}% en Perfil).",
-    "ex100": "Sumar todo"
+    "ex100": "Todo",
+    "exAuto": "Auto ({pct}%)"
   },
   "invite": {
     "title": "Invitar personas",

@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
+import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
 import { mealName } from "./meal-builder.js";
 
 export const STORAGE_KEYS = Object.freeze({
@@ -639,11 +639,7 @@ export function computeGoals() {
 
 /** Share of exercise burn added back to the day's budget: this person's setting, default 0. */
 export function exerciseCreditRatio() {
-  const raw = getProfile().exerciseCreditPct;
-  if (raw === undefined || raw === null || raw === "") return EXERCISE_CREDIT_RATIO; // never chosen
-  const v = Number(raw);
-  const ratio = Number.isFinite(v) ? v / 100 : 0;
-  return EXERCISE_CREDIT_CHOICES.includes(ratio) ? ratio : 0;
+  return creditRatioFor(getProfile());
 }
 
 /**

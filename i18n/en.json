@@ -447,10 +447,10 @@
   },
   "accuracy": {
     "exTitle": "Exercise calories",
-    "ex0": "Don't add",
-    "ex25": "Add 25%",
-    "ex50": "Add 50%",
-    "exHint": "Half is added unless you choose otherwise: burn estimates from apps and watches usually run high, and your target already allows for everyday activity. Exercise is logged and shown either way.",
+    "ex0": "None",
+    "ex25": "25%",
+    "ex50": "50%",
+    "exHint": "Auto goes by your activity level: sedentary adds all of a workout, because your target assumes none; lightly active adds half, moderately active a quarter, and very active nothing, since those targets already include your training. Exercise is logged and shown either way.",
     "learnTitle": "Learned maintenance",
     "learnOn": "Use it",
     "learnOff": "Formula only",
@@ -470,7 +470,8 @@
     },
     "exNoteOff": "Logged, not added to today's budget — burn estimates run high. You can change this in Profile.",
     "exNoteOn": "{credit} kcal of that is added to today's budget ({pct}% setting in Profile).",
-    "ex100": "Add all"
+    "ex100": "All",
+    "exAuto": "Auto ({pct}%)"
   },
   "invite": {
     "title": "Invite people",
