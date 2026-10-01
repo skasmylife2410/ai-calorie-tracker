@@ -37,7 +37,11 @@
     "overShort": "{name} de más",
     "todaysMeals": "Comidas de hoy",
     "daysMeals": "Comidas de este día",
-    "streakLine": "Racha de {n} día|Racha de {n} días"
+    "streakLine": "Racha de {n} día|Racha de {n} días",
+    "budget": "Presupuesto",
+    "exerciseAdded": "{burned} quemadas · +{credit} sumadas",
+    "exerciseBurned": "{burned} quemadas · sin sumar",
+    "macroGoal": "de {n}g"
   },
   "menu": {
     "favourites": "Favoritos",
@@ -444,7 +448,7 @@
     "ex0": "No sumar",
     "ex25": "Sumar 25%",
     "ex50": "Sumar 50%",
-    "exHint": "Las estimaciones de apps y relojes suelen quedarse altas, y tu meta ya considera la actividad diaria. El ejercicio se registra y se muestra igual.",
+    "exHint": "Se suma la mitad salvo que elijas otra cosa: las estimaciones de apps y relojes suelen quedarse altas, y tu meta ya considera la actividad diaria. El ejercicio se registra y se muestra igual.",
     "learnTitle": "Mantenimiento aprendido",
     "learnOn": "Usarlo",
     "learnOff": "Solo fórmula",
@@ -463,7 +467,8 @@
       "high": "Confiable"
     },
     "exNoteOff": "Registrado, sin sumarlo al presupuesto de hoy: las estimaciones de gasto suelen quedarse altas. Puedes cambiarlo en Perfil.",
-    "exNoteOn": "{credit} kcal se suman al presupuesto de hoy (ajuste de {pct}% en Perfil)."
+    "exNoteOn": "{credit} kcal se suman al presupuesto de hoy (ajuste de {pct}% en Perfil).",
+    "ex100": "Sumar todo"
   },
   "invite": {
     "title": "Invitar personas",

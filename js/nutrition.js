@@ -287,8 +287,10 @@ export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 })
  * formula burn estimates run high, and TDEE already includes some daily activity, so crediting
  * every burned calorie double-counts. The UI always shows the full burn AND the credited part.
  */
-export const EXERCISE_CREDIT_RATIO = 0; // default: exercise is logged and shown, not eaten back
-export const EXERCISE_CREDIT_CHOICES = [0, 0.25, 0.5];
+// Default: half of the estimated burn is added to the day's budget (estimates from apps and
+// watches run high). Profile offers none, a quarter, half or all of it.
+export const EXERCISE_CREDIT_RATIO = 0.5;
+export const EXERCISE_CREDIT_CHOICES = [0, 0.25, 0.5, 1];
 
 /** Calories from exercise that count toward the day's budget (whole calories). */
 export function exerciseCredit(caloriesBurned, ratio = EXERCISE_CREDIT_RATIO) {

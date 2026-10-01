@@ -2428,3 +2428,12 @@ body.setup-open { overflow: hidden; }
 /* the button is held to choose its GIF: no text selection or "save image" menu on the way */
 .home-chip.chip-ideas { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .chip-ideas-gif { pointer-events: none; }
+
+/* Calorie card: the day's budget (counts up when exercise raises it) and what exercise added */
+.calorie-budget { margin-top: 6px; font-size: 12px; font-weight: 500; color: var(--sc-secondary); font-variant-numeric: tabular-nums; }
+.calorie-budget b { font-weight: 700; color: var(--sc-primary-text); }
+.calorie-card .calorie-exercise { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 0; border: 0; background: none; font: inherit; font-size: 12px !important; font-weight: 600; color: var(--sc-primary-text); text-align: left; cursor: pointer; line-height: 1.3; }
+.calorie-card .calorie-exercise .icon { flex: none; }
+/* Macro tiles: what's left, the macro, then the day's target for it, quietly */
+.macro-goal { margin-top: 1px; font-size: 10.5px; font-weight: 500; line-height: 1.2; color: var(--sc-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.macro-tile .macro-text { min-width: 0; }

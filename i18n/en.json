@@ -37,7 +37,11 @@
     "overShort": "{name} over",
     "todaysMeals": "Today's meals",
     "daysMeals": "Meals this day",
-    "streakLine": "{n}-day streak|{n}-day streak"
+    "streakLine": "{n}-day streak|{n}-day streak",
+    "budget": "Budget",
+    "exerciseAdded": "{burned} burned · +{credit} added",
+    "exerciseBurned": "{burned} burned · not added",
+    "macroGoal": "of {n}g"
   },
   "menu": {
     "favourites": "Favourites",
@@ -444,7 +448,7 @@
     "ex0": "Don't add",
     "ex25": "Add 25%",
     "ex50": "Add 50%",
-    "exHint": "Burn estimates from apps and watches usually run high, and your target already allows for everyday activity. Exercise is still logged and shown either way.",
+    "exHint": "Half is added unless you choose otherwise: burn estimates from apps and watches usually run high, and your target already allows for everyday activity. Exercise is logged and shown either way.",
     "learnTitle": "Learned maintenance",
     "learnOn": "Use it",
     "learnOff": "Formula only",
@@ -463,7 +467,8 @@
       "high": "Confident"
     },
     "exNoteOff": "Logged, not added to today's budget — burn estimates run high. You can change this in Profile.",
-    "exNoteOn": "{credit} kcal of that is added to today's budget ({pct}% setting in Profile)."
+    "exNoteOn": "{credit} kcal of that is added to today's budget ({pct}% setting in Profile).",
+    "ex100": "Add all"
   },
   "invite": {
     "title": "Invite people",

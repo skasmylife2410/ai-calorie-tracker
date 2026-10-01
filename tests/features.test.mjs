@@ -98,9 +98,10 @@ test("burn is estimated from MET, intensity, weight and duration", () => {
   assert.equal(estimateCaloriesBurned({ activity: "run", minutes: 0 }), 0);
 });
 
-test("exercise isn't eaten back by default; 25% or 50% only if the person chooses it", () => {
-  assert.equal(EXERCISE_CREDIT_RATIO, 0);
-  assert.equal(exerciseCredit(430), 0, "default: logged and shown, not added to the budget");
+test("half of the exercise burn is added by default; none, a quarter or all if the person chooses", () => {
+  assert.equal(EXERCISE_CREDIT_RATIO, 0.5);
+  assert.equal(exerciseCredit(430), 215, "default: half of the estimate is added to the budget");
+  assert.equal(exerciseCredit(430, 1), 430);
   assert.equal(exerciseCredit(430, 0.5), 215);
   assert.equal(exerciseCredit(430, 0.25), 108);
   assert.equal(exerciseCredit(-100, 0.5), 0);
@@ -114,9 +115,12 @@ test("dayEnergy shows the full burn, and credits it only as far as the setting s
 
   let day = store.dayEnergy();
   assert.equal(day.burned, 420, "the burn is still recorded and shown");
-  assert.equal(day.credit, 0, "but by default the budget doesn't grow");
-  assert.equal(day.adjustedTarget, 2000);
-  assert.equal(day.remaining, 1200);
+  assert.equal(day.credit, 210, "by default half of it raises the budget");
+  assert.equal(day.adjustedTarget, 2210);
+  assert.equal(day.remaining, 1410);
+
+  store.setProfile({ exerciseCreditPct: 0 });
+  assert.equal(store.dayEnergy().credit, 0, "unless the person turned it off");
 
   store.setProfile({ exerciseCreditPct: 50 });
   day = store.dayEnergy();

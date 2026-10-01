@@ -26,7 +26,6 @@ import { renderLogin, hasValidSession, consentNeeded, renderConsent } from "./ui
 import { render as renderWeight } from "./ui/weight.js";
 
 import { renderUsTab } from "./us.js";
-import { wireTabSwipe } from "./ui/tab-swipe.js";
 import { mountSky } from "./ui/sky.js";
 import { applyTheme, watchSystemTheme } from "./theme.js";
 import { openRecipesSheet } from "./ui/recipes.js";
@@ -284,24 +283,6 @@ function wireShell() {
     dot.addEventListener("pointerdown", show);
     dot.addEventListener("focus", show);
   });
-
-  // Swipe between tabs. Profile isn't in the bar, so it isn't part of the swipe order.
-  const content = appRoot.querySelector("#tab-content");
-  if (content && !content.dataset.swipeWired) {
-    content.dataset.swipeWired = "1";
-    const order = TABS.map((t) => t.id);
-    wireTabSwipe({
-      surface: content,
-      count: () => order.length,
-      getIndex: () => Math.max(0, order.indexOf(selectedTab)),
-      onChange: (i) => {
-        selectedTab = order[i];
-        appRoot.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === selectedTab));
-        renderCurrentTab();
-        content.scrollTop = 0;
-      },
-    });
-  }
 
   appRoot.querySelectorAll("[data-tile]").forEach((tile) => {
     tile.addEventListener("click", () => {

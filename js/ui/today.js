@@ -146,7 +146,9 @@ export function render(container) {
   countNumbers(container, `${startOfDay(date)}`, [
     remaining,
     ...MACRO_DEFS.map((m) => (goals[m.targetKey] ?? 0) - (totals[m.key] ?? 0)),
+    energy.adjustedTarget, // the budget line counts too when exercise raises it
   ]);
+  container.querySelector("#calorie-exercise")?.addEventListener("click", () => openExerciseDaySheet(date, () => render(container)));
   container.querySelector("#chip-exercise")?.addEventListener("click", () => openExerciseDaySheet(date, () => render(container)));
   wireHomeGifChip(container.querySelector("#chip-ideas"), () => openRecipesSheet());
   container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
@@ -198,7 +200,7 @@ function countValueAt(anim, now) {
 const sameNumbers = (a, b) => a.length === b.length && a.every((n, i) => Math.round(n) === Math.round(b[i]));
 
 function countNumbers(container, dayKey, nums) {
-  const els = [container.querySelector(".calorie-remaining"), ...container.querySelectorAll(".macro-value")];
+  const els = [container.querySelector(".calorie-remaining"), ...container.querySelectorAll(".macro-value"), container.querySelector(".calorie-budget-num")];
   const rings = [...container.querySelectorAll(".calorie-card .ring-progress, .macro-tile .ring-progress")];
   const offs = rings.map((r) => Number(r.getAttribute("stroke-dashoffset")));
   const target = { nums, offs };
@@ -222,7 +224,7 @@ function countNumbers(container, dayKey, nums) {
   const anim = countAnim;
   const paint = (at) => {
     const v = countValueAt(anim, at);
-    els.forEach((el, i) => { if (el) el.textContent = `${roundDisplay(Math.abs(v.nums[i]))}${i > 0 ? "g" : ""}`; });
+    els.forEach((el, i) => { if (el) el.textContent = `${roundDisplay(Math.abs(v.nums[i]))}${el.dataset.suffix ?? (i > 0 ? "g" : "")}`; });
     rings.forEach((r, i) => {
       r.style.transition = "none";
       if (!Number.isFinite(v.offs[i])) return;
@@ -320,6 +322,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
         <div class="macro-text">
           <div class="macro-value${macroOver ? " over" : ""}">${roundDisplay(Math.abs(macroRemaining))}g</div>
           <div class="macro-caption">${macroOver ? t("home.overShort", { name: t(`home.${m.nameKey}Short`) }) : t(`home.${m.nameKey}Short`)}</div>
+          <div class="macro-goal">${t("home.macroGoal", { n: roundDisplay(target) })}</div>
         </div>
         ${miniRing}
       </div>
@@ -335,7 +338,10 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
           <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>
           <button type="button" class="calorie-meals" id="see-meals">${t("us.mealsCount", { n: mealCount })} · ${t("day.tapToSee")} ›</button>
           ${streakCount > 0 ? `<div class="calorie-streak">${icon("flameFill", { size: 13, color: "var(--sc-streak-flame)" })}<span>${t("home.streakLine", { n: streakCount })}</span></div>` : ""}
-          ${energy.credit > 0 ? `<div class="calorie-exercise">${t("home.exerciseNote", { goal: energy.baseTarget, credit: energy.credit, burned: energy.burned })}</div>` : ""}
+          <div class="calorie-budget">${t("home.budget")} <b class="calorie-budget-num" data-suffix="">${roundDisplay(energy.adjustedTarget)}</b></div>
+          ${energy.burned > 0 ? `<button type="button" class="calorie-exercise" id="calorie-exercise">${icon("boltFill", { size: 12 })}<span>${energy.credit > 0
+            ? t("home.exerciseAdded", { burned: roundDisplay(energy.burned), credit: roundDisplay(energy.credit) })
+            : t("home.exerciseBurned", { burned: roundDisplay(energy.burned) })}</span></button>` : ""}
         </div>
         ${ring}
       </div>

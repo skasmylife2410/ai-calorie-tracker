@@ -549,14 +549,14 @@ function scanQualityHtml(profile) {
 
 /** Accuracy settings: whether exercise is eaten back, and whether to use learned maintenance. */
 function accuracySectionHtml(profile) {
-  const pct = [0, 25, 50].includes(Number(profile.exerciseCreditPct)) ? Number(profile.exerciseCreditPct) : 0;
+  const pct = Math.round(store.exerciseCreditRatio() * 100);
   const learnOn = profile.useLearnedTdee !== false;
   return `
     <div class="ios-section">
       <div class="ios-section-header">${t("accuracy.exTitle")}</div>
       <div class="ios-section-body">
         <div class="lang-row">
-          ${[0, 25, 50].map((v) => `<button type="button" class="lang-btn${v === pct ? " is-on" : ""}" data-excredit="${v}">${t(`accuracy.ex${v}`)}</button>`).join("")}
+          ${[0, 25, 50, 100].map((v) => `<button type="button" class="lang-btn${v === pct ? " is-on" : ""}" data-excredit="${v}">${t(`accuracy.ex${v}`)}</button>`).join("")}
         </div>
       </div>
       <div class="ios-section-footer">${t("accuracy.exHint")}</div>
