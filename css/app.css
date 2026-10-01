@@ -2486,3 +2486,22 @@ body.setup-open { overflow: hidden; }
 .diag-top b { color: var(--sc-primary-text); }
 .diag-msg { margin-top: 3px; font-size: 13px; line-height: 1.4; color: var(--sc-primary-text); white-space: pre-wrap; word-break: break-word; }
 .diag-ua { margin-top: 2px; font-size: 12px; color: var(--sc-secondary); }
+
+/* Classic, readable text (contrast pass): the accent hues stay for icons and fills, and text in
+   those hues uses a deeper shade of the same colour so it reaches 4.5:1 on the light cards. */
+:root:not([data-theme="mono"]) {
+  --sc-accent-calories-text: #C2410C;
+  --sc-accent-exercise-text: #1E7A4E;
+  --sc-accent-water-text: #1D6F99;
+  --sc-accent-ideas-text: #8A5A12;
+}
+:root:not([data-theme="mono"]) .calorie-meals { color: var(--sc-accent-calories-text); }
+:root:not([data-theme="mono"]) .card-more { color: var(--sc-accent-water-text); }
+:root:not([data-theme="mono"]) .chip-ex { color: var(--sc-accent-exercise-text); }
+:root:not([data-theme="mono"]) .chip-ideas { color: var(--sc-accent-ideas-text); }
+:root:not([data-theme="mono"]) .chip-myth { color: var(--sc-accent-water-text); }
+:root:not([data-theme="mono"]) .chip-myth b { background: var(--sc-accent-water-text); }
+/* a past day with nothing logged: the circle fades, its name stays readable */
+.week-day-col.past-nolog { opacity: 1; }
+.week-day-col.past-nolog .week-day-circle { opacity: .7; }
+:root:not([data-theme="mono"]) .ex-chip.is-on { background: var(--sc-accent-exercise-text); }

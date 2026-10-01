@@ -43,5 +43,12 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/compare.html",
+      "destination": "/us.html",
+      "permanent": true
+    }
   ]
 }

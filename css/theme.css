@@ -14,7 +14,7 @@
   --sc-water: #4F9DF1;
   --sc-streak-flame: #FF952D;
 
-  --sc-secondary: #8E8E93;
+  --sc-secondary: #5C5C60; /* text: ≥ 4.7:1 on every light surface (#8E8E93 was ~3:1) */
   --sc-secondary-14: rgba(142, 142, 147, 0.14);
   --sc-secondary-15: rgba(142, 142, 147, 0.15);
   --sc-secondary-18: rgba(142, 142, 147, 0.18);
@@ -24,7 +24,7 @@
   --sc-red: #FF3B30;
   --sc-orange: #FF9500;
   --sc-green: #34C759;
-  --sc-blue: #007AFF;
+  --sc-blue: #0066D6; /* link text: ≥ 4.5:1 on the page and cards (#007AFF was 3.7:1) */
 
   --sc-black-5: rgba(0, 0, 0, 0.05);
   --sc-black-6: rgba(0, 0, 0, 0.06);

@@ -52,6 +52,7 @@ test("returns daily totals and goals for both people, no private fields", async 
   assert.deepEqual(a.days["2026-09-15"], {
     calories: 800, proteinG: 30, carbsG: 70, fatG: 15, meals: 2, water: 0, burned: 420, sessions: 1,
     morning: 500, afternoon: 0, evening: 300,
+    credit: 105, // Auto for a moderately active target: a quarter of the burn raises the budget
   });
   // and a lunchtime meal lands in the afternoon
   assert.equal(m.days["2026-09-14"].afternoon, 400);
