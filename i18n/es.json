@@ -1036,5 +1036,26 @@
     "remove": "Quitar GIF",
     "by": "GIF de {name}",
     "homeTitle": "Elige el GIF del botón"
+  },
+  "ask": {
+    "title": "Una pregunta rápida",
+    "notSure": "Solo estoy {pct}% seguro de esta comida.",
+    "why": "Mi mejor estimación es {kcal} kcal. Un toque lo acerca mucho más:",
+    "other": "Otra cosa…",
+    "update": "Actualizar la estimación",
+    "keep": "Mantener la estimación",
+    "rowCta": "No estoy seguro: toca para responder",
+    "sureTitle": "{pct}% de seguridad en esta estimación"
+  },
+  "fat": {
+    "question": "¿Cocinado con aceite o mantequilla?",
+    "none": "Nada",
+    "little": "Un poco",
+    "lot": "Bastante",
+    "assumed": "Supuse unos {g} g de aceite. Una cucharada son ~120 kcal, así que importa.",
+    "note_none": "Sin grasa de cocción.",
+    "note_little": "Una cucharadita (5 g, 44 kcal).",
+    "note_lot": "Cucharada y media (20 g, 177 kcal).",
+    "itemName": "aceite de cocina"
   }
 }

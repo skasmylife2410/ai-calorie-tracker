@@ -99,6 +99,13 @@ async function boot() {
   soft("theme", () => applyTheme(store.getProfile())); // Mono or Classic (js/theme-boot.js already did this before paint)
   soft("system theme", () => watchSystemTheme(store.getProfile));
   soft("sweep", () => queue.sweepIfNeeded()); // reload mid-analysis -> orphaned pendings become retryable-failed
+  // An analysis under 50% sure comes back with questions: ask them right away if the app is on
+  // screen and nothing else is open; otherwise the meal's row offers them.
+  soft("ask", () => queue.onComplete(({ entryId, success }) => {
+    if (!success || document.visibilityState !== "visible" || document.querySelector(".sheet-panel")) return;
+    const entry = store.getFoodEntry(entryId);
+    if (entry?.analysisQuestions?.length) import("./ui/questions.js").then((m) => m.openQuestionsSheet(entry)).catch(() => {});
+  }));
   // Language comes from the profile (so it travels between this person's devices), else the phone.
   try {
     await initI18n({ stored: store.getProfile().language });

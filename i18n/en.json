@@ -1036,5 +1036,26 @@
     "remove": "Remove GIF",
     "by": "GIF from {name}",
     "homeTitle": "Pick the button's GIF"
+  },
+  "ask": {
+    "title": "Quick question",
+    "notSure": "I'm only {pct}% sure about this meal.",
+    "why": "My best guess is {kcal} kcal. One tap makes it much closer:",
+    "other": "Something else…",
+    "update": "Update the estimate",
+    "keep": "Keep the estimate",
+    "rowCta": "Not sure: tap to answer",
+    "sureTitle": "{pct}% sure of this estimate"
+  },
+  "fat": {
+    "question": "Cooked with oil or butter?",
+    "none": "None",
+    "little": "A little",
+    "lot": "A lot",
+    "assumed": "I assumed about {g} g of oil. A tablespoon is ~120 kcal, so this matters.",
+    "note_none": "No cooking fat counted.",
+    "note_little": "About a teaspoon (5 g, 44 kcal).",
+    "note_lot": "About 1½ tablespoons (20 g, 177 kcal).",
+    "itemName": "cooking oil"
   }
 }

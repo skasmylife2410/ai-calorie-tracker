@@ -743,7 +743,7 @@ export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
     res = await apiFetch("/api/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, image, text }),
+      body: JSON.stringify({ mode, image, text, lang: currentLang() }),
       ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (err) {
@@ -763,7 +763,30 @@ export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
     return { ok: false, errorType: body?.errorType ?? "other", message: body?.message ?? `Gemini HTTP ${res.status}` };
   }
 
-  return { ok: true, items: Array.isArray(body.items) ? body.items : [] };
+  return { ok: true, items: Array.isArray(body.items) ? body.items : [], meta: cleanMeta(body.meta) };
+}
+
+/** The app's language for the AI's questions; English when it can't be told. */
+function currentLang() {
+  try { return (globalThis.localStorage?.getItem("snapcal.lang") || globalThis.navigator?.language || "en").slice(0, 2) === "es" ? "es" : "en"; } catch { return "en"; }
+}
+
+/**
+ * The meal's overall confidence (0–1), up to two questions when it's under 50%, and whether
+ * cooking fat was assumed. Null when the server didn't send it (label photos, older servers).
+ */
+export function cleanMeta(raw) {
+  const c = Number(raw?.confidence);
+  if (!raw || !Number.isFinite(c)) return null;
+  const questions = Array.isArray(raw.questions)
+    ? raw.questions.filter((q) => q && typeof q.question === "string" && Array.isArray(q.options))
+      .slice(0, 2).map((q) => ({ question: q.question.slice(0, 140), options: q.options.map(String).slice(0, 4) }))
+    : [];
+  return {
+    confidence: Math.min(1, Math.max(0, c)),
+    questions: c < 0.5 ? questions : [],
+    cookingFat: ["visible", "assumed", "none"].includes(raw.cookingFat) ? raw.cookingFat : null,
+  };
 }
 
 /**
@@ -880,14 +903,15 @@ export async function analyzeMeal({ mode, imageDataUrl, text }) {
   }
 
   const items = outcome.items.map(mapRawItemToAnalyzedItem);
+  const meta = outcome.meta ?? null;
   if (items.length === 0) {
-    return { success: true, items: [] }; // valid "no food found" result, skip grounding
+    return { success: true, items: [], meta }; // valid "no food found" result, skip grounding
   }
 
   if (modeInfo.groundsAgainstUSDA) {
     const grounded = await groundItems(items);
-    return { success: true, items: grounded };
+    return { success: true, items: grounded, meta };
   }
 
-  return { success: true, items };
+  return { success: true, items, meta };
 }

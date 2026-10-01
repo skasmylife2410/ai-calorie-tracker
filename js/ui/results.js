@@ -14,6 +14,8 @@ import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { parseNumeric, formatNumeric } from "./numeric-field.js";
 import { scaleMicros, cleanMicros, sumMicros } from "../nutrition.js";
 import { microsSummary, microInputsHtml, wireMicroInputs, formatMicro } from "./micros.js";
+import { sureBadgeHtml } from "./questions.js";
+import { applyCookingFat, fatGrams } from "../cooking-fat.js";
 import { plateSvg, handReference, handLabel, densityOf, _KINDS_FOR_TESTS as KINDS } from "./portion-plate.js";
 
 const FIELD_DEFS = [
@@ -69,6 +71,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
             <button type="button" class="servings-heart" id="fav-toggle" aria-label="Favourite">♡</button>
             ${entry.photoDataUrl ? `<button type="button" class="servings-share" id="share-meal" aria-label="${t("social.share")}">↗︎</button>` : ""}
           </div>`}
+          ${!template && (entry.cookingFat === "assumed" || entry.cookingFatChoice) ? `<div class="fat-card" id="fat-card"></div>` : ""}
           <div class="results-items-section-header">${t("meal.items")}</div>
           <div class="ios-section" style="margin-bottom:0;">
             <div class="ios-section-body" id="results-items"></div>
@@ -391,6 +394,30 @@ export function openResultsSheet(entry, { template = null } = {}) {
         });
       });
 
+      // --- cooking fat: None / A little / A lot, replacing the analysis's assumption ---------
+      const fatCard = panel.querySelector("#fat-card");
+      let fatChoice = entry.cookingFatChoice ?? null;
+      const renderFat = () => {
+        if (!fatCard) return;
+        const level = fatChoice ?? null;
+        const g = Math.round(fatGrams(items));
+        fatCard.innerHTML = `
+          <div class="fat-q">${t("fat.question")}</div>
+          <div class="fat-opts" role="group" aria-label="${escapeAttr(t("fat.question"))}">
+            ${["none", "little", "lot"].map((k) => `<button type="button" data-fat="${k}" aria-pressed="${level === k}">${t(`fat.${k}`)}</button>`).join("")}
+          </div>
+          <div class="fat-note">${level ? t(`fat.note_${level}`) : t("fat.assumed", { g })}</div>`;
+        fatCard.querySelectorAll("[data-fat]").forEach((b) => b.addEventListener("click", () => {
+          fatChoice = b.dataset.fat;
+          items = applyCookingFat(items, fatChoice, { name: t("fat.itemName") });
+          baselines = items.map(snapshotBaseline);
+          openMicros.clear();
+          renderItems();
+          renderFat();
+        }));
+      };
+      renderFat();
+
       saveBtn.addEventListener("click", () => {
         if (items.length === 0) return;
         if (template) {
@@ -407,6 +434,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
           ...store.fieldsFromItems(items, servings),
           analysisItems: items,
           ...(addedFoods && items.length > 1 ? { grouped: true } : {}),
+          ...(fatChoice ? { cookingFatChoice: fatChoice } : {}),
         });
         close();
       });
@@ -430,13 +458,14 @@ function snapshotBaseline(item) {
 
 function thumbHtml(entry) {
   if (entry.photoDataUrl) {
-    return `<div class="results-thumb-wrap"><img class="results-thumb" src="${safeSrc(entry.photoDataUrl)}" alt="" /></div>`;
+    return `<div class="results-thumb-wrap"><img class="results-thumb" src="${safeSrc(entry.photoDataUrl)}" alt="" />${sureBadgeHtml(entry, "sure-badge is-big")}</div>`;
   }
   if (typeof entry.analysisDescription === "string" && entry.analysisDescription.trim() !== "") {
     return `
       <div class="results-desc-quote">
         ${icon("textBubbleFill", { size: 15 })}
         <div class="results-desc-quote-text">“${escapeHtml(entry.analysisDescription)}”</div>
+        ${sureBadgeHtml(entry, "sure-badge is-inline")}
       </div>`;
   }
   return "";

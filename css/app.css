@@ -2437,3 +2437,41 @@ body.setup-open { overflow: hidden; }
 /* Macro tiles: what's left, the macro, then the day's target for it, quietly */
 .macro-goal { margin-top: 1px; font-size: 10.5px; font-weight: 500; line-height: 1.2; color: var(--sc-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .macro-tile .macro-text { min-width: 0; }
+
+/* How sure the analysis is: a small number on the meal's picture (red dot under 50%) */
+.entry-thumb { position: relative; }
+.sure-badge { position: absolute; right: 2px; bottom: 2px; z-index: 2; display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 4px; border-radius: 6px; font: 700 9.5px/1.25 var(--sc-font-rounded, system-ui); font-variant-numeric: tabular-nums;
+  color: #fff; background: rgba(0,0,0,.68); pointer-events: none; }
+.sure-badge.is-low::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #FF5A4F; }
+.results-thumb-wrap { position: relative; }
+.sure-badge.is-big { left: calc(50% + 38px); right: auto; bottom: 10px; transform: translateX(-100%); font-size: 11px; padding: 2px 6px; }
+.sure-badge.is-inline { position: static; flex: none; align-self: center; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.entry-ask { font-size: 12px; font-weight: 700; color: var(--sc-primary-text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-ask::before { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 6px 1px 0; border-radius: 50%; background: var(--sc-red); }
+
+/* The questions sheet */
+.ask-body { padding: 6px 16px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; }
+.ask-head { display: flex; gap: 12px; align-items: center; }
+.ask-photo { position: relative; flex: none; width: 72px; height: 72px; border-radius: 14px; overflow: hidden; }
+.ask-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ask-intro { display: flex; flex-direction: column; gap: 3px; font-size: 14px; line-height: 1.35; color: var(--sc-secondary); }
+.ask-intro b { font-size: 16px; color: var(--sc-primary-text); }
+.ask-q { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: var(--sc-card-bg, #fff); }
+.ask-q-text { font-size: 16px; font-weight: 700; color: var(--sc-primary-text); }
+.ask-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask-opt { min-height: 36px; padding: 0 13px; border: 0; border-radius: 18px; font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-primary-text);
+  background: var(--sc-secondary-15); cursor: pointer; }
+.ask-opt[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--sc-primary-text); background: var(--sc-card-bg, #fff); }
+.ask-other { height: 38px; padding: 0 12px; border: 0; border-radius: 10px; font: inherit; font-size: 15px; color: var(--sc-primary-text); background: var(--sc-secondary-15); outline: none; }
+.ask-send { height: 50px; border: 0; border-radius: 14px; font: inherit; font-size: 16px; font-weight: 700; color: var(--sc-background, #fff); background: var(--sc-primary-text); cursor: pointer; }
+.ask-send:disabled { opacity: .4; }
+.ask-skip { height: 40px; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--sc-secondary); cursor: pointer; }
+
+/* Meal editor: "Cooked with oil or butter?" */
+.fat-card { margin: 10px 16px 4px; padding: 12px 14px; border-radius: 14px; background: var(--sc-card-bg, #fff); }
+.fat-q { font-size: 15px; font-weight: 700; color: var(--sc-primary-text); }
+.fat-opts { display: flex; gap: 8px; margin-top: 8px; }
+.fat-opts button { flex: 1; height: 36px; border: 0; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-primary-text); background: var(--sc-secondary-15); cursor: pointer; }
+.fat-opts button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--sc-primary-text); background: var(--sc-card-bg, #fff); }
+.fat-note { margin-top: 7px; font-size: 12.5px; line-height: 1.4; color: var(--sc-secondary); }

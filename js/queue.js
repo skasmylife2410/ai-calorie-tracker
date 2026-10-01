@@ -118,6 +118,67 @@ export function retry(entryId) {
 }
 
 /**
+ * How sure the analysis is (0–1) and, when it's under 50%, what to ask. The questions are asked
+ * once: after the person has answered, a still-unsure result is kept as it is.
+ */
+export function metaFields(entry, meta, items = []) {
+  const confidence = Number.isFinite(meta?.confidence) ? meta.confidence : averageConfidence(items);
+  const ask = !entry?.questionsAnswered && Array.isArray(meta?.questions) && meta.questions.length > 0 && confidence !== null && confidence < 0.5;
+  return {
+    analysisConfidence: confidence,
+    analysisQuestions: ask ? meta.questions : null,
+    cookingFat: meta?.cookingFat ?? null,
+  };
+}
+
+/** Older answers had only per-item confidence: weigh it by calories. */
+export function averageConfidence(items) {
+  let w = 0, sum = 0;
+  for (const i of items ?? []) {
+    const c = Number(i?.confidence);
+    const kcal = Math.max(1, Number(i?.calories) || 0);
+    if (!Number.isFinite(c)) continue;
+    w += kcal; sum += c * kcal;
+  }
+  return w > 0 ? Math.min(1, Math.max(0, sum / w)) : null;
+}
+
+/** "Answers to your questions" block added to the meal's description for the re-analysis. */
+export function answersText(questions, answers) {
+  const lines = (questions ?? []).map((q, i) => {
+    const a = String(answers?.[i] ?? "").trim();
+    return a ? `- ${q.question} ${a}` : null;
+  }).filter(Boolean);
+  return lines.length ? `Answers to your questions (authoritative):\n${lines.join("\n")}` : "";
+}
+
+/**
+ * The person answered the analysis's questions: re-analyse with their answers (and the same
+ * photo), once. The meal shows as analysing meanwhile, like any other.
+ */
+export function answerQuestions(entryId, answers) {
+  const entry = store.getFoodEntry(entryId);
+  if (!entry) return null;
+  const extra = answersText(entry.analysisQuestions, answers);
+  const description = [entry.analysisDescription, extra].filter((x) => typeof x === "string" && x.trim() !== "").join("\n\n");
+  const mode = entry.analysisMode ?? "meal";
+  const updated = store.updateFoodEntry(entryId, {
+    isPending: true,
+    analysisFailed: false,
+    analysisQuestions: null,
+    questionsAnswered: true,
+    analysisDescription: description || entry.analysisDescription,
+  });
+  runAnalysis(entryId, { imageDataUrl: entry.photoDataUrl, description, mode });
+  return updated;
+}
+
+/** "Not now": keep the best guess and stop asking. */
+export function skipQuestions(entryId) {
+  return store.updateFoodEntry(entryId, { analysisQuestions: null, questionsAnswered: true });
+}
+
+/**
  * "Fix results" — re-runs analysis for an ALREADY-completed entry with an appended correction.
  * Composes `workingDescription + "\n\n" + "Correction: {text}"` (or just the correction if there
  * was no prior description), re-uses the entry's original imageDataUrl/mode.
@@ -146,6 +207,8 @@ export async function submitCorrection(entryId, correctionText) {
       name: buildJoinedName(outcome.items) || "Analyzed meal",
       // items are one serving; keep whatever servings multiplier the meal already had
       ...store.fieldsFromItems(outcome.items, entry.servings),
+      // a correction is the person telling us: never ask on top of it
+      ...metaFields({ ...entry, questionsAnswered: true }, outcome.meta, outcome.items),
     });
   }
   return outcome;
@@ -317,6 +380,7 @@ function handleOutcome(entryId, mode, outcome) {
       isPending: false,
       analysisFailed: false,
       analysisFailureReason: null,
+      ...metaFields(entry, outcome.meta, items),
     });
 
     if (isDocumentForeground()) {

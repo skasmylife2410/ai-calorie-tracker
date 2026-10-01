@@ -486,3 +486,12 @@
 :root[data-theme="mono"] .macro-goal, :root[data-theme="mono"] .calorie-budget { color: var(--mn-sec); }
 :root[data-theme="mono"] .calorie-budget b { color: var(--mn-ink); font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
 :root[data-theme="mono"] .calorie-card .calorie-exercise { color: var(--mn-ink); }
+:root[data-theme="mono"] .ask-q { background: var(--mn-card); box-shadow: 0 0 0 1px var(--mn-line); }
+:root[data-theme="mono"] :is(.ask-opt, .ask-other) { background: var(--mn-control); color: var(--mn-ink); }
+:root[data-theme="mono"] .ask-opt[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--mn-ink); }
+:root[data-theme="mono"] .ask-send { background: var(--mn-ink); color: var(--mn-bg); }
+:root[data-theme="mono"] .sure-badge.is-low::before, :root[data-theme="mono"] .entry-ask::before { background: var(--mn-over); }
+:root[data-theme="mono"] .fat-card { background: var(--mn-card); box-shadow: 0 0 0 1px var(--mn-line); }
+:root[data-theme="mono"] .fat-opts button { background: var(--mn-control); color: var(--mn-ink); }
+:root[data-theme="mono"] .fat-opts button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--mn-ink); }
+:root[data-theme="mono"] :is(.ask-opt, .ask-other, .fat-opts button):not([aria-pressed="true"]) { box-shadow: inset 0 0 0 1px var(--mn-line); }

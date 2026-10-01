@@ -9,6 +9,7 @@ import { icon } from "./icons.js";
 import { foodCategory, foodIconSvg } from "./food-icons.js";
 import { ringGauge } from "./ring.js";
 import { t } from "../i18n.js";
+import { sureBadgeHtml } from "./questions.js";
 
 const MACRO_META = [
   { key: "proteinG", label: "P", icon: "fishFill", color: "var(--sc-protein)" },
@@ -78,7 +79,7 @@ export function groupThumbHtml(entry, { className = "entry-thumb" } = {}) {
   const n = Array.isArray(entry.analysisItems) ? entry.analysisItems.length : Array.isArray(entry.items) ? entry.items.length : 0;
   const count = n > 1 ? `<span class="group-count" aria-hidden="true">${n}</span>` : "";
   if (entry.photoDataUrl) {
-    return `<div class="${className} is-group has-photo"><img src="${safeSrc(entry.photoDataUrl)}" alt="" /><span class="group-badge">${icon("layersFill", { size: 11, color: "#fff" })}${n > 1 ? n : ""}</span></div>`;
+    return `<div class="${className} is-group has-photo"><img src="${safeSrc(entry.photoDataUrl)}" alt="" /><span class="group-badge">${icon("layersFill", { size: 11, color: "#fff" })}${n > 1 ? n : ""}</span>${sureBadgeHtml(entry)}</div>`;
   }
   return `<div class="${className} is-group">${icon("layersFill", { size: 22, color: "#fff" })}${count}</div>`;
 }
@@ -89,8 +90,9 @@ function completedRowHtml(entry) {
   const thumbBox = isGroupedEntry(entry)
     ? groupThumbHtml(entry)
     : entry.photoDataUrl
-      ? `<div class="entry-thumb"><img src="${safeSrc(entry.photoDataUrl)}" alt="" /></div>`
-      : `<div class="entry-thumb is-food" data-food="${kind}">${foodIconSvg(kind, { size: 22 })}</div>`;
+      ? `<div class="entry-thumb"><img src="${safeSrc(entry.photoDataUrl)}" alt="" />${sureBadgeHtml(entry)}</div>`
+      : `<div class="entry-thumb is-food" data-food="${kind}">${foodIconSvg(kind, { size: 22 })}${sureBadgeHtml(entry)}</div>`;
+  const asking = Array.isArray(entry.analysisQuestions) && entry.analysisQuestions.length > 0;
   const macroChips = MACRO_META.map(
     (m) => `
       <div class="macro-chip">
@@ -105,7 +107,9 @@ function completedRowHtml(entry) {
         <div class="entry-name">${escapeHtml(entry.name)}</div>
         <div class="entry-time">${formatTime(entry.timestamp)}</div>
       </div>
-      <div class="entry-cal-row"><span class="entry-kcal">${Math.round(entry.calories)} kcal</span><span class="entry-kind">${t(`food.${kind}`)}</span></div>
+      <div class="entry-cal-row"><span class="entry-kcal">${Math.round(entry.calories)} kcal</span>${asking
+        ? `<span class="entry-ask">${t("ask.rowCta", { n: entry.analysisQuestions.length })}</span>`
+        : `<span class="entry-kind">${t(`food.${kind}`)}</span>`}</div>
       <div class="macro-chip-row">${macroChips}</div>
     </div>
   `;
@@ -146,6 +150,11 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
 
   wrap.addEventListener("click", (e) => {
     if (e.target.closest(".entry-row-bin") || e.target.closest(".entry-row-share")) return;
+    // an unsure analysis with questions waiting: ask them first
+    if (state !== "pending" && Array.isArray(entry.analysisQuestions) && entry.analysisQuestions.length > 0) {
+      import("./questions.js").then((m) => m.openQuestionsSheet(entry));
+      return;
+    }
     onTap(entry);
   });
   wrap.querySelector(".entry-row-share")?.addEventListener("click", async (e) => {
