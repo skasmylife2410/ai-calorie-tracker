@@ -72,7 +72,8 @@ async function lookupBarcode(barcode, res) {
     return res.status(200).json({ ok: true, ...hit.products });
   }
   const usdaKey = (process.env.USDA_API_KEY || "").trim() || undefined;
-  const out = await lookupBarcodeBoth(barcode, { usdaKey, timeoutMs: 6_000 });
+  // 4 s per source: with OFF then USDA for a non-US code that stays inside the function's 10 s
+  const out = await lookupBarcodeBoth(barcode, { usdaKey, timeoutMs: 4000 });
   if (out.status === "failed") return res.status(502).json({ ok: false, errorType: "unavailable", message: out.message });
   // only hits are remembered: a product missing today may be added, or a source was just down
   if (out.status === "found") {
@@ -155,7 +156,7 @@ async function getJson(url, options, label) {
 }
 
 // --- GIF pass-through --------------------------------------------------------------------------
-const GIF_MAX_BYTES = 4_000_000; // Vercel answers up to 4.5 MB
+const GIF_MAX_BYTES = 4000_000; // Vercel answers up to 4.5 MB
 
 async function proxyGif(id, res) {
   if (!cleanGif({ id })) return res.status(400).end();

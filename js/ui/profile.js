@@ -414,6 +414,11 @@ async function wireDiagnostics(container) {
     out = await r.json();
   } catch { out = null; }
   if (!out?.ok || !host.isConnected) { host.remove(); return; }
+  let zero = null;
+  try {
+    const r = await apiFetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "zeroMeals" }) });
+    zero = await r.json();
+  } catch { zero = null; }
   const device = (ua) => {
     const s = String(ua ?? "");
     const os = /Android [\d.]+/.exec(s)?.[0] ?? (/iPhone OS ([\d_]+)/.exec(s) ? `iOS ${/iPhone OS ([\d_]+)/.exec(s)[1].replace(/_/g, ".")}` : /Mac OS X/.test(s) ? "Mac" : /Windows/.test(s) ? "Windows" : "");
@@ -434,7 +439,19 @@ async function wireDiagnostics(container) {
           </div>`).join("") : `<div class="ios-row"><div class="ios-row-label">${t("diag.none")}</div></div>`}
       </div>
       <div class="ios-section-footer">${t("diag.hint")}</div>
-    </details>`;
+    </details>
+    ${zero?.ok ? `
+    <details class="diag">
+      <summary class="ios-section-header">${t("diag.zeroTitle", { n: zero.rows.length })}</summary>
+      <div class="ios-section-body">
+        ${zero.rows.length ? zero.rows.map((z) => `
+          <div class="diag-row">
+            <div class="diag-top"><b>${escapeHtml(z.owner)}</b><span>${escapeHtml(z.day)}</span></div>
+            <div class="diag-msg">${escapeHtml(z.name || "—")}</div>
+            <div class="diag-ua">${escapeHtml([z.source, z.mode, z.pending ? "analysing" : "", z.failed ? "failed" : "", z.itemsKcal ? `foods add up to ${z.itemsKcal} kcal` : "", z.baseKcal ? `base ${z.baseKcal} kcal` : "", `saved ${when(z.updatedAt)}`].filter(Boolean).join(" · "))}</div>
+          </div>`).join("") : `<div class="ios-row"><div class="ios-row-label">${t("diag.none")}</div></div>`}
+      </div>
+    </details>` : ""}`;
 }
 
 function membersSectionHtml() {

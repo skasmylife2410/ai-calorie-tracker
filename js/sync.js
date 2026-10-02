@@ -61,6 +61,8 @@ export function buildPushPayload(sinceMs = 0) {
   const dirtyEntries = store
     .allFoodEntries()
     .filter((e) => (e.updatedAt ?? 0) > sinceMs)
+    // a meal still being analysed is sent once it's done, never as a 0 kcal placeholder
+    .filter((e) => e.isPending !== true)
     .map((e) => ({
       id: e.id,
       day: localDateString(e.timestamp),
@@ -104,6 +106,8 @@ export function buildPushPayload(sinceMs = 0) {
   const dirtyExercise = store
     .allExerciseEntries()
     .filter((e) => (e.updatedAt ?? 0) > sinceMs)
+    // a meal still being analysed is sent once it's done, never as a 0 kcal placeholder
+    .filter((e) => e.isPending !== true)
     .map((e) => ({
       id: e.id,
       day: localDateString(e.timestamp),

@@ -1061,6 +1061,16 @@
   "diag": {
     "title": "Problemas de la app ({n})",
     "none": "No hay nada reportado.",
-    "hint": "Lo que reportaron los teléfonos: fallos al abrir, GIF que no cargaron y el GIF de Inicio que elegiste. Solo tú ves esto."
+    "hint": "Lo que reportaron los teléfonos: fallos al abrir, GIF que no cargaron y el GIF de Inicio que elegiste. Solo tú ves esto.",
+    "zeroTitle": "Comidas en 0 kcal ({n})"
+  },
+  "scan": {
+    "pointAt": "Pon el código de barras dentro del marco, o elige una foto",
+    "reading": "Leyendo el código de barras…",
+    "noBarcode": "No encontré un código de barras en esa foto. Prueba una más cercana y nítida, o escribe los números abajo.",
+    "typeDigits": "O escribe los números del código",
+    "slow": "Las bases de datos de productos van lentas ahora. Escribe los datos del envase.",
+    "notFoundTitle": "No encontrado",
+    "lookingUp": "Buscando {code}…"
   }
 }

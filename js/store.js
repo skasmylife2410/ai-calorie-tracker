@@ -130,6 +130,13 @@ export function makeFoodEntry(fields) {
     grouped: fields.grouped === true,
     // fiber, sugars, sat fat, sodium, potassium for the whole entry; null = not known
     micros: cleanMicros(fields.micros),
+    // how sure the analysis was, its open questions and cooking fat (see queue.metaFields)
+    ...(fields.analysisConfidence !== undefined ? { analysisConfidence: fields.analysisConfidence } : {}),
+    ...(fields.analysisQuestions !== undefined ? { analysisQuestions: fields.analysisQuestions } : {}),
+    ...(fields.questionsAnswered !== undefined ? { questionsAnswered: fields.questionsAnswered } : {}),
+    ...(fields.cookingFat !== undefined ? { cookingFat: fields.cookingFat } : {}),
+    ...(fields.cookingFatChoice !== undefined ? { cookingFatChoice: fields.cookingFatChoice } : {}),
+    ...(fields.autoRetries !== undefined ? { autoRetries: fields.autoRetries } : {}),
     base: fields.base ?? {
       calories: fields.calories ?? 0,
       proteinG: fields.proteinG ?? 0,
@@ -412,12 +419,44 @@ export function applyRemoteFoodEntry(remote) {
     return;
   }
 
-  if (localUpdatedAt >= remoteUpdatedAt) return; // local is newer or tied — keep local
+  const data = remote.data ?? {};
+  const unfinished = (e) => e?.isPending === true || e?.analysisFailed === true;
+  const finished = (e) => e && !unfinished(e) && (Number(e.calories) > 0 || (Array.isArray(e.analysisItems) && e.analysisItems.length > 0));
+  const local = idx !== -1 ? entries[idx] : null;
+  // A finished meal always beats an unfinished copy of it (still analysing, or failed), whatever
+  // the clocks say: a stale "analysing" copy retried days later used to zero real meals.
+  if (local && finished(local) && unfinished(data)) return;
+  const remoteWins = localUpdatedAt < remoteUpdatedAt || (local && unfinished(local) && finished(data));
+  if (!remoteWins) return; // local is newer or tied — keep local
 
-  const merged = makeFoodEntry({ ...(remote.data ?? {}), id: remote.id, updatedAt: remoteUpdatedAt });
+  const merged = makeFoodEntry({ ...data, id: remote.id, updatedAt: Math.max(remoteUpdatedAt, localUpdatedAt) });
   if (idx === -1) entries.push(merged);
   else entries[idx] = merged;
   saveFoodEntries(entries);
+}
+
+/**
+ * Meals showing 0 kcal although their foods add up to more (left over from the sync race above,
+ * or any half-saved edit): take the totals from the foods again. Returns how many were fixed.
+ */
+export function healZeroEntries() {
+  const entries = allFoodEntriesRaw();
+  let fixed = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.isPending === true || e.analysisFailed === true || Number(e.calories) > 0) continue;
+    const items = Array.isArray(e.analysisItems) ? e.analysisItems : [];
+    const fromItems = items.reduce((a, it) => a + (Number(it?.calories) || 0), 0);
+    if (fromItems > 0) {
+      entries[i] = { ...e, ...fieldsFromItems(items, e.servings), updatedAt: Date.now() };
+      fixed += 1;
+    } else if (Number(e.base?.calories) > 0) {
+      entries[i] = { ...e, ...totalsFor(e.base, e.servings), updatedAt: Date.now() };
+      fixed += 1;
+    }
+  }
+  if (fixed) saveFoodEntries(entries);
+  return fixed;
 }
 
 /** Entries whose calendar day (device-local) matches `date`. No midnight cron — recomputed live. */

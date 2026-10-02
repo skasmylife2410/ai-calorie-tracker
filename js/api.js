@@ -562,7 +562,7 @@ export async function lookupBarcodeBoth(barcode, { usdaKey, timeoutMs } = {}) {
 export async function foodLookup(barcode) {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+    const timer = setTimeout(() => controller.abort(), 10000);
     const res = await apiFetch(`/api/foods?barcode=${encodeURIComponent(barcode)}`, { signal: controller.signal }).finally(() => clearTimeout(timer));
     if (res.ok) {
       const body = await res.json();
@@ -573,7 +573,7 @@ export async function foodLookup(barcode) {
   } catch {
     // offline, or the server is unreachable: look it up from here instead
   }
-  return lookupBarcodeBoth(barcode);
+  return lookupBarcodeBoth(barcode, { timeoutMs: 5000 });
 }
 
 // ---------------------------------------------------------------------------

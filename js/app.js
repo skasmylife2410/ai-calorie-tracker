@@ -98,7 +98,10 @@ async function boot() {
   soft("sky", () => mountSky()); // time-of-day glow, first so there's colour before anything else paints
   soft("theme", () => applyTheme(store.getProfile())); // Mono or Classic (js/theme-boot.js already did this before paint)
   soft("system theme", () => watchSystemTheme(store.getProfile));
-  soft("sweep", () => queue.sweepIfNeeded()); // reload mid-analysis -> orphaned pendings become retryable-failed
+  // Meals cut off mid-analysis are retried, but only after this phone has the account's latest
+  // copies: a meal another phone already finished must not be re-analysed (or zeroed) here.
+  soft("heal", () => store.healZeroEntries());
+  whenFirstSynced(8000).then(() => soft("sweep", () => queue.sweepIfNeeded()));
   // An analysis under 50% sure comes back with questions: ask them right away if the app is on
   // screen and nothing else is open; otherwise the meal's row offers them.
   soft("ask", () => queue.onComplete(({ entryId, success }) => {
@@ -414,11 +417,11 @@ function startBarcodeFlow(barcode) {
     render(panel, close) {
       progressClose = close;
       panel.innerHTML = `
-        ${navBar({ title: "", leading: { label: t("app.cancel") } })}
+        ${navBar({ title: "", leading: { label: translate("app.cancel") } })}
         <div class="sheet-panel-body">
           <div class="barcode-progress-body">
             <div class="spinner"></div>
-            <div class="barcode-progress-text">Looking up ${escapeHtml(barcode)}…</div>
+            <div class="barcode-progress-text">${escapeHtml(translate("scan.lookingUp", { code: barcode }))}</div>
           </div>
         </div>
       `;
@@ -434,7 +437,10 @@ function startBarcodeFlow(barcode) {
     },
   });
 
-  foodLookup(barcode).then((outcome) => {
+  // Never more than 20 s on "Looking up…": past that, open Add Food with the barcode so the
+  // numbers can be typed from the package.
+  const slow = new Promise((resolve) => setTimeout(() => resolve({ status: "failed", message: translate("scan.slow") }), 20000));
+  Promise.race([foodLookup(barcode).catch((err) => ({ status: "failed", message: String(err?.message ?? err) })), slow]).then((outcome) => {
     if (cancelled) return;
     cancelled = true; // consume the flow exactly once
     if (progressClose) progressClose();

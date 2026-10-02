@@ -21,7 +21,21 @@ const MODES = [
 
 const BARCODE_FORMATS_NATIVE = ["ean_13", "ean_8", "upc_a", "upc_e"];
 const BARCODE_FORMATS_POLYFILL = ["ean_13", "ean_8", "upc_a", "upc_e"];
-const BARCODE_POLL_MS = 300;
+const BARCODE_POLL_MS = 250; // pause between decode attempts (never overlapping, see the loop)
+const BARCODE_MAX_W = 960;   // frames are shrunk to this width first: iPhones decode in software
+
+/** A smaller copy of a video frame or picked photo, which the software decoder reads in time. */
+function shrinkForDecode(source, srcW, srcH, maxW = BARCODE_MAX_W) {
+  const scale = Math.min(1, maxW / Math.max(1, srcW));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(srcW * scale));
+  canvas.height = Math.max(1, Math.round(srcH * scale));
+  canvas.getContext("2d").drawImage(source, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+/** Rejects after `ms` so a stuck decoder can never hold the screen. */
+const within = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
 
 let DetectorClassPromise = null;
 
@@ -90,7 +104,8 @@ export function openCameraScan({ onResult }) {
             <div class="scan-spacer"></div>
             ${centerHtml()}
             <div class="scan-spacer"></div>
-            ${mode === "barcode" && (cameraState === "denied" || cameraState === "noCamera") ? manualBarcodeHtml() : ""}
+            ${mode === "barcode" ? `<div class="scan-barcode-hint" id="scan-barcode-hint" role="status">${cameraState === "ready" ? t("scan.pointAt") : ""}</div>` : ""}
+            ${mode === "barcode" ? manualBarcodeHtml(cameraState === "ready") : ""}
             <div class="scan-bottom-controls">
               <div class="scan-mode-chips">
                 ${MODES.map(
@@ -148,9 +163,10 @@ export function openCameraScan({ onResult }) {
         `;
       };
 
-      const manualBarcodeHtml = () => `
-        <div class="scan-manual-barcode">
-          <input type="text" class="scan-manual-input" id="manual-barcode-input" inputmode="numeric" placeholder="Enter barcode digits" />
+      // Always offered in barcode mode: typing the digits is the way out when a barcode won't read.
+      const manualBarcodeHtml = (compact = false) => `
+        <div class="scan-manual-barcode${compact ? " is-compact" : ""}">
+          <input type="text" class="scan-manual-input" id="manual-barcode-input" inputmode="numeric" placeholder="${escapeAttr(t("scan.typeDigits"))}" />
           <button class="scan-go-btn" id="manual-barcode-go" disabled>${t("ui.go")}</button>
         </div>
       `;
@@ -206,19 +222,27 @@ export function openCameraScan({ onResult }) {
           const file = fileInput.files && fileInput.files[0];
           if (!file) return;
           if (mode === "barcode") {
-            // Route like a live capture: try to decode a barcode from the picked image.
+            // Route like a live capture: try to decode a barcode from the picked image. Phone
+            // photos are 12 MP; decoding that in software froze the screen, so try a smaller
+            // copy first, then a sharper one, each with a time limit.
+            const hint = panel.querySelector("#scan-barcode-hint");
+            if (hint) hint.textContent = t("scan.reading");
+            fileInput.value = "";
+            let code = null;
             try {
               const { Cls, formats } = await getDetectorClass();
               const det = new Cls({ formats });
-              const bitmap = await createImageBitmap(file);
-              const results = await det.detect(bitmap);
-              if (results.length > 0) {
-                deliver({ type: "barcode", code: results[0].rawValue });
-                return;
+              const bitmap = await within(createImageBitmap(file), 8000);
+              for (const w of [1280, 2000]) {
+                const results = await within(det.detect(shrinkForDecode(bitmap, bitmap.width, bitmap.height, w)), 8000).catch(() => []);
+                if (results.length > 0 && results[0].rawValue) { code = results[0].rawValue; break; }
               }
             } catch {
-              // fall through — nothing decoded
+              // nothing decoded
             }
+            if (code) { deliver({ type: "barcode", code }); return; }
+            if (hint) hint.textContent = t("scan.noBarcode");
+            panel.querySelector("#manual-barcode-input")?.focus();
             return;
           }
           const { dataUrl } = await resizeImage(file, scanPreset(store.getProfile().scanQuality));
@@ -287,20 +311,29 @@ export function openCameraScan({ onResult }) {
             return;
           }
         }
-        barcodeTimer = setInterval(async () => {
-          if (didDeliver || mode !== "barcode") return;
+        // One decode at a time: the next starts only after the last finished (it used to start
+        // every 300 ms regardless, and on iPhones the decodes piled up until the screen froze).
+        const loopId = {};
+        barcodeTimer = loopId;
+        const tick = async () => {
+          if (barcodeTimer !== loopId || didDeliver || mode !== "barcode") return;
           const video = panel.querySelector("#scan-video");
-          if (!video || video.readyState < 2 || !video.videoWidth) return;
-          try {
-            // FULL camera frame, not just the viewfinder brackets (§11.2 bug-fix note).
-            const results = await detector.detect(video);
-            if (results.length > 0 && results[0].rawValue) {
-              deliver({ type: "barcode", code: results[0].rawValue });
+          if (video && video.readyState >= 2 && video.videoWidth) {
+            try {
+              // FULL camera frame (not just the brackets, §11.2), shrunk for the software decoder.
+              const frame = shrinkForDecode(video, video.videoWidth, video.videoHeight);
+              const results = await within(detector.detect(frame), 4000);
+              if (results.length > 0 && results[0].rawValue) {
+                deliver({ type: "barcode", code: results[0].rawValue });
+                return;
+              }
+            } catch {
+              // per-frame decode errors and slow frames are non-fatal
             }
-          } catch {
-            // per-frame decode errors are non-fatal
           }
-        }, BARCODE_POLL_MS);
+          if (barcodeTimer === loopId) setTimeout(tick, BARCODE_POLL_MS);
+        };
+        setTimeout(tick, BARCODE_POLL_MS);
       };
 
       renderScreen();
@@ -317,7 +350,6 @@ export function openCameraScan({ onResult }) {
   }
   function stopBarcodeLoop() {
     if (barcodeTimer) {
-      clearInterval(barcodeTimer);
       barcodeTimer = null;
     }
   }

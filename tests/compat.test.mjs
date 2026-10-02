@@ -37,3 +37,18 @@ test("client code avoids features that crash older Chrome", () => {
   }
   assert.deepEqual(problems, []);
 });
+
+test("modules that import i18n's t under another name don't call a bare t()", () => {
+  // app.js imports `t as translate`; a stray t("…") there broke the barcode lookup sheet.
+  const problems = [];
+  for (const f of [...files("js")]) {
+    const src = readFileSync(f, "utf8");
+    const definesT = /import\s*\{[^}]*(?:^|[{,\s])t\s*[,}][^]*?from|\b(?:const|let|var|function)\s+t\b/.test(src);
+    if (definesT) continue;
+    src.split("\n").forEach((line, i) => {
+      if (/^\s*(\/\/|\*)/.test(line)) return;
+      if (/(^|[^\w.$])t\(\s*["'`]/.test(line)) problems.push(`${f}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(problems, []);
+});

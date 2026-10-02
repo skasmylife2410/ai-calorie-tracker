@@ -1061,6 +1061,16 @@
   "diag": {
     "title": "App problems ({n})",
     "none": "Nothing reported.",
-    "hint": "What phones reported: start-up failures, GIFs that wouldn't load, and the Home GIF you picked. Only you see this."
+    "hint": "What phones reported: start-up failures, GIFs that wouldn't load, and the Home GIF you picked. Only you see this.",
+    "zeroTitle": "Meals at 0 kcal ({n})"
+  },
+  "scan": {
+    "pointAt": "Hold the barcode inside the frame, or pick a photo of it",
+    "reading": "Reading the barcode…",
+    "noBarcode": "Couldn't find a barcode in that photo. Try a closer, sharper one, or type the digits below.",
+    "typeDigits": "Or type the barcode digits",
+    "slow": "The product databases are slow right now. Enter the numbers from the package.",
+    "notFoundTitle": "Not found",
+    "lookingUp": "Looking up {code}…"
   }
 }

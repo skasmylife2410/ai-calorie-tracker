@@ -2505,3 +2505,9 @@ body.setup-open { overflow: hidden; }
 .week-day-col.past-nolog { opacity: 1; }
 .week-day-col.past-nolog .week-day-circle { opacity: 1; } /* the dashed ring already says "nothing logged" */
 :root:not([data-theme="mono"]) .ex-chip.is-on { background: var(--sc-accent-exercise-text); }
+
+/* Barcode mode: a line saying what to do (or what went wrong) and the digits field, always */
+.scan-barcode-hint { position: relative; z-index: 2; margin: 0 28px 10px; text-align: center; font-size: 14px; line-height: 1.35; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); min-height: 19px; }
+.scan-manual-barcode.is-compact { flex-direction: row; padding: 0 20px 12px; }
+.scan-manual-barcode.is-compact .scan-manual-input { flex: 1; min-width: 0; height: 44px; }
+.scan-manual-barcode.is-compact .scan-go-btn { flex: none; width: auto; padding: 0 18px; height: 44px; }

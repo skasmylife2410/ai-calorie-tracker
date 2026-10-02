@@ -148,6 +148,24 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, rows });
   }
 
+  // Admin only: meals stored at 0 kcal in the last 60 days, with what kind they were, so a
+  // "my meals went to zero" report can be traced without the database console.
+  if (op === "zeroMeals") {
+    const username = readSession(req.headers["x-snapcal-token"]);
+    if (!isAdmin(username)) return fail(res, "forbidden", "Only the owner can see this.");
+    const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    const params = new URLSearchParams({
+      select: "owner,day,name,source,updated_at,mode:data->>analysisMode,pending:data->>isPending,failed:data->>analysisFailed,base:data->base->>calories,items:data->analysisItems",
+      calories: "eq.0", deleted: "is.false", day: `gte.${since}`, order: "updated_at.desc", limit: "40",
+    });
+    const r = await fetch(`${restBase()}/rest/v1/snapcal_food_entries?${params}`, { headers: restHeaders() });
+    const rows = r.ok ? await r.json() : [];
+    return res.status(200).json({ ok: true, rows: rows.map((x) => ({
+      owner: x.owner, day: x.day, name: x.name, source: x.source, mode: x.mode, pending: x.pending === "true", failed: x.failed === "true",
+      baseKcal: Number(x.base) || 0, itemsKcal: Array.isArray(x.items) ? Math.round(x.items.reduce((a, i) => a + (Number(i?.calories) || 0), 0)) : null, updatedAt: x.updated_at,
+    })) });
+  }
+
   // The Home "What should I eat?" GIF: the owner's latest pick becomes everyone's default.
   if (op === "homeGif") {
     const params = new URLSearchParams({ select: "message", owner: `eq.${ADMIN}`, message: "like.Home GIF picked:*", order: "at.desc", limit: "1" });
