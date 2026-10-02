@@ -19,6 +19,7 @@ globalThis.fetch = async (url) => {
       { owner: "maria", day: "2026-09-14", calories: 400, protein_g: 20, carbs_g: 40, fat_g: 12, ts: String(new Date("2026-09-14T13:00:00").getTime()) },
     ],
     snapcal_water: [{ owner: "maria", day: "2026-09-15", glasses: 4 }],
+    // an old estimate (420) with no minutes is kept; with minutes it's recalculated for this person
     snapcal_exercise: [{ owner: "aelson", day: "2026-09-15", data: { caloriesBurned: 420, activity: "soccer" } }],
     snapcal_users: [{ username: "aelson" }, { username: "maria" }],
     // who appears on the dashboard now comes from group membership, not the account list
@@ -66,4 +67,12 @@ test("returns daily totals and goals for both people, no private fields", async 
   assert.ok(!/(^|,)data(,|$)/.test(entriesCall.searchParams.get("select")), "no raw data column")
   assert.ok(entriesCall.searchParams.get("select").includes("ts:data->>timestamp"));
   assert.ok(!JSON.stringify(res.body).includes("weightKg"));
+});
+
+test("the board recalculates old workout burns per person; typed watch calories stay", async () => {
+  const { burnOf } = await import("../api/compare.js");
+  const body = { weightKg: 80, heightCm: 178, age: 35, sex: "male" };
+  assert.equal(burnOf({ caloriesBurned: 420, activity: "soccer", minutes: 45, intensity: "moderate" }, body), 366);
+  assert.equal(burnOf({ caloriesBurned: 300, activity: "run", minutes: 30, kcalEntered: true }, body), 300);
+  assert.equal(burnOf({ caloriesBurned: 420, activity: "soccer" }, body), 420, "no minutes: nothing to recalculate from");
 });

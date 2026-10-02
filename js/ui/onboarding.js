@@ -50,7 +50,7 @@ let draft = { ...DEFAULTS };
 export function draftFromProfile(profile, latest = store.latestWeight()) {
   return {
     ...DEFAULTS,
-    sex: profile.sex === "male" ? "male" : "female",
+    sex: profile.sex === "male" ? "male" : profile.sex === "female" ? "female" : DEFAULTS.sex,
     age: Number(profile.age) > 0 ? Math.round(profile.age) : DEFAULTS.age,
     heightCm: Number(profile.heightCm) > 0 ? profile.heightCm : DEFAULTS.heightCm,
     weightKg: latest?.kg ?? (Number(profile.weightKg) > 0 ? profile.weightKg : DEFAULTS.weightKg),
@@ -88,10 +88,11 @@ export function targetDelta({ goal, rate, weightKg }) {
  * @param {Function} onComplete
  * @param {{redo?: boolean}} opts  redo: prefill from the existing profile and keep all data
  */
-export function render(container, onComplete, { redo = false } = {}) {
+export function render(container, onComplete, { redo = false, resume = false } = {}) {
   let tapeOpen = false;
   const tape = { neck: null, waist: null, hip: null };
-  if (redo) prefillFrom(store.getProfile());
+  // resume: a setup left halfway — every step again, starting from what was already answered
+  if (redo || resume) prefillFrom(store.getProfile());
   else draft = { ...DEFAULTS };
   let step = 0;
   // Last step: how to put SnapCal on the Home Screen. Not when it's already opened from there,

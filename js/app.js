@@ -77,12 +77,28 @@ function accountProfileArrived() {
   }
 }
 
+/**
+ * Setup is done: it said so at its last step, or (for people who set up before that marker
+ * existed) weight, height and age are all filled in. Someone who left setup halfway, often
+ * right after picking a language, which already saves a profile, is shown it again next time.
+ */
+export function profileComplete(p) {
+  if (!p || typeof p !== "object") return false;
+  if (p.hasCompletedOnboarding === true) return true;
+  return Number(p.weightKg) > 0 && Number(p.heightCm) > 0 && Number(p.age) > 0;
+}
+
 function profileExists() {
   try {
-    return localStorage.getItem("snapcal.userProfile") !== null;
+    return profileComplete(JSON.parse(localStorage.getItem("snapcal.userProfile") || "null"));
   } catch {
     return false;
   }
+}
+
+/** Some answers saved already (a setup left halfway): setup starts from them. */
+function profileStarted() {
+  try { return localStorage.getItem("snapcal.userProfile") !== null; } catch { return false; }
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +245,7 @@ function renderShell() {
     renderOnboarding(document.getElementById("onboarding-screen"), () => {
       hasProfile = true;
       renderShell();
-    });
+    }, { resume: profileStarted() });
     return;
   }
 

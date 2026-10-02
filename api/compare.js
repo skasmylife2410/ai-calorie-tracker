@@ -9,7 +9,7 @@
 import { isSafeDataImage } from "../js/safe-src.js";
 import { requireUser, parseUsers, DEFAULT_OWNER } from "./_auth.js";
 import { resolveGroup, membersOf } from "./_groups.js";
-import { resolveUserGoals, exerciseCredit, creditRatioFor } from "../js/nutrition.js";
+import { resolveUserGoals, exerciseCredit, creditRatioFor, estimateCaloriesBurned } from "../js/nutrition.js";
 
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -66,6 +66,17 @@ function goalsFrom(profileData) {
 }
 
 const num = (v) => (typeof v === "number" ? v : Number(v) || 0);
+
+/**
+ * A workout's burn as the app estimates it now (net of resting, per person), so the board is right
+ * even for someone whose phone still holds the older, higher estimate. Calories typed in from a
+ * watch or machine are used as given.
+ */
+export function burnOf(data, body) {
+  const minutes = Number(data?.minutes);
+  if (data?.kcalEntered === true || !(minutes > 0) || !data?.activity) return num(data?.caloriesBurned);
+  return estimateCaloriesBurned({ activity: data.activity, minutes, intensity: data.intensity, ...body });
+}
 
 export default async function handler(req, res) {
   const me = await requireUser(req, res);
@@ -135,7 +146,9 @@ export default async function handler(req, res) {
     const displayName = typeof profile?.data?.displayName === "string" ? profile.data.displayName.trim().slice(0, 40) : "";
     const raw = profile?.data?.avatar;
     const avatar = typeof raw === "string" && isSafeDataImage(raw) && raw.length < 120000 ? raw : null;
-    return { owner, name: displayName || null, avatar, goals: goalsFrom(profile?.data), creditRatio: creditRatioFor(profile?.data), days: {} };
+    const d = profile?.data ?? {};
+    return { owner, name: displayName || null, avatar, goals: goalsFrom(profile?.data), creditRatio: creditRatioFor(profile?.data),
+      body: { weightKg: d.weightKg, heightCm: d.heightCm, age: d.age, sex: d.sex }, days: {} };
   });
   const byOwner = Object.fromEntries(people.map((p) => [p.owner, p]));
   const dayOf = (person, day) =>
@@ -168,7 +181,7 @@ function partOfDay(timestamp) {
     const person = byOwner[x.owner];
     if (!person) continue;
     const d = dayOf(person, x.day);
-    d.burned += num(x.data?.caloriesBurned);
+    d.burned += burnOf(x.data, person.body);
     d.sessions += 1;
   }
   for (const w of water) {
@@ -181,6 +194,9 @@ function partOfDay(timestamp) {
       // how much exercise raised that day's budget, by the person's own setting
       d.credit = exerciseCredit(d.burned, p.creditRatio);
     }
+    // private: used above for the burn and credit, never sent to the group
+    delete p.body;
+    delete p.creditRatio;
   }
 
   res.status(200).json({ me, people, group, groups });
