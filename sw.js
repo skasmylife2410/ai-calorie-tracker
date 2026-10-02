@@ -1,7 +1,7 @@
 // sw.js — minimal service worker: network-first for everything, cache-fallback for the app
 // shell, enough for PWA installability. Bump CACHE_VERSION to bust caches on deploy.
 
-const CACHE_VERSION = "snapcal-v36";
+const CACHE_VERSION = "snapcal-v37";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -57,9 +57,9 @@ const APP_SHELL = [
   "/vendor/zbar-wasm/main.js",
   "/vendor/zbar-wasm/zbar.wasm",
   "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/apple-touch-icon.png",
+  "/icons/icon-192-v2.png",
+  "/icons/icon-512-v2.png",
+  "/icons/apple-touch-icon-v2.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -128,8 +128,8 @@ self.addEventListener("push", (event) => {
   const title = msg.title || "SnapCal";
   const options = {
     body: msg.body || "",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: "/icons/icon-192-v2.png",
+    badge: "/icons/icon-192-v2.png",
     tag: msg.tag || undefined,
     renotify: Boolean(msg.tag),
     data: { url: msg.url || "/" },
