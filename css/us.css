@@ -656,3 +656,8 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
   background: repeating-linear-gradient(135deg, var(--tg-ink) 0 1.5px, transparent 1.5px 5px); opacity: .32; }
 .us-boost { display: inline-flex; align-items: center; gap: 1px; margin-left: 4px; font-size: 11px; font-weight: 700; color: var(--tg-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .us-legend i.k-boost { background: repeating-linear-gradient(135deg, var(--tg-ink) 0 1.5px, transparent 1.5px 4px); opacity: .5; }
+
+/* Photos keep the shape they were cropped to (square, 4:5, wide); very tall ones are capped */
+.feed-photo:not(.feed-gif) { aspect-ratio: auto; height: auto; max-height: min(125vw, 560px); object-fit: cover; }
+.pc-preview-wrap:not(.is-gif) .pc-preview { aspect-ratio: auto; height: auto; max-height: 420px; object-fit: cover; }
+.fc-photo:not(.fc-gif) { aspect-ratio: auto; height: auto; max-height: 260px; }

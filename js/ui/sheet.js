@@ -96,6 +96,7 @@ function wireDragToDismiss(panel, close) {
     (e) => {
       const scrollable = e.target.closest(".sheet-panel-body");
       if (scrollable && scrollable.scrollTop > 0) return;
+      if (e.target.closest("[data-no-sheet-drag]")) return; // e.g. a photo being cropped
       startY = e.touches[0].clientY;
       dragging = true;
       panel.style.transition = "none";

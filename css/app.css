@@ -2511,3 +2511,22 @@ body.setup-open { overflow: hidden; }
 .scan-manual-barcode.is-compact { flex-direction: row; padding: 0 20px 12px; }
 .scan-manual-barcode.is-compact .scan-manual-input { flex: 1; min-width: 0; height: 44px; }
 .scan-manual-barcode.is-compact .scan-go-btn { flex: none; width: auto; padding: 0 18px; height: 44px; }
+
+/* Crop sheet (Shared photos): the photo fills a dark stage, the frame shows what is kept */
+.crop-body { display: flex; flex-direction: column; gap: 14px; padding: 0 0 calc(16px + env(safe-area-inset-bottom)); height: 100%; box-sizing: border-box; overflow: hidden; }
+.crop-stage { position: relative; flex: 1 1 auto; min-height: 260px; background: #0A0A0A; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.crop-frame { position: absolute; z-index: 1; pointer-events: none; box-shadow: 0 0 0 9999px rgba(10,10,10,.62), inset 0 0 0 1.5px rgba(255,255,255,.9); }
+.crop-frame::after { content: ""; position: absolute; inset: 0; pointer-events: none; background:
+  linear-gradient(rgba(255,255,255,.28), rgba(255,255,255,.28)) 33.33% 0 / 1px 100% no-repeat,
+  linear-gradient(rgba(255,255,255,.28), rgba(255,255,255,.28)) 66.66% 0 / 1px 100% no-repeat,
+  linear-gradient(rgba(255,255,255,.28), rgba(255,255,255,.28)) 0 33.33% / 100% 1px no-repeat,
+  linear-gradient(rgba(255,255,255,.28), rgba(255,255,255,.28)) 0 66.66% / 100% 1px no-repeat; }
+.crop-img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
+.crop-zoom { display: flex; align-items: center; gap: 10px; margin: 0 20px; font-size: 18px; font-weight: 700; color: var(--sc-secondary); }
+.crop-zoom input { flex: 1; accent-color: var(--sc-primary-text); }
+.crop-shapes { display: flex; gap: 8px; margin: 0 16px; }
+.crop-shapes button { flex: 1; height: 38px; border: 0; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-primary-text); background: var(--sc-secondary-15); cursor: pointer; }
+.crop-shapes button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--sc-primary-text); background: var(--sc-card-bg, #fff); }
+.crop-hint { margin: 0 20px; text-align: center; font-size: 13px; color: var(--sc-secondary); }
+.pc-preview-wrap .pc-crop, .fc-thumb .fc-crop { position: absolute; border: 0; cursor: pointer; display: grid; place-items: center; color: #fff; background: rgba(0,0,0,.6); }
+.pc-preview-wrap .pc-crop { top: 8px; right: 44px; height: 28px; padding: 0 10px; border-radius: 14px; font: 600 12.5px var(--sc-font, system-ui); }

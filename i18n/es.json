@@ -1072,5 +1072,17 @@
     "slow": "Las bases de datos de productos van lentas ahora. Escribe los datos del envase.",
     "notFoundTitle": "No encontrado",
     "lookingUp": "Buscando {code}…"
+  },
+  "crop": {
+    "title": "Recortar",
+    "done": "Listo",
+    "zoom": "Zoom",
+    "shape": "Forma",
+    "original": "Original",
+    "square": "Cuadrada",
+    "portrait": "4:5",
+    "wide": "16:9",
+    "hint": "Arrastra para mover. Pellizca o usa la barra para acercar.",
+    "edit": "Recortar"
   }
 }

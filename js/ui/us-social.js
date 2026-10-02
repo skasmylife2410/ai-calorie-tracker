@@ -7,6 +7,7 @@ import { t, formatNumber } from "../i18n.js";
 import { icon } from "./icons.js";
 import { gifImgHtml, gifUrl, gifSources } from "../gif.js";
 import { openGifPicker } from "./gif-picker.js";
+import { openCropSheet } from "./crop.js";
 
 /** The "GIF" mark on buttons: the letters in a small rounded box, drawn like the other glyphs. */
 export const GIF_GLYPH = `<span class="gif-glyph" aria-hidden="true">GIF</span>`;
@@ -207,7 +208,7 @@ export async function renderFeed(host, { me, people, colors, group = null, group
         <button type="button" class="pc-photo pc-gif" aria-label="${t("gif.add")}">${GIF_GLYPH}</button>
         <button type="button" class="pc-photo" aria-label="${t("social.addPhotoLabel")}">${icon("cameraFill", { size: 17 })}</button>
       </div>
-      <div class="pc-preview-wrap" hidden><img class="pc-preview" alt=""><button type="button" class="pc-unphoto" aria-label="${t("social.removePhoto")}">${icon("xmark", { size: 12 })}</button></div>
+      <div class="pc-preview-wrap" hidden><img class="pc-preview" alt=""><button type="button" class="pc-crop" hidden>${t("crop.edit")}</button><button type="button" class="pc-unphoto" aria-label="${t("social.removePhoto")}">${icon("xmark", { size: 12 })}</button></div>
       <div class="pc-row" hidden>
         <span class="pc-count"><span class="pc-n">0</span>/${POST_MAX}</span>
         <button type="button" class="feed-btn is-primary pc-send" disabled>${t("social.post")}</button>
@@ -231,11 +232,21 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     text.addEventListener("focus", refresh);
     text.addEventListener("blur", () => setTimeout(refresh, 150));
     composer.querySelector(".pc-photo:not(.pc-gif)").addEventListener("click", () => file.click());
+    let original = null; // the photo as picked, so the crop can be redone from it
+    const showPhoto = () => { gif = null; preview.src = photo; wrap.hidden = false; wrap.classList.remove("is-gif"); wrap.querySelector(".pc-crop").hidden = false; refresh(); };
     file.addEventListener("change", async () => {
-      photo = await readPhoto(file.files?.[0]);
+      original = await readPhoto(file.files?.[0]);
       file.value = "";
-      if (photo) { gif = null; preview.src = photo; wrap.hidden = false; wrap.classList.remove("is-gif"); }
-      refresh();
+      if (!original) return;
+      const cropped = await openCropSheet(original);
+      if (!cropped) return; // cancelled: nothing attached
+      photo = cropped;
+      showPhoto();
+    });
+    composer.querySelector(".pc-crop").addEventListener("click", async () => {
+      if (!original) return;
+      const cropped = await openCropSheet(original);
+      if (cropped) { photo = cropped; showPhoto(); }
     });
     composer.querySelector(".pc-gif").addEventListener("click", async () => {
       const g = await openGifPicker();
@@ -246,6 +257,7 @@ export async function renderFeed(host, { me, people, colors, group = null, group
       preview.src = gifUrl(g);
       wrap.hidden = false;
       wrap.classList.add("is-gif");
+      wrap.querySelector(".pc-crop").hidden = true;
       refresh();
     });
     composer.querySelector(".pc-unphoto").addEventListener("click", () => { photo = null; gif = null; wrap.hidden = true; preview.removeAttribute("src"); refresh(); });
@@ -321,9 +333,11 @@ export async function renderFeed(host, { me, people, colors, group = null, group
       });
       row.querySelector("[data-cphoto]").addEventListener("click", () => file.click());
       file.addEventListener("change", async () => {
-        const photo = await readPhoto(file.files?.[0]);
+        const picked = await readPhoto(file.files?.[0]);
         file.value = "";
-        if (!photo) return;
+        if (!picked) return;
+        const photo = await openCropSheet(picked);
+        if (!photo) return; // cancelled
         update({ photo, gif: null });
         redrawKeepingFocus(id);
       });

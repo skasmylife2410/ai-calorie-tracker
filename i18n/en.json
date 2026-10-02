@@ -1072,5 +1072,17 @@
     "slow": "The product databases are slow right now. Enter the numbers from the package.",
     "notFoundTitle": "Not found",
     "lookingUp": "Looking up {code}…"
+  },
+  "crop": {
+    "title": "Crop",
+    "done": "Done",
+    "zoom": "Zoom",
+    "shape": "Shape",
+    "original": "Original",
+    "square": "Square",
+    "portrait": "4:5",
+    "wide": "16:9",
+    "hint": "Drag to move. Pinch or use the slider to zoom.",
+    "edit": "Crop"
   }
 }
