@@ -20,15 +20,16 @@
   <link rel="stylesheet" href="/css/mono.css" />
   <style>
     /* The opening (js/intro.js). Inline so it's on screen before anything else loads:
-       the pearl flow and the SnapCal flame, nothing else. */
-    #intro { position: fixed; inset: 0; z-index: 10000; background: #F7F6F3; overflow: hidden;
+       the liquid chrome flow and the SnapCal flame, nothing else. */
+    #intro { position: fixed; inset: 0; z-index: 10000; background: #050505; overflow: hidden;
       display: grid; place-items: center; transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .7s ease; }
     #intro .intro-fluid { position: absolute; inset: -2%; opacity: 0; transform: scale(1.04); transition: opacity .7s ease, transform 2.4s cubic-bezier(.2,.7,.2,1); }
     #intro.intro-fluid-in .intro-fluid { opacity: 1; transform: scale(1); }
     #intro .intro-fluid canvas { width: 100% !important; height: 100% !important; display: block; }
     #intro::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-      background: radial-gradient(40% 22% at 50% 50%, rgba(247,246,243,.85) 0%, rgba(247,246,243,0) 100%); }
-    #intro .intro-flame { position: relative; z-index: 1; width: clamp(72px, 22vw, 96px); height: auto; color: #000;
+      background: radial-gradient(40% 22% at 50% 50%, rgba(5,5,5,.62) 0%, rgba(5,5,5,.28) 60%, rgba(5,5,5,0) 100%),
+        radial-gradient(140% 90% at 50% 50%, transparent 55%, rgba(0,0,0,.5) 100%); }
+    #intro .intro-flame { position: relative; z-index: 1; width: clamp(72px, 22vw, 96px); height: auto; color: #fff;
       opacity: 0; transform: translateY(14px) scale(.86); }
     #intro.intro-playing .intro-flame { animation: intro-flame 1s cubic-bezier(.2,.8,.2,1) .2s forwards; }
     #intro.intro-leaving { opacity: 0; transform: scale(1.03); filter: blur(6px); pointer-events: none; }

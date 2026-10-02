@@ -1,4 +1,4 @@
-// intro.js — the opening: a slow pearl flow (the app's paper tones) with the SnapCal wordmark,
+// intro.js — the opening: liquid chrome (black and silver) with the SnapCal flame,
 // then it dissolves into the app.
 //
 // The paper cover and wordmark are plain markup in index.html, so they're on screen before any
@@ -8,7 +8,7 @@
 // The picture is drawn by fluid-bg (MIT, vendor/fluid-bg) from the design made in the Fluid
 // studio; phones without WebGL simply keep the plain paper cover.
 
-export const INTRO_HASH = "#p=1.2,2.4,1.7,0.05,1,15,0,8,25.15,0.05,0.55,0.5625,0,0,1,0,-0.014,0.066,0,0,13617856,14736596,15657958,16447991";
+export const INTRO_HASH = "#p=2.5,1.55,1.7,0.195,1,15,0,8,25.15,0.05,0.55,0.5625,0,0,1,0,-0.014,0.066,0,0,0,4473924,12632256,16777215";
 
 const MIN_MS = 1700;       // long enough to read the wordmark
 const REDUCED_MIN_MS = 700;
