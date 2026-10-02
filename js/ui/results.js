@@ -180,14 +180,11 @@ export function openResultsSheet(entry, { template = null } = {}) {
           const total = items.reduce((acc, i) => acc + (i[t.key] ?? 0), 0) * servings;
           return `
             <div class="total-stat">
-              <div class="total-stat-value numeric-text">${formatNumeric(total)}${t.suffix}</div>
+              <div class="total-stat-value numeric-text">${Math.round(total)}${t.suffix}</div>
               <div class="total-stat-label">${t.label}</div>
             </div>`;
         }).join("");
-        const m = scaleMicros(sumMicros(items.map((i) => i.micros)), servings);
-        totalsEl.insertAdjacentHTML("beforeend", m
-          ? `<div class="results-micros-line">${["sodiumMg", "sugarG", "satFatG", "fiberG", "potassiumMg"].map((k) => `${t(`nutrients.${k}`)} ${formatMicro(k, m[k])}`).join(" · ")}</div>`
-          : "");
+        // just the four totals, rounded: each food lists its own nutrients above
         saveBtn.disabled = items.length === 0;
         renderPlate();
       };
