@@ -1,7 +1,8 @@
 // api/weekly.js — the daily housekeeping job and each person's Friday recommendation.
 //
 // GET  (Vercel cron, daily)   Authorization: Bearer $CRON_SECRET
-//      Every day: deletes feed posts older than 7 days (their comments go with them).
+//      Every day: deletes feed posts older than 7 days (their comments go with them), and nudges
+//      anyone who hasn't logged a meal in 24 hours (see nudgeDue for how often).
 //      On Fridays (America/Chicago): writes a recommendation for every account from its last 7 days.
 //      ?force=1 writes the recommendations today regardless of weekday (still needs the secret).
 // POST { op: "mine", lang } -> { ok, recap|null }  your own latest recommendation, text in `lang`
@@ -88,6 +89,52 @@ export async function recapFor(owner, win) {
   return data;
 }
 
+/**
+ * Should someone who last logged `hoursSince` hours ago get a reminder today (the job runs once a
+ * day)? Daily for the first 3 days, then every third day, never after 2 weeks: a nudge, not nagging.
+ */
+export function nudgeDue(hoursSince) {
+  if (!Number.isFinite(hoursSince) || hoursSince < 24) return false;
+  const days = Math.floor(hoursSince / 24);
+  if (days > 14) return false;
+  return days <= 3 || days % 3 === 0;
+}
+
+/** Reminds people with no meal logged in the last 24 hours (only phones with notifications on). */
+export async function nudgeInactive(now = Date.now()) {
+  const since = new Date(now - 15 * 86400000).toISOString();
+  const [users, rows, profiles] = await Promise.all([
+    select("snapcal_users", { select: "username" }),
+    select("snapcal_food_entries", { select: "owner,logged_at", deleted: "is.false", logged_at: `gte.${since}`, order: "logged_at.desc", limit: "5000" }),
+    select("snapcal_profile", { select: "owner,name:data->>displayName" }).catch(() => []),
+  ]);
+  const last = new Map();
+  for (const r of rows) {
+    const t = Date.parse(r.logged_at);
+    if (Number.isFinite(t) && t <= now && t > (last.get(r.owner) ?? 0)) last.set(r.owner, t);
+  }
+  const due = users.map((u) => u.username).filter((u) => last.has(u) && nudgeDue((now - last.get(u)) / 3600000));
+  const nameOf = (u) => {
+    const n = String(profiles.find((p) => p.owner === u)?.name ?? "").trim();
+    return n || u.replace(/[-_]\d*$/, "").replace(/\d+$/, "").replace(/^./, (c) => c.toUpperCase());
+  };
+  let sent = 0;
+  for (const u of due) {
+    const days = Math.floor((now - last.get(u)) / 86400000);
+    const name = nameOf(u);
+    const out = await notify([u], (lang) => ({
+      title: lang === "es" ? `${name}, ¿qué comiste hoy?` : `${name}, what did you eat today?`,
+      body: days <= 1
+        ? (lang === "es" ? "Un día sin registrar. Una foto y listo: SnapCal hace el resto." : "A day without logging. One photo is all it takes: SnapCal does the rest.")
+        : (lang === "es" ? `${days} días sin registrar. Retómalo con tu próxima comida, sin culpa.` : `${days} days without logging. Pick it back up with your next meal, no guilt.`),
+      url: "/",
+      tag: "nudge",
+    }));
+    sent += out?.sent ?? 0;
+  }
+  return { due: due.length, sent };
+}
+
 export async function purgeOldPosts(now = Date.now()) {
   const cutoff = new Date(now - FEED_DAYS * 86400000).toISOString();
   await remove("snapcal_shares", { created_at: `lt.${cutoff}` }); // comments cascade
@@ -105,6 +152,7 @@ export default async function handler(req, res) {
     if (!secret || req.headers?.authorization !== `Bearer ${secret}`) return fail(res, "auth", "Not allowed.", 401);
     const now = new Date();
     const out = { ok: true, purgedBefore: await purgeOldPosts(now.getTime()), recaps: [] };
+    out.nudges = await nudgeInactive(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) }));
     const force = String(req.query?.force ?? "") === "1";
     if (force || localWeekday(now) === 5) {
       const win = weekWindow(now);
