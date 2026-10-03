@@ -10,13 +10,18 @@ const NOW = new Date(2026, 8, 27, 18).getTime(); // Sunday evening, local time
 const day = (n, h = 12) => addDays(startOfDay(NOW), -n) + h * 3600e3; // n days ago, at noon
 const meal = (n, calories, proteinG = 0) => ({ timestamp: day(n), calories, proteinG });
 
-test("each day knows if calories were on target (±10%), over or under, and if protein was hit", () => {
+test("each day knows if calories were on target (up to 10% under), over or under, and if protein was hit", () => {
   const foods = [meal(0, 2000, 150), meal(1, 2400, 90), meal(2, 1500, 160), meal(2, 0, 0)];
   const days = P.buildDays({ days: 4, now: NOW, foods, calorieTarget: 2000, proteinTarget: 150 });
   assert.deepEqual(days.map((d) => d.calStatus), [null, "under", "over", "on"], "oldest first; day 3 had nothing logged");
   assert.deepEqual(days.map((d) => d.proteinHit), [null, true, false, true]);
   assert.equal(days[3].meals, 1);
   assert.equal(days.filter((d) => d.weekend).length, 2, "Saturday and Sunday are marked");
+});
+
+test("a little over the target is over, the same as Home says", () => {
+  const days = P.buildDays({ days: 3, now: NOW, foods: [meal(0, 2050), meal(1, 2000), meal(2, 1850)], calorieTarget: 2000 });
+  assert.deepEqual(days.map((d) => d.calStatus), ["on", "on", "over"]);
 });
 
 test("pending and failed photo analyses don't count", () => {

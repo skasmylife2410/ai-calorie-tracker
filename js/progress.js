@@ -9,7 +9,7 @@
 
 import { localDateString, startOfDay, addDays } from "./nutrition.js";
 
-export const ON_TARGET = 0.1;       // within ±10% of the day's calorie target counts as on target
+export const ON_TARGET = 0.1;       // up to 10% under the day's calorie target counts as on target; any amount over is over (as on Home)
 export const WATER_GOAL = 8;        // glasses, same as the Home water ring
 export const STREAK_MARKS = [7, 14, 30, 60, 100, 180, 365];
 export const MEAL_MARKS = [50, 100, 250, 500, 1000, 2500];
@@ -68,8 +68,8 @@ export function buildDays({ days, now = Date.now(), foods = [], exercise = [], w
     const logged = b.meals > 0;
     let calStatus = null;
     if (logged && target > 0) {
-      const r = b.calories / target;
-      calStatus = r > 1 + ON_TARGET ? "over" : r < 1 - ON_TARGET ? "under" : "on";
+      // Home calls a day over the moment it passes the target, so Progress does too
+      calStatus = Math.round(b.calories) > Math.round(target) ? "over" : b.calories < target * (1 - ON_TARGET) ? "under" : "on";
     }
     const w = weighIns.get(key);
     out.push({
