@@ -173,7 +173,10 @@
     "weekChart": "{name}: promedio de {avg} kcal en {d} días",
     "keyEatenShort": "Comido",
     "boostTitle": "+{n} kcal por ejercicio",
-    "keyBoost": "Extra por ejercicio"
+    "keyBoost": "Extra por ejercicio",
+    "lowTitle": "Solo {n}% del presupuesto registrado hoy",
+    "lastMealDays": "Última comida hace {n} días",
+    "noMealsLong": "Sin comidas en un mes"
   },
   "profile": {
     "language": "Idioma",

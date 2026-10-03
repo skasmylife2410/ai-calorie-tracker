@@ -11,6 +11,8 @@ import { renderRecap } from "./ui/us-recap.js";
 import { renderPushCard } from "./ui/push-ui.js";
 import { localDateString, addDays, startOfDay } from "./nutrition.js";
 import { icon } from "./ui/icons.js";
+import { cleanGif, gifImgHtml } from "./gif.js";
+import { searchGifs } from "./social.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
 // container when mounted inside the app.
@@ -156,6 +158,62 @@ export function kcalBarHtml(d, baseGoal, c = COLORS[0]) {
   return `<div class="us-kbar" style="${style}" role="img" aria-label="${fmt(eaten)} / ${fmt(goal)} kcal${credit > 0 ? ` (${t("us.boostTitle", { n: fmt(credit) })})` : ""}">${boost}${segs.join("")}${over}<i class="us-kgoal" style="left:${GOAL_AT}%"></i>${label}</div>`;
 }
 
+/**
+ * How each person's day is going, the same idea as Home's mood (js/mood.js):
+ *   over  — past today's budget: their row melts down.
+ *   dusty — no meal for two days or more: their row gathers cobwebs.
+ *   low   — evening, and they've logged only 30% or less of the budget: a "seriously?" GIF badge.
+ */
+const LOW_SHARE = 0.3;
+const LOW_AFTER_HOUR = 18;
+export function rowMood(p, now = Date.now()) {
+  const today = startOfDay(now);
+  let since = null; // days since their last meal (0 = today), within the 30 days we load
+  for (let i = 0; i < 30; i++) {
+    if ((p.days?.[localDateString(addDays(today, -i))]?.meals || 0) > 0) { since = i; break; }
+  }
+  if (since === null || since >= 2) return { kind: "dusty", days: since };
+  const d = p.days?.[localDateString(today)] || EMPTY_DAY;
+  const goal = (p.goals?.calories || 0) + Math.max(0, d.credit || 0);
+  if (!(goal > 0)) return null;
+  if (Math.round(d.calories - goal) > 0) return { kind: "over" };
+  if (d.meals > 0 && new Date(now).getHours() >= LOW_AFTER_HOUR && d.calories <= goal * LOW_SHARE) {
+    return { kind: "low", share: Math.round((d.calories / goal) * 100) };
+  }
+  return null;
+}
+
+/** One "are you serious?" GIF for every low badge, looked up once a day and remembered. */
+const INCREDULOUS_KEY = "snapcal.incredulousGif";
+async function incredulousGif() {
+  const today = localDateString(Date.now());
+  try {
+    const saved = JSON.parse(localStorage.getItem(INCREDULOUS_KEY) || "null");
+    if (saved?.day === today && cleanGif(saved.gif)) return saved.gif;
+  } catch { /* look it up again */ }
+  const out = await searchGifs("are you serious", "en").catch(() => null);
+  const gifs = (out?.gifs ?? []).map(cleanGif).filter(Boolean);
+  if (!gifs.length) return null;
+  const gif = gifs[new Date().getDate() % Math.min(gifs.length, 5)]; // a different face now and then
+  try { localStorage.setItem(INCREDULOUS_KEY, JSON.stringify({ day: today, gif })); } catch { /* fine */ }
+  return gif;
+}
+function fillIncredulousBadges(root) {
+  const badges = [...root.querySelectorAll("[data-incredulous]")];
+  if (!badges.length) return;
+  incredulousGif().then((gif) => {
+    if (!gif) return;
+    for (const b of badges) b.innerHTML = gifImgHtml(gif, { cls: "us-gif-badge-img", alt: "" });
+  }).catch(() => {});
+}
+
+function moodBitsHtml(mood) {
+  if (mood?.kind === "dusty") {
+    return `<i class="us-web us-web-a" aria-hidden="true"></i><i class="us-web us-web-b" aria-hidden="true"></i><i class="us-spider" aria-hidden="true"></i>`;
+  }
+  return "";
+}
+
 function todayHtml(people) {
   const key = localDateString(Date.now());
 
@@ -166,12 +224,15 @@ function todayHtml(people) {
     const d = p.days[key] || EMPTY_DAY;
     const goal = p.goals?.calories;
     const pGoal = p.goals?.proteinG;
+    const mood = rowMood(p);
 
     return `
-      <div class="us-row">
+      <div class="us-row${mood ? ` mood-${mood.kind}` : ""}">
+        ${moodBitsHtml(mood)}
         <div class="us-row-top">
           ${avatarHtml(p, i)}
           <span class="us-name">${escHtml(p.name || titleCase(p.owner))}</span>
+          ${mood?.kind === "low" ? `<span class="us-gif-badge" data-incredulous role="img" aria-label="${escHtml(t("us.lowTitle", { n: mood.share }))}" title="${escHtml(t("us.lowTitle", { n: mood.share }))}">?!</span>` : ""}
           ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : `<button type="button" class="us-note-btn" data-note-to="${escHtml(p.owner)}" aria-label="${t("social.writeNote")}">✉︎</button>`}
           <span class="us-spacer"></span>
           <span class="us-eaten">${fmt(d.calories)}</span>
@@ -180,6 +241,7 @@ function todayHtml(people) {
         </div>
         ${kcalBarHtml(d, goal, c)}
         <div class="us-row-foot">
+          ${mood?.kind === "dusty" ? `<span class="us-dusty-note">${mood.days === null ? t("us.noMealsLong") : t("us.lastMealDays", { n: mood.days })}</span>` : ""}
           <span class="us-extra">${pGoal ? `${fmt(d.proteinG)} / ${fmt(pGoal)} g` : `${fmt(d.proteinG)} g`} · ${t("us.mealsCount", { n: d.meals })}${d.sessions ? ` · ${t("us.sessionsCount", { n: d.sessions })}` : ""} · ${t("us.glassesOfWater", { n: d.water })}</span>
         </div>
       </div>`;
@@ -642,6 +704,7 @@ function render() {
   if (body.id === "us-tab-body") renderPushCard(body.querySelector("#us-push")); // in the app only, not us.html
   renderRecap(body.querySelector("#us-recap"), { lang: currentLanguage() === "es" ? "es" : "en" });
   body.querySelectorAll("[data-note-to]").forEach((b) => b.addEventListener("click", () => openNoteSheet(b.dataset.noteTo)));
+  fillIncredulousBadges(body);
   // the shared feed has its own tab now (js/ui/shared-tab.js)
 }
 

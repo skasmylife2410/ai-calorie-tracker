@@ -661,3 +661,51 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 .feed-photo:not(.feed-gif) { aspect-ratio: auto; height: auto; max-height: min(125vw, 560px); object-fit: cover; }
 .pc-preview-wrap:not(.is-gif) .pc-preview { aspect-ratio: auto; height: auto; max-height: 420px; object-fit: cover; }
 .fc-photo:not(.fc-gif) { aspect-ratio: auto; height: auto; max-height: 260px; }
+
+/* --- Each person's day (js/us.js rowMood): meltdown, cobwebs, or a "seriously?" badge --- */
+.us-row { position: relative; }
+/* over budget: the row melts down like Home does */
+.us-row.mood-over { animation: us-melt 1.1s ease-in-out infinite; }
+.us-row.mood-over::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .45;
+  background: repeating-linear-gradient(to bottom, transparent 0 3px, var(--mood-glow, rgba(215,25,33,.38)) 3px 4px);
+  animation: mood-scan 2.4s linear infinite;
+}
+.us-row.mood-over .us-eaten { color: var(--mood-red, #D71921) !important; animation: mood-glitch 2.6s steps(1, end) infinite; display: inline-block; }
+.us-row.mood-over .us-kseg.is-over { animation: mood-blink 0.9s steps(2, jump-none) infinite; }
+.us-row.mood-over .us-avatar { animation: mood-jitter 2.8s linear infinite; }
+@keyframes us-melt {
+  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--mood-glow, rgba(215,25,33,.38)); }
+  50% { box-shadow: inset 0 0 0 1.5px var(--mood-red, #D71921), inset 0 0 22px var(--mood-glow, rgba(215,25,33,.38)); }
+}
+
+/* two days or more without a meal: the row has aged, with cobwebs and a spider */
+.us-row.mood-dusty { overflow: hidden; background: linear-gradient(160deg, rgba(150,135,110,.10), rgba(120,110,95,.04)); }
+.us-row.mood-dusty :is(.us-avatar, .us-kbar, .us-eaten, .us-goal) { filter: grayscale(1) sepia(.45); opacity: .75; }
+.us-web { position: absolute; width: 74px; height: 74px; pointer-events: none; opacity: .55; color: var(--sc-secondary, #6B6B73);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 74 74' fill='none' stroke='%23888' stroke-width='.9'%3E%3Cpath d='M0 0L74 74M0 0L37 74M0 0L74 37M0 0L12 74M0 0L74 12'/%3E%3Cpath d='M0 16Q9 13 13 4Q4 2 0 0M0 30Q18 26 24 8Q9 1 0 0' /%3E%3Cpath d='M0 46Q27 40 37 14Q30 6 16 2'/%3E%3Cpath d='M0 62Q36 54 52 20Q49 10 32 3'/%3E%3Cpath d='M0 74Q46 68 68 28Q70 16 50 4'/%3E%3C/svg%3E") no-repeat; }
+.us-web-a { top: 0; right: 0; transform: scaleX(-1); transform-origin: center; animation: us-sway 6s ease-in-out infinite; }
+.us-web-b { bottom: 0; left: 0; width: 52px; height: 52px; background-size: contain; transform: scaleY(-1); opacity: .4; }
+.us-spider { position: absolute; top: 0; right: 30px; width: 1px; height: 26px; background: rgba(120,120,120,.6); pointer-events: none; animation: us-dangle 4.5s ease-in-out infinite; transform-origin: top; }
+.us-spider::after { content: ""; position: absolute; left: -4px; bottom: -8px; width: 9px; height: 9px; border-radius: 50%; background: #444;
+  box-shadow: -4px -1px 0 -3px #444, 4px -1px 0 -3px #444, -5px 2px 0 -3px #444, 5px 2px 0 -3px #444; }
+.us-dusty-note { font-weight: 700; color: var(--sc-primary-text, #1C1C1E); white-space: nowrap; }
+@keyframes us-sway { 0%, 100% { transform: scaleX(-1) rotate(0deg); } 50% { transform: scaleX(-1) rotate(-3deg); } }
+@keyframes us-dangle { 0%, 100% { height: 22px; transform: rotate(4deg); } 50% { height: 40px; transform: rotate(-4deg); } }
+:root[data-mode="dark"] .us-row.mood-dusty { background: linear-gradient(160deg, rgba(200,190,170,.07), transparent); }
+:root[data-mode="dark"] .us-spider::after { background: #BBB; box-shadow: -4px -1px 0 -3px #BBB, 4px -1px 0 -3px #BBB, -5px 2px 0 -3px #BBB, 5px 2px 0 -3px #BBB; }
+:root[data-mode="dark"] .us-web { filter: invert(.6); }
+
+/* evening and barely eaten: a small incredulous GIF next to the name */
+.us-gif-badge { flex: none; width: 30px; height: 30px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+  font-size: 11px; font-weight: 800; color: var(--sc-primary-text, #1C1C1E); background: var(--tg-line, #E5E5EA);
+  box-shadow: 0 0 0 2px var(--sc-card-bg, #fff), 0 0 0 3px var(--sc-secondary, #6B6B73); animation: us-badge-pop .5s cubic-bezier(.3,1.6,.5,1) both; }
+.us-gif-badge-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@keyframes us-badge-pop { from { transform: scale(.2) rotate(-20deg); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .us-row.mood-over, .us-row.mood-over *, .us-row.mood-over::after, .us-web, .us-spider, .us-gif-badge { animation: none !important; }
+  .us-row.mood-over { box-shadow: inset 0 0 0 1.5px var(--mood-red, #D71921); }
+}
+/* the cobwebs hang behind the row's words and numbers */
+.us-row.mood-dusty > :not(.us-web):not(.us-spider) { position: relative; z-index: 1; }
