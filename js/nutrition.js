@@ -109,8 +109,32 @@ export function macroTargets(targetCals) {
  */
 /** Protein floor for fat loss: 1.6 g per kg of body weight (the lower end of the 1.6–2.2 range
  *  that preserves muscle in a deficit). Only applied when weight is known. */
-export const PROTEIN_G_PER_KG = 1.6;
-export const PROTEIN_G_PER_KG_LEAN = 2.0;
+// Protein per kilo, by goal: more while losing (it protects muscle in a deficit), a moderate
+// amount otherwise. These are the usual evidence-based ranges for adults who aren't athletes.
+export const PROTEIN_G_PER_KG = 1.6;          // losing or gaining
+export const PROTEIN_G_PER_KG_MAINTAIN = 1.3; // keeping weight steady
+export const PROTEIN_G_PER_KG_LEAN = 2.0;     // per kilo of lean mass, when that's known
+export const PROTEIN_MAX_SHARE = 0.35;        // never more than 35% of the day's calories
+export const PROTEIN_MIN_G_PER_KG = 0.8;      // and never under the basic daily requirement
+export const FAT_SHARE = 0.3;
+
+/**
+ * Daily protein in grams. Set from body weight, not as a share of calories, but from a
+ * reference weight: for someone heavier (BMI over 25) the weight they'd be at BMI 25, since fat
+ * mass doesn't need feeding; and from lean mass when body fat or build is known. Capped at 35%
+ * of calories, so a small person on few calories isn't told to eat mostly protein.
+ */
+export function proteinTargetG({ weightKg, heightCm, leanKg = 0, deltaKcal = 0, targetKcal = 2000 }) {
+  const w = Number(weightKg);
+  if (!(w > 0)) return Math.round((targetKcal * 0.25) / 4);
+  const perKg = Number(deltaKcal) === 0 || !Number.isFinite(Number(deltaKcal)) ? PROTEIN_G_PER_KG_MAINTAIN : PROTEIN_G_PER_KG;
+  const h = Number(heightCm) / 100;
+  const refKg = h > 0 ? Math.min(w, 25 * h * h) : w;
+  let g = leanKg > 0 ? leanKg * (PROTEIN_G_PER_KG_LEAN - (PROTEIN_G_PER_KG - perKg)) : refKg * perKg;
+  g = Math.min(g, (targetKcal * PROTEIN_MAX_SHARE) / 4);
+  g = Math.max(g, w * PROTEIN_MIN_G_PER_KG);
+  return Math.round(g);
+}
 
 // ---------------------------------------------------------------------------
 // Build → body composition
@@ -180,18 +204,16 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
     customTargetKcal !== null && customTargetKcal !== undefined ? customTargetKcal : computedTargetCalories;
   const macros = macroTargets(effectiveTargetCalories);
 
-  // Protein by body weight, not as a share of calories: in a deficit a share of fewer calories
-  // means less protein exactly when it matters most. Carbs give way to make room.
+  // Protein by body weight and goal (see proteinTargetG), fat at 30% of calories, and carbs get
+  // what's left, so the three always add up to the calorie target.
   let proteinG = macros.proteinG;
   let carbsG = macros.carbsG;
-  if (weightKg > 0 && (customProteinG === null || customProteinG === undefined)) {
-    // With lean mass known, protein is set from that (muscle is what needs feeding), which is
-    // kinder to a muscular build and to someone carrying more fat.
-    const floor = Math.round(lbm > 0 ? Math.max(weightKg * PROTEIN_G_PER_KG, lbm * PROTEIN_G_PER_KG_LEAN) : weightKg * PROTEIN_G_PER_KG);
-    if (floor > proteinG) {
-      carbsG = Math.max(0, Math.round(carbsG - ((floor - proteinG) * 4) / 4));
-      proteinG = floor;
-    }
+  const fatG = (effectiveTargetCalories * FAT_SHARE) / 9;
+  if (weightKg > 0) {
+    proteinG = customProteinG !== null && customProteinG !== undefined
+      ? Number(customProteinG)
+      : proteinTargetG({ weightKg, heightCm, leanKg: lbm, deltaKcal: targetDeltaKcal, targetKcal: effectiveTargetCalories });
+    carbsG = Math.max(0, (effectiveTargetCalories - proteinG * 4 - fatG * 9) / 4);
   }
 
   return {
@@ -206,7 +228,7 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
     // computed grams are rounded; a value the person set themselves is left exactly as they set it
     proteinTargetG: customProteinG !== null && customProteinG !== undefined ? customProteinG : Math.round(proteinG),
     carbsTargetG: customCarbsG !== null && customCarbsG !== undefined ? customCarbsG : Math.round(carbsG),
-    fatTargetG: customFatG !== null && customFatG !== undefined ? customFatG : Math.round(macros.fatG),
+    fatTargetG: customFatG !== null && customFatG !== undefined ? customFatG : Math.round(fatG),
     hasValidStats: weightKg > 0 && heightCm > 0 && age > 0,
   };
 }
