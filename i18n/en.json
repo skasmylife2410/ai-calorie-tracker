@@ -1087,5 +1087,9 @@
     "wide": "16:9",
     "hint": "Drag to move. Pinch or use the slider to zoom.",
     "edit": "Crop"
+  },
+  "mood": {
+    "sadTitle": "It's been {n} days",
+    "sadBody": "Everything's gone grey without you. Log a meal and the colour comes back."
   }
 }

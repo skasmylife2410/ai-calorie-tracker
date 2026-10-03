@@ -4,6 +4,7 @@
 
 import * as store from "./store.js";
 import { sfx, setSoundsEnabled, unlockSoundsOnTouch } from "./sounds.js";
+import { applyMood, moodFor, lastMealAt } from "./mood.js";
 import { t as translate, initI18n, onLanguageChange } from "./i18n.js";
 import * as queue from "./queue.js";
 import { initSync, whenFirstSynced } from "./sync.js";
@@ -398,9 +399,19 @@ globalThis.snapcalGoTo = (tab) => {
   renderShell();
 };
 
+/** Over budget today → meltdown; two days without a meal → gloom (see js/mood.js). */
+function refreshMood() {
+  try {
+    applyMood(moodFor({ remainingToday: store.dayEnergy(new Date()).remaining, lastMeal: lastMealAt(store.allFoodEntries()) }));
+  } catch (err) {
+    console.error("app.js: mood failed", err);
+  }
+}
+
 function renderCurrentTab() {
   const content = document.getElementById("tab-content");
   if (!content) return;
+  refreshMood();
   if (selectedTab === "home") renderToday(content);
   else if (selectedTab === "us") renderUsTab(content);
   else if (selectedTab === "shared") renderSharedTab(content);

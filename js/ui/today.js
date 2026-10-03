@@ -1,6 +1,7 @@
 // today.js — Home tab (TodayView.swift), SPEC-UI.md §5.
 
 import { safeSrc } from "../safe-src.js";
+import { lastMealAt, moodFor, daysAway } from "../mood.js";
 import { sfx } from "../sounds.js";
 import * as store from "../store.js";
 import { t, weekdayLabels, formatDate } from "../i18n.js";
@@ -120,6 +121,7 @@ export function render(container) {
         ${Array.from({ length: PAGE_COUNT }, (_, i) => `<span class="swiper-dot${swiperPage === i ? " active" : ""}" data-dot="${i}"></span>`).join("")}
       </div>
 
+      ${viewingToday ? missedYouHtml() : ""}
       ${viewingToday && shouldOfferInstall() ? installCardHtml() : ""}
 
       <div class="home-meals">
@@ -279,6 +281,17 @@ function countNumbers(container, dayKey, nums) {
     countAnim = null;
   };
   requestAnimationFrame(step);
+}
+
+/** Two days without a meal: the app has gone grey and rainy; this says why and how to fix it. */
+function missedYouHtml() {
+  const last = lastMealAt(store.allFoodEntries());
+  if (moodFor({ remainingToday: 0, lastMeal: last }) !== "sad") return "";
+  return `
+    <div class="missed-you card" role="status">
+      <div class="missed-you-title">${t("mood.sadTitle", { n: daysAway(last) })}</div>
+      <div class="missed-you-body">${t("mood.sadBody")}</div>
+    </div>`;
 }
 
 function weekStripHtml(week) {

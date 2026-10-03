@@ -2537,3 +2537,94 @@ body.setup-open { overflow: hidden; }
 .results-totals-bar .total-stat { min-width: 0; }
 .results-totals-bar .total-stat-value { font-size: 20px; white-space: nowrap; }
 .results-totals-bar .total-stat-label { font-size: 12px; }
+
+/* ===== Mood (js/mood.js) ==========================================================================
+   over: today is past the budget → meltdown. sad: two days without a meal → gloom, until the next one. */
+:root { --mood-red: var(--sc-red, #D71921); --mood-glow: rgba(215, 25, 33, 0.38); --mood-rain: rgba(110, 128, 160, 0.42); }
+:root[data-theme="mono"][data-mode="dark"] { --mood-glow: rgba(255, 69, 58, 0.42); --mood-rain: rgba(150, 168, 200, 0.32); }
+
+/* -- meltdown -- */
+:root[data-mood="over"] .calorie-card::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 1.5px var(--mood-red), 0 0 26px 2px var(--mood-glow);
+  animation: mood-pulse 1.1s ease-in-out infinite;
+}
+:root[data-mood="over"] .calorie-card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(to bottom, transparent 0 3px, var(--mood-glow) 3px 4px);
+  mix-blend-mode: multiply; animation: mood-scan 2.4s linear infinite;
+}
+:root[data-mood="over"][data-mode="dark"] .calorie-card::after { mix-blend-mode: screen; opacity: .28; }
+:root[data-mood="over"] .calorie-remaining.over { animation: mood-glitch 2.6s steps(1, end) infinite; }
+:root[data-mood="over"] .calorie-card svg { animation: mood-throb 0.9s ease-in-out infinite; transform-origin: center; }
+:root[data-mood="over"] .macro-tile { animation: mood-jitter 3.2s linear infinite; }
+:root[data-mood="over"] .macro-tile:nth-of-type(2) { animation-delay: -1.1s; }
+:root[data-mood="over"] .macro-tile:nth-of-type(3) { animation-delay: -2.2s; }
+:root[data-mood="over"] .tab-btn.active { color: var(--mood-red) !important; animation: mood-blink 1.1s steps(2, jump-none) infinite; }
+:root[data-mood="over"] body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 5;
+  background: radial-gradient(ellipse at center, transparent 55%, var(--mood-glow) 130%);
+  animation: mood-vignette 1.1s ease-in-out infinite;
+}
+/* the moment it happens: the screen jolts and flashes */
+:root.mood-hit #tab-content { animation: mood-shake .6s cubic-bezier(.36,.07,.19,.97); }
+:root.mood-hit body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 6;
+  background: var(--mood-red); animation: mood-flash .8s ease-out forwards;
+}
+@keyframes mood-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes mood-scan { to { background-position: 0 40px; } }
+@keyframes mood-throb { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+@keyframes mood-vignette { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+@keyframes mood-blink { 50% { opacity: .35; } }
+@keyframes mood-flash { from { opacity: .32; } to { opacity: 0; } }
+@keyframes mood-shake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-7px, 1px, 0); } 40%, 60% { transform: translate3d(7px, -1px, 0); }
+}
+@keyframes mood-jitter {
+  0%, 88%, 100% { transform: none; } 90% { transform: translate(-2px, 1px) rotate(-.6deg); }
+  93% { transform: translate(2px, -1px) rotate(.5deg); } 96% { transform: translate(-1px, 0); }
+}
+@keyframes mood-glitch {
+  0%, 78% { transform: none; text-shadow: none; clip-path: none; }
+  80% { transform: translate(-3px, 1px) skewX(-10deg); text-shadow: 3px 0 var(--mood-red), -3px 0 var(--mood-glow); }
+  83% { transform: translate(4px, -1px); clip-path: inset(8% 0 48% 0); text-shadow: -4px 0 var(--mood-glow); }
+  86% { transform: translate(-2px, 0) skewX(8deg); clip-path: inset(52% 0 4% 0); text-shadow: 2px 0 var(--mood-glow); }
+  89% { transform: translate(2px, 1px); clip-path: none; text-shadow: -2px 0 var(--mood-glow), 2px 0 var(--mood-red); }
+  92% { transform: none; text-shadow: none; }
+  95% { transform: translateX(-1px) skewX(-4deg); text-shadow: 1px 0 var(--mood-glow); }
+}
+
+/* -- gloom -- */
+:root[data-mood="sad"] #tab-content, :root[data-mood="sad"] .bottom-bar-row, :root[data-mood="sad"] #sky {
+  filter: grayscale(1) contrast(.94); transition: filter 1.2s ease;
+}
+:root[data-mood="sad"] .calorie-card { transform: rotate(-.7deg) translateY(3px); transition: transform 1.2s ease; }
+:root[data-mood="sad"] .macro-tile { animation: mood-sag 5s ease-in-out infinite; }
+:root[data-mood="sad"] .macro-tile:nth-of-type(2) { animation-delay: -1.6s; }
+:root[data-mood="sad"] .macro-tile:nth-of-type(3) { animation-delay: -3.2s; }
+:root[data-mood="sad"] body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: .9;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='180'%3E%3Cg stroke='%238090B0' stroke-width='1.2' stroke-linecap='round' opacity='.55'%3E%3Cpath d='M12 10v22M58 70v18M34 118v24M80 30v16M70 140v20'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='260'%3E%3Cg stroke='%238090B0' stroke-width='1' stroke-linecap='round' opacity='.35'%3E%3Cpath d='M20 40v14M96 100v12M60 190v16M126 230v10'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(to bottom, rgba(70, 82, 110, .16), transparent 60%);
+  background-size: 90px 180px, 140px 260px, 100% 100%;
+  animation: mood-rain 0.9s linear infinite;
+}
+:root[data-mood="sad"] .missed-you { transform: none; }
+.missed-you { margin: 0 16px 12px; padding: 14px 16px; display: grid; gap: 4px; }
+.missed-you-title { font-weight: 700; font-size: 16px; color: var(--sc-primary-text); }
+.missed-you-body { font-size: 14px; line-height: 1.4; color: var(--sc-secondary); }
+@keyframes mood-rain { to { background-position: 0 180px, 0 260px, 0 0; } }
+@keyframes mood-sag { 0%, 100% { transform: translateY(1px) rotate(-.4deg); } 50% { transform: translateY(4px) rotate(.3deg); } }
+/* the next meal: colour floods back */
+:root.mood-revive #tab-content, :root.mood-revive .bottom-bar-row, :root.mood-revive #sky { animation: mood-bloom 1.6s ease-out; }
+@keyframes mood-bloom { 0% { filter: grayscale(1); } 55% { filter: saturate(1.9) brightness(1.06); } 100% { filter: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-mood] *, :root[data-mood] body::before, :root[data-mood] body::after,
+  :root[data-mood] .calorie-card::before, :root[data-mood] .calorie-card::after { animation: none !important; }
+  :root.mood-hit #tab-content, :root.mood-revive #tab-content { animation: none !important; }
+}
