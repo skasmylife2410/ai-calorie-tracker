@@ -76,3 +76,14 @@ test("the board recalculates old workout burns per person; typed watch calories 
   assert.equal(burnOf({ caloriesBurned: 300, activity: "run", minutes: 30, kcalEntered: true }, body), 300);
   assert.equal(burnOf({ caloriesBurned: 420, activity: "soccer" }, body), 420, "no minutes: nothing to recalculate from");
 });
+
+test("the board uses the goals the person's phone reports, so Us matches their Home", async () => {
+  const { goalsFrom } = await import("../api/compare.js");
+  const profile = { weightKg: 80, heightCm: 178, age: 35, sex: "male", activityLevel: "lightlyActive", targetDeltaKcal: -500 };
+  const fromProfile = goalsFrom(profile);
+  assert.ok(fromProfile.calories > 0);
+  const reported = goalsFrom({ ...profile, appliedGoals: { calories: 2049, proteinG: 160, carbsG: 200, fatG: 65 } });
+  assert.deepEqual(reported, { calories: 2049, proteinG: 160, carbsG: 200, fatG: 65 });
+  // a broken report falls back to working it out from the profile
+  assert.deepEqual(goalsFrom({ ...profile, appliedGoals: { calories: "lots" } }), fromProfile);
+});

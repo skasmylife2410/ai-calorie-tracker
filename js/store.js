@@ -690,7 +690,20 @@ export function syncLearnedTdeeFlag() {
   const profile = getProfile();
   const learned = profile.useLearnedTdee === false ? null : learnedMaintenanceNow();
   const on = Boolean(learned && learned.confidence !== "low");
-  if ((profile.learnedTdeeOn === true) !== on) setProfile({ learnedTdeeOn: on });
+  // The goals this phone really uses (learned maintenance included), so the Us board shows the
+  // same budget as Home instead of working one out from the profile alone.
+  const g = resolveUserGoals(profile, { learnedTdee: on ? learned.tdee : null });
+  const appliedGoals = {
+    calories: Math.round(g.targetCalories), proteinG: Math.round(g.proteinTargetG),
+    carbsG: Math.round(g.carbsTargetG), fatG: Math.round(g.fatTargetG),
+  };
+  const valid = Object.values(appliedGoals).every((n) => Number.isFinite(n) && n > 0);
+  const old = profile.appliedGoals ?? {};
+  const goalsChanged = valid && Object.keys(appliedGoals).some((k) => old[k] !== appliedGoals[k]);
+  const patch = {};
+  if ((profile.learnedTdeeOn === true) !== on) patch.learnedTdeeOn = on;
+  if (goalsChanged) patch.appliedGoals = appliedGoals;
+  if (Object.keys(patch).length) setProfile(patch);
   return on;
 }
 

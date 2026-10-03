@@ -46,8 +46,17 @@ function parseBody(req) {
   }
 }
 
-function goalsFrom(profileData) {
+export function goalsFrom(profileData) {
   if (!profileData || typeof profileData !== "object") return null;
+  // The goals the person's phone actually uses (with its learned maintenance), when it has
+  // reported them: the board then shows the same budget as their Home screen.
+  const a = profileData.appliedGoals;
+  if (a && typeof a === "object") {
+    const picked = { calories: a.calories, proteinG: a.proteinG, carbsG: a.carbsG, fatG: a.fatG };
+    if (Object.values(picked).every((n) => typeof n === "number" && Number.isFinite(n) && n > 0 && n < 20000)) {
+      return Object.fromEntries(Object.entries(picked).map(([k, v]) => [k, Math.round(v)]));
+    }
+  }
   try {
     const g = resolveUserGoals(profileData);
     const ok = [g.targetCalories, g.proteinTargetG, g.carbsTargetG, g.fatTargetG].every(
