@@ -109,28 +109,43 @@ export function macroTargets(targetCals) {
  */
 /** Protein floor for fat loss: 1.6 g per kg of body weight (the lower end of the 1.6–2.2 range
  *  that preserves muscle in a deficit). Only applied when weight is known. */
-// Protein per kilo, by goal: more while losing (it protects muscle in a deficit), a moderate
-// amount otherwise. These are the usual evidence-based ranges for adults who aren't athletes.
-export const PROTEIN_G_PER_KG = 1.6;          // losing or gaining
-export const PROTEIN_G_PER_KG_MAINTAIN = 1.3; // keeping weight steady
-export const PROTEIN_G_PER_KG_LEAN = 2.0;     // per kilo of lean mass, when that's known
-export const PROTEIN_MAX_SHARE = 0.35;        // never more than 35% of the day's calories
-export const PROTEIN_MIN_G_PER_KG = 0.8;      // and never under the basic daily requirement
+// Protein per kilo, by how active someone is and whether they're losing weight (a deficit is
+// when muscle needs protecting most). In line with the ISSN position stand: 1.4–2.0 g/kg for
+// active adults, more in a deficit with training; ~1.2 is enough for someone sedentary.
+export const PROTEIN_G_PER_KG_BY_ACTIVITY = Object.freeze({
+  sedentary: { maintain: 1.2, lose: 1.5 },
+  light: { maintain: 1.4, lose: 1.7 },
+  moderate: { maintain: 1.6, lose: 1.9 },
+  veryActive: { maintain: 1.8, lose: 2.0 },
+  extraActive: { maintain: 2.0, lose: 2.2 },
+});
+export const PROTEIN_G_PER_KG = 1.6;           // kept for older callers: the "moderate" maintain rate
+export const PROTEIN_LEAN_EXTRA = 0.5;         // per kilo of lean mass it's a bit more than per kilo of body weight
+export const PROTEIN_MAX_SHARE = 0.35;         // never more than 35% of the day's calories
+export const PROTEIN_MIN_G_PER_KG = 0.8;       // and never under the basic daily requirement
 export const FAT_SHARE = 0.3;
 
 /**
- * Daily protein in grams. Set from body weight, not as a share of calories, but from a
- * reference weight: for someone heavier (BMI over 25) the weight they'd be at BMI 25, since fat
- * mass doesn't need feeding; and from lean mass when body fat or build is known. Capped at 35%
- * of calories, so a small person on few calories isn't told to eat mostly protein.
+ * The weight protein is worked out from. Up to BMI 25 it's the person's weight; above that the
+ * usual "adjusted" weight (the BMI-25 weight plus 40% of the rest), since fat mass needs far less
+ * protein than muscle, but a heavier person still carries some extra muscle.
  */
-export function proteinTargetG({ weightKg, heightCm, leanKg = 0, deltaKcal = 0, targetKcal = 2000 }) {
+export function proteinReferenceKg(weightKg, heightCm) {
+  const w = Number(weightKg);
+  const h = Number(heightCm) / 100;
+  if (!(w > 0) || !(h > 0)) return w > 0 ? w : 0;
+  const ideal = 25 * h * h;
+  return w <= ideal ? w : ideal + 0.4 * (w - ideal);
+}
+
+/** Daily protein in grams: per kilo by activity and goal, of the reference weight (or of lean
+ *  mass when that's known); capped at 35% of calories, never under 0.8 g/kg. */
+export function proteinTargetG({ weightKg, heightCm, leanKg = 0, deltaKcal = 0, activityLevel = "moderate", targetKcal = 2000 }) {
   const w = Number(weightKg);
   if (!(w > 0)) return Math.round((targetKcal * 0.25) / 4);
-  const perKg = Number(deltaKcal) === 0 || !Number.isFinite(Number(deltaKcal)) ? PROTEIN_G_PER_KG_MAINTAIN : PROTEIN_G_PER_KG;
-  const h = Number(heightCm) / 100;
-  const refKg = h > 0 ? Math.min(w, 25 * h * h) : w;
-  let g = leanKg > 0 ? leanKg * (PROTEIN_G_PER_KG_LEAN - (PROTEIN_G_PER_KG - perKg)) : refKg * perKg;
+  const rates = PROTEIN_G_PER_KG_BY_ACTIVITY[normalizeActivityLevel(activityLevel)] ?? PROTEIN_G_PER_KG_BY_ACTIVITY.moderate;
+  const perKg = Number(deltaKcal) < 0 ? rates.lose : rates.maintain;
+  let g = leanKg > 0 ? leanKg * (perKg + PROTEIN_LEAN_EXTRA) : proteinReferenceKg(w, heightCm) * perKg;
   g = Math.min(g, (targetKcal * PROTEIN_MAX_SHARE) / 4);
   g = Math.max(g, w * PROTEIN_MIN_G_PER_KG);
   return Math.round(g);
@@ -212,7 +227,7 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   if (weightKg > 0) {
     proteinG = customProteinG !== null && customProteinG !== undefined
       ? Number(customProteinG)
-      : proteinTargetG({ weightKg, heightCm, leanKg: lbm, deltaKcal: targetDeltaKcal, targetKcal: effectiveTargetCalories });
+      : proteinTargetG({ weightKg, heightCm, leanKg: lbm, deltaKcal: targetDeltaKcal, activityLevel, targetKcal: effectiveTargetCalories });
     carbsG = Math.max(0, (effectiveTargetCalories - proteinG * 4 - fatG * 9) / 4);
   }
 

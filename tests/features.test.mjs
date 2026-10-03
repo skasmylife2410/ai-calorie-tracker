@@ -507,12 +507,14 @@ test("a forgotten dinner doesn't drag learned maintenance down", () => {
 
 test("protein follows body weight and goal, not a share of calories", async () => {
   const { resolveUserGoals } = await import("../js/nutrition.js");
-  // losing, BMI ~28: 1.6 g per kilo of the weight they'd be at BMI 25 (81 kg), not of 90 kg
+  // losing, trains 3-5x, BMI ~28: 1.9 g/kg of the adjusted weight (81 + 40% of the 9 kg over = 84.6 kg)
   const g = resolveUserGoals({ weightKg: 90, heightCm: 180, age: 35, sex: "male", activityLevel: "moderate", targetDeltaKcal: -500 });
-  assert.equal(g.proteinTargetG, 130);
-  // maintaining, 60 kg woman: 1.3 g/kg = 78 g (it was ~128 g as 30% of calories)
+  assert.equal(g.proteinTargetG, 161);
+  // maintaining, lightly active 60 kg woman: 1.4 g/kg = 84 g (it was ~135 g as 30% of calories)
   const her = resolveUserGoals({ weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 0 });
-  assert.equal(her.proteinTargetG, 78);
+  assert.equal(her.proteinTargetG, 84);
+  // the same woman training and losing gets more: 1.9 g/kg
+  assert.equal(resolveUserGoals({ weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "moderate", targetDeltaKcal: -400 }).proteinTargetG, 114);
   // losing on few calories: never more than 35% of them, never under 0.8 g/kg
   const small = resolveUserGoals({ weightKg: 70, heightCm: 160, age: 50, sex: "female", activityLevel: "sedentary", customTargetKcal: 1200 });
   assert.ok(small.proteinTargetG * 4 <= 1200 * 0.35 + 2 && small.proteinTargetG >= 56, `got ${small.proteinTargetG}`);
