@@ -214,3 +214,35 @@ export function setVolume(v) {
   if (!audio()) return;
   master.gain.value = VOLUME * Math.max(0, Math.min(1, Number(v)));
 }
+
+// --- In the app: on/off from the profile, pack from the current theme, a small buzz on Android ---
+
+let enabled = true;
+const BUZZ = { log: 12, over: [30, 40, 30], undo: 10, streak: [10, 30, 10], shutter: 8 };
+
+/** Profile › Appearance › Sounds. On unless the person turned it off. */
+export function setSoundsEnabled(on) {
+  enabled = on !== false;
+}
+
+/** Plays a sound in the pack that matches the theme on screen (and buzzes where phones allow). */
+export function sfx(name, arg) {
+  if (!enabled) return;
+  const theme = globalThis.document?.documentElement?.dataset?.theme === "classic" ? "classic" : "mono";
+  playSound(name, { theme, arg });
+  const buzz = BUZZ[name];
+  try { if (buzz && typeof globalThis.navigator?.vibrate === "function") globalThis.navigator.vibrate(buzz); } catch { /* not allowed */ }
+}
+
+/** Phones only let audio start inside a tap: open the audio on the first one, so sounds that
+ *  come later (an analysis finishing) can play. */
+export function unlockSoundsOnTouch(doc = globalThis.document) {
+  if (!doc) return;
+  const unlock = () => {
+    if (enabled) { try { audio(); } catch { /* no audio */ } }
+    doc.removeEventListener("pointerdown", unlock, true);
+    doc.removeEventListener("keydown", unlock, true);
+  };
+  doc.addEventListener("pointerdown", unlock, true);
+  doc.addEventListener("keydown", unlock, true);
+}

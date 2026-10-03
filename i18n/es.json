@@ -931,7 +931,10 @@
     "classicSub": "El aspecto original, cálido y con color.",
     "markers": "Marcadores de color",
     "markersSub": "Proteína, carbohidratos, grasa, agua y racha conservan su color. Desactivado es blanco y negro puro.",
-    "footer": "Se guarda en tu perfil, así que se ve igual en cada teléfono donde inicies sesión."
+    "footer": "Se guarda en tu perfil, así que se ve igual en cada teléfono donde inicies sesión.",
+    "sounds": "Sonidos",
+    "soundsSubMono": "Grid: pitidos digitales. Respeta el modo silencio.",
+    "soundsSubClassic": "Neon: tonos synthwave. Respeta el modo silencio."
   },
   "food": {
     "fruit": "Fruta",

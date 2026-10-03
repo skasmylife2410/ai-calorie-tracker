@@ -3,6 +3,7 @@
 // sheets/covers (camera, food database, describe, saved foods, barcode flow), SW registration.
 
 import * as store from "./store.js";
+import { sfx, setSoundsEnabled, unlockSoundsOnTouch } from "./sounds.js";
 import { t as translate, initI18n, onLanguageChange } from "./i18n.js";
 import * as queue from "./queue.js";
 import { initSync, whenFirstSynced } from "./sync.js";
@@ -113,6 +114,7 @@ async function boot() {
   };
   soft("sky", () => mountSky()); // time-of-day glow, first so there's colour before anything else paints
   soft("theme", () => applyTheme(store.getProfile())); // Mono or Classic (js/theme-boot.js already did this before paint)
+  soft("sounds", () => { setSoundsEnabled(store.getProfile().soundsOn); unlockSoundsOnTouch(); });
   soft("system theme", () => watchSystemTheme(store.getProfile));
   // Meals cut off mid-analysis are retried, but only after this phone has the account's latest
   // copies: a meal another phone already finished must not be re-analysed (or zeroed) here.
@@ -121,6 +123,7 @@ async function boot() {
   // An analysis under 50% sure comes back with questions: ask them right away if the app is on
   // screen and nothing else is open; otherwise the meal's row offers them.
   soft("ask", () => queue.onComplete(({ entryId, success }) => {
+    if (success && document.visibilityState === "visible") sfx("log");
     if (!success || document.visibilityState !== "visible" || document.querySelector(".sheet-panel")) return;
     const entry = store.getFoodEntry(entryId);
     if (entry?.analysisQuestions?.length) import("./ui/questions.js").then((m) => m.openQuestionsSheet(entry)).catch(() => {});
@@ -173,6 +176,7 @@ async function boot() {
       return;
     }
     applyTheme(store.getProfile()); // a theme picked here or synced from another phone
+    setSoundsEnabled(store.getProfile().soundsOn);
     renderCurrentTab();
   });
 

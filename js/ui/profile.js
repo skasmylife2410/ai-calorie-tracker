@@ -673,6 +673,10 @@ function appearanceSectionHtml(profile) {
           <span class="theme-text"><b>${t("appearance.markers")}</b><small>${t("appearance.markersSub")}</small></span>
           <input type="checkbox" role="switch" class="ios-switch" id="mono-markers" ${profile.monoMarkers !== false ? "checked" : ""} ${isMono ? "" : "disabled"} />
         </label>
+        <label class="ios-row theme-markers">
+          <span class="theme-text"><b>${t("appearance.sounds")}</b><small>${t(isMono ? "appearance.soundsSubMono" : "appearance.soundsSubClassic")}</small></span>
+          <input type="checkbox" role="switch" class="ios-switch" id="sounds-on" ${profile.soundsOn !== false ? "checked" : ""} />
+        </label>
       </div>
       <div class="ios-section-footer">${t("appearance.footer")}</div>
     </div>
@@ -685,6 +689,9 @@ function wireAppearance(container) {
   });
   container.querySelector("#mono-markers")?.addEventListener("change", (e) => {
     store.setProfile({ monoMarkers: e.target.checked });
+  });
+  container.querySelector("#sounds-on")?.addEventListener("change", (e) => {
+    store.setProfile({ soundsOn: e.target.checked });
   });
 }
 

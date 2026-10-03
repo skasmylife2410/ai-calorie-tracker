@@ -931,7 +931,10 @@
     "classicSub": "The original warm, colourful look.",
     "markers": "Coloured markers",
     "markersSub": "Protein, carbs, fat, water and streak keep their colours. Off is pure black & white.",
-    "footer": "Saved to your profile, so every phone you sign in on looks the same."
+    "footer": "Saved to your profile, so every phone you sign in on looks the same.",
+    "sounds": "Sounds",
+    "soundsSubMono": "Grid: bit-crushed blips. Follows the silent switch.",
+    "soundsSubClassic": "Neon: synthwave tones. Follows the silent switch."
   },
   "food": {
     "fruit": "Fruit",

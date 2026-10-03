@@ -3,6 +3,7 @@
 // that can delete a meal (Home, the day sheet, history, the failed-analysis menu).
 
 import * as store from "../store.js";
+import { sfx } from "../sounds.js";
 import { t } from "../i18n.js";
 
 export const UNDO_MS = 4000;
@@ -30,6 +31,7 @@ export function deleteWithUndo(entry, onChange) {
     clearTimeout(timer);
     toast.remove();
     store.restoreFoodEntry(snapshot);
+    sfx("undo");
     onChange?.();
   });
   timer = setTimeout(() => toast.remove(), UNDO_MS);

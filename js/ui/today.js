@@ -1,6 +1,7 @@
 // today.js — Home tab (TodayView.swift), SPEC-UI.md §5.
 
 import { safeSrc } from "../safe-src.js";
+import { sfx } from "../sounds.js";
 import * as store from "../store.js";
 import { t, weekdayLabels, formatDate } from "../i18n.js";
 import * as queue from "../queue.js";
@@ -49,6 +50,7 @@ const setMealsOpen = (on) => { try { localStorage.setItem(MEALS_OPEN_KEY, on ? "
 
 // What the calorie card last showed, so a change can count down to the new numbers
 let lastNumbers = null;
+let lastStreak = null;
 const COUNT_MS = 900;
 // The day the Home tab is showing. null = today (and it snaps back to today on a fresh launch).
 let selectedDayStart = null;
@@ -81,6 +83,9 @@ export function render(container) {
   const goals = store.computeGoals();
   const week = store.weekStrip(new Date(addDays(startOfDay(new Date()), weekOffset * 7))); // DST-safe
   const streakCount = store.streak();
+  // the streak going up while the app is open gets its little chime
+  if (lastStreak !== null && streakCount > lastStreak) sfx("streak");
+  lastStreak = streakCount;
   const water = store.getWaterEntryForDay(date);
   const recent = viewingToday
     ? store.recentlyUploaded(10)
@@ -238,8 +243,19 @@ function countNumbers(container, dayKey, nums) {
   }
 
   const anim = countAnim;
+  // a tick each time the big number moves a step, so they slow down with it; one sound as it passes zero
+  const tickStep = Math.max(5, Math.round(Math.max(Math.abs(anim.from.nums[0]), Math.abs(anim.to.nums[0])) / 30));
+  let lastBucket = Math.round(countValueAt(anim, now).nums[0] / tickStep);
+  let lastTick = 0;
+  let wasOver = Math.round(countValueAt(anim, now).nums[0]) < 0;
   const paint = (at) => {
     const v = countValueAt(anim, at);
+    const bucket = Math.round(v.nums[0] / tickStep);
+    const nowOver = Math.round(v.nums[0]) < 0;
+    if (nowOver && !wasOver) sfx("over");
+    else if (bucket !== lastBucket && at - lastTick > 45) { sfx("tick", nowOver); lastTick = at; }
+    lastBucket = bucket;
+    wasOver = nowOver;
     els.forEach((el, i) => { if (el) el.textContent = `${roundDisplay(Math.abs(v.nums[i]))}${el.dataset.suffix ?? (i > 0 ? "g" : "")}`; });
     // the big number turns red the moment it passes zero, and the caption follows it
     const over = Math.round(v.nums[0]) < 0;

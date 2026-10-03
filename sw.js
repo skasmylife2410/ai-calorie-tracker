@@ -1,7 +1,7 @@
 // sw.js — minimal service worker: network-first for everything, cache-fallback for the app
 // shell, enough for PWA installability. Bump CACHE_VERSION to bust caches on deploy.
 
-const CACHE_VERSION = "snapcal-v41";
+const CACHE_VERSION = "snapcal-v42";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -16,6 +16,7 @@ const APP_SHELL = [
   "/css/mono.css",
   "/vendor/fonts/doto/doto-latin-900-normal.woff2",
   "/js/theme.js",
+  "/js/sounds.js",
   "/js/theme-boot.js",
   "/js/boot-guard.js",
   "/js/app.js",

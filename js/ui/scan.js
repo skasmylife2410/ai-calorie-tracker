@@ -6,6 +6,7 @@
 // vendored zbar-wasm polyfill (no runtime CDN dependency).
 
 import { resizeImage, scanPreset } from "../resize.js";
+import { sfx } from "../sounds.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 
@@ -87,9 +88,7 @@ export function openCameraScan({ onResult }) {
       const deliver = (result) => {
         if (didDeliver) return;
         didDeliver = true;
-        if (result.type === "barcode" && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-          navigator.vibrate([15, 30, 15]); // success-notification haptic stand-in
-        }
+        if (result.type === "barcode") sfx("scan"); // with its own buzz on phones that allow it
         close();
         onResult(result);
       };
@@ -204,6 +203,7 @@ export function openCameraScan({ onResult }) {
           if (mode === "barcode" || cameraState !== "ready") return;
           const video = panel.querySelector("#scan-video");
           if (!video || !video.videoWidth) return;
+          sfx("shutter");
           const canvas = document.createElement("canvas");
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
