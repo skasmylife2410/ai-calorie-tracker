@@ -12,6 +12,7 @@
 //  - No praise or scolding attached to the direction of travel. It reports, it doesn't judge.
 
 import * as store from "../store.js";
+import { missedYouHtml } from "./missed-you.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
@@ -69,6 +70,7 @@ export function render(container) {
           ${["kg", "lb"].map((u) => `<button type="button" data-unit="${u}" aria-pressed="${u === unit()}">${u}</button>`).join("")}
         </div>
       </div>
+      ${missedYouHtml()}
       <div class="wt-ranges pg-ranges">
         ${RANGES.map((r) => `<button type="button" data-range="${r}" aria-pressed="${r === range}">${t("weight.rangeDays", { n: r })}</button>`).join("")}
       </div>
@@ -256,7 +258,8 @@ function timelineHtml(p) {
       if (name === "workout" && d.workouts) fill = "var(--mk-green, #1F9E75)";
       if (name === "water" && d.water) { fill = "var(--sc-water)"; op = d.waterHit ? 1 : 0.35; }
       const gap = cw > 4 ? 1 : 0;
-      return fill ? `<rect x="${(TL.L + i * cw + gap / 2).toFixed(2)}" y="${ly}" width="${Math.max(0.6, cw - gap).toFixed(2)}" height="${TL.lane}" rx="${cw > 4 ? 2 : 0}" fill="${fill}" opacity="${op}"/>` : "";
+      const today = name === "calories" && i === n - 1 ? ` class="pg-cell-today"` : "";
+      return fill ? `<rect${today} x="${(TL.L + i * cw + gap / 2).toFixed(2)}" y="${ly}" width="${Math.max(0.6, cw - gap).toFixed(2)}" height="${TL.lane}" rx="${cw > 4 ? 2 : 0}" fill="${fill}" opacity="${op}"/>` : "";
     }).join("");
     return `<text x="${TL.L - 6}" y="${ly + TL.lane - 2}" text-anchor="end" class="pg-lane-label">${t(`prog.lane.${name}`)}</text>
       <rect x="${TL.L}" y="${ly}" width="${TL.W - TL.L - TL.R}" height="${TL.lane}" rx="2" class="pg-lane-bg"/>${cells}`;
