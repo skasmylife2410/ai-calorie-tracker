@@ -171,6 +171,8 @@
 :root[data-theme="mono"] .calorie-remaining { font-size: 52px !important; line-height: 1 !important; }
 :root[data-theme="mono"] .macro-value { font-size: 18px !important; letter-spacing: 0 !important; }
 :root[data-theme="mono"] :is(.calorie-remaining, .macro-value).over { color: var(--mn-over) !important; }
+:root[data-theme="mono"] .calorie-remaining.is-counting:not(.is-over) { color: var(--mn-ink) !important; }
+:root[data-theme="mono"] .calorie-remaining.is-counting.is-over { color: var(--mn-over) !important; }
 
 /* Small labels: quiet uppercase, not monospace */
 :root[data-theme="mono"] :is(.calorie-caption, .section-title-small, .pg-tile-label, .wt-stat-label) {

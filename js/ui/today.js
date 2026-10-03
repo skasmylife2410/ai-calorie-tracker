@@ -193,19 +193,35 @@ function wireMealsTab(container, date) {
 let countAnim = null; // { dayKey, from: {nums, offs}, to: {nums, offs}, t0 }
 const easeOut = (p) => 1 - Math.pow(1 - p, 3);
 const lerp = (a, b, e) => a.map((x, i) => (Number.isFinite(x) && Number.isFinite(b[i]) ? x + (b[i] - x) * e : b[i]));
-function countValueAt(anim, now) {
-  const e = easeOut(Math.min(1, (now - anim.t0) / COUNT_MS));
-  return { nums: lerp(anim.from.nums, anim.to.nums, e), offs: lerp(anim.from.offs, anim.to.offs, e) };
+const easeInOut = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+// Going over the budget (or back under) is worth a slower moment: the number eases down to zero,
+// rests there a beat, then creeps up on the other side (in red when it's now over).
+const CROSS_MS = 2800;
+const crossesZero = (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.round(a) !== 0 && Math.round(b) !== 0 && Math.sign(a) !== Math.sign(b);
+const msOf = (anim) => anim.ms ?? COUNT_MS;
+function crossingValue(from, to, p) {
+  if (p < 0.5) return from * (1 - easeOut(p / 0.5));
+  if (p < 0.58) return 0;
+  return to * easeInOut((p - 0.58) / 0.42);
 }
+function countValueAt(anim, now) {
+  const p = Math.min(1, (now - anim.t0) / msOf(anim));
+  const e = easeOut(p);
+  const nums = lerp(anim.from.nums, anim.to.nums, e);
+  if (anim.ms === CROSS_MS) nums[0] = crossingValue(anim.from.nums[0], anim.to.nums[0], p);
+  return { nums, offs: lerp(anim.from.offs, anim.to.offs, e) };
+}
+const startCount = (dayKey, from, to, t0) => ({ dayKey, from, to, t0, ...(crossesZero(from.nums[0], to.nums[0]) ? { ms: CROSS_MS } : {}) });
 const sameNumbers = (a, b) => a.length === b.length && a.every((n, i) => Math.round(n) === Math.round(b[i]));
 
 function countNumbers(container, dayKey, nums) {
   const els = [container.querySelector(".calorie-remaining"), ...container.querySelectorAll(".macro-value"), container.querySelector(".calorie-budget-num")];
   const rings = [...container.querySelectorAll(".calorie-card .ring-progress, .macro-tile .ring-progress")];
+  const caption = container.querySelector(".calorie-caption");
   const offs = rings.map((r) => Number(r.getAttribute("stroke-dashoffset")));
   const target = { nums, offs };
   const now = performance.now();
-  const running = countAnim && countAnim.dayKey === dayKey && now - countAnim.t0 < COUNT_MS ? countAnim : null;
+  const running = countAnim && countAnim.dayKey === dayKey && now - countAnim.t0 < msOf(countAnim) ? countAnim : null;
   const prev = lastNumbers?.dayKey === dayKey ? lastNumbers : null;
   lastNumbers = { dayKey, nums, offs };
 
@@ -213,9 +229,9 @@ function countNumbers(container, dayKey, nums) {
   if (running && sameNumbers(running.to.nums, nums)) {
     // a redraw with the same numbers: keep the count going on the new elements
   } else if (running) {
-    countAnim = { dayKey, from: countValueAt(running, now), to: target, t0: now };
+    countAnim = startCount(dayKey, countValueAt(running, now), target, now);
   } else if (prev && !sameNumbers(prev.nums, nums)) {
-    countAnim = { dayKey, from: { nums: prev.nums, offs: prev.offs }, to: target, t0: now };
+    countAnim = startCount(dayKey, { nums: prev.nums, offs: prev.offs }, target, now);
   } else {
     countAnim = null;
     return;
@@ -225,6 +241,10 @@ function countNumbers(container, dayKey, nums) {
   const paint = (at) => {
     const v = countValueAt(anim, at);
     els.forEach((el, i) => { if (el) el.textContent = `${roundDisplay(Math.abs(v.nums[i]))}${el.dataset.suffix ?? (i > 0 ? "g" : "")}`; });
+    // the big number turns red the moment it passes zero, and the caption follows it
+    const over = Math.round(v.nums[0]) < 0;
+    els[0]?.classList.toggle("is-over", over);
+    if (caption) caption.textContent = over ? t("home.caloriesOver") : t("home.caloriesLeft");
     rings.forEach((r, i) => {
       r.style.transition = "none";
       if (!Number.isFinite(v.offs[i])) return;
@@ -237,8 +257,8 @@ function countNumbers(container, dayKey, nums) {
   const step = (at) => {
     if (countAnim !== anim || !container.contains(els[0])) return; // superseded or redrawn
     paint(at);
-    if (at - anim.t0 < COUNT_MS) { requestAnimationFrame(step); return; }
-    els.forEach((el) => el?.classList.remove("is-counting"));
+    if (at - anim.t0 < msOf(anim)) { requestAnimationFrame(step); return; }
+    els.forEach((el) => el?.classList.remove("is-counting", "is-over"));
     rings.forEach((r) => { r.style.transition = ""; });
     countAnim = null;
   };

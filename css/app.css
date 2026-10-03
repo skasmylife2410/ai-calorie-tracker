@@ -2220,6 +2220,8 @@ body.setup-open { overflow: hidden; }
 /* calorie card numbers count down instead of jumping */
 .calorie-remaining, .macro-value { font-variant-numeric: tabular-nums; }
 .calorie-remaining.is-counting, .macro-value.is-counting { color: var(--sc-primary-text); }
+.calorie-remaining { transition: color .35s ease; }
+.calorie-remaining.is-counting.is-over { color: var(--sc-red); }
 @media (prefers-reduced-motion: reduce) { .home-meals-list:not([hidden]) { animation: none; } .mini-tab-caret { transition: none; } }
 
 /* onboarding: add to Home Screen */
