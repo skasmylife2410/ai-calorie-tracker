@@ -37,6 +37,7 @@ const RESPONSE_SCHEMA = {
           fat_g: { type: "NUMBER" },
           ...MICRO_PROPS,
           confidence: { type: "NUMBER" },
+          count: { type: "NUMBER" },
         },
         required: ["name", "grams_estimate", "calories", "protein_g", "carbs_g", "fat_g", ...MICRO_FIELDS, "confidence"],
       },
@@ -193,6 +194,7 @@ const MEAL_PROMPT_SECTION_3 = `Rules:
 - Assume standard preparation: dishes are cooked with oil or butter unless clearly not; when a fried or sautéed dish is present, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items. Common hidden fat that looks plain: rice in Latin American cooking (arroz blanco, arroz con pollo) is usually made with oil; arepas are often buttered or griddled with fat; plantains (patacones, tajadas/maduros) are fried; restaurant and street food generally uses more oil than home cooking. Portion estimates from photos tend to come out low on generous plates — don't round down.
 - calories, protein_g, carbs_g, fat_g must be your estimate for the stated grams of that specific item.
 ${MICRO_RULE}
+- count: when the item is made of whole pieces you can count (eggs, slices of bread, arepas, cookies, tacos, bananas, scoops), the number of pieces, and name the item in the singular ("egg", not "eggs"); grams_estimate and the nutrients still cover ALL the pieces together. Use 0 for foods that aren't counted in pieces (rice, soup, a salad, sauce, cooking oil, a drink).
 - confidence is 0–1: how sure you are of the item's identity AND portion size.
 - If the image contains no food or drink, return an empty items array.`;
 
@@ -222,6 +224,7 @@ Rules:
 - Assume standard preparation: dishes are cooked with oil or butter unless the user says otherwise; when a fried or sautéed dish is described, include a separate "cooking oil" item (typically 5–15 g). List dressings, sauces, and sugar in drinks as their own items. Common hidden fat that looks plain: rice in Latin American cooking (arroz blanco, arroz con pollo) is usually made with oil; arepas are often buttered or griddled with fat; plantains (patacones, tajadas/maduros) are fried; restaurant and street food generally uses more oil than home cooking. Portion estimates from photos tend to come out low on generous plates — don't round down.
 - calories, protein_g, carbs_g, fat_g must be your estimate for the stated grams of that specific item.
 ${MICRO_RULE}
+- count: when the item is made of whole pieces you can count (eggs, slices of bread, arepas, cookies, tacos, bananas, scoops), the number of pieces, and name the item in the singular ("egg", not "eggs"); grams_estimate and the nutrients still cover ALL the pieces together. Use 0 for foods that aren't counted in pieces (rice, soup, a salad, sauce, cooking oil, a drink).
 - confidence is 0–1: how sure you are of the item's identity AND portion size. Be honest — a precisely quantified item ("two scoops of whey") deserves high confidence, while an unquantified vague one ("some pasta") deserves LOW confidence.
 - If the text does not describe any food or drink, return an empty items array.
 ${confidenceRules(lang)}

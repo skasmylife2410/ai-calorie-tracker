@@ -690,8 +690,20 @@ function generateItemId() {
   return `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/** Pieces the AI counted ("two eggs" → 2), or 0 when the food isn't counted in pieces. */
+export function pieceCount(raw) {
+  const n = Number(raw?.count);
+  return Number.isFinite(n) && n >= 1 && n <= 50 ? Math.round(n * 2) / 2 : 0;
+}
+
 /** Maps a raw Gemini item (post JSON-schema decode) to the final AnalyzedFoodItem shape. */
 export function mapRawItemToAnalyzedItem(raw) {
+  const grams = raw.grams_estimate ?? raw.gramsEstimate;
+  const count = pieceCount(raw);
+  // counted foods open in servings (2 eggs = 2 ×), each serving one piece's weight
+  const pieces = count > 0 && Number(grams) > 0
+    ? { unit: "serving", amount: count, gramsPerServing: Math.max(1, Math.round(Number(grams) / count)) }
+    : {};
   return {
     id: generateItemId(),
     name: raw.name,
@@ -703,6 +715,7 @@ export function mapRawItemToAnalyzedItem(raw) {
     micros: microsFromRaw(raw),
     confidence: raw.confidence,
     grounded: false,
+    ...pieces,
   };
 }
 
