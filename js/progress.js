@@ -31,8 +31,10 @@ export function rollingWeights(weights) {
  * @param {object} p
  * @param {(ts:number)=>number} p.calorieTarget  that day's calorie target (with exercise credit)
  * @param {number} p.proteinTarget  grams
+ * @param {(ts:number)=>number} [p.eatenOn]  that day's calories exactly as Home counts them; when
+ *   given it wins, so Progress can never disagree with Home about a day
  */
-export function buildDays({ days, now = Date.now(), foods = [], exercise = [], water = [], weights = [], calorieTarget, proteinTarget = 0 }) {
+export function buildDays({ days, now = Date.now(), foods = [], exercise = [], water = [], weights = [], calorieTarget, proteinTarget = 0, eatenOn }) {
   const byDay = new Map();
   const bucket = (key) => {
     if (!byDay.has(key)) byDay.set(key, { calories: 0, proteinG: 0, meals: 0, workouts: 0, minutes: 0, burned: 0, water: 0 });
@@ -63,9 +65,10 @@ export function buildDays({ days, now = Date.now(), foods = [], exercise = [], w
   for (let i = days - 1; i >= 0; i--) {
     const ts = addDays(today, -i);
     const key = localDateString(ts);
-    const b = byDay.get(key) ?? { calories: 0, proteinG: 0, meals: 0, workouts: 0, minutes: 0, burned: 0, water: 0 };
+    const b = { ...(byDay.get(key) ?? { calories: 0, proteinG: 0, meals: 0, workouts: 0, minutes: 0, burned: 0, water: 0 }) };
+    if (typeof eatenOn === "function") b.calories = Number(eatenOn(ts)) || 0;
     const target = typeof calorieTarget === "function" ? calorieTarget(ts) : calorieTarget;
-    const logged = b.meals > 0;
+    const logged = b.meals > 0 || b.calories > 0;
     let calStatus = null;
     if (logged && target > 0) {
       // Home calls a day over the moment it passes the target, so Progress does too

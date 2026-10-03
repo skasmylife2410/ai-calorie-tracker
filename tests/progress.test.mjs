@@ -24,6 +24,13 @@ test("a little over the target is over, the same as Home says", () => {
   assert.deepEqual(days.map((d) => d.calStatus), ["on", "on", "over"]);
 });
 
+test("with eatenOn, a day's calories are exactly Home's, even when a meal is mid re-analysis", () => {
+  const foods = [meal(0, 900), { ...meal(0, 1300), analysisFailed: true }];
+  const [d] = P.buildDays({ days: 1, now: NOW, foods, calorieTarget: 2000, eatenOn: () => 2200 });
+  assert.equal(d.calories, 2200);
+  assert.equal(d.calStatus, "over");
+});
+
 test("pending and failed photo analyses don't count", () => {
   const foods = [meal(0, 900), { ...meal(0, 5000), isPending: true }, { ...meal(0, 5000), analysisFailed: true }];
   const [d] = P.buildDays({ days: 1, now: NOW, foods, calorieTarget: 1000 });

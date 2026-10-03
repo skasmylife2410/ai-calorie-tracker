@@ -40,10 +40,16 @@ function collect() {
     water: store.allWaterEntries(),
     weights: store.allWeightEntries(),
   };
+  const energy = new Map();
+  const energyOn = (ts) => {
+    if (!energy.has(ts)) energy.set(ts, store.dayEnergy(new Date(ts)));
+    return energy.get(ts);
+  };
   const both = buildDays({
     ...data,
     days: range * 2,
-    calorieTarget: (ts) => store.dayEnergy(new Date(ts)).adjustedTarget,
+    calorieTarget: (ts) => energyOn(ts).adjustedTarget,
+    eatenOn: (ts) => energyOn(ts).eaten, // the same number Home shows for that day
     proteinTarget: goals.proteinTargetG,
   });
   const days = both.slice(range);
