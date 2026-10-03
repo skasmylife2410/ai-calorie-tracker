@@ -22,22 +22,59 @@ function ls() {
   if (typeof globalThis.localStorage === "undefined") {
     throw new Error("store.js requires a localStorage implementation on globalThis");
   }
-  return globalThis.localStorage;
+  const storage = globalThis.localStorage;
+  if (storage !== watchedStorage) watchStorage(storage);
+  return storage;
+}
+
+// Parsed copies of what's in localStorage. Parsing the whole meal log (photos included, often
+// megabytes) on every lookup made one redraw do it hundreds of times (seconds on an older phone).
+// Now each key is parsed once and kept until it's written. Writes go through writeJSON below;
+// another tab's writes arrive as "storage" events; a stand-in storage (tests, old browsers
+// without the Storage type) is watched directly so writes that skip this file are noticed too.
+const parsed = new Map();
+let watchedStorage = null;
+function watchStorage(storage) {
+  watchedStorage = storage;
+  parsed.clear();
+  const isRealStorage = typeof globalThis.Storage === "function" && storage instanceof globalThis.Storage;
+  if (isRealStorage) return; // (assigning methods on real Storage would store them as keys)
+  for (const name of ["setItem", "removeItem", "clear"]) {
+    const original = storage[name];
+    if (typeof original !== "function" || original.snapcalWatched) continue;
+    const watched = function (...args) {
+      if (name === "clear") parsed.clear(); else parsed.delete(String(args[0]));
+      return original.apply(this, args);
+    };
+    watched.snapcalWatched = true;
+    storage[name] = watched;
+  }
+}
+if (typeof globalThis.addEventListener === "function") {
+  globalThis.addEventListener("storage", (e) => { if (e.key === null) parsed.clear(); else parsed.delete(e.key); });
 }
 
 function readJSON(key, fallback) {
-  const raw = ls().getItem(key);
-  if (raw == null) return fallback;
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed;
-  } catch {
-    return fallback;
+  const storage = ls();
+  if (!parsed.has(key)) {
+    const raw = storage.getItem(key);
+    let value = null;
+    if (raw != null) {
+      try { value = JSON.parse(raw); } catch { value = null; }
+    }
+    parsed.set(key, value);
   }
+  return parsed.get(key) ?? fallback;
 }
 
 function writeJSON(key, value) {
-  ls().setItem(key, JSON.stringify(value));
+  try {
+    ls().setItem(key, JSON.stringify(value));
+  } catch (err) {
+    parsed.delete(key); // not saved (storage full): the next read goes back to what is
+    throw err;
+  }
+  parsed.set(key, value);
 }
 
 function generateId() {

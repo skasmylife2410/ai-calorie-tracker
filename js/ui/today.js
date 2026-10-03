@@ -15,7 +15,6 @@ import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
 import { nutrientsPageHtml, nutrientsStripHtml } from "./micros.js";
 import { openRecipesSheet } from "./recipes.js";
-import { openShareSheet } from "./share-summary.js";
 import { shouldOfferInstall, installCardHtml, wireInstallCard } from "./install-guide.js";
 import { openDayMealsSheet } from "./day-meals.js";
 import { mythForDay } from "../myths.js";
@@ -160,7 +159,7 @@ export function render(container) {
   wireHomeGifChip(container.querySelector("#chip-ideas"), () => openRecipesSheet());
   container.querySelector("#chip-myth")?.addEventListener("click", () => openMythSheet());
   wireInstallCard(container, () => render(container));
-  container.querySelector("#share-summary")?.addEventListener("click", (e) => { e.stopPropagation(); openShareSheet({ date }); });
+  container.querySelector("#share-summary")?.addEventListener("click", (e) => { e.stopPropagation(); import("./share-summary.js").then((m) => m.openShareSheet({ date })).catch(() => {}); });
   wireDaySelection(container);
   if (viewingToday) showNoteIfAny(container);
   container.querySelector("#card-more")?.addEventListener("click", () => { cardRevealed = true; render(container); });

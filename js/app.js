@@ -12,29 +12,56 @@ import { getStoredToken } from "./net.js";
 import { foodLookup } from "./api.js";
 import { icon } from "./ui/icons.js";
 import { render as renderToday } from "./ui/today.js";
-import { render as renderHistory } from "./ui/history.js";
-import { render as renderProfile } from "./ui/profile.js";
 import { render as renderOnboarding } from "./ui/onboarding.js";
-import { render as renderSharedTab } from "./ui/shared-tab.js";
 import { startAutoUpdate, applyIfPending } from "./updater.js";
 import "./install.js"; // catches Android Chrome's install offer as early as possible
-import { openCameraScan } from "./ui/scan.js";
-import { openFoodSearchSheet } from "./ui/search.js";
-import { openDescribeMealSheet } from "./ui/describe.js";
-import { openFavouritesSheet } from "./ui/favourites.js";
-import { openExerciseSheet } from "./ui/exercise.js";
 import { viewedTimestamp } from "./ui/today.js";
 import { renderLogin, hasValidSession, consentNeeded, renderConsent } from "./ui/login.js";
-import { render as renderWeight } from "./ui/weight.js";
 
-import { renderUsTab } from "./us.js";
 import { mountSky } from "./ui/sky.js";
 import { applyTheme, watchSystemTheme } from "./theme.js";
-import { openRecipesSheet } from "./ui/recipes.js";
-import { openAddFoodSheet } from "./ui/addfood.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
 import { refreshPush, clearBadge } from "./push.js";
 import { maybeShowWhatsNew } from "./ui/push-ui.js";
+
+// Screens and sheets that aren't on Home load the first time they're opened, and in the
+// background once Home is up, so opening the app parses far less code. (The service worker
+// has them all cached, so loading one is quick even offline.)
+const laterLoads = [];
+function later(load, name) {
+  laterLoads.push(load);
+  return (...args) => load().then((m) => m[name](...args)).catch((err) => console.error(`app.js: ${name} failed to load`, err));
+}
+/** A tab's render, loaded later; draws only if that tab is still the one showing. */
+function laterTab(load, name) {
+  laterLoads.push(load);
+  return (content) => {
+    const tab = selectedTab;
+    return load()
+      .then((m) => { if (selectedTab === tab && content.isConnected) m[name](content); })
+      .catch((err) => console.error(`app.js: ${name} failed to load`, err));
+  };
+}
+let preloaded = false;
+function preloadLater() {
+  if (preloaded) return;
+  preloaded = true;
+  const run = () => laterLoads.forEach((load) => load().catch(() => {}));
+  if (typeof globalThis.requestIdleCallback === "function") globalThis.requestIdleCallback(run, { timeout: 4000 });
+  else setTimeout(run, 2500);
+}
+const renderHistory = laterTab(() => import("./ui/history.js"), "render");
+const renderProfile = laterTab(() => import("./ui/profile.js"), "render");
+const renderSharedTab = laterTab(() => import("./ui/shared-tab.js"), "render");
+const openCameraScan = later(() => import("./ui/scan.js"), "openCameraScan");
+const openFoodSearchSheet = later(() => import("./ui/search.js"), "openFoodSearchSheet");
+const openDescribeMealSheet = later(() => import("./ui/describe.js"), "openDescribeMealSheet");
+const openFavouritesSheet = later(() => import("./ui/favourites.js"), "openFavouritesSheet");
+const openExerciseSheet = later(() => import("./ui/exercise.js"), "openExerciseSheet");
+const renderWeight = laterTab(() => import("./ui/weight.js"), "render");
+const renderUsTab = laterTab(() => import("./us.js"), "renderUsTab");
+const openRecipesSheet = later(() => import("./ui/recipes.js"), "openRecipesSheet");
+const openAddFoodSheet = later(() => import("./ui/addfood.js"), "openAddFoodSheet");
 
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
@@ -286,6 +313,7 @@ function renderShell() {
 
   wireShell();
   renderCurrentTab();
+  preloadLater();
 }
 
 function tabButtonHtml(tab) {

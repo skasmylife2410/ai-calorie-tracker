@@ -45,12 +45,42 @@ export function safeToReload(doc = globalThis.document) {
   return true;
 }
 
+/**
+ * The app's files come from the service worker's cache, one complete set per deploy. Before
+ * reloading for an update, let the new worker finish downloading its set (up to a few seconds),
+ * so the reload opens the new version instead of the old one again.
+ */
+async function freshFilesReady(maxMs = 10000) {
+  const sw = globalThis.navigator?.serviceWorker;
+  if (!sw?.getRegistration) return;
+  const reg = await sw.getRegistration().catch(() => null);
+  if (!reg) return;
+  await reg.update().catch(() => {});
+  const incoming = reg.installing || reg.waiting;
+  if (!incoming) return;
+  await new Promise((resolve) => {
+    const timer = setTimeout(resolve, maxMs);
+    const settle = () => {
+      if (incoming.state === "activated" || incoming.state === "redundant") { clearTimeout(timer); resolve(); }
+    };
+    incoming.addEventListener("statechange", settle);
+    settle();
+  });
+}
+
+let reloading = false;
 function reloadWhenSafe() {
   clearTimeout(retryTimer);
+  if (reloading) return;
   if (safeToReload()) {
-    try { sessionStorage.setItem(UPDATED_FLAG, "1"); } catch { /* private mode */ }
-    try { beforeReload?.(); } catch { /* never block the update */ }
-    location.reload();
+    reloading = true;
+    freshFilesReady().finally(() => {
+      reloading = false;
+      if (!safeToReload()) { retryTimer = setTimeout(reloadWhenSafe, SAFE_RETRY_MS); return; }
+      try { sessionStorage.setItem(UPDATED_FLAG, "1"); } catch { /* private mode */ }
+      try { beforeReload?.(); } catch { /* never block the update */ }
+      location.reload();
+    });
     return;
   }
   retryTimer = setTimeout(reloadWhenSafe, SAFE_RETRY_MS);
