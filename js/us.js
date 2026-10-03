@@ -9,7 +9,7 @@ import { doodleSvg } from "./ui/doodle.js";
 import { openNoteSheet } from "./ui/us-social.js";
 import { renderRecap } from "./ui/us-recap.js";
 import { renderPushCard } from "./ui/push-ui.js";
-import { localDateString, addDays, startOfDay } from "./nutrition.js";
+import { localDateString, addDays, startOfDay, daysForAverage } from "./nutrition.js";
 import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
 import { searchGifs } from "./social.js";
@@ -343,8 +343,9 @@ function trendHtml(people, days) {
     const values = ordered.map((d) => (p.days[d.key] || EMPTY_DAY).calories);
     const goal = p.goals?.calories || 0;
     const max = Math.max(1, ...values, goal) * 1.12;
-    const logged = values.filter((v) => v > 0);
-    const avg = logged.length ? Math.round(logged.reduce((a, b) => a + b, 0) / logged.length) : 0;
+    // only full days count: today and half-logged days would pull the average down
+    const counted = daysForAverage(ordered.map((d) => ({ key: d.key, ...(p.days[d.key] || EMPTY_DAY) })), { goal, todayKey: localDateString(Date.now()) }).days;
+    const avg = counted.length ? Math.round(counted.reduce((a, d) => a + d.calories, 0) / counted.length) : 0;
 
     const pts = values.map((v, idx) => ({ x: xOf(idx), y: H - (v / max) * H }));
     const path = pts.map((pt, idx) => `${idx === 0 ? "M" : "L"}${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" ");
@@ -486,7 +487,10 @@ export function weekChartHtml(p, i, days) {
   const ordered = [...days].reverse(); // oldest -> newest, left to right
   const goal = p.goals?.calories || 0;
   const logged = days.map((d) => p.days[d.key]).filter((d) => d && d.meals > 0);
-  const avg = (k) => (logged.length ? logged.reduce((s, d) => s + (d[k] || 0), 0) / logged.length : 0);
+  // averages use full days only: today isn't over, and a day with just breakfast logged
+  // would make it look like they barely ate (see nutrition.daysForAverage)
+  const forAvg = daysForAverage(days.map((d) => (p.days[d.key] ? { key: d.key, ...p.days[d.key] } : null)), { goal, todayKey: localDateString(Date.now()) });
+  const avg = (k) => (forAvg.days.length ? forAvg.days.reduce((s, d) => s + (d[k] || 0), 0) / forAvg.days.length : 0);
   const near = goal ? logged.filter((d) => Math.abs(d.calories - goal) <= goal * 0.1).length : null;
   const water = days.reduce((s, d) => s + (p.days[d.key]?.water || 0), 0) / days.length;
   const sessions = days.reduce((n, d) => n + (p.days[d.key]?.sessions || 0), 0);
@@ -526,7 +530,7 @@ export function weekChartHtml(p, i, days) {
     <div class="us-week${many ? " is-many" : ""}" style="--pc:${c.solid}">
       <div class="us-week-head">
         <span class="us-week-dot" style="background:${c.solid}"></span><b>${name}</b>
-        <span class="us-spacer"></span><span class="us-week-avg">${avgKcal}</span><small>${t("us.avgKcal")}</small>
+        <span class="us-spacer"></span><span class="us-week-avg">${avgKcal}</span><small>${forAvg.full ? t("us.avgKcalDays", { n: forAvg.full }) : t("us.avgKcal")}</small>
       </div>
       <div class="us-wchart" role="img" aria-label="${escHtml(t("us.weekChart", { name: p.name || titleCase(p.owner), avg: avgKcal, d: days.length }))}">
         ${goal ? `<i class="us-wgoal" style="bottom:${(h(goal) + 17).toFixed(1)}px"><em>${t("us.goalShort")}</em></i>` : ""}

@@ -502,3 +502,22 @@ export function microTargets({ targetCalories = 2000, sex = "male" } = {}) {
     potassiumMg: { kind: "goal", value: normalizeSex(sex) === "female" ? 2600 : 3400 },
   };
 }
+
+
+/**
+ * Days that count toward an average of what someone eats: something was logged, the day is over
+ * (today isn't), and it isn't so far under the goal that meals were clearly left unlogged. Without
+ * this, a day with only breakfast logged dragged a person's average down as if they'd barely eaten.
+ */
+export const PARTIAL_DAY_SHARE = 0.5;
+export function countsForAverage(day, { goal = 0, isToday = false } = {}) {
+  if (!day || !(day.meals > 0) || isToday) return false;
+  return !(goal > 0 && day.calories < goal * PARTIAL_DAY_SHARE);
+}
+
+/** The days to average: the full ones, or every logged day when there are no full ones yet. */
+export function daysForAverage(days, { goal = 0, todayKey = null } = {}) {
+  const logged = days.filter((d) => d && d.meals > 0);
+  const full = logged.filter((d) => countsForAverage(d, { goal, isToday: d.key === todayKey }));
+  return { days: full.length ? full : logged, full: full.length, skipped: logged.length - full.length };
+}

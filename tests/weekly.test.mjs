@@ -27,7 +27,8 @@ test("summary: averages, days over target, evening share, weight change", () => 
   });
   assert.equal(s.daysLogged, 3);
   assert.equal(s.enough, true);
-  assert.equal(s.avgCalories, Math.round((2100 + 600 + 1800) / 3));
+  // the 600 kcal day is under half the goal: half-logged, so it doesn't drag the average down
+  assert.equal(s.avgCalories, Math.round((2100 + 1800) / 2));
   assert.deepEqual(s.daysOver, ["2026-09-18"]); // 1800 is within the 10% allowance
   assert.equal(s.eveningShare, Math.round(1600 / 4500 * 100));
   assert.equal(s.weightChangeKg, -0.8);

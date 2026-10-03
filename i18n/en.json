@@ -175,7 +175,8 @@
     "boostTitle": "+{n} kcal from exercise",
     "keyBoost": "Exercise boost",
     "lowTitle": "Only {n}% of the budget logged today",
-    "lastMealDays": "Last meal {n} days ago"
+    "lastMealDays": "Last meal {n} days ago",
+    "avgKcalDays": "avg kcal · {n} full day|avg kcal · {n} full days"
   },
   "profile": {
     "language": "Language",

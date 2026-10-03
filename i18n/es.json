@@ -175,7 +175,8 @@
     "boostTitle": "+{n} kcal por ejercicio",
     "keyBoost": "Extra por ejercicio",
     "lowTitle": "Solo {n}% del presupuesto registrado hoy",
-    "lastMealDays": "Última comida hace {n} días"
+    "lastMealDays": "Última comida hace {n} días",
+    "avgKcalDays": "kcal prom. · {n} día completo|kcal prom. · {n} días completos"
   },
   "profile": {
     "language": "Idioma",

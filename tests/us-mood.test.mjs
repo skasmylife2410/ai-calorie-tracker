@@ -37,3 +37,19 @@ test("barely eaten gets the badge, but only in the evening", () => {
   assert.equal(rowMood(am, morning), null);
   assert.equal(rowMood(person({ [day(evening, 0)]: { calories: 900, meals: 2 } }), evening), null);
 });
+
+test("averages skip today and half-logged days, unless there's nothing else yet", async () => {
+  const { daysForAverage } = await import("../js/nutrition.js");
+  const days = [
+    { key: "2026-10-01", meals: 4, calories: 2000 },
+    { key: "2026-10-02", meals: 1, calories: 400 },   // only breakfast logged
+    { key: "2026-10-03", meals: 2, calories: 900 },   // today, not over yet
+    { key: "2026-09-30", meals: 0, calories: 0 },
+  ];
+  const out = daysForAverage(days, { goal: 2000, todayKey: "2026-10-03" });
+  assert.deepEqual(out.days.map((d) => d.key), ["2026-10-01"]);
+  assert.equal(out.full, 1);
+  assert.equal(out.skipped, 2);
+  // a brand-new person with only today logged still gets a number
+  assert.equal(daysForAverage([days[2]], { goal: 2000, todayKey: "2026-10-03" }).days.length, 1);
+});

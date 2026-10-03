@@ -1,6 +1,8 @@
 // api/_week.js — the numbers behind the Friday recommendation, kept free of I/O so they can be
 // tested. /api/weekly reads the rows, calls these, and asks Gemini only for the wording.
 
+import { daysForAverage } from "../js/nutrition.js";
+
 export const TIME_ZONE = (process.env.APP_TIME_ZONE || "America/Chicago").trim();
 export const MIN_DAYS = 3; // fewer logged days than this and there's nothing honest to say
 
@@ -52,10 +54,12 @@ export function summarizeWeek({ meals = [], exercise = [], weights = [], goals =
   }
   const days = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([day, v]) => ({ day, calories: r0(v.calories), proteinG: r0(v.proteinG), meals: v.meals }));
   const logged = days.length;
-  const total = days.reduce((s, d) => s + d.calories, 0);
-  const avg = logged ? total / logged : 0;
-  const avgProtein = logged ? days.reduce((s, d) => s + d.proteinG, 0) / logged : 0;
   const target = goals?.calories ?? null;
+  const total = days.reduce((s, d) => s + d.calories, 0);
+  // averages over full days only: half-logged days would make it look like they barely ate
+  const counted = daysForAverage(days, { goal: target ?? 0 }).days;
+  const avg = counted.length ? counted.reduce((s, d) => s + d.calories, 0) / counted.length : 0;
+  const avgProtein = counted.length ? counted.reduce((s, d) => s + d.proteinG, 0) / counted.length : 0;
   const overBy = target ? Math.max(100, target * 0.1) : null; // small misses aren't "over"
   const daysOver = target ? days.filter((d) => d.calories > target + overBy).map((d) => d.day) : [];
   const daysUnderProtein = goals?.proteinG ? days.filter((d) => d.proteinG < goals.proteinG * 0.8).length : 0;
