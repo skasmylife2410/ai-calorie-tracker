@@ -91,6 +91,10 @@ export function targetCalories(tdeeValue, deltaKcal) {
 // and never under 1,200 kcal for women or 1,500 kcal for men. Someone whose maintenance is
 // already below that minimum gets their maintenance (losing on less needs professional care).
 export const MAX_DEFICIT_SHARE = 0.25;
+/** Which method worked out a set of goals. 1: protein as 30% of calories, no calorie limits.
+ *  2: protein by weight and activity, safe calorie limits (this file). Goals saved under an
+ *  older method are worked out again wherever they're read. */
+export const GOALS_VERSION = 2;
 export const MIN_KCAL = Object.freeze({ female: 1200, male: 1500 });
 
 /** The calorie target with the safety limits applied. Gains and maintenance pass through. */
@@ -231,8 +235,10 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   const useLearned = Number.isFinite(learnedTdee) && learnedTdee > 0;
   const tdeeValue = useLearned ? learnedTdee : formulaTdee;
   const computedTargetCalories = Math.round(safeTargetCalories(tdeeValue, targetDeltaKcal, sex)); // whole calories
+  // A calorie target typed in by hand is kept, but never below the safety minimum either.
+  const safeMinimum = Math.round(Math.min(tdeeValue, MIN_KCAL[normalizeSex(sex)] ?? MIN_KCAL.female));
   const effectiveTargetCalories =
-    customTargetKcal !== null && customTargetKcal !== undefined ? customTargetKcal : computedTargetCalories;
+    customTargetKcal !== null && customTargetKcal !== undefined ? Math.max(Number(customTargetKcal), safeMinimum) : computedTargetCalories;
   const macros = macroTargets(effectiveTargetCalories);
 
   // Protein by body weight and goal (see proteinTargetG), fat at 30% of calories, and carbs get
@@ -579,4 +585,28 @@ export function daysForAverage(days, { goal = 0, todayKey = null } = {}) {
   const logged = days.filter((d) => d && d.meals > 0);
   const full = logged.filter((d) => countsForAverage(d, { goal, isToday: d.key === todayKey }));
   return { days: full.length ? full : logged, full: full.length, skipped: logged.length - full.length };
+}
+
+
+/**
+ * The goals to show for someone on the server (the Us board, the Friday check-in): the ones their
+ * phone reported when they were worked out by the current method, otherwise worked out again here
+ * from their profile, so nobody is left on an older method's numbers.
+ */
+export function boardGoals(profileData) {
+  if (!profileData || typeof profileData !== "object") return null;
+  const a = profileData.appliedGoals;
+  if (profileData.appliedGoalsV === GOALS_VERSION && a && typeof a === "object") {
+    const picked = { calories: a.calories, proteinG: a.proteinG, carbsG: a.carbsG, fatG: a.fatG };
+    if (Object.values(picked).every((n) => typeof n === "number" && Number.isFinite(n) && n > 0 && n < 20000)) {
+      return Object.fromEntries(Object.entries(picked).map(([k, v]) => [k, Math.round(v)]));
+    }
+  }
+  try {
+    const g = resolveUserGoals(profileData);
+    const out = { calories: Math.round(g.targetCalories), proteinG: Math.round(g.proteinTargetG), carbsG: Math.round(g.carbsTargetG), fatG: Math.round(g.fatTargetG) };
+    return Object.values(out).every((n) => Number.isFinite(n) && n > 0) ? out : null;
+  } catch {
+    return null;
+  }
 }

@@ -1126,5 +1126,26 @@
   "mood": {
     "sadTitle": "It's been {n} days",
     "sadBody": "Everything's gone grey without you. Log a meal and the colour comes back."
+  },
+  "goalsUpdate": {
+    "title": "Your targets were updated",
+    "lead": "We reviewed how SnapCal works out calories and macros against current nutrition guidelines. These are your numbers:",
+    "leadSame": "We reviewed how SnapCal works out calories and macros against current nutrition guidelines. Your numbers barely change:",
+    "before": "Before",
+    "now": "Now",
+    "calories": "Calories",
+    "proteinG": "Protein",
+    "carbsG": "Carbs",
+    "fatG": "Fat",
+    "why1Title": "Protein now follows your weight and activity",
+    "why1Body": "Before, protein was 30% of your calories, which gave many people far more than they need. Now it's 1.2 to 2.0 g per kilo depending on how active you are, and a little more while losing weight to protect muscle (ISSN guidelines).",
+    "why2Title": "Calories have a safety limit",
+    "why2Body": "A weight-loss target never cuts more than 25% of your maintenance, and never goes under 1,200 kcal for women or 1,500 kcal for men (NIH guidelines). Faster isn't better when it costs muscle and energy.",
+    "why3Title": "Fat and carbs are balanced",
+    "why3Body": "Fat is 30% of your calories (25% on a low budget) and carbs make up the rest, never under 130 g a day, the amount your brain needs.",
+    "why4Title": "Your past days were recalculated too",
+    "why4Body": "Progress, Us and your weekly check-in now all use these targets, for past days and from now on.",
+    "trust": "These targets are worked out for you and are correct. They adjust on their own when your weight or activity changes. You can see or change them anytime in Profile.",
+    "ok": "Got it"
   }
 }

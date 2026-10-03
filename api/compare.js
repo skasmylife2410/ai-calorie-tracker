@@ -9,7 +9,7 @@
 import { isSafeDataImage } from "../js/safe-src.js";
 import { requireUser, parseUsers, DEFAULT_OWNER } from "./_auth.js";
 import { resolveGroup, membersOf } from "./_groups.js";
-import { resolveUserGoals, exerciseCredit, creditRatioFor, estimateCaloriesBurned } from "../js/nutrition.js";
+import { boardGoals, exerciseCredit, creditRatioFor, estimateCaloriesBurned } from "../js/nutrition.js";
 
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -46,32 +46,9 @@ function parseBody(req) {
   }
 }
 
+/** Goals for the board: the person's phone's own when worked out by the current method. */
 export function goalsFrom(profileData) {
-  if (!profileData || typeof profileData !== "object") return null;
-  // The goals the person's phone actually uses (with its learned maintenance), when it has
-  // reported them: the board then shows the same budget as their Home screen.
-  const a = profileData.appliedGoals;
-  if (a && typeof a === "object") {
-    const picked = { calories: a.calories, proteinG: a.proteinG, carbsG: a.carbsG, fatG: a.fatG };
-    if (Object.values(picked).every((n) => typeof n === "number" && Number.isFinite(n) && n > 0 && n < 20000)) {
-      return Object.fromEntries(Object.entries(picked).map(([k, v]) => [k, Math.round(v)]));
-    }
-  }
-  try {
-    const g = resolveUserGoals(profileData);
-    const ok = [g.targetCalories, g.proteinTargetG, g.carbsTargetG, g.fatTargetG].every(
-      (n) => typeof n === "number" && Number.isFinite(n) && n > 0
-    );
-    if (!ok) return null;
-    return {
-      calories: Math.round(g.targetCalories),
-      proteinG: Math.round(g.proteinTargetG),
-      carbsG: Math.round(g.carbsTargetG),
-      fatG: Math.round(g.fatTargetG),
-    };
-  } catch {
-    return null;
-  }
+  return boardGoals(profileData);
 }
 
 const num = (v) => (typeof v === "number" ? v : Number(v) || 0);

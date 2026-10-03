@@ -2647,3 +2647,17 @@ body.setup-open { overflow: hidden; }
 :root[data-mood="sad"] .pg-tile:nth-child(3n), :root[data-mood="sad"] .wt-card:nth-of-type(3n) { animation-delay: -3.4s; }
 :root[data-mood="sad"] .pg-timeline path { stroke-dasharray: 3 4; }
 @media (prefers-reduced-motion: reduce) { :root[data-mood] :is(.pg-tile, .wt-card, .pg-cell-today, .pg-tile-value), :root[data-mood] .pg-timeline::after { animation: none !important; } }
+
+/* goals update message (js/ui/goals-update.js) */
+.gu-lead { font-size: 15px; line-height: 1.5; margin: -6px 0 14px; color: var(--sc-secondary); }
+.gu-table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-variant-numeric: tabular-nums; }
+.gu-table th { text-align: left; font-size: 15px; font-weight: 600; padding: 8px 0; }
+.gu-table td { text-align: right; font-size: 15px; padding: 8px 0; }
+.gu-table thead td { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--sc-secondary); padding-bottom: 2px; }
+.gu-table tbody tr + tr { border-top: 1px solid var(--sc-separator, rgba(0,0,0,.08)); }
+.gu-table .gu-old { color: var(--sc-secondary); text-decoration: line-through; }
+.gu-table .gu-arrow { width: 28px; text-align: center; color: var(--sc-secondary); }
+.gu-table .gu-new { font-weight: 800; }
+.gu-table .gu-new small { font-weight: 500; color: var(--sc-secondary); }
+.gu-table .gu-same .gu-old { text-decoration: none; }
+.gu-table .gu-same .gu-new { font-weight: 600; }

@@ -23,6 +23,7 @@ import { applyTheme, watchSystemTheme } from "./theme.js";
 import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
 import { refreshPush, clearBadge } from "./push.js";
 import { maybeShowWhatsNew } from "./ui/push-ui.js";
+import { maybeShowGoalsUpdate } from "./ui/goals-update.js";
 
 // Screens and sheets that aren't on Home load the first time they're opened, and in the
 // background once Home is up, so opening the app parses far less code. (The service worker
@@ -239,7 +240,14 @@ async function boot() {
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") clearBadge(); });
   refreshPush().catch(() => {});
   const opened = openFromUrl(location.href);
-  if (hasProfile && !opened) setTimeout(() => maybeShowWhatsNew().catch(() => {}), 800);
+  // the message about updated targets comes first; the general "what's new" waits its turn
+  const showUpdates = () => { if (!maybeShowGoalsUpdate()) maybeShowWhatsNew().catch(() => {}); };
+  if (hasProfile && !opened) setTimeout(showUpdates, 800);
+  // on a phone that only gets its profile from the server, the change is noted after the first sync
+  whenFirstSynced(8000).then(() => setTimeout(() => {
+    try { store.syncLearnedTdeeFlag(); } catch { /* never block the app */ }
+    if (hasProfile && !document.querySelector(".sheet-panel")) maybeShowGoalsUpdate();
+  }, 1500));
 }
 
 /** Handles ?tab=us / ?whatsnew=1 from a notification. Returns true when it did something. */
@@ -248,6 +256,7 @@ function openFromUrl(href) {
   try { url = new URL(href, location.origin); } catch { return false; }
   const tab = url.searchParams.get("tab");
   const whatsNew = url.searchParams.get("whatsnew") === "1";
+  const goals = url.searchParams.get("goals") === "1";
   if (url.search) history.replaceState(null, "", "/");
   if (!hasProfile) return false;
   // the old Today tab now lives on Home as the "Today's meals" mini tab
@@ -264,7 +273,8 @@ function openFromUrl(href) {
     renderShell();
   }
   if (whatsNew) maybeShowWhatsNew({ force: true }).catch(() => {});
-  return Boolean(tab || whatsNew);
+  if (goals) { try { store.syncLearnedTdeeFlag(); } catch { /* never block the app */ } maybeShowGoalsUpdate({ force: true }); }
+  return Boolean(tab || whatsNew || goals);
 }
 
 // ---------------------------------------------------------------------------

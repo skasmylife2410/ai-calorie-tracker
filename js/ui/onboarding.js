@@ -12,7 +12,7 @@ import * as store from "../store.js";
 import { DIETS, cleanDiets, toggleDiet } from "../diets.js";
 import { isStandalone, onInstallChange } from "../install.js";
 import { installGuideHtml, wireInstallGuide, defaultInstallFor } from "./install-guide.js";
-import { resolveUserGoals, estimateBodyFatPct, leanMassKg } from "../nutrition.js";
+import { resolveUserGoals, estimateBodyFatPct, leanMassKg, GOALS_VERSION } from "../nutrition.js";
 import { BF_RANGES, silhouetteSvg, navyBodyFat, rangeFor } from "../bodyfat.js";
 import { t, currentLanguage, setLanguage, formatNumber } from "../i18n.js";
 
@@ -127,6 +127,7 @@ export function render(container, onComplete, { redo = false, resume = false } =
       language: currentLanguage(),
       diets: cleanDiets(draft.diets),
       hasCompletedOnboarding: true,
+      goalsMethodV: GOALS_VERSION, // set up with the current method: nothing to explain later
     });
     // First point on the weight chart, so the trend can start immediately. On a redo this
     // replaces today's reading rather than adding a second one (one reading a day).

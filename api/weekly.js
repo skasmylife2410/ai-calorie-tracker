@@ -15,7 +15,7 @@
 import { requireUser } from "./_auth.js";
 import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
-import { resolveUserGoals } from "../js/nutrition.js";
+import { boardGoals } from "../js/nutrition.js";
 import { weekWindow, localWeekday, summarizeWeek, candidateMeals, buildPrompt, cleanRecap, RECAP_SCHEMA, TRANSLATE_SCHEMA, translatePrompt, textIn, localDay } from "./_week.js";
 
 const MODEL_ID = "gemini-3.5-flash";
@@ -54,14 +54,18 @@ async function askGemini(prompt, schema = RECAP_SCHEMA) {
   throw new Error(last);
 }
 
+/** The same goals the person sees in the app (current method, learned maintenance included). */
 function goalsFrom(profile) {
-  try {
-    const g = resolveUserGoals(profile ?? {});
-    if (!(g.targetCalories > 0)) return null;
-    return { calories: Math.round(g.targetCalories), proteinG: Math.round(g.proteinTargetG) };
-  } catch {
-    return null;
-  }
+  return boardGoals(profile ?? {});
+}
+
+// One-time notice about the new way goals are worked out (GOALS_VERSION 2), sent by the daily job
+// on this day only; the details, with each person's own before and after, are in the app.
+export const GOALS_NOTICE_DAY = "2026-10-04";
+export function goalsNotice(lang) {
+  return lang === "es"
+    ? { title: "Actualizamos tus metas", body: "Mejoramos cómo calculamos tus calorías y macros. Toca para ver tus números nuevos y por qué cambiaron.", url: "/?goals=1", tag: "goals" }
+    : { title: "Your targets were updated", body: "We improved how your calories and macros are worked out. Tap to see your new numbers and why they changed.", url: "/?goals=1", tag: "goals" };
 }
 
 /** Builds and stores one person's recommendation for the week that ended yesterday. */
@@ -153,6 +157,10 @@ export default async function handler(req, res) {
     const now = new Date();
     const out = { ok: true, purgedBefore: await purgeOldPosts(now.getTime()), recaps: [] };
     out.nudges = await nudgeInactive(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) }));
+    if (now.toISOString().slice(0, 10) === GOALS_NOTICE_DAY) {
+      const everyone = await select("snapcal_users", { select: "username" }).catch(() => []);
+      out.goalsNotice = await notify(everyone.map((u) => u.username), goalsNotice);
+    }
     const force = String(req.query?.force ?? "") === "1";
     if (force || localWeekday(now) === 5) {
       const win = weekWindow(now);

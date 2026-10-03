@@ -82,8 +82,10 @@ test("the board uses the goals the person's phone reports, so Us matches their H
   const profile = { weightKg: 80, heightCm: 178, age: 35, sex: "male", activityLevel: "lightlyActive", targetDeltaKcal: -500 };
   const fromProfile = goalsFrom(profile);
   assert.ok(fromProfile.calories > 0);
-  const reported = goalsFrom({ ...profile, appliedGoals: { calories: 2049, proteinG: 160, carbsG: 200, fatG: 65 } });
+  const reported = goalsFrom({ ...profile, appliedGoals: { calories: 2049, proteinG: 160, carbsG: 200, fatG: 65 }, appliedGoalsV: 2 });
   assert.deepEqual(reported, { calories: 2049, proteinG: 160, carbsG: 200, fatG: 65 });
+  // goals a phone saved under the older method are worked out again, not shown as they were
+  assert.deepEqual(goalsFrom({ ...profile, appliedGoals: { calories: 2049, proteinG: 160, carbsG: 200, fatG: 65 } }), fromProfile);
   // a broken report falls back to working it out from the profile
   assert.deepEqual(goalsFrom({ ...profile, appliedGoals: { calories: "lots" } }), fromProfile);
 });

@@ -718,3 +718,37 @@ test("calorie targets stay safe: deficit at most 25% of maintenance, never under
   assert.equal(resolveUserGoals({ weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 200 }).targetCalories,
     Math.round(resolveUserGoals({ weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 0 }).tdee + 200));
 });
+
+test("people set up under the old method get their before/after noted once; new people don't", async () => {
+  const store = await import("../js/store.js");
+  const { GOALS_VERSION } = await import("../js/nutrition.js");
+  const { goalsV1 } = await import("../js/goals-v1.js");
+  localStorage.clear();
+  // an existing person: set up before (no method version), maintaining, lightly active
+  const old = { weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 0, hasCompletedOnboarding: true };
+  store.setProfile(old);
+  store.syncLearnedTdeeFlag();
+  const p = store.getProfile();
+  assert.equal(p.goalsMethodV, GOALS_VERSION);
+  assert.equal(p.appliedGoalsV, GOALS_VERSION);
+  assert.deepEqual(p.goalsChange.from, goalsV1(store.getProfile()));
+  assert.ok(p.goalsChange.from.proteinG > p.goalsChange.to.proteinG, "protein came down from 30% of calories");
+  assert.equal(p.goalsChange.to.proteinG, store.computeGoals().proteinTargetG);
+  // only once
+  const at = p.goalsChange.at;
+  store.syncLearnedTdeeFlag();
+  assert.equal(store.getProfile().goalsChange.at, at);
+  // someone who set up with the current method has nothing to be told
+  localStorage.clear();
+  store.setProfile({ ...old, goalsMethodV: GOALS_VERSION });
+  store.syncLearnedTdeeFlag();
+  assert.equal(store.getProfile().goalsChange, undefined);
+});
+
+test("the one-time notice reads well in both languages and opens the explanation", async () => {
+  const { goalsNotice, GOALS_NOTICE_DAY } = await import("../api/weekly.js");
+  assert.match(GOALS_NOTICE_DAY, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(goalsNotice("es").url, "/?goals=1");
+  assert.match(goalsNotice("es").title, /metas/);
+  assert.match(goalsNotice("en").title, /targets/);
+});

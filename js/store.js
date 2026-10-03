@@ -2,8 +2,9 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
+import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
 import { mealName } from "./meal-builder.js";
+import { goalsV1 } from "./goals-v1.js";
 
 export const STORAGE_KEYS = Object.freeze({
   foodEntries: "snapcal.foodEntries",
@@ -736,10 +737,17 @@ export function syncLearnedTdeeFlag() {
   };
   const valid = Object.values(appliedGoals).every((n) => Number.isFinite(n) && n > 0);
   const old = profile.appliedGoals ?? {};
-  const goalsChanged = valid && Object.keys(appliedGoals).some((k) => old[k] !== appliedGoals[k]);
+  const goalsChanged = valid && (profile.appliedGoalsV !== GOALS_VERSION || Object.keys(appliedGoals).some((k) => old[k] !== appliedGoals[k]));
   const patch = {};
   if ((profile.learnedTdeeOn === true) !== on) patch.learnedTdeeOn = on;
-  if (goalsChanged) patch.appliedGoals = appliedGoals;
+  if (goalsChanged) { patch.appliedGoals = appliedGoals; patch.appliedGoalsV = GOALS_VERSION; }
+  // Someone set up under an older method: note what their targets were and what they are now, once,
+  // so the app can show them the change and why (js/ui/goals-update.js).
+  if (valid && profile.goalsMethodV !== GOALS_VERSION && profileComplete(profile)) {
+    const before = profile.appliedGoalsV === undefined && profile.appliedGoals ? old : goalsV1(profile, { learnedTdee: on ? learned.tdee : null });
+    patch.goalsMethodV = GOALS_VERSION;
+    patch.goalsChange = { v: GOALS_VERSION, at: Date.now(), from: before, to: appliedGoals };
+  }
   if (Object.keys(patch).length) setProfile(patch);
   return on;
 }
@@ -1346,4 +1354,9 @@ export function syncDaySummaries() {
   // the window they cover: a day in it that isn't listed had nothing on this phone
   setProfile({ daySummaries, daySummariesFrom: localDateString(addDays(today, -(SUMMARY_DAYS - 1))), daySummariesTo: localDateString(today) });
   return true;
+}
+
+/** Set up enough to have targets (same test the app uses before showing setup again). */
+function profileComplete(p) {
+  return p?.hasCompletedOnboarding === true || (Number(p?.weightKg) > 0 && Number(p?.heightCm) > 0 && Number(p?.age) > 0);
 }

@@ -1126,5 +1126,26 @@
   "mood": {
     "sadTitle": "Han pasado {n} días",
     "sadBody": "Todo se puso gris sin ti. Registra una comida y vuelve el color."
+  },
+  "goalsUpdate": {
+    "title": "Actualizamos tus metas",
+    "lead": "Revisamos cómo SnapCal calcula tus calorías y macros según las guías de nutrición actuales. Estos son tus números:",
+    "leadSame": "Revisamos cómo SnapCal calcula tus calorías y macros según las guías de nutrición actuales. Tus números casi no cambian:",
+    "before": "Antes",
+    "now": "Ahora",
+    "calories": "Calorías",
+    "proteinG": "Proteína",
+    "carbsG": "Carbohidratos",
+    "fatG": "Grasa",
+    "why1Title": "La proteína ahora depende de tu peso y tu actividad",
+    "why1Body": "Antes la proteína era el 30% de tus calorías, y eso le daba a mucha gente bastante más de lo que necesita. Ahora es de 1,2 a 2,0 g por kilo según lo activo que seas, y un poco más mientras bajas de peso para cuidar tu músculo (guías ISSN).",
+    "why2Title": "Las calorías tienen un límite de seguridad",
+    "why2Body": "Una meta para bajar de peso nunca recorta más del 25% de tu mantenimiento, ni baja de 1.200 kcal en mujeres o 1.500 kcal en hombres (guías NIH). Más rápido no es mejor si cuesta músculo y energía.",
+    "why3Title": "Grasa y carbohidratos equilibrados",
+    "why3Body": "La grasa es el 30% de tus calorías (25% si comes poco) y los carbohidratos completan el resto, nunca menos de 130 g al día, lo que tu cerebro necesita.",
+    "why4Title": "Tus días anteriores también se recalcularon",
+    "why4Body": "Progreso, Us y tu revisión semanal ya usan estas metas, para los días pasados y de aquí en adelante.",
+    "trust": "Estas metas están calculadas para ti y son correctas. Se ajustan solas si cambia tu peso o tu actividad. Puedes verlas o cambiarlas cuando quieras en Perfil.",
+    "ok": "Entendido"
   }
 }
