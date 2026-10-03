@@ -702,3 +702,19 @@ test("body fat: tape method in centimetres, and shapes that map to sensible rang
   assert.equal(rangeFor("male", 21).label, "18–22%");
   assert.equal(rangeFor("female", 40).label, "37%+");
 });
+
+test("calorie targets stay safe: deficit at most 25% of maintenance, never under 1,200 / 1,500 kcal", async () => {
+  const { resolveUserGoals } = await import("../js/nutrition.js");
+  // a small, sedentary woman on the fastest pace used to be told ~670 kcal a day
+  const small = resolveUserGoals({ weightKg: 48, heightCm: 152, age: 62, sex: "female", activityLevel: "sedentary", targetDeltaKcal: -620 });
+  assert.equal(small.targetCalories, Math.round(small.tdee)); // her maintenance is under 1,200: no deficit
+  const her = resolveUserGoals({ weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "sedentary", targetDeltaKcal: -900 });
+  assert.equal(her.targetCalories, 1200);
+  const him = resolveUserGoals({ weightKg: 110, heightCm: 180, age: 40, sex: "male", activityLevel: "light", targetDeltaKcal: -1100 });
+  assert.equal(him.targetCalories, Math.round(him.tdee * 0.75));
+  // carbs stay at the daily minimum on few calories (fat gives way, down to 25%)
+  assert.ok(her.carbsTargetG >= 128 && her.fatTargetG * 9 >= 1200 * 0.25 - 9, `C${her.carbsTargetG} F${her.fatTargetG}`);
+  // gaining and maintaining are untouched
+  assert.equal(resolveUserGoals({ weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 200 }).targetCalories,
+    Math.round(resolveUserGoals({ weightKg: 60, heightCm: 163, age: 30, sex: "female", activityLevel: "light", targetDeltaKcal: 0 }).tdee + 200));
+});

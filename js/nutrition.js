@@ -87,6 +87,20 @@ export function targetCalories(tdeeValue, deltaKcal) {
   return tdeeValue + deltaKcal;
 }
 
+// Safety limits for a weight-loss target (NIH/NHLBI): a deficit of at most 25% of maintenance,
+// and never under 1,200 kcal for women or 1,500 kcal for men. Someone whose maintenance is
+// already below that minimum gets their maintenance (losing on less needs professional care).
+export const MAX_DEFICIT_SHARE = 0.25;
+export const MIN_KCAL = Object.freeze({ female: 1200, male: 1500 });
+
+/** The calorie target with the safety limits applied. Gains and maintenance pass through. */
+export function safeTargetCalories(tdeeValue, deltaKcal, sex) {
+  const raw = targetCalories(tdeeValue, deltaKcal);
+  if (!(Number(deltaKcal) < 0)) return raw;
+  const minimum = Math.min(tdeeValue, MIN_KCAL[normalizeSex(sex)] ?? MIN_KCAL.female);
+  return Math.max(raw, tdeeValue * (1 - MAX_DEFICIT_SHARE), minimum);
+}
+
 /**
  * 30/40/30 protein/carbs/fat calorie split, 4/4/9 kcal-per-gram conversion.
  * @param {number} targetCals
@@ -124,6 +138,8 @@ export const PROTEIN_LEAN_EXTRA = 0.5;         // per kilo of lean mass it's a b
 export const PROTEIN_MAX_SHARE = 0.35;         // never more than 35% of the day's calories
 export const PROTEIN_MIN_G_PER_KG = 0.8;       // and never under the basic daily requirement
 export const FAT_SHARE = 0.3;
+export const FAT_SHARE_MIN = 0.25;   // fat gives way to here on few calories, to keep carbs up
+export const CARBS_MIN_G = 130;      // the daily carbohydrate minimum (RDA)
 
 /**
  * The weight protein is worked out from. Up to BMI 25 it's the person's weight; above that the
@@ -214,7 +230,7 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   // otherwise the formula. The learned number already includes their exercise and habits.
   const useLearned = Number.isFinite(learnedTdee) && learnedTdee > 0;
   const tdeeValue = useLearned ? learnedTdee : formulaTdee;
-  const computedTargetCalories = Math.round(targetCalories(tdeeValue, targetDeltaKcal)); // whole calories
+  const computedTargetCalories = Math.round(safeTargetCalories(tdeeValue, targetDeltaKcal, sex)); // whole calories
   const effectiveTargetCalories =
     customTargetKcal !== null && customTargetKcal !== undefined ? customTargetKcal : computedTargetCalories;
   const macros = macroTargets(effectiveTargetCalories);
@@ -223,12 +239,18 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   // what's left, so the three always add up to the calorie target.
   let proteinG = macros.proteinG;
   let carbsG = macros.carbsG;
-  const fatG = (effectiveTargetCalories * FAT_SHARE) / 9;
+  let fatG = (effectiveTargetCalories * FAT_SHARE) / 9;
   if (weightKg > 0) {
     proteinG = customProteinG !== null && customProteinG !== undefined
       ? Number(customProteinG)
       : proteinTargetG({ weightKg, heightCm, leanKg: lbm, deltaKcal: targetDeltaKcal, activityLevel, targetKcal: effectiveTargetCalories });
     carbsG = Math.max(0, (effectiveTargetCalories - proteinG * 4 - fatG * 9) / 4);
+    if (carbsG < CARBS_MIN_G && (customFatG === null || customFatG === undefined)) {
+      // on few calories, fat comes down from 30% toward 25% to keep carbs near the daily minimum
+      const fatFloorG = (effectiveTargetCalories * FAT_SHARE_MIN) / 9;
+      fatG = Math.max(fatFloorG, fatG - ((CARBS_MIN_G - carbsG) * 4) / 9);
+      carbsG = Math.max(0, (effectiveTargetCalories - proteinG * 4 - fatG * 9) / 4);
+    }
   }
 
   return {

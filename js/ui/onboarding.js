@@ -256,8 +256,10 @@ export function render(container, onComplete, { redo = false, resume = false } =
           </div>`;
 
       case "goal": {
+        // the pace the target really gives, after the safety limits (25% deficit, 1,200/1,500 kcal)
+        const g = draft.weightKg > 0 && draft.heightCm > 0 && draft.age > 0 ? goals() : null;
         const kgPerWeek = draft.goal === "maintain" ? 0
-          : Math.abs(targetDelta(draft)) * 7 / 7700;
+          : Math.abs(g ? g.computedTargetCalories - g.tdee : targetDelta(draft)) * 7 / 7700;
         return `
           <h1 class="onb-title">${t("onb.goalTitle")}</h1>
           <div class="onb-choices">
