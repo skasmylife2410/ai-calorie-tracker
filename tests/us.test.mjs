@@ -87,3 +87,14 @@ test("the board uses the goals the person's phone reports, so Us matches their H
   // a broken report falls back to working it out from the profile
   assert.deepEqual(goalsFrom({ ...profile, appliedGoals: { calories: "lots" } }), fromProfile);
 });
+
+test("the board shows the day totals each phone reported, and drops days the phone says were empty", async () => {
+  const { reportedDays } = await import("../api/compare.js");
+  const out = reportedDays({ daySummaries: {
+    "2026-10-03": { calories: 2049.4, proteinG: 146, meals: 11, credit: 90, burned: 300, evening: 900, junk: 5 },
+    "2026-10-02": { calories: -5 },        // nonsense is dropped field by field
+    "not-a-day": { calories: 100 },
+    "2026-08-01": { calories: 1500 },      // before the board's range
+  } }, "2026-09-04");
+  assert.deepEqual(out, { "2026-10-03": { calories: 2049, proteinG: 146, meals: 11, credit: 90, burned: 300, evening: 900 } });
+});

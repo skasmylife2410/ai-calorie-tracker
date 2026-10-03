@@ -76,6 +76,24 @@ export function goalsFrom(profileData) {
 
 const num = (v) => (typeof v === "number" ? v : Number(v) || 0);
 
+const SUMMARY_FIELDS = ["calories", "proteinG", "carbsG", "fatG", "meals", "burned", "credit", "sessions", "water", "morning", "afternoon", "evening"];
+/** The day totals a person's phone reported on its profile, checked field by field. */
+export function reportedDays(profileData, from = "0000-00-00") {
+  const raw = profileData?.daySummaries;
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [day, s] of Object.entries(raw).slice(0, 60)) {
+    if (!DAY_RE.test(day) || day < from || !s || typeof s !== "object") continue;
+    const clean = {};
+    for (const k of SUMMARY_FIELDS) {
+      const n = Number(s[k]);
+      if (Number.isFinite(n) && n >= 0 && n < 100000) clean[k] = Math.round(n);
+    }
+    if (Number.isFinite(clean.calories)) out[day] = clean;
+  }
+  return out;
+}
+
 /**
  * A workout's burn as the app estimates it now (net of resting, per person), so the board is right
  * even for someone whose phone still holds the older, higher estimate. Calories typed in from a
@@ -206,6 +224,19 @@ function partOfDay(timestamp) {
     // private: used above for the burn and credit, never sent to the group
     delete p.body;
     delete p.creditRatio;
+  }
+  // Where a person's phone reported its own day totals (the numbers on their Home screen), the
+  // board shows those: the server's sum can lag behind or count differently.
+  for (const p of people) {
+    const data = profiles.find((x) => x.owner === p.owner)?.data;
+    const reported = reportedDays(data, from);
+    const lo = typeof data?.daySummariesFrom === "string" && DAY_RE.test(data.daySummariesFrom) ? data.daySummariesFrom : null;
+    const hi = typeof data?.daySummariesTo === "string" && DAY_RE.test(data.daySummariesTo) ? data.daySummariesTo : null;
+    if (lo && hi) {
+      // inside the window the phone covered, a day it didn't list had nothing on it
+      for (const day of Object.keys(p.days)) if (day >= lo && day <= hi && !reported[day]) delete p.days[day];
+    }
+    for (const [day, s] of Object.entries(reported)) p.days[day] = { ...dayOf(p, day), ...s };
   }
 
   res.status(200).json({ me, people, group, groups });

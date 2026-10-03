@@ -14,6 +14,7 @@ import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
 import { searchGifs } from "./social.js";
 import { sfx } from "./sounds.js";
+import * as store from "./store.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
 // container when mounted inside the app.
@@ -690,8 +691,30 @@ function wireChart(people, days) {
   }
 }
 
+/** In the app, your own row comes straight from this phone: the same numbers as your Home,
+ *  with nothing waiting on a sync. */
+function withMyOwnNumbers(people) {
+  if (body?.id !== "us-tab-body") return people; // the standalone page has no log of its own
+  return people.map((p) => {
+    if (p.owner !== data.me) return p;
+    try {
+      const goals = store.computeGoals();
+      const mine = {
+        calories: Math.round(goals.targetCalories), proteinG: Math.round(goals.proteinTargetG),
+        carbsG: Math.round(goals.carbsTargetG), fatG: Math.round(goals.fatTargetG),
+      };
+      const days = { ...p.days };
+      const today = startOfDay(Date.now());
+      for (let i = 0; i < 30; i++) days[localDateString(addDays(today, -i))] = store.daySummary(new Date(addDays(today, -i)));
+      return { ...p, goals: mine.calories > 0 ? mine : p.goals, days };
+    } catch {
+      return p;
+    }
+  });
+}
+
 function render() {
-  const people = data.people || [];
+  const people = withMyOwnNumbers(data.people || []);
   if (people.length === 0) {
     body.innerHTML = `<p class="tg-note">No one is set up yet. Add people to APP_USERS in Vercel.</p>`;
     return;

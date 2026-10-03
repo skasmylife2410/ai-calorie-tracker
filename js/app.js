@@ -401,7 +401,7 @@ globalThis.snapcalGoTo = (tab) => {
 
 /** Over budget today → meltdown; two days without a meal → gloom (see js/mood.js). */
 function refreshMood() {
-  try { if (hasProfile) store.syncLearnedTdeeFlag(); } catch { /* never block the app */ }
+  try { if (hasProfile) { store.syncLearnedTdeeFlag(); store.syncDaySummaries(); } } catch { /* never block the app */ }
   try {
     applyMood(moodFor({ remainingToday: store.dayEnergy(new Date()).remaining, lastMeal: lastMealAt(store.allFoodEntries()) }));
   } catch (err) {

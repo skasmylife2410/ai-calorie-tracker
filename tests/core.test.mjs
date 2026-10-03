@@ -348,3 +348,15 @@ test("activity levels: the most active option is never treated as sedentary", as
                resolveUserGoals({ ...base, activityLevel: "veryActive" }).formulaTdee);
   assert.ok(ACTIVITY_MULTIPLIERS.veryActive > ACTIVITY_MULTIPLIERS.sedentary);
 });
+
+test("a day summary for the Us board matches Home's own numbers", async () => {
+  const store = await import("../js/store.js");
+  const now = new Date();
+  store.addFoodEntry({ name: "Board check", calories: 640, proteinG: 30, carbsG: 50, fatG: 20, timestamp: now.getTime() });
+  const s = store.daySummary(now);
+  const energy = store.dayEnergy(now);
+  assert.equal(s.calories, energy.eaten);
+  assert.equal(s.credit, energy.credit);
+  assert.equal(s.meals, store.entriesForDay(now).filter((e) => e.isPending !== true).length);
+  assert.ok(store.recentDaySummaries(now)[Object.keys(store.recentDaySummaries(now))[0]]);
+});

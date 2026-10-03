@@ -1257,3 +1257,56 @@ export function setNotifyBannerDismissed(value = true) {
   writeJSON(STORAGE_KEYS.notifyBannerDismissed, value === true);
   notify();
 }
+
+// ---------------------------------------------------------------------------
+// Day summaries for the Us board
+// ---------------------------------------------------------------------------
+
+export const SUMMARY_DAYS = 30;
+
+/**
+ * One day exactly as Home shows it: calories eaten, the exercise boost, macros, meals, water,
+ * and when the calories were eaten (by this phone's clock). The Us board shows these numbers
+ * instead of adding things up again on the server, so a person's row always matches their Home.
+ */
+export function daySummary(date = new Date()) {
+  const entries = entriesForDay(date);
+  const totals = totalsForDay(date);
+  const workouts = exerciseForDay(date);
+  const burned = workouts.reduce((sum, e) => sum + (e.caloriesBurned || 0), 0);
+  const split = { morning: 0, afternoon: 0, evening: 0 };
+  for (const e of entries) {
+    const h = new Date(e.timestamp).getHours();
+    split[h < 11 ? "morning" : h < 17 ? "afternoon" : "evening"] += Number(e.calories) || 0;
+  }
+  const r = Math.round;
+  return {
+    calories: r(totals.calories), proteinG: r(totals.proteinG), carbsG: r(totals.carbsG), fatG: r(totals.fatG),
+    meals: entries.filter((e) => e.isPending !== true).length, // the count Home shows
+    burned: r(burned), credit: exerciseCredit(burned, exerciseCreditRatio()), sessions: workouts.length,
+    water: Number(getWaterEntryForDay(date).glasses) || 0,
+    morning: r(split.morning), afternoon: r(split.afternoon), evening: r(split.evening),
+  };
+}
+
+/** The last SUMMARY_DAYS days that have anything in them, keyed "YYYY-MM-DD". */
+export function recentDaySummaries(now = new Date()) {
+  const out = {};
+  for (let i = 0; i < SUMMARY_DAYS; i++) {
+    const day = new Date(addDays(startOfDay(now), -i));
+    const s = daySummary(day);
+    if (s.meals || s.calories || s.sessions || s.water) out[localDateString(day)] = s;
+  }
+  return out;
+}
+
+/** Puts the recent day summaries on the profile (it syncs) when they changed. */
+export function syncDaySummaries() {
+  const daySummaries = recentDaySummaries();
+  const profile = getProfile();
+  if (JSON.stringify(profile.daySummaries ?? null) === JSON.stringify(daySummaries)) return false;
+  const today = startOfDay(new Date());
+  // the window they cover: a day in it that isn't listed had nothing on this phone
+  setProfile({ daySummaries, daySummariesFrom: localDateString(addDays(today, -(SUMMARY_DAYS - 1))), daySummariesTo: localDateString(today) });
+  return true;
+}
