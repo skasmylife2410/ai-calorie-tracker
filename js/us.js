@@ -13,6 +13,7 @@ import { localDateString, addDays, startOfDay } from "./nutrition.js";
 import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
 import { searchGifs } from "./social.js";
+import { sfx } from "./sounds.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
 // container when mounted inside the app.
@@ -206,6 +207,17 @@ function fillIncredulousBadges(root) {
     if (!gif) return;
     for (const b of badges) b.innerHTML = gifImgHtml(gif, { cls: "us-gif-badge-img", alt: "" });
   }).catch(() => {});
+}
+
+/** A sound for each kind of row on show, when the tab opens; the tab redraws on every change,
+ *  so at most once every five minutes. */
+let lastMoodSoundAt = 0;
+function moodSounds(people) {
+  if (Date.now() - lastMoodSoundAt < 5 * 60000) return;
+  const kinds = new Set(people.map((p) => rowMood(p)?.kind).filter(Boolean));
+  const order = [["over", "glitch"], ["dusty", "creak"], ["low", "huh"]].filter(([k]) => kinds.has(k));
+  if (order.length) lastMoodSoundAt = Date.now();
+  order.forEach(([, name], i) => setTimeout(() => sfx(name), 350 + i * 650));
 }
 
 function moodBitsHtml(mood) {
@@ -706,6 +718,7 @@ function render() {
   renderRecap(body.querySelector("#us-recap"), { lang: currentLanguage() === "es" ? "es" : "en" });
   body.querySelectorAll("[data-note-to]").forEach((b) => b.addEventListener("click", () => openNoteSheet(b.dataset.noteTo)));
   fillIncredulousBadges(body);
+  moodSounds(people);
   // the shared feed has its own tab now (js/ui/shared-tab.js)
 }
 

@@ -20,7 +20,7 @@ function files(dir) {
 
 const RULES = [
   [/\?\?=|\|\|=|&&=/, "logical assignment (Chrome 85)"],
-  [/\b\d+_\d{3}\b/, "numeric separators (Chrome 75)"],
+  [/\b\d+(?:_\d+)+\b/, "numeric separators (Chrome 75)"],
   [/\.at\(-?\d/, "Array.prototype.at (Chrome 92)"],
   [/\.replaceAll\(/, "String.prototype.replaceAll (Chrome 85)"],
   [/Object\.hasOwn\(|structuredClone\(|\.findLast\(|\.toSorted\(|Promise\.any\(/, "a Chrome 92+ built-in"],

@@ -254,7 +254,7 @@ function countNumbers(container, dayKey, nums) {
     const v = countValueAt(anim, at);
     const bucket = Math.round(v.nums[0] / tickStep);
     const nowOver = Math.round(v.nums[0]) < 0;
-    if (nowOver && !wasOver) sfx("over");
+    if (nowOver && !wasOver) sfx("glitch"); // the growl already played with the shake (js/mood.js)
     else if (bucket !== lastBucket && at - lastTick > 45) { sfx("tick", nowOver); lastTick = at; }
     lastBucket = bucket;
     wasOver = nowOver;

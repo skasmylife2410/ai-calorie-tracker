@@ -164,6 +164,34 @@ const GRID = {
     tone({ freq: 2200, dur: 0.06, gain: 0.24, bits: 4 });
     tone({ freq: 3300, at: 0.07, dur: 0.08, gain: 0.22, bits: 4 });
   },
+  // the app opens grey: a screen switching off, falling and crackling
+  powerDown() {
+    [0, 0.09, 0.21, 0.36].forEach((at) => noise({ at, dur: 0.02, gain: 0.25, type: "bandpass", freq: 2400, q: 3 }));
+    tone({ freq: 880, to: 48, dur: 0.95, gain: 0.3, cut: 4200, cutTo: 160, q: 6, bits: 3 });
+    tone({ type: "sine", freq: 62, at: 0.85, dur: 0.35, gain: 0.45 });
+  },
+  // the colour comes back: a sweep up and a bright two-note ping
+  powerUp() {
+    tone({ type: "sawtooth", freq: 80, to: 1760, dur: 0.45, gain: 0.26, cut: 300, cutTo: 7000, q: 7, bits: 4 });
+    tone({ freq: 1568, at: 0.42, dur: 0.07, gain: 0.26, bits: 4, echo: true });
+    tone({ freq: 2093, at: 0.5, dur: 0.12, gain: 0.24, bits: 4, echo: true });
+  },
+  // someone in the group is melting down: a burst of data noise
+  glitch() {
+    [[0, 3100], [0.03, 900], [0.07, 2400], [0.1, 600], [0.15, 4200], [0.19, 1500]].forEach(([at, f], i) =>
+      i % 2 ? noise({ at, dur: 0.022, gain: 0.3, type: "bandpass", freq: f, q: 4 }) : tone({ freq: f, at, dur: 0.025, gain: 0.2, bits: 2 }));
+  },
+  // cobwebs: an old hinge, clicks slowing down over a low groan
+  creak() {
+    [0, 0.03, 0.065, 0.105, 0.15, 0.2, 0.26, 0.33, 0.41].forEach((at, i) =>
+      noise({ at, dur: 0.012, gain: 0.3 - i * 0.02, type: "bandpass", freq: 900 - i * 40, q: 9 }));
+    tone({ type: "sawtooth", freq: 70, to: 52, dur: 0.5, gain: 0.18, cut: 500, q: 10, bits: 4 });
+  },
+  // the "seriously?" badge: a two-note question that bends up at the end
+  huh() {
+    tone({ freq: 660, dur: 0.09, gain: 0.24, bits: 4 });
+    tone({ freq: 620, to: 990, at: 0.12, dur: 0.2, gain: 0.24, bits: 4, echo: true });
+  },
 };
 
 const NEON = {
@@ -195,6 +223,25 @@ const NEON = {
     tone({ type: "sine", freq: 1760, dur: 0.07, gain: 0.3 });
     tone({ type: "sine", freq: 2637, at: 0.08, dur: 0.12, gain: 0.26, echo: true });
   },
+  powerDown() {
+    tone({ type: "sawtooth", freq: 523.25, to: 65, dur: 1.0, gain: 0.22, cut: 2600, cutTo: 180, q: 5, detune: 12, echo: true });
+    tone({ type: "sine", freq: 55, at: 0.8, dur: 0.4, gain: 0.35 });
+  },
+  powerUp() {
+    tone({ type: "triangle", freq: 130, to: 1046.5, dur: 0.5, gain: 0.28, echo: true });
+    [1046.5, 1318.5, 1568].forEach((f, i) => tone({ type: "sawtooth", freq: f, at: 0.45 + i * 0.06, dur: 0.25, gain: 0.14, cut: 4000, cutTo: 800, q: 4, detune: 10, echo: true }));
+  },
+  glitch() {
+    [0, 0.05, 0.1, 0.16].forEach((at, i) => tone({ type: "triangle", freq: [1800, 700, 1400, 500][i], at, dur: 0.03, gain: 0.22 }));
+  },
+  creak() {
+    tone({ type: "triangle", freq: 180, to: 120, dur: 0.55, gain: 0.25, cut: 700, q: 8 });
+    [0, 0.08, 0.18, 0.3].forEach((at) => noise({ at, dur: 0.015, gain: 0.15, type: "bandpass", freq: 700, q: 8 }));
+  },
+  huh() {
+    tone({ type: "sine", freq: 587.33, dur: 0.12, gain: 0.3 });
+    tone({ type: "sine", freq: 554, to: 880, at: 0.15, dur: 0.24, gain: 0.3, echo: true });
+  },
 };
 
 export const PACKS = Object.freeze({ mono: GRID, classic: NEON });
@@ -218,7 +265,7 @@ export function setVolume(v) {
 // --- In the app: on/off from the profile, pack from the current theme, a small buzz on Android ---
 
 let enabled = true;
-const BUZZ = { log: 12, over: [30, 40, 30], undo: 10, streak: [10, 30, 10], shutter: 8 };
+const BUZZ = { log: 12, over: [30, 40, 30], undo: 10, streak: [10, 30, 10], shutter: 8, powerDown: [60], powerUp: [10, 20, 10] };
 
 /** Profile › Appearance › Sounds. On unless the person turned it off. */
 export function setSoundsEnabled(on) {
@@ -236,10 +283,19 @@ export function sfx(name, arg) {
 
 /** Phones only let audio start inside a tap: open the audio on the first one, so sounds that
  *  come later (an analysis finishing) can play. */
+const waiting = [];
+/** Like sfx, but if the phone hasn't let audio start yet (no tap since opening), it plays on the first tap. */
+export function sfxSoon(name, arg) {
+  if (!enabled) return;
+  if (ctx && ctx.state === "running") { sfx(name, arg); return; }
+  if (!waiting.some((w) => w[0] === name)) waiting.push([name, arg]);
+}
+
 export function unlockSoundsOnTouch(doc = globalThis.document) {
   if (!doc) return;
   const unlock = () => {
     if (enabled) { try { audio(); } catch { /* no audio */ } }
+    waiting.splice(0).forEach(([name, arg], i) => setTimeout(() => sfx(name, arg), 120 + i * 500));
     doc.removeEventListener("pointerdown", unlock, true);
     doc.removeEventListener("keydown", unlock, true);
   };
