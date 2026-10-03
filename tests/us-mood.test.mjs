@@ -27,7 +27,7 @@ test("past the budget melts down; exercise credit raises the line", () => {
 test("two days without a meal gathers cobwebs; yesterday doesn't", () => {
   assert.deepEqual(rowMood(person({ [day(evening, 2)]: { calories: 1500, meals: 2 } }), evening), { kind: "dusty", days: 2 });
   assert.equal(rowMood(person({ [day(evening, 1)]: { calories: 1500, meals: 2 } }), evening), null);
-  assert.deepEqual(rowMood(person({}), evening), { kind: "dusty", days: null });
+  assert.equal(rowMood(person({}), evening), null); // never logged: no cobwebs
 });
 
 test("barely eaten gets the badge, but only in the evening", () => {

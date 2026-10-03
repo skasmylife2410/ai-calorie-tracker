@@ -172,7 +172,8 @@ export function rowMood(p, now = Date.now()) {
   for (let i = 0; i < 30; i++) {
     if ((p.days?.[localDateString(addDays(today, -i))]?.meals || 0) > 0) { since = i; break; }
   }
-  if (since === null || since >= 2) return { kind: "dusty", days: since };
+  if (since === null) return null; // nothing logged in the month we load: no cobwebs for people who never started
+  if (since >= 2) return { kind: "dusty", days: since };
   const d = p.days?.[localDateString(today)] || EMPTY_DAY;
   const goal = (p.goals?.calories || 0) + Math.max(0, d.credit || 0);
   if (!(goal > 0)) return null;
@@ -241,7 +242,7 @@ function todayHtml(people) {
         </div>
         ${kcalBarHtml(d, goal, c)}
         <div class="us-row-foot">
-          ${mood?.kind === "dusty" ? `<span class="us-dusty-note">${mood.days === null ? t("us.noMealsLong") : t("us.lastMealDays", { n: mood.days })}</span>` : ""}
+          ${mood?.kind === "dusty" ? `<span class="us-dusty-note">${t("us.lastMealDays", { n: mood.days })}</span>` : ""}
           <span class="us-extra">${pGoal ? `${fmt(d.proteinG)} / ${fmt(pGoal)} g` : `${fmt(d.proteinG)} g`} · ${t("us.mealsCount", { n: d.meals })}${d.sessions ? ` · ${t("us.sessionsCount", { n: d.sessions })}` : ""} · ${t("us.glassesOfWater", { n: d.water })}</span>
         </div>
       </div>`;
