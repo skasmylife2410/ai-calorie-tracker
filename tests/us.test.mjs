@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "sb_secret_x";
+process.env.ALLOW_LEGACY_PASSCODES = "1";
 process.env.APP_USERS = "aelson:a1,maria:m2";
 
 const seen = [];

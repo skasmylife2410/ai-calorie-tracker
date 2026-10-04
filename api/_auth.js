@@ -37,9 +37,12 @@ export function checkAuth(req, res) {
   const session = readSession(provided);
   if (session) return session;
 
-  // 2. APP_USERS passcodes — kept so phones that haven't signed in yet keep working during the
-  //    changeover. Remove the variable once everyone has an account.
-  const users = parseUsers(process.env.APP_USERS);
+  // 2-3. The old shared passcodes (APP_USERS, APP_TOKEN) from before accounts existed. They're
+  //    off unless ALLOW_LEGACY_PASSCODES=1: a passcode never expires, can't be changed per
+  //    person, and APP_TOKEN signed in as DEFAULT_OWNER, the admin. Leaving the variable set in
+  //    Vercel was a back door to the admin account for anyone who remembered the old code.
+  const legacy = process.env.ALLOW_LEGACY_PASSCODES === "1";
+  const users = legacy ? parseUsers(process.env.APP_USERS) : new Map();
   if (users.size > 0) {
     const owner = provided !== "" ? users.get(provided) : undefined;
     if (owner) return owner;
@@ -48,7 +51,7 @@ export function checkAuth(req, res) {
   }
 
   // 3. Legacy single passcode.
-  const required = (process.env.APP_TOKEN || "").trim();
+  const required = legacy ? (process.env.APP_TOKEN || "").trim() : "";
   if (required !== "" && provided === required) return DEFAULT_OWNER;
 
   // 4. Wide open, for `node dev-server.mjs` on a laptop only. This used to be the behaviour

@@ -217,7 +217,7 @@ test("security: wrong passcodes are braked after too many failures", async () =>
   const { requireUser } = await import("../api/_auth.js");
   const { MAX_FAILURES } = await import("../api/_limits.js");
   const savedUsers = process.env.APP_USERS, savedUrl = process.env.SUPABASE_URL;
-  process.env.APP_USERS = "maria:2222";
+  process.env.APP_USERS = "maria:2222"; process.env.ALLOW_LEGACY_PASSCODES = "1";
   process.env.SUPABASE_URL = "https://example.supabase.co";
   let failures = MAX_FAILURES; // the table already holds this many recent failures
   let recorded = 0;
@@ -314,5 +314,22 @@ test("security: AI calls have a per-person hourly allowance", async () => {
     assert.equal(await useAllowance("ai:lu", 3, 60), true, "someone else is unaffected");
   } finally {
     globalThis.fetch = saved;
+  }
+});
+
+test("security: the old shared passcodes are refused unless legacy passcodes are switched on", async () => {
+  const { checkAuth } = await import("../api/_auth.js");
+  const saved = { t: process.env.APP_TOKEN, u: process.env.APP_USERS, l: process.env.ALLOW_LEGACY_PASSCODES, a: process.env.ALLOW_ANONYMOUS };
+  process.env.APP_TOKEN = "1234"; process.env.APP_USERS = "maria:2222";
+  delete process.env.ALLOW_LEGACY_PASSCODES; delete process.env.ALLOW_ANONYMOUS;
+  try {
+    assert.equal(checkAuth({ headers: { "x-snapcal-token": "1234" } }, mockRes()), false, "APP_TOKEN no longer signs in as the admin");
+    assert.equal(checkAuth({ headers: { "x-snapcal-token": "2222" } }, mockRes()), false);
+    process.env.ALLOW_LEGACY_PASSCODES = "1";
+    assert.equal(checkAuth({ headers: { "x-snapcal-token": "2222" } }, mockRes()), "maria");
+  } finally {
+    for (const [k, v] of [["APP_TOKEN", saved.t], ["APP_USERS", saved.u], ["ALLOW_LEGACY_PASSCODES", saved.l], ["ALLOW_ANONYMOUS", saved.a]]) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
   }
 });

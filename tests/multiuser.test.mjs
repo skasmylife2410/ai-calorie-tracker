@@ -8,6 +8,7 @@ function mockRes() {
 
 process.env.SUPABASE_URL = "https://example.supabase.co/";
 process.env.SUPABASE_SERVICE_ROLE_KEY = " sb_secret_abc ";
+process.env.ALLOW_LEGACY_PASSCODES = "1";
 process.env.APP_USERS = "Aelson:1111, maria:2222, bad name:3333";
 
 const calls = [];
