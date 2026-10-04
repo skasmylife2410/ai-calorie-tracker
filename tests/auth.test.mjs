@@ -134,7 +134,7 @@ test("a session identifies the caller to every other endpoint", () => {
 test("whoami reports the signed-in user and nothing else", async () => {
   USERS = [{ username: "aelson", salt: "s", password_hash: "h", must_change: false }];
   let res = mockRes();
-  await auth(req({ op: "whoami" }, acct.createSession("aelson")), res);
+  await auth(req({ op: "whoami" }, acct.createSession("aelson", undefined, { salt: "s" })), res);
   // your own username and recovery email, whether email recovery is on — never hashes or salts
   assert.deepEqual(res.body, { ok: true, username: "aelson", email: null, mailOn: false, needsConsent: true, policyVersion: POLICY_VERSION });
 
@@ -191,7 +191,7 @@ test("a session for an account that no longer exists is refused", async () => {
 
   // the renamed account works as normal
   const fresh = mockRes();
-  await auth(req({ op: "whoami" }, acct.createSession("carmen")), fresh);
+  await auth(req({ op: "whoami" }, acct.createSession("carmen", undefined, { salt: "s" })), fresh);
   assert.deepEqual(fresh.body, { ok: true, username: "carmen", email: null, mailOn: false, needsConsent: true, policyVersion: POLICY_VERSION });
 });
 
@@ -255,4 +255,64 @@ test("privacy: sign-up without consent is refused, and consent is recorded with 
   await auth(req({ op: "signup", username: "newbie", password: "longenough", invite: "valid-invite-0001", consent: true }), ok);
   assert.equal(ok.body.ok, true, JSON.stringify(ok.body));
   assert.equal(USERS.find((u) => u.username === "newbie")?.consent_version, v);
+});
+
+
+test("security: changing the password signs out every other phone, and needs the current password", async () => {
+  const { hashPassword } = acct;
+  const { salt, hash } = hashPassword("cumbia7431", "salt-one");
+  USERS = [{ username: "nora", salt, password_hash: hash, must_change: false }];
+  const oldPhone = acct.createSession("nora", undefined, { salt });
+  let res = mockRes();
+  await auth(req({ op: "whoami" }, oldPhone), res);
+  assert.equal(res.body.ok, true);
+
+  // a session alone (an unlocked or stolen phone) can't change it
+  res = mockRes();
+  await auth(req({ op: "change", username: "nora", password: "", newPassword: "takeover99" }, oldPhone), res);
+  assert.equal(res.body.ok, false);
+
+  // with the current password it can, and the new token works while the old one doesn't
+  res = mockRes();
+  await auth(req({ op: "change", username: "nora", password: "cumbia7431", newPassword: "newpassword1" }, oldPhone), res);
+  assert.equal(res.body.ok, true);
+  const newToken = res.body.token;
+  res = mockRes();
+  await auth(req({ op: "whoami" }, oldPhone), res);
+  assert.equal(res.body.ok, false);
+  assert.match(res.body.message, /password was changed/);
+  res = mockRes();
+  await auth(req({ op: "whoami" }, newToken), res);
+  assert.equal(res.body.ok, true);
+});
+
+test("security: an older unstamped session is swapped for a stamped one, until the cut-off date", async () => {
+  USERS = [{ username: "lu", salt: "s2", password_hash: "h", must_change: false }];
+  const legacy = acct.createSession("lu"); // no salt: the old three-part format
+  assert.equal(legacy.split(".").length, 3);
+  const res = mockRes();
+  await auth(req({ op: "whoami" }, legacy), res);
+  assert.equal(res.body.ok, true);
+  assert.equal(res.body.token.split(".").length, 4);
+  assert.equal(acct.readSessionDetail(res.body.token).stamp, acct.sessionStamp("s2"));
+  const { sessionStillValid } = await import("../api/_auth.js");
+  assert.equal(await sessionStillValid(legacy, acct.LEGACY_SESSIONS_UNTIL + 1), false);
+});
+
+test("security: AI calls have a per-person hourly allowance", async () => {
+  const { useAllowance } = await import("../api/_limits.js");
+  const saved = globalThis.fetch;
+  const rows = [];
+  globalThis.fetch = async (url, opts = {}) => {
+    if ((opts.method ?? "GET") === "POST") { rows.push(...JSON.parse(opts.body)); return { ok: true }; }
+    const key = new URL(url).searchParams.get("key").slice(3);
+    return { ok: true, json: async () => rows.filter((r) => r.key === key) };
+  };
+  try {
+    for (let i = 0; i < 3; i++) assert.equal(await useAllowance("ai:nora", 3, 60), true);
+    assert.equal(await useAllowance("ai:nora", 3, 60), false, "the fourth in the hour is refused");
+    assert.equal(await useAllowance("ai:lu", 3, 60), true, "someone else is unaffected");
+  } finally {
+    globalThis.fetch = saved;
+  }
 });

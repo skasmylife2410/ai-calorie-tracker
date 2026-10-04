@@ -9,7 +9,7 @@
 //
 // Returns the owner name (a non-empty string, so it is truthy) or false after sending a 401.
 
-import { readSession } from "./_accounts.js";
+import { readSession, readSessionDetail, sessionStamp, LEGACY_SESSIONS_UNTIL } from "./_accounts.js";
 import { clientIp, isLocked, recordFailure, tooMany } from "./_limits.js";
 
 export const DEFAULT_OWNER = (process.env.APP_DEFAULT_USER || "aelson").trim().toLowerCase();
@@ -83,12 +83,37 @@ export async function requireUser(req, res) {
     if (!who) await recordFailure(keys);
   }
   // Sessions and passcodes are checked without the database, so a removed person's phone would
-  // otherwise keep working. Every request also confirms the account still exists.
+  // otherwise keep working. Every request also confirms the account still exists, and that a
+  // session was made with the account's current password (a change or reset signs out the rest).
   if (who && !(await accountExists(who))) {
     res.status(401).json({ errorType: "unauthorized", message: "That account no longer exists." });
     return false;
   }
+  if (who && readSession(provided) && !(await sessionStillValid(provided))) {
+    res.status(401).json({ errorType: "unauthorized", message: "Your password was changed. Sign in again." });
+    return false;
+  }
   return who;
+}
+
+/**
+ * True when a signed session is for an existing account and was made with its current password.
+ * Sessions from before password stamps are accepted until LEGACY_SESSIONS_UNTIL.
+ */
+export async function sessionStillValid(token, now = Date.now()) {
+  const detail = readSessionDetail(token);
+  if (!detail) return false;
+  const account = await accountRecord(detail.username);
+  if (!account.exists) return false;
+  if (detail.stamp === null) return now < LEGACY_SESSIONS_UNTIL;
+  if (account.salt === undefined) return true; // database hiccup or local dev: signature alone
+  return detail.stamp === sessionStamp(account.salt);
+}
+
+/** The signed-in username when the session is still valid (see above), else null. */
+export async function verifiedUser(req) {
+  const token = String(req.headers?.["x-snapcal-token"] || "").trim();
+  return (await sessionStillValid(token)) ? readSession(token) : null;
 }
 
 const EXISTS_TTL_MS = 30_000;
@@ -100,17 +125,23 @@ export function forgetAccount(username) {
 }
 
 async function accountExists(username) {
+  return (await accountRecord(username)).exists;
+}
+
+/** { exists, salt } for an account, cached briefly. salt is undefined when it couldn't be read. */
+async function accountRecord(username) {
   const base = (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
-  if (!base || process.env.ALLOW_ANONYMOUS === "1") return true; // local dev: no accounts table
+  if (!base || process.env.ALLOW_ANONYMOUS === "1") return { exists: true, salt: undefined }; // local dev: no accounts table
   const hit = existsCache.get(username);
-  if (hit && Date.now() - hit.at < EXISTS_TTL_MS) return hit.yes;
+  if (hit && Date.now() - hit.at < EXISTS_TTL_MS) return hit.record;
   try {
     const { select } = await import("./_rest.js");
-    const rows = await select("snapcal_users", { select: "username", username: `eq.${username}`, limit: "1" });
-    const yes = Array.isArray(rows) && rows.length > 0;
-    existsCache.set(username, { yes, at: Date.now() });
-    return yes;
+    const rows = await select("snapcal_users", { select: "username,salt", username: `eq.${username}`, limit: "1" });
+    const row = Array.isArray(rows) ? rows[0] : null;
+    const record = { exists: Boolean(row), salt: typeof row?.salt === "string" ? row.salt : undefined };
+    existsCache.set(username, { record, at: Date.now() });
+    return record;
   } catch {
-    return true; // database hiccup: don't lock everyone out; the account check runs again soon
+    return { exists: true, salt: undefined }; // database hiccup: don't lock everyone out; checked again soon
   }
 }

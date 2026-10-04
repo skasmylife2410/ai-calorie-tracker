@@ -203,6 +203,7 @@ test("doodle generation: tries the cheapest model, falls back, and reports billi
   // first model missing -> second model used
   const seen = [];
   globalThis.fetch = async (url) => {
+    if (String(url).includes("supabase.co")) return { ok: true, status: 200, json: async () => [], text: async () => "" }; 
     seen.push(new URL(url).pathname.split("/").pop());
     if (seen.length === 1) return { ok: false, status: 404, text: async () => "not found" };
     return { ok: true, status: 200, text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: "QUJD" } }] } }] }) };
@@ -215,7 +216,7 @@ test("doodle generation: tries the cheapest model, falls back, and reports billi
 
   // a billing refusal stops immediately (it'd be the same on every model) and says why
   seen.length = 0;
-  globalThis.fetch = async (url) => { seen.push(url); return { ok: false, status: 400, text: async () => "FAILED_PRECONDITION: billing required" }; };
+  globalThis.fetch = async (url) => { if (String(url).includes("supabase.co")) return { ok: true, status: 200, json: async () => [], text: async () => "" }; seen.push(url); return { ok: false, status: 400, text: async () => "FAILED_PRECONDITION: billing required" }; };
   res = mockRes();
   await doodle(as("baby", { state: "idle" }), res);
   assert.equal(res.body.errorType, "billing");

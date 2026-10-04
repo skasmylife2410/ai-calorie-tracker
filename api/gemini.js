@@ -10,6 +10,7 @@
 // encoding, so bodies stay well under Vercel's ~4.5MB request-body limit for Node functions.
 
 import { requireUser } from "./_auth.js";
+import { useAllowance, AI_PER_HOUR, overAllowance } from "./_limits.js";
 
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
@@ -375,7 +376,10 @@ function parseRequestBody(req) {
 }
 
 export default async function handler(req, res) {
-  if (!(await requireUser(req, res))) return;
+  const me = await requireUser(req, res);
+  if (!me) return;
+  // a cap per person, so a lost phone or a script can't run up the AI bill
+  if (req.method === "POST" && !(await useAllowance(`ai:${me}`, AI_PER_HOUR, 60))) return overAllowance(res);
 
   if (req.method !== "POST") {
     res.status(405).json({ errorType: "other", message: "Method not allowed" });

@@ -18,9 +18,9 @@ export function clientIp(req) {
 }
 
 /** True when any of `keys` has `max` or more recent failures. */
-export async function isLocked(keys, max = MAX_FAILURES) {
+export async function isLocked(keys, max = MAX_FAILURES, windowMinutes = WINDOW_MINUTES) {
   if (!restBase() || keys.length === 0) return false;
-  const since = new Date(Date.now() - WINDOW_MINUTES * 60000).toISOString();
+  const since = new Date(Date.now() - windowMinutes * 60000).toISOString();
   try {
     const counts = await Promise.all(keys.map(async (key) => {
       const params = new URLSearchParams({ select: "id", key: `eq.${key}`, at: `gte.${since}`, limit: String(max) });
@@ -49,4 +49,25 @@ export async function recordFailure(keys) {
 export function tooMany(res) {
   res.setHeader?.("Retry-After", String(WINDOW_MINUTES * 60));
   return res.status(429).json({ ok: false, errorType: "tooManyAttempts", message: `Too many wrong attempts. Try again in ${WINDOW_MINUTES} minutes.` });
+}
+
+/**
+ * A per-person allowance for things that cost money or fill the database (AI calls, error
+ * reports): true and counted when there's room, false once `max` were used in `windowMinutes`.
+ * Uses the same table as the guess counter, under its own key.
+ */
+export async function useAllowance(key, max, windowMinutes) {
+  if (await isLocked([key], max, windowMinutes)) return false;
+  await recordFailure([key]);
+  return true;
+}
+
+/** Hourly allowances, generous for a person logging meals and tight for a script. */
+export const AI_PER_HOUR = 60;          // photo/text analysis, transcription, recipes
+export const IMAGE_AI_PER_HOUR = 8;     // drawn doodles (an image model, the priciest call)
+export const ERROR_REPORTS_PER_HOUR = 30;
+
+export function overAllowance(res, minutes = 60) {
+  res.setHeader?.("Retry-After", String(minutes * 60));
+  return res.status(200).json({ ok: false, errorType: "quota", message: "That's a lot of requests in a short time. Try again in a little while." });
 }

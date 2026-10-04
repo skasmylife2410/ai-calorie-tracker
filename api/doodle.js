@@ -12,6 +12,7 @@
 // each person costs about three images, once per profile photo.
 
 import { requireUser } from "./_auth.js";
+import { useAllowance, IMAGE_AI_PER_HOUR, overAllowance } from "./_limits.js";
 
 const MODELS = ["gemini-3.1-flash-lite-image", "gemini-2.5-flash-image"];
 const MAX_PHOTO = 1_400_000; // base64 chars (~1 MB); the app sends a 512px crop
@@ -86,8 +87,10 @@ export default async function handler(req, res) {
 
   const key = (process.env.GEMINI_API_KEY || "").trim();
   if (!key) return res.status(200).json({ ok: false, errorType: "badKey", message: "No Gemini key set." });
+  if (!(await useAllowance(`img:${me}`, IMAGE_AI_PER_HOUR, 60))) return overAllowance(res);
 
-  const body = typeof req.body === "object" && req.body ? req.body : JSON.parse(req.body || "{}");
+  let body;
+  try { body = typeof req.body === "object" && req.body ? req.body : JSON.parse(req.body || "{}"); } catch { body = {}; }
   const state = ["strong", "wellFed", "idle", "showoff"].includes(body.state) ? body.state : "strong";
   const variant = body.variant === "b" ? "b" : "a";
   const photo = typeof body.photo === "string" && body.photo.length > 0 && body.photo.length <= MAX_PHOTO ? body.photo : null;

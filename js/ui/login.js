@@ -115,6 +115,8 @@ export async function hasValidSession() {
   if (out.ok && out.username) {
     try { localStorage.setItem("snapcal.username", out.username); } catch { /* private mode */ }
   }
+  // an older session the server swapped for one tied to the current password
+  if (out.ok && typeof out.token === "string" && out.token.split(".").length === 4) setStoredToken(out.token);
   lastWhoami = out;
   return out.ok === true;
 }

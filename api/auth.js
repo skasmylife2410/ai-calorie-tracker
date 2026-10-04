@@ -20,15 +20,16 @@
 
 import {
   USERNAME_RE, normalizeUsername, hashPassword, verifyPassword,
-  createSession, readSession, passwordProblem,
+  createSession, readSession, readSessionDetail, sessionStamp, LEGACY_SESSIONS_UNTIL, passwordProblem,
 } from "./_accounts.js";
 import { maxUsers as memberCap, isAdmin, ADMIN } from "./_members.js";
 import { inviteProblem, inviteGroup } from "./invites.js";
 import { addMembership } from "./_groups.js";
-import { clientIp, isLocked, recordFailure, tooMany } from "./_limits.js";
+import { clientIp, isLocked, recordFailure, tooMany, useAllowance, ERROR_REPORTS_PER_HOUR } from "./_limits.js";
 import { mailConfigured, sendMail, appUrl } from "./_mail.js";
 import { POLICY_VERSION } from "./_policy.js";
 import { exportAccount, deleteAccount } from "./_account-data.js";
+import { verifiedUser, forgetAccount } from "./_auth.js";
 import crypto from "node:crypto";
 
 const EMAIL_RE = /^[^\s@"<>()]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
@@ -123,6 +124,10 @@ export default async function handler(req, res) {
     // A phone that never got to sign in (or opened the link in a fresh browser) still needs
     // its failure heard; those rows are kept under "anon".
     const username = readSession(req.headers["x-snapcal-token"]) || "anon";
+    // anyone can reach this (a phone that failed before signing in), so it's capped per person
+    // and per address: a script can't fill the database with reports
+    const reporter = username === "anon" ? `errors:ip:${clientIp(req)}` : `errors:${username}`;
+    if (!(await useAllowance(reporter, ERROR_REPORTS_PER_HOUR, 60))) return res.status(200).json({ ok: true });
     const message = String(body.message ?? "").slice(0, 2000);
     const ua = String(req.headers["user-agent"] ?? "").slice(0, 300);
     if (message) {
@@ -140,7 +145,7 @@ export default async function handler(req, res) {
   // Admin only: the latest problems phones reported (start-up failures, GIFs that wouldn't load,
   // the Home GIF the owner picked), so they can be read in the app instead of the database.
   if (op === "clientErrors") {
-    const username = readSession(req.headers["x-snapcal-token"]);
+    const username = await verifiedUser(req);
     if (!isAdmin(username)) return fail(res, "forbidden", "Only the owner can see this.");
     const params = new URLSearchParams({ select: "owner,at,message,ua", order: "at.desc", limit: "60" });
     const r = await fetch(`${restBase()}/rest/v1/snapcal_client_errors?${params}`, { headers: restHeaders() });
@@ -151,7 +156,7 @@ export default async function handler(req, res) {
   // Admin only: meals stored at 0 kcal in the last 60 days, with what kind they were, so a
   // "my meals went to zero" report can be traced without the database console.
   if (op === "zeroMeals") {
-    const username = readSession(req.headers["x-snapcal-token"]);
+    const username = await verifiedUser(req);
     if (!isAdmin(username)) return fail(res, "forbidden", "Only the owner can see this.");
     const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
     const params = new URLSearchParams({
@@ -181,15 +186,23 @@ export default async function handler(req, res) {
   }
 
   if (op === "whoami") {
-    const username = readSession(req.headers["x-snapcal-token"]);
+    const token = String(req.headers["x-snapcal-token"] ?? "").trim();
+    const username = readSession(token);
     if (!username) return fail(res, "unauthorized", "Not signed in");
+
     // The session is signed and unexpired, but the account may no longer exist — renamed or
     // removed. Without this check the phone keeps working under a name nobody owns: it belongs
     // to no group, so the person sees only themselves, and anything it syncs lands in limbo.
     try {
       const still = await getUser(username);
       if (!still) return fail(res, "unauthorized", "That account no longer exists. Sign in again.");
-      return res.status(200).json({ ok: true, username, email: still.email ?? null, mailOn: mailConfigured(), needsConsent: still.consent_version !== POLICY_VERSION, policyVersion: POLICY_VERSION });
+      // signed, but made before the password was last changed (or an old unstamped one past its date)
+      const detail = readSessionDetail(token);
+      const current = detail.stamp === null ? Date.now() < LEGACY_SESSIONS_UNTIL : detail.stamp === sessionStamp(still.salt);
+      if (!current) return fail(res, "unauthorized", "Your password was changed. Sign in again.");
+      // a session from before password stamps is swapped for a stamped one (the phone keeps it)
+      const upgraded = token.split(".").length === 3 ? { token: createSession(username, undefined, { salt: still.salt }) } : {};
+      return res.status(200).json({ ok: true, username, ...upgraded, email: still.email ?? null, mailOn: mailConfigured(), needsConsent: still.consent_version !== POLICY_VERSION, policyVersion: POLICY_VERSION });
     } catch {
       return res.status(200).json({ ok: true, username }); // database hiccup: don't sign anyone out
     }
@@ -252,15 +265,14 @@ export default async function handler(req, res) {
         const groupId = await inviteGroup(invite);
         if (groupId) await addMembership(groupId, username);
       }
-      return res.status(200).json({ ok: true, token: createSession(username) });
+      return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt }) });
     }
 
     // Password guesses (login, or a change authorised by the current password) are braked per
     // account and per address, so neither one name nor one machine can keep trying.
     const guessKeys = [`user:${username}`, `ip:${clientIp(req)}`];
-    const sessionUser = readSession(req.headers["x-snapcal-token"]);
-    const guessing = op !== "change" || sessionUser !== username;
-    if (guessing && (await isLocked(guessKeys))) return tooMany(res);
+    if (await isLocked(guessKeys)) return tooMany(res);
+    const sessionUser = op === "setEmail" ? await verifiedUser(req) : null;
 
     const user = await getUser(username);
 
@@ -285,10 +297,10 @@ export default async function handler(req, res) {
     }
 
     if (op === "change") {
-      // Either a valid session for this user, or the current password, authorises the change.
-      const session = readSession(req.headers["x-snapcal-token"]);
-      const authorised = session === username || (user && verifyPassword(password, user.salt, user.password_hash));
-      if (!user || !authorised) {
+      // Always the current password: a session alone (an unlocked or stolen phone) must not be
+      // enough to take the account over.
+      const authorised = user && verifyPassword(password, user.salt, user.password_hash);
+      if (!authorised) {
         await recordFailure(guessKeys);
         return fail(res, "unauthorized", "Wrong password.");
       }
@@ -298,7 +310,8 @@ export default async function handler(req, res) {
 
       const { salt, hash } = hashPassword(String(body.newPassword));
       await writeUser({ username, salt, password_hash: hash, must_change: false }, { update: true });
-      return res.status(200).json({ ok: true, token: createSession(username) });
+      forgetAccount(username); // every other session (signed with the old password) stops now
+      return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt }) });
     }
 
     // login — the same reply for "no such user" and "wrong password", so the form can't be used
@@ -307,7 +320,7 @@ export default async function handler(req, res) {
       await recordFailure(guessKeys);
       return fail(res, "badLogin", "Wrong username or password.");
     }
-    return res.status(200).json({ ok: true, token: createSession(username), mustChange: user.must_change === true });
+    return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt: user.salt }), mustChange: user.must_change === true });
   } catch (err) {
     if (err?.code === "taken") return fail(res, "taken", "That username is already taken.");
     console.error("auth:", err);
@@ -395,7 +408,8 @@ async function resetPassword(req, res, body) {
     await fetch(`${restBase()}/rest/v1/snapcal_password_resets?username=eq.${encodeURIComponent(username)}&used_at=is.null`, {
       method: "PATCH", headers: restHeaders(), body: JSON.stringify({ used_at: now }),
     });
-    return res.status(200).json({ ok: true, token: createSession(username), username });
+    forgetAccount(username); // sessions made with the old password stop working
+    return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt }), username });
   } catch (err) {
     console.error("reset:", err);
     return fail(res, "other", "Something went wrong. Try again.");
@@ -404,7 +418,7 @@ async function resetPassword(req, res, body) {
 
 /** Consent, data export and account deletion — all for the signed-in person only. */
 async function accountOp(req, res, body, op) {
-  const username = readSession(req.headers["x-snapcal-token"]);
+  const username = await verifiedUser(req);
   if (!username) return fail(res, "unauthorized", "Not signed in", 401);
   try {
     if (op === "consent") {

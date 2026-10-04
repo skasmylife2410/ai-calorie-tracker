@@ -48,10 +48,24 @@ function secret() {
   return process.env.ALLOW_ANONYMOUS === "1" ? "snapcal-dev-secret" : "";
 }
 
-export function createSession(username, days = SESSION_DAYS) {
+/**
+ * Sessions carry a stamp of the password they were made with (a hash of its salt, which changes
+ * with every new password). The server compares it with the account's current one on every
+ * request (api/_auth.js), so changing or resetting a password signs out every other phone,
+ * including a lost or stolen one.
+ */
+export function sessionStamp(salt) {
+  return crypto.createHash("sha256").update(`snapcal-session:${salt}`).digest("hex").slice(0, 16);
+}
+
+/** Sessions made before stamps existed keep working until this date, while phones swap them
+ *  for stamped ones on their next start (api/auth.js whoami). After it they're refused. */
+export const LEGACY_SESSIONS_UNTIL = Date.parse("2026-11-15T00:00:00Z");
+
+export function createSession(username, days = SESSION_DAYS, { salt = null } = {}) {
   if (!secret()) throw new Error("APP_SECRET is not set");
   const exp = Date.now() + days * 86400000;
-  const body = `${username}.${exp}`;
+  const body = salt ? `${username}.${exp}.${sessionStamp(salt)}` : `${username}.${exp}`;
   return `${body}.${sign(body)}`;
 }
 
@@ -60,20 +74,33 @@ function sign(body) {
 }
 
 /**
- * @returns {string|null} the username, or null if the token is missing, forged or expired.
+ * @returns {{username:string, stamp:string|null}|null} who the token is for and its password
+ *   stamp (null for an older, unstamped session), or null if missing, forged or expired.
  */
-export function readSession(token) {
+export function readSessionDetail(token) {
   const parts = String(token ?? "").split(".");
-  if (parts.length !== 3) return null;
-  const [username, exp, mac] = parts;
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const [username, exp] = parts;
+  const stamp = parts.length === 4 ? parts[2] : null;
+  const mac = parts[parts.length - 1];
   if (!secret()) return null;
-  const expected = sign(`${username}.${exp}`);
+  const expected = sign(parts.slice(0, -1).join("."));
   const a = Buffer.from(mac);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   if (!Number.isFinite(Number(exp)) || Number(exp) < Date.now()) return null;
   if (!USERNAME_RE.test(username)) return null;
-  return username;
+  if (stamp !== null && !/^[0-9a-f]{16}$/.test(stamp)) return null;
+  return { username, stamp };
+}
+
+/**
+ * @returns {string|null} the username, or null if the token is missing, forged or expired.
+ * Signature and expiry only: whether the password has changed since is checked by
+ * api/_auth.js (sessionStillValid), which knows the account's current stamp.
+ */
+export function readSession(token) {
+  return readSessionDetail(token)?.username ?? null;
 }
 
 /** Password rules kept deliberately mild: 8+ characters, anything goes. */
