@@ -429,7 +429,7 @@
 :root[data-theme="mono"] .tg-side { height: 20px; }
 :root[data-theme="mono"] .tg-side .fill { top: auto; bottom: 0; height: 5px; border-radius: 3px; box-shadow: none; }
 :root[data-theme="mono"] .tg-side .num { top: 0; transform: none; font-size: 11px; color: var(--mn-ink) !important; }
-:root[data-theme="mono"] .tg-side .goal { top: auto; bottom: -3px; height: 11px; }
+:root[data-theme="mono"] .tg-side .goal { top: auto; bottom: -7px; height: 15px; } /* down to the protein thread */
 /* Day labels, remaining calories and avatar initials are text: ink, not colour */
 :root[data-theme="mono"] :is(.tg-day strong, .tg-row.is-weekend .tg-day strong, .us-axis-day.is-weekend) { color: var(--mn-ink) !important; }
 :root[data-theme="mono"] .us-left { color: var(--mn-ink) !important; }

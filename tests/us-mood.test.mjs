@@ -53,3 +53,13 @@ test("averages skip today and half-logged days, unless there's nothing else yet"
   // a brand-new person with only today logged still gets a number
   assert.equal(daysForAverage([days[2]], { goal: 2000, todayKey: "2026-10-03" }).days.length, 1);
 });
+
+test("protein thread: the protein target lands on the calorie goal line", async () => {
+  const { proteinThread } = await import("../js/us.js");
+  assert.deepEqual(proteinThread(150, 150, 80), { at: 80, met: true });
+  assert.deepEqual(proteinThread(75, 150, 80), { at: 40, met: false });
+  assert.equal(proteinThread(300, 150, 80).at, 100, "runs past the line, never off the track");
+  assert.equal(proteinThread(0, 150, 80), null);
+  assert.equal(proteinThread(90, 0, 80), null, "no protein target: no thread");
+  assert.equal(proteinThread(90, 150, null), null, "no calorie goal line to measure against");
+});

@@ -348,6 +348,14 @@ function trendHtml(people, days) {
     const avg = counted.length ? Math.round(counted.reduce((a, d) => a + d.calories, 0) / counted.length) : 0;
 
     const pts = values.map((v, idx) => ({ x: xOf(idx), y: H - (v / max) * H }));
+    // protein as dots, scaled so its target sits on the same dashed goal line (see proteinThread)
+    const pGoal = p.goals?.proteinG || 0;
+    const protDots = goal && pGoal ? ordered.map((d, idx) => {
+      const g = (p.days[d.key] || EMPTY_DAY).proteinG;
+      if (!(g > 0)) return "";
+      const y = Math.max(1.5, H - Math.min(max, (g / pGoal) * goal) / max * H);
+      return `<circle class="us-pdot${g >= pGoal ? " is-met" : ""}" cx="${xOf(idx).toFixed(1)}" cy="${y.toFixed(1)}" r="1.6"/>`;
+    }).join("") : "";
     const path = pts.map((pt, idx) => `${idx === 0 ? "M" : "L"}${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" ");
     const last = pts[pts.length - 1];
     const goalY = goal ? H - (goal / max) * H : null;
@@ -362,6 +370,7 @@ function trendHtml(people, days) {
         <svg class="us-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" data-spark data-ys="${pts.map((pt) => pt.y.toFixed(1)).join(",")}" data-vals="${values.join(",")}" data-avg="${fmt(avg)}">
           ${bands}
           ${goalY !== null ? `<line x1="0" y1="${goalY.toFixed(1)}" x2="${W}" y2="${goalY.toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity=".45"/>` : ""}
+          ${protDots}
           <path d="${path}" fill="none" stroke="${c.solid}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
           <line class="us-cursor" x1="${sel ? sel.x.toFixed(1) : -10}" x2="${sel ? sel.x.toFixed(1) : -10}" y1="0" y2="${H}" vector-effect="non-scaling-stroke"/>
           <circle class="us-cursor-dot" cx="${(sel ?? last).x.toFixed(1)}" cy="${(sel ?? last).y.toFixed(1)}" r="3.5" fill="${c.solid}" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>
@@ -383,7 +392,7 @@ function trendHtml(people, days) {
     <h2 class="tg-h2">${t("us.caloriesByDay")}</h2>
     <div class="us-card">${rows.join("")}${strip}</div>
     ${selectedDay && selIdx >= 0 ? dayDetailHtml(people, selectedDay) : ""}
-    <p class="tg-note"><span class="us-wk-key"></span> ${t("us.weekend")} · ${t("us.goalLine")} · ${t("us.tapDay")}</p>
+    <p class="tg-note"><span class="us-wk-key"></span> ${t("us.weekend")} · ${t("us.goalLine")} · <span class="pthread-key is-dots" aria-hidden="true"></span> ${t("us.proteinLine")} · ${t("us.tapDay")}</p>
   </section>`;
 }
 
@@ -430,6 +439,16 @@ function groupedHtml(people, days) {
   </section>`;
 }
 
+/**
+ * Where a day's protein sits on the calorie chart: scaled so the protein target lands on the
+ * calorie goal line. The dotted thread under a bar reaches that line on a day protein was hit
+ * (and may run past it: more protein is fine). Returns { at: % of the track, met } or null.
+ */
+export function proteinThread(proteinG, proteinGoal, goalAt) {
+  if (!(proteinGoal > 0) || !(goalAt > 0) || !(proteinG > 0)) return null;
+  return { at: Math.min(100, (proteinG / proteinGoal) * goalAt), met: proteinG >= proteinGoal };
+}
+
 function mirrorHtml(people, days) {
   const [a, b] = people;
   const vals = days.flatMap((d) => people.map((p) => (p.days[d.key] || EMPTY_DAY).calories));
@@ -444,8 +463,10 @@ function mirrorHtml(people, days) {
     const over = goal && kcal > goal * 1.1;
     const pos = dir === "left" ? "right" : "left";
     const numPos = w > 45 ? `${pos}:6px;color:#fff` : `${pos}:calc(${w}% + 5px)`;
+    const prot = proteinThread((p.days[key] || EMPTY_DAY).proteinG, p.goals?.proteinG, goal ? (goal / max) * 100 : null);
     return `<div class="tg-side ${dir}">
       <div class="fill" style="width:${w}%;background:${c.solid};opacity:${over ? 1 : 0.78}"></div>
+      ${prot && kcal > 0 ? `<div class="pthread${prot.met ? " is-met" : ""}" style="width:${prot.at.toFixed(1)}%" title="${escHtml(t("us.proteinOf", { g: fmt((p.days[key] || EMPTY_DAY).proteinG), goal: fmt(p.goals.proteinG) }))}"></div>` : ""}
       ${goal ? `<div class="goal" style="${pos}:calc(${(goal / max) * 100}% - 1px)"></div>` : ""}
       ${kcal > 0 ? `<span class="num" style="${numPos}">${fmt(kcal)}</span>` : ""}
     </div>`;
@@ -470,6 +491,7 @@ function mirrorHtml(people, days) {
       <div class="tg-mirror-head"><span>${escHtml(a.name || titleCase(a.owner))}</span><span></span><span>${b ? escHtml(b.name || titleCase(b.owner)) : ""}</span></div>
       ${rows.join("")}
       <div class="tg-legend"><i></i> ${t("us.goalLine")} <span class="us-wk-key"></span> ${t("us.weekend")}</div>
+      <div class="tg-legend"><span class="pthread-key" aria-hidden="true"></span> ${t("us.proteinLine")}</div>
     </div>
     <p class="tg-note">${t("us.tapDay")}</p>
   </section>`;

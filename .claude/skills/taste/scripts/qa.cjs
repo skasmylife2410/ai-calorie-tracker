@@ -20,7 +20,8 @@ function seed([theme]) {
     localStorage.setItem("snapcal.apiToken", "x");
     if (localStorage.getItem("__seeded")) return;
     const D = 864e5, day0 = new Date(); day0.setHours(0, 0, 0, 0);
-    localStorage.setItem("snapcal.userProfile", JSON.stringify({ displayName: "Sam", sex: "male", age: 30, heightCm: 178, weightKg: 78, activityLevel: "moderate", targetDeltaKcal: -400, theme, updatedAt: 1 }));
+    localStorage.setItem("snapcal.userProfile", JSON.stringify({ displayName: "Sam", sex: "male", age: 30, heightCm: 178, weightKg: 78, activityLevel: "moderate", targetDeltaKcal: -400, theme, updatedAt: 1, hasCompletedOnboarding: true, goalsMethodV: 2, lastReviewAt: Date.now() }));
+    localStorage.setItem("snapcal.goalsUpdateSeen", "2"); // no "targets updated" sheet over the tabs
     const meals = []; let id = 0;
     const add = (name, kcal, p, c, f, t) => meals.push({ id: "m" + id++, name, calories: kcal, proteinG: p, carbsG: c, fatG: f, timestamp: t, source: "manual" });
     for (let d = 13; d >= 0; d--) {

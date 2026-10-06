@@ -709,3 +709,22 @@ body { background: linear-gradient(180deg, #FBFAF8 0%, var(--sc-background, #F7F
 }
 /* the cobwebs hang behind the row's words and numbers */
 .us-row.mood-dusty > :not(.us-web):not(.us-spider) { position: relative; z-index: 1; }
+
+.tg-side .goal { bottom: -8px; } /* reaches the protein thread below the bar */
+/* protein on the calorie chart: a dotted thread under each bar (dots on the line chart), scaled
+   so the protein target lands on the calorie goal line. Past the line is fine: more protein is. */
+.tg-side .pthread {
+  position: absolute; bottom: -6px; height: 2px;
+  background-image: radial-gradient(circle, var(--sc-protein) 0.9px, transparent 1.1px);
+  background-size: 4px 2px; background-repeat: repeat-x;
+}
+.tg-side.left .pthread { right: 0; background-position: right center; }
+.tg-side.right .pthread { left: 0; background-position: left center; }
+.tg-side .pthread.is-met { height: 3px; background-image: radial-gradient(circle, var(--sc-protein) 1.3px, transparent 1.5px); background-size: 4px 3px; }
+.us-pdot { fill: var(--sc-protein); }
+.us-pdot.is-met { r: 2.1px; }
+.pthread-key {
+  display: inline-block; width: 18px; height: 3px; vertical-align: middle;
+  background-image: radial-gradient(circle, var(--sc-protein) 1.1px, transparent 1.3px); background-size: 4px 3px;
+}
+.tg-legend + .tg-legend { margin-top: 4px; }

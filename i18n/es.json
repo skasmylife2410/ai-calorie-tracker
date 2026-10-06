@@ -133,6 +133,8 @@
     "days30": "30 días",
     "caloriesByDay": "Calorías por día",
     "goalLine": "meta diaria de calorías",
+    "proteinLine": "proteína: llega a la línea de meta al cumplirla",
+    "proteinOf": "Proteína {g} de {goal} g",
     "lastNDays": "Últimos {n} días",
     "daysLogged": "Días registrados",
     "avgCalories": "Calorías promedio",
