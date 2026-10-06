@@ -2,7 +2,8 @@
 // Presented as a sheet in 4 contexts: new/blank, edit existing, barcode-hit prefill, barcode-miss.
 
 import * as store from "../store.js";
-import { wireNumericInput, formatNumeric } from "./numeric-field.js";
+import { wireNumericInput, formatNumeric, parseNumeric } from "./numeric-field.js";
+import { densityOf } from "./portion-plate.js";
 import { t } from "../i18n.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { cleanMicros, scaleMicros } from "../nutrition.js";
@@ -31,6 +32,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
     // starts unknown, and the first number typed becomes the baseline rather than rescaling.
     amount: entry?.amount ?? prefillAmount(prefill),
     amountUnit: entry?.amountUnit ?? (prefill?.servingDescription?.includes("ml") ? "ml" : "g"),
+    servingGrams: entry?.servingGrams ?? null, // grams in one serving, once known
   };
   const source = entry?.source ?? (prefill || prefillBarcode ? "barcode" : "manual");
 
@@ -134,29 +136,78 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
 
       const amountInput = panel.querySelector("#food-amount");
       const amountHint = panel.querySelector("#amount-hint");
+
+      // The numbers as they were when the amount started changing. Typing rescales from here on
+      // every keystroke, so the result shows before leaving the field (and before saving), and
+      // going 150 → 15 → 150 lands exactly where it started.
+      let snap = null;
+      const takeSnap = () => {
+        snap = { amount: draft.amount, calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG, micros: draft.micros };
+      };
+      const fromSnap = (amount) => {
+        if (!snap) takeSnap();
+        if (snap.amount && amount && amount !== snap.amount) {
+          const f = amount / snap.amount;
+          draft.calories = Math.round(snap.calories * f);
+          for (const k of ["proteinG", "carbsG", "fatG"]) draft[k] = Math.round(snap[k] * f * 10) / 10;
+          draft.micros = scaleMicros(snap.micros, f);
+        } else {
+          Object.assign(draft, { calories: snap.calories, proteinG: snap.proteinG, carbsG: snap.carbsG, fatG: snap.fatG, micros: snap.micros });
+        }
+        // no amount yet: the first number typed just records what this entry already is
+        draft.amount = amount ?? snap.amount;
+        refreshMacros();
+        refreshMicroInputs(panel, draft.micros);
+      };
+      amountInput.addEventListener("focus", takeSnap);
+      amountInput.addEventListener("input", () => {
+        const v = parseNumeric(amountInput.value);
+        // half-typed or cleared: show the numbers as they were until there's an amount again
+        fromSnap(v !== null && v > 0 && v <= 10000 ? v : null);
+      });
       wireNumericInput(amountInput, {
         getValue: () => draft.amount,
         decimal: true,
         min: 0,
         max: 10000,
         onCommit: (v) => {
-          if (v <= 0) return;
-          // No baseline yet: this number just records what the entry already is.
-          if (draft.amount) scaleBy(v / draft.amount);
-          draft.amount = v;
-          amountHint.textContent = t("edit.amountHint");
+          if (v > 0) fromSnap(v);
+          else fromSnap(null);
+          snap = null;
+          if (draft.amount) amountHint.textContent = t("edit.amountHint");
         },
       });
 
+      /** The amount in grams, or null when it can't be known (servings of unknown size). */
+      const gramsOf = (amount, unit) => {
+        if (!(amount > 0)) return null;
+        if (unit === "ml") return amount * densityOf(draft.name);
+        if (unit === "serving") return draft.servingGrams ? amount * draft.servingGrams : null;
+        return amount;
+      };
+      const round1 = (n) => Math.round(n * 10) / 10;
+
+      // Switching unit keeps the same food: 200 g of milk shows as 194 ml, and whatever is on
+      // the plate becomes "1 serving". The numbers below don't change, only how it's measured.
       panel.querySelectorAll("[data-unit]").forEach((b) =>
         b.addEventListener("click", () => {
-          draft.amountUnit = b.dataset.unit;
-          panel.querySelectorAll("[data-unit]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-          if (draft.amountUnit === "serving" && !draft.amount) {
+          const next = b.dataset.unit;
+          const prev = draft.amountUnit;
+          if (next === prev) return;
+          const grams = gramsOf(draft.amount, prev);
+          if (next === "serving") {
+            if (prev !== "serving" && grams) draft.servingGrams = Math.round(grams);
             draft.amount = 1;
-            amountInput.value = "1";
-            amountHint.textContent = t("edit.amountHint");
+          } else if (grams === null) {
+            draft.amount = null; // a serving of unknown weight: ask for the amount once
+          } else {
+            draft.amount = next === "ml" ? round1(grams / densityOf(draft.name)) : Math.round(grams);
           }
+          draft.amountUnit = next;
+          snap = null;
+          amountInput.value = formatNumeric(draft.amount, { decimal: true });
+          panel.querySelectorAll("[data-unit]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          amountHint.textContent = draft.amount ? t("edit.amountHint") : t("edit.amountHintFirst");
         })
       );
 
@@ -215,6 +266,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               micros: draft.micros,
               amount: draft.amount,
               amountUnit: draft.amountUnit,
+              servingGrams: draft.servingGrams,
               // editing by hand resets the servings multiplier; the numbers ARE the meal now
               servings: 1,
               base: { calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG, micros: draft.micros },
@@ -229,6 +281,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               micros: draft.micros,
               amount: draft.amount,
               amountUnit: draft.amountUnit,
+              servingGrams: draft.servingGrams,
               source,
               timestamp: timestamp ?? Date.now(),
             });

@@ -72,7 +72,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
             ${entry.photoDataUrl ? `<button type="button" class="servings-share" id="share-meal" aria-label="${t("social.share")}">↗︎</button>` : ""}
           </div>`}
           ${!template && (entry.cookingFat === "assumed" || entry.cookingFatChoice) ? `<div class="fat-card" id="fat-card"></div>` : ""}
-          <div class="results-items-section-header">${t("meal.items")}</div>
+          <div class="results-items-section-header" id="items-header">${t("meal.items")}</div>
           <div class="ios-section" style="margin-bottom:0;">
             <div class="ios-section-body" id="results-items"></div>
           </div>
@@ -93,8 +93,9 @@ export function openResultsSheet(entry, { template = null } = {}) {
       const saveBtn = panel.querySelector("#save-changes-btn");
 
       // --- servings + favourite -------------------------------------------------
-      // The stepper acts on the SAVED entry immediately (like the heart does); item edits below
-      // still work per-serving, because items always describe one serving of the meal.
+      // Servings are part of the draft like every other number here: the totals show the result
+      // straight away, and nothing is written until "Save changes" (Cancel leaves the meal as it
+      // was). Items always describe one serving of the meal.
       const servValue = panel.querySelector("#servings-value");
       const favBtn = panel.querySelector("#fav-toggle");
       let servings = store.normalizeServings(entry.servings);
@@ -104,6 +105,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
         if (!servValue) return;
         servValue.textContent = String(servings);
         panel.querySelector("#servings-card").classList.toggle("is-multiple", servings !== 1);
+        panel.querySelector("#items-header").textContent = servings !== 1 ? t("meal.itemsPerServing") : t("meal.items");
       };
       const renderFav = () => {
         if (!favBtn) return;
@@ -115,7 +117,6 @@ export function openResultsSheet(entry, { template = null } = {}) {
       panel.querySelectorAll("[data-serv]").forEach((btn) => {
         btn.addEventListener("click", () => {
           servings = store.normalizeServings(servings + Number(btn.dataset.serv) * 0.5);
-          store.setServings(entry.id, servings);
           renderServings();
           renderTotals();
         });
@@ -175,13 +176,19 @@ export function openResultsSheet(entry, { template = null } = {}) {
         renderPlate();
       });
 
+      // what the meal counted for when the sheet opened, so every change shows its effect
+      const savedKcal = template ? null : Number(entry.calories);
       const renderTotals = () => {
-        totalsEl.innerHTML = TOTAL_DEFS.map((t) => {
-          const total = items.reduce((acc, i) => acc + (i[t.key] ?? 0), 0) * servings;
+        const kcal = Math.round(items.reduce((acc, i) => acc + (Number(i.calories) || 0), 0) * servings);
+        const notes = [];
+        if (servings !== 1) notes.push(t("meal.totalFor", { n: servings }));
+        if (Number.isFinite(savedKcal) && Math.round(savedKcal) !== kcal) notes.push(t("meal.wasKcal", { kcal: Math.round(savedKcal) }));
+        totalsEl.innerHTML = (notes.length ? `<div class="totals-note">${notes.join(" · ")}</div>` : "") + TOTAL_DEFS.map((d) => {
+          const total = items.reduce((acc, i) => acc + (Number(i[d.key]) || 0), 0) * servings;
           return `
             <div class="total-stat">
-              <div class="total-stat-value numeric-text">${Math.round(total)}${t.suffix}</div>
-              <div class="total-stat-label">${t.label}</div>
+              <div class="total-stat-value numeric-text">${Math.round(total)}${d.suffix}</div>
+              <div class="total-stat-label">${d.label}</div>
             </div>`;
         }).join("");
         // just the four totals, rounded: each food lists its own nutrients above
@@ -428,6 +435,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
         // items are one serving; the totals keep the servings multiplier
         store.updateFoodEntry(entry.id, {
           name,
+          servings,
           ...store.fieldsFromItems(items, servings),
           analysisItems: items,
           ...(addedFoods && items.length > 1 ? { grouped: true } : {}),

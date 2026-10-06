@@ -164,6 +164,8 @@ export function makeFoodEntry(fields) {
     amount: Number.isFinite(Number(fields.amount)) && Number(fields.amount) > 0 ? Number(fields.amount) : null,
     amountUnit: ["g", "ml", "serving"].includes(fields.amountUnit) ? fields.amountUnit : null,
     servings: normalizeServings(fields.servings),
+    // grams in one serving, when known, so an amount in servings can be shown in grams again
+    ...(Number(fields.servingGrams) > 0 ? { servingGrams: Number(fields.servingGrams) } : {}),
     // made by grouping meals or from a saved meal — shown with its own icon in lists
     grouped: fields.grouped === true,
     // fiber, sugars, sat fat, sodium, potassium for the whole entry; null = not known
