@@ -2473,6 +2473,11 @@ body.setup-open { overflow: hidden; }
 .ask-send { height: 50px; border: 0; border-radius: 14px; font: inherit; font-size: 16px; font-weight: 700; color: var(--sc-background, #fff); background: var(--sc-primary-text); cursor: pointer; }
 .ask-send:disabled { opacity: .4; }
 .ask-skip { height: 40px; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--sc-secondary); cursor: pointer; }
+/* size check (js/ui/size-check.js) */
+.size-steps { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 15px; line-height: 1.4; color: var(--sc-primary-text); }
+.size-take { display: flex; align-items: center; justify-content: center; }
+.size-take.is-busy { opacity: .5; pointer-events: none; }
+.size-error { font-size: 13px; color: var(--sc-red); text-align: center; }
 
 /* Meal editor: "Cooked with oil or butter?" */
 .fat-card { margin: 10px 16px 4px; padding: 12px 14px; border-radius: 14px; background: var(--sc-card-bg, #fff); }

@@ -128,7 +128,52 @@ export function metaFields(entry, meta, items = []) {
     analysisConfidence: confidence,
     analysisQuestions: ask ? meta.questions : null,
     cookingFat: meta?.cookingFat ?? null,
+    // questions first; the size photo is asked for once they're out of the way
+    analysisSizeCheck: !ask && needsSizeCheck(entry, meta, items) ? richKcal(items) : null,
   };
+}
+
+// --- Size check ---------------------------------------------------------------------------------
+// Rich foods (sweets, pastries, fried, cheesy, creamy) pack 300–500 kcal per 100 g, so a portion
+// misjudged by a third moves the day by 100–200 kcal. When a photo of one shows nothing to judge
+// its size by, the app asks for one more photo with a hand, a fork or a card beside it.
+
+export const RICH_KCAL_PER_100G = 300;
+export const SIZE_CHECK_MIN_KCAL = 200;
+const FAT_ITEM = /\b(oil|butter|aceite|mantequilla|ghee|lard|manteca)\b/i;
+const RICH_NAME = /(fried|frit|empanad|pizza|burger|hamburg|cheese|queso|cream|crema|chocolate|cake|pastel|torta|donut|dona|croissant|cookie|galleta|brownie|churro|pie\b|tart|pastry|dessert|postre|nutella|peanut butter|mani|nuts|nueces)/i;
+
+/** Calories in the meal that come from rich items (cooking oil aside: it has its own question). */
+export function richKcal(items) {
+  let kcal = 0;
+  for (const i of items ?? []) {
+    const c = Number(i?.calories) || 0, g = Number(i?.gramsEstimate) || 0;
+    if (c <= 0 || g <= 0 || FAT_ITEM.test(i?.name ?? "")) continue;
+    const per100 = (c / g) * 100;
+    if (per100 >= RICH_KCAL_PER_100G || (per100 >= 220 && RICH_NAME.test(i?.name ?? ""))) kcal += c;
+  }
+  return Math.round(kcal);
+}
+
+/** A meal photo of rich food with nothing in it to show the size, not checked yet. */
+export function needsSizeCheck(entry, meta, items) {
+  if ((entry?.analysisMode ?? "meal") !== "meal" || entry?.sizeChecked) return false;
+  if (meta?.sizeReference === "clear") return false;
+  return richKcal(items) >= SIZE_CHECK_MIN_KCAL;
+}
+
+/** The size-check photo: re-analyse with both photos, once. */
+export function addSizePhoto(entryId, sizeDataUrl) {
+  const entry = store.getFoodEntry(entryId);
+  if (!entry || !sizeDataUrl) return null;
+  const updated = store.updateFoodEntry(entryId, { isPending: true, analysisFailed: false, analysisSizeCheck: null, sizeChecked: true });
+  runAnalysis(entryId, { imageDataUrl: entry.photoDataUrl, imageDataUrl2: sizeDataUrl, description: entry.analysisDescription, mode: "meal" });
+  return updated;
+}
+
+/** "Keep the estimate": stop asking for a size photo. */
+export function skipSizeCheck(entryId) {
+  return store.updateFoodEntry(entryId, { analysisSizeCheck: null, sizeChecked: true });
 }
 
 /** Older answers had only per-item confidence: weigh it by calories. */
@@ -208,7 +253,7 @@ export async function submitCorrection(entryId, correctionText) {
       // items are one serving; keep whatever servings multiplier the meal already had
       ...store.fieldsFromItems(outcome.items, entry.servings),
       // a correction is the person telling us: never ask on top of it
-      ...metaFields({ ...entry, questionsAnswered: true }, outcome.meta, outcome.items),
+      ...metaFields({ ...entry, questionsAnswered: true, sizeChecked: true }, outcome.meta, outcome.items),
     });
   }
   return outcome;
@@ -337,13 +382,13 @@ const isNetworkFailure = (outcome) =>
  * network failure keeps the meal pending, waits until the app is on screen again and retries,
  * instead of turning it into "Analysis failed".
  */
-async function runAnalysis(entryId, { imageDataUrl, description, mode }) {
-  let outcome = await analyzeMeal({ mode, imageDataUrl, text: description });
+async function runAnalysis(entryId, { imageDataUrl, imageDataUrl2, description, mode }) {
+  let outcome = await analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text: description });
   for (let attempt = 0; attempt < NETWORK_RETRIES && isNetworkFailure(outcome); attempt += 1) {
     await whenVisible();
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt] ?? 15000));
     if (!store.getFoodEntry(entryId)) return; // deleted while waiting
-    outcome = await analyzeMeal({ mode, imageDataUrl, text: description });
+    outcome = await analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text: description });
   }
   handleOutcome(entryId, mode, outcome);
 }

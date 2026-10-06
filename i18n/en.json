@@ -1081,6 +1081,16 @@
     "by": "GIF from {name}",
     "homeTitle": "Pick the button's GIF"
   },
+  "size": {
+    "title": "Check the size",
+    "lead": "About {kcal} kcal here is rich food.",
+    "why": "Sweets, fried and creamy foods are where portion guesses miss most: a third off is ±{n} kcal.",
+    "step1": "Put your hand, a fork or a card right next to it.",
+    "step2": "Take one more photo. It's only used to judge the size.",
+    "take": "Take the size photo",
+    "error": "That photo couldn't be read. Try again.",
+    "rowCta": "Rich food: check the size"
+  },
   "ask": {
     "title": "Quick question",
     "notSure": "I'm only {pct}% sure about this meal.",

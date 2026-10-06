@@ -93,6 +93,7 @@ function completedRowHtml(entry) {
       ? `<div class="entry-thumb"><img src="${safeSrc(entry.photoDataUrl)}" alt="" />${sureBadgeHtml(entry)}</div>`
       : `<div class="entry-thumb is-food" data-food="${kind}">${foodIconSvg(kind, { size: 22 })}${sureBadgeHtml(entry)}</div>`;
   const asking = Array.isArray(entry.analysisQuestions) && entry.analysisQuestions.length > 0;
+  const sizing = !asking && Number(entry.analysisSizeCheck) > 0;
   const macroChips = MACRO_META.map(
     (m) => `
       <div class="macro-chip">
@@ -109,6 +110,7 @@ function completedRowHtml(entry) {
       </div>
       <div class="entry-cal-row"><span class="entry-kcal">${Math.round(entry.calories)} kcal</span>${asking
         ? `<span class="entry-ask">${t("ask.rowCta", { n: entry.analysisQuestions.length })}</span>`
+        : sizing ? `<span class="entry-ask">${t("size.rowCta")}</span>`
         : `<span class="entry-kind">${t(`food.${kind}`)}</span>`}</div>
       <div class="macro-chip-row">${macroChips}</div>
     </div>
@@ -153,6 +155,11 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
     // an unsure analysis with questions waiting: ask them first
     if (state !== "pending" && Array.isArray(entry.analysisQuestions) && entry.analysisQuestions.length > 0) {
       import("./questions.js").then((m) => m.openQuestionsSheet(entry));
+      return;
+    }
+    // rich food with nothing to show its size: one more photo first
+    if (state !== "pending" && Number(entry.analysisSizeCheck) > 0) {
+      import("./size-check.js").then((m) => m.openSizeCheckSheet(entry));
       return;
     }
     onTap(entry);

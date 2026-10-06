@@ -774,12 +774,10 @@ export function microsFromRaw(raw) {
  */
 const GEMINI_TIMEOUT_MS = 75000;
 
-export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
-  let image;
-  if (imageDataUrl) {
-    const commaIdx = imageDataUrl.indexOf(",");
-    image = commaIdx === -1 ? imageDataUrl : imageDataUrl.slice(commaIdx + 1);
-  }
+export async function analyzeWithGemini({ mode, imageDataUrl, imageDataUrl2, text }) {
+  const base64 = (url) => (url ? (url.indexOf(",") === -1 ? url : url.slice(url.indexOf(",") + 1)) : undefined);
+  const image = base64(imageDataUrl);
+  const image2 = mode === "meal" ? base64(imageDataUrl2) : undefined; // the size-check photo
 
   // The server gives up at 60 s; a request still open well after that is dead (a phone that
   // suspended the app mid-request can hold it for minutes), so it counts as a network error
@@ -791,7 +789,7 @@ export async function analyzeWithGemini({ mode, imageDataUrl, text }) {
     res = await apiFetch("/api/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, image, text, lang: currentLang() }),
+      body: JSON.stringify({ mode, image, ...(image2 ? { image2 } : {}), text, lang: currentLang() }),
       ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (err) {
@@ -834,6 +832,7 @@ export function cleanMeta(raw) {
     confidence: Math.min(1, Math.max(0, c)),
     questions: c < 0.5 ? questions : [],
     cookingFat: ["visible", "assumed", "none"].includes(raw.cookingFat) ? raw.cookingFat : null,
+    sizeReference: ["clear", "weak", "none"].includes(raw.sizeReference) ? raw.sizeReference : null,
   };
 }
 
@@ -935,7 +934,7 @@ async function geminiRequest(payload) {
   return { ok: true, items: body.items };
 }
 
-export async function analyzeMeal({ mode, imageDataUrl, text }) {
+export async function analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text }) {
   const modeInfo = ANALYSIS_MODES[mode] ?? ANALYSIS_MODES.meal;
 
   if (modeInfo.requiresImage && !imageDataUrl) {
@@ -945,7 +944,7 @@ export async function analyzeMeal({ mode, imageDataUrl, text }) {
     return { success: false, reason: "Add a description of what you ate." };
   }
 
-  const outcome = await analyzeWithGemini({ mode, imageDataUrl, text });
+  const outcome = await analyzeWithGemini({ mode, imageDataUrl, imageDataUrl2, text });
   if (!outcome.ok) {
     return { success: false, reason: outcome.message, errorType: outcome.errorType };
   }

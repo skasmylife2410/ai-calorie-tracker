@@ -156,6 +156,7 @@ async function boot() {
     if (!success || document.visibilityState !== "visible" || document.querySelector(".sheet-panel")) return;
     const entry = store.getFoodEntry(entryId);
     if (entry?.analysisQuestions?.length) import("./ui/questions.js").then((m) => m.openQuestionsSheet(entry)).catch(() => {});
+    else if (entry?.analysisSizeCheck) import("./ui/size-check.js").then((m) => m.openSizeCheckSheet(entry)).catch(() => {});
   }));
   // Language comes from the profile (so it travels between this person's devices), else the phone.
   try {

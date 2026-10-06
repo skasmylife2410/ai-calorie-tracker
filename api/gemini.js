@@ -63,6 +63,7 @@ const MEAL_SCHEMA = {
       },
     },
     cooking_fat: { type: "STRING", enum: ["visible", "assumed", "none"] },
+    size_reference: { type: "STRING", enum: ["clear", "weak", "none"] },
   },
   required: ["items", "confidence", "questions", "cooking_fat"],
 };
@@ -198,10 +199,14 @@ const MEAL_PROMPT_SECTION_3 = `Rules:
 ${MICRO_RULE}
 - count: when the item is made of whole pieces you can count (eggs, slices of bread, arepas, cookies, tacos, bananas, scoops), the number of pieces, and name the item in the singular ("egg", not "eggs"); grams_estimate and the nutrients still cover ALL the pieces together. Use 0 for foods that aren't counted in pieces (rice, soup, a salad, sauce, cooking oil, a drink).
 - confidence is 0–1: how sure you are of the item's identity AND portion size.
+- size_reference: how well the photo shows the portion's real size. "clear" when something of known size sits right next to the food (a hand, fork, spoon, can, card, phone, a standard dinner plate seen whole, packaging with a stated weight); "weak" when there's only a partial or unusual container to go by; "none" when the food fills the frame or nothing shows the scale (a close-up of a slice of cake, a donut on a napkin).
 - If the image contains no food or drink, return an empty items array.`;
 
-function buildMealPrompt(description, lang) {
+function buildMealPrompt(description, lang, { twoPhotos = false } = {}) {
   const sections = [MEAL_PROMPT_SECTION_1];
+  if (twoPhotos) {
+    sections.push("There are TWO photos of the same food. The second was taken so you can judge the size: it shows the food next to something of known size (a hand, a fork, a can, a card, a phone). Use it to set the grams of each item, count the food only once, and set size_reference to \"clear\" unless the second photo still shows no scale.");
+  }
   if (typeof description === "string" && description.trim() !== "") {
     sections.push(
       `The user says: "${description.trim()}". The user's description is authoritative — trust it over the photo when they conflict, and use it to resolve foods hidden or ambiguous in the image.`
@@ -258,10 +263,13 @@ function stripCodeFences(raw) {
 
 // --- Single Gemini call, classified into the GeminiFailureKind taxonomy ------------------------
 
-async function callGemini(apiKey, { image, audio, promptText, schema = RESPONSE_SCHEMA }) {
+async function callGemini(apiKey, { image, image2, audio, promptText, schema = RESPONSE_SCHEMA }) {
   const parts = [];
   if (image && image.length > 0) {
     parts.push({ inline_data: { mime_type: "image/jpeg", data: image } });
+  }
+  if (image2 && image2.length > 0) {
+    parts.push({ inline_data: { mime_type: "image/jpeg", data: image2 } }); // the size-check photo
   }
   if (audio && audio.data) {
     parts.push({ inline_data: { mime_type: audio.mime, data: audio.data } });
@@ -353,7 +361,8 @@ export function mealMeta(parsed) {
       .filter((q) => q.question && q.options.length >= 2)
     : [];
   const cookingFat = ["visible", "assumed", "none"].includes(parsed.cooking_fat) ? parsed.cooking_fat : null;
-  return { confidence, questions, cookingFat };
+  const sizeReference = ["clear", "weak", "none"].includes(parsed.size_reference) ? parsed.size_reference : null;
+  return { confidence, questions, cookingFat, sizeReference };
 }
 
 function outcomeToErrorPayload(outcome) {
@@ -394,6 +403,8 @@ export default async function handler(req, res) {
   // few sentences. Anything else is refused before it can run up the Gemini bill.
   const image = typeof body.image === "string" && body.image.length <= MAX_IMAGE_BASE64 ? body.image : "";
   const text = typeof body.text === "string" ? body.text.slice(0, MAX_TEXT) : "";
+  // a second photo of the same meal with something of known size beside it (meal mode only)
+  const image2 = mode === "meal" && typeof body.image2 === "string" && body.image2.length <= MAX_IMAGE_BASE64 ? body.image2 : "";
   if (typeof body.image === "string" && body.image.length > MAX_IMAGE_BASE64) {
     res.status(200).json({ errorType: "other", message: "That photo is too large — try again." });
     return;
@@ -440,7 +451,7 @@ export default async function handler(req, res) {
   }
 
   const promptText =
-    mode === "meal" ? buildMealPrompt(text, body.lang)
+    mode === "meal" ? buildMealPrompt(text, body.lang, { twoPhotos: image2.length > 0 })
     : mode === "text" ? buildTextPrompt(text, body.lang)
     : mode === "exercise" ? buildExercisePrompt(text, body.lang)
     : mode === "transcribe" ? buildTranscribePrompt(body.lang)
@@ -456,7 +467,7 @@ export default async function handler(req, res) {
   // Empty-image rule: a 0-byte image must never be base64-encoded into inline_data (§3).
   const normalizedImage = image && image.length > 0 ? image : undefined;
 
-  const primaryOutcome = await callGemini(primaryKey, { image: normalizedImage, audio, promptText, schema });
+  const primaryOutcome = await callGemini(primaryKey, { image: normalizedImage, image2: image2 || undefined, audio, promptText, schema });
 
   if (primaryOutcome.kind === "success") {
     res.status(200).json({ items: primaryOutcome.items, ...(primaryOutcome.meta ? { meta: primaryOutcome.meta } : {}) });
@@ -474,7 +485,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const backupOutcome = await callGemini(backupKey, { image: normalizedImage, audio, promptText, schema });
+  const backupOutcome = await callGemini(backupKey, { image: normalizedImage, image2: image2 || undefined, audio, promptText, schema });
 
   if (primaryOutcome.kind === "rateLimited" && backupOutcome.kind === "rateLimited") {
     res.status(200).json({

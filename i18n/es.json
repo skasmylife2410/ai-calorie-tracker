@@ -1081,6 +1081,16 @@
     "by": "GIF de {name}",
     "homeTitle": "Elige el GIF del botón"
   },
+  "size": {
+    "title": "Revisa el tamaño",
+    "lead": "Unas {kcal} kcal aquí son comida densa.",
+    "why": "Dulces, fritos y cremosos son donde más se falla al calcular la porción: un tercio de error son ±{n} kcal.",
+    "step1": "Pon tu mano, un tenedor o una tarjeta justo al lado.",
+    "step2": "Toma otra foto. Solo se usa para medir el tamaño.",
+    "take": "Tomar la foto de tamaño",
+    "error": "No se pudo leer esa foto. Inténtalo de nuevo.",
+    "rowCta": "Comida densa: revisa el tamaño"
+  },
   "ask": {
     "title": "Una pregunta rápida",
     "notSure": "Solo estoy {pct}% seguro de esta comida.",
