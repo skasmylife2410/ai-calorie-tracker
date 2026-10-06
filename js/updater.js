@@ -10,6 +10,8 @@
 //   - and never with a sheet, the camera or half-typed text open.
 // After the reload a small "Updated" note shows once.
 
+import { BUILD } from "./build.js";
+
 const CHECK_EVERY_MS = 10 * 60 * 1000;
 const MIN_GAP_MS = 60 * 1000;      // coming back to the app checks at most once a minute
 const SAFE_RETRY_MS = 5 * 1000;    // waiting for a safe moment
@@ -28,6 +30,22 @@ async function fetchVersion() {
     return (await res.json())?.version ?? null;
   } catch {
     return null; // offline: try again later
+  }
+}
+
+/**
+ * The newest deploy's cache version, read from the server's sw.js. Compared with BUILD (the
+ * deploy the code on screen came from), this catches what the version check alone missed: the
+ * page opening on the previous deploy's saved files just after a new deploy, which made that
+ * newer version look like "the version this page started on", so it never reloaded.
+ */
+export async function latestBuild() {
+  try {
+    const res = await fetch(`/sw.js?v=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.text()).match(/const CACHE_VERSION = "([^"]+)"/)?.[1] ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -91,7 +109,13 @@ async function check({ force = false, immediate = false } = {}) {
   if (!force && Date.now() - lastCheck < MIN_GAP_MS) return;
   lastCheck = Date.now();
   navigator.serviceWorker?.getRegistration?.().then((reg) => reg?.update()).catch(() => {});
-  const v = await fetchVersion();
+  const [v, latest] = await Promise.all([fetchVersion(), latestBuild()]);
+  // the code on screen is from an older deploy than the server's: update, whatever the page saw at boot
+  if (latest && latest !== BUILD) {
+    pending = true;
+    if (immediate) reloadWhenSafe();
+    return;
+  }
   if (!v) return;
   if (bootVersion === null) { bootVersion = v; return; }
   if (v !== bootVersion) {

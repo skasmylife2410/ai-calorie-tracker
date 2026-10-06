@@ -4,7 +4,7 @@
 // waits on the network for ~100 files, and all files always come from the same deploy.
 // The page itself (index.html) is still network-first, so it's always current.
 
-const CACHE_VERSION = "snapcal-v65";
+const CACHE_VERSION = "snapcal-v66";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -23,6 +23,7 @@ const APP_SHELL = [
   "/js/api.js",
   "/js/app.js",
   "/js/bodyfat.js",
+  "/js/build.js",
   "/js/boot-guard.js",
   "/js/cooking-fat.js",
   "/js/diets.js",
@@ -139,6 +140,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return; // POST /api/gemini etc. always hit the network
   if (new URL(request.url).origin !== self.location.origin) return; // GIFs from GIPHY: the browser's own cache
   if (new URL(request.url).pathname.startsWith("/api/")) return; // live data, never the shell cache
+  if (new URL(request.url).pathname === "/sw.js") return; // the updater reads the newest one (js/updater.js)
 
   // The app's own files: from this deploy's cache, and the network only for anything not in it.
   if (request.mode !== "navigate") {

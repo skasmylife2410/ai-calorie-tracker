@@ -19,3 +19,8 @@ test("every file in the offline copy exists", () => {
   });
   assert.deepEqual(gone, []);
 });
+
+test("the code knows which deploy it came from: build.js matches sw.js", () => {
+  const build = readFileSync(new URL("../js/build.js", import.meta.url), "utf8").match(/BUILD = "([^"]+)"/)[1];
+  assert.equal(build, sw.match(/const CACHE_VERSION = "([^"]+)"/)[1], "bump both together");
+});
