@@ -31,7 +31,7 @@ import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 import { renderMealList } from "./today-meals.js";
 
 const MACRO_DEFS = [
-  { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", color: "var(--sc-protein)", track: "var(--sc-protein-track, rgba(232,93,93,0.18))", icon: "fishFill" },
+  { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", met: true, color: "var(--sc-protein)", track: "var(--sc-protein-track, rgba(232,93,93,0.18))", icon: "fishFill" },
   { key: "carbsG", targetKey: "carbsTargetG", nameKey: "carbs", color: "var(--sc-carbs)", track: "var(--sc-carbs-track, rgba(229,160,84,0.18))", icon: "leafFill" },
   { key: "fatG", targetKey: "fatTargetG", nameKey: "fat", color: "var(--sc-fat)", track: "var(--sc-fat-track, rgba(107,141,227,0.18))", icon: "dropFill" },
 ];
@@ -257,7 +257,8 @@ function countNumbers(container, dayKey, nums) {
     else if (bucket !== lastBucket && at - lastTick > 45) { sfx("tick", nowOver); lastTick = at; }
     lastBucket = bucket;
     wasOver = nowOver;
-    els.forEach((el, i) => { if (el) el.textContent = `${roundDisplay(Math.abs(v.nums[i]))}${el.dataset.suffix ?? (i > 0 ? "g" : "")}`; });
+    // protein past its target reads as extra ("+12g"), the way the finished tile shows it
+    els.forEach((el, i) => { if (el) el.textContent = `${el.dataset.plus && v.nums[i] < 0 ? "+" : ""}${roundDisplay(Math.abs(v.nums[i]))}${el.dataset.suffix ?? (i > 0 ? "g" : "")}`; });
     // the big number turns red the moment it passes zero, and the caption follows it
     const over = Math.round(v.nums[0]) < 0;
     els[0]?.classList.toggle("is-over", over);
@@ -344,21 +345,26 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
     const consumed = totals[m.key] ?? 0;
     const target = goals[m.targetKey] ?? 0;
     const macroRemaining = target - consumed;
-    const macroOver = macroRemaining < 0;
+    // Protein is a minimum, not a limit: past the target is the goal met, never "over".
+    // Carbs and fat past theirs still count as over.
+    const met = m.met && target > 0 && consumed >= target;
+    const macroOver = !met && macroRemaining < 0;
     const progress = target > 0 ? consumed / target : 0;
+    const ringColor = met ? "var(--sc-good)" : macroOver ? "var(--sc-red)" : m.color;
     const miniRing = ringGauge({
       size: 30,
       strokeWidth: 5,
       progress,
-      color: macroOver ? "var(--sc-red)" : m.color,
+      color: ringColor,
       trackColor: m.track,
-      centerHtml: icon(m.icon, { size: 14, color: macroOver ? "var(--sc-red)" : m.color }),
+      centerHtml: icon(met ? "checkmark" : m.icon, { size: 14, color: ringColor }),
     });
+    const extra = Math.round(consumed - target);
     return `
-      <div class="macro-tile card">
+      <div class="macro-tile card${met ? " is-met" : ""}">
         <div class="macro-text">
-          <div class="macro-value${macroOver ? " over" : ""}">${roundDisplay(Math.abs(macroRemaining))}g</div>
-          <div class="macro-caption">${macroOver ? t("home.overShort", { name: t(`home.${m.nameKey}Short`) }) : t(`home.${m.nameKey}Short`)}</div>
+          <div class="macro-value${macroOver ? " over" : ""}"${m.met ? ' data-plus="1"' : ""}>${met ? `+${roundDisplay(Math.max(0, extra))}g` : `${roundDisplay(Math.abs(macroRemaining))}g`}</div>
+          <div class="macro-caption${met || macroOver ? " is-state" : ""}">${met ? t("home.metShort", { name: t(`home.${m.nameKey}Short`) }) : macroOver ? t("home.overShort", { name: t(`home.${m.nameKey}Short`) }) : t(`home.${m.nameKey}Short`)}</div>
           <div class="macro-goal">${t("home.macroGoal", { n: roundDisplay(target) })}</div>
         </div>
         ${miniRing}

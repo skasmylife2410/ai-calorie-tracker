@@ -118,6 +118,7 @@
   --sc-red: var(--mn-over);
   --sc-orange: var(--mn-flame);
   --sc-green: var(--mn-good);
+  --sc-good: var(--mn-good);
   --sc-blue: var(--mn-ink); /* links and nav buttons are ink, not blue */
 
   /* area accents were decoration, not markers: ink, except water which is a marker */

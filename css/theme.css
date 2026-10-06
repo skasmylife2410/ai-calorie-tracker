@@ -24,6 +24,7 @@
   --sc-red: #FF3B30;
   --sc-orange: #FF9500;
   --sc-green: #34C759;
+  --sc-good: #1F9A45; /* "goal met" marker (protein above target): 3:1+ on white */
   --sc-blue: #0066D6; /* link text: ≥ 4.5:1 on the page and cards (#007AFF was 3.7:1) */
 
   --sc-black-5: rgba(0, 0, 0, 0.05);

@@ -1877,6 +1877,8 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .macro-tile { display: flex !important; align-items: center; justify-content: space-between; gap: 6px; min-height: 0 !important; }
 .macro-tile .macro-text { min-width: 0; }
 .macro-tile .macro-caption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px !important; }
+/* "Protein goal met" / "Carbs over": two short lines rather than a cut-off word */
+.macro-tile .macro-caption.is-state { white-space: normal; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .calorie-card .calorie-left { min-width: 0; }
 /* Home gets no extra spacer at the bottom: the padding already clears the tab bar */
 .today-content .bottom-safe-spacer { display: none !important; }

@@ -35,6 +35,7 @@
     "carbsShort": "Carbs",
     "fatShort": "Fat",
     "overShort": "{name} over",
+    "metShort": "{name} goal met",
     "todaysMeals": "Today's meals",
     "daysMeals": "Meals this day",
     "streakLine": "{n}-day streak|{n}-day streak",

@@ -35,6 +35,7 @@
     "carbsShort": "Carbos",
     "fatShort": "Grasa",
     "overShort": "{name} de más",
+    "metShort": "{name}: meta cumplida",
     "todaysMeals": "Comidas de hoy",
     "daysMeals": "Comidas de este día",
     "streakLine": "Racha de {n} día|Racha de {n} días",
