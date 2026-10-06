@@ -15,7 +15,7 @@
 // Both sources run in parallel with a short budget; whichever answers in time is used.
 
 import { requireUser } from "./_auth.js";
-import { offProductToScannedProduct, usdaFoodToScannedProduct, lookupBarcodeBoth } from "../js/api.js";
+import { offProductToScannedProduct, usdaFoodToScannedProduct, lookupBarcodeBoth, usdaGroundingHit } from "../js/api.js";
 import { rankProducts, normalize } from "../js/foods-local.js";
 import { cleanGif } from "../js/gif.js";
 
@@ -41,6 +41,8 @@ export default async function handler(req, res) {
   const url = new URL(req.url, "http://localhost");
   const barcode = String(url.searchParams.get("barcode") ?? req.query?.barcode ?? "").replace(/\D/g, "").slice(0, 14);
   if (barcode) return lookupBarcode(barcode, res);
+  const ground = String(url.searchParams.get("ground") ?? "").trim().replace(/\s+/g, " ").slice(0, MAX_QUERY);
+  if (ground.length >= 2) return groundingHits(ground, res);
   const q = String(url.searchParams.get("q") ?? req.query?.q ?? "").trim().replace(/\s+/g, " ").slice(0, MAX_QUERY);
   if (q.length < 2) return res.status(200).json({ ok: true, products: [], partial: false });
 
@@ -81,6 +83,32 @@ async function lookupBarcode(barcode, res) {
     setCacheHeaders(res);
   }
   return res.status(200).json({ ok: true, ...out });
+}
+
+/**
+ * GET /api/foods?ground=<food name> -> { ok, hits: [{ description, per100, microsPer100 }] }
+ * Generic USDA foods (Foundation, SR Legacy) for checking an AI estimate (js/api.js groundItems),
+ * looked up here with the real key: the public DEMO_KEY ran out after a few lookups an hour, so
+ * the same food was checked on one meal and not on the next.
+ */
+async function groundingHits(name, res) {
+  const key = `ground:${normalize(name)}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    setCacheHeaders(res);
+    return res.status(200).json({ ok: true, hits: hit.products });
+  }
+  const apiKey = encodeURIComponent((process.env.USDA_API_KEY || "").trim() || "DEMO_KEY");
+  const out = await getJson(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: name, dataType: ["Foundation", "SR Legacy"], pageSize: 5 }),
+  }, "USDA");
+  if (!out.ok) return res.status(502).json({ ok: false, errorType: "unavailable", message: out.message });
+  const hits = (Array.isArray(out.body?.foods) ? out.body.foods : []).map(usdaGroundingHit).filter(Boolean);
+  remember(key, hits);
+  setCacheHeaders(res);
+  return res.status(200).json({ ok: true, hits });
 }
 
 function setCacheHeaders(res) {

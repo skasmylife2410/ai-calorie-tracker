@@ -17,8 +17,6 @@ const OFF_TIMEOUT_MS = 10000;
 const USDA_TIMEOUT_MS = 10000;
 const GROUNDING_PER_ITEM_TIMEOUT_MS = 3000;
 const GROUNDING_BATCH_BUDGET_MS = 4000;
-const GROUNDING_RATIO_MIN = 0.3;
-const GROUNDING_RATIO_MAX = 3.0;
 const USDA_DEMO_KEY = "DEMO_KEY";
 
 // ---------------------------------------------------------------------------
@@ -580,52 +578,89 @@ export async function foodLookup(barcode) {
 // §7 NutritionGrounding — USDA accuracy layer for Gemini output
 // ---------------------------------------------------------------------------
 
+/** One USDA search result reduced to what grounding needs (server side, api/foods.js). */
+export function usdaGroundingHit(food) {
+  const per100 = usdaPer100g(food?.foodNutrients);
+  if (!per100 || !(per100.calories > 0)) return null;
+  return { description: String(food.description ?? ""), per100, microsPer100: usdaMicrosPer100g(food.foodNutrients) };
+}
+
+// Grounding swaps the AI's numbers for USDA's only when USDA clearly describes the same food:
+// - the item isn't a special version a generic entry can't represent (sugar-free, keto, protein,
+//   a brand...): "sugar free dulce de leche" was getting regular dulce de leche's calories;
+// - the USDA name shares the food's main words ("chocolate croissant" → "Croissants, butter" is
+//   fine, "egg" → "Egg, white, raw" is not, because "white" isn't in "egg");
+// - USDA's number is within a third of the AI's. Beyond that the match is more likely wrong
+//   than the AI: donuts and croissants were coming out 40% low from mismatched entries.
+export const GROUNDING_MIN_RATIO = 0.75;
+export const GROUNDING_MAX_RATIO = 1.33;
+const SPECIAL_VERSION = /(sugar[- ]?free|no sugar|sin az[uú]car|keto|protein|prote[ií]na|whey|light\b|lite\b|low[- ]?(fat|carb|sugar|cal)|diet\b|zero\b|stevia|monk ?fruit|vegan|gluten[- ]?free|almond flour|harina de almendra|fairlife|®|™)/i;
+const GROUND_STOP = new Set(["and", "with", "the", "of", "con", "de", "del", "la", "el", "y", "raw", "cooked", "fresh", "plain", "piece", "slice", "homemade", "small", "large", "medium", "glass", "cup", "bowl", "plate", "serving", "portion", "scoop", "tbsp", "tsp", "vaso", "taza", "plato", "porcion", "half"]);
+const SAME_WORD = { donut: "doughnut", dona: "doughnut", chop: "chop", cooky: "cookie", biscuit: "cookie", galleta: "cookie", pastel: "cake", torta: "cake" };
+const stem = (w) => {
+  const b = /ies$/.test(w) ? w.replace(/ies$/, "y") : /ie$/.test(w) ? w.replace(/ie$/, "y") : /(ches|shes|sses|xes)$/.test(w) ? w.slice(0, -2) : /[^s]s$/.test(w) ? w.slice(0, -1) : w;
+  return SAME_WORD[b] ?? b;
+};
+const words = (s) => String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z]+/).filter((w) => w.length >= 3 && !GROUND_STOP.has(w)).map(stem);
+
+/**
+ * Does this USDA description name the same food as the item? Every main word of the item has to
+ * be in it ("white rice" → "Rice, white, long-grain…" yes; "chocolate frosted donut" →
+ * "Doughnuts, cake-type, chocolate…" no: nothing says frosted). Wrong parts of the right food
+ * ("Egg, white") are caught by the calorie check instead.
+ */
+export function sameFood(itemName, description) {
+  const mine = words(itemName);
+  if (mine.length === 0) return false;
+  const theirs = new Set(words(description));
+  return mine.every((w) => theirs.has(w));
+}
+
+/** The item with USDA's numbers when they pass the checks above, else null. */
+export function groundWith(item, hit) {
+  if (!hit || !(item?.calories > 0) || !(item.gramsEstimate > 0)) return null;
+  if (SPECIAL_VERSION.test(item.name ?? "")) return null;
+  if (!sameFood(item.name, hit.description)) return null;
+  const factor = item.gramsEstimate / 100;
+  const calories = hit.per100.calories * factor;
+  const ratio = calories / item.calories;
+  if (ratio < GROUNDING_MIN_RATIO || ratio > GROUNDING_MAX_RATIO) return null;
+  // USDA's numbers win where it has them; the AI's estimate fills the gaps (USDA whole foods
+  // rarely list added sugar, for example).
+  const usdaMicros = scaleMicros(hit.microsPer100, factor);
+  let micros = cleanMicros(item.micros);
+  if (usdaMicros) {
+    micros = { ...(micros ?? {}) };
+    for (const [k, v] of Object.entries(usdaMicros)) if (v !== null) micros[k] = v;
+    micros = cleanMicros(micros);
+  }
+  return {
+    ...item,
+    calories,
+    proteinG: hit.per100.protein * factor,
+    carbsG: hit.per100.carbs * factor,
+    fatG: hit.per100.fat * factor,
+    micros,
+    grounded: true,
+  };
+}
+
 async function groundSingle(item) {
   try {
-    const params = new URLSearchParams({
-      api_key: usdaApiKey(),
-      query: item.name,
-      dataType: "Foundation,SR Legacy",
-      pageSize: "3",
-    });
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?${params.toString()}`;
-    const res = await fetchWithTimeout(url, {}, GROUNDING_PER_ITEM_TIMEOUT_MS);
+    if (!(item?.calories > 0) || SPECIAL_VERSION.test(item.name ?? "")) return item;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GROUNDING_PER_ITEM_TIMEOUT_MS);
+    const res = await apiFetch(`/api/foods?ground=${encodeURIComponent(item.name)}`, { signal: controller.signal }).finally(() => clearTimeout(timer));
     if (!res.ok) return item;
-
     const body = await res.json();
-    const topHit = Array.isArray(body?.foods) ? body.foods[0] : undefined;
-    if (!topHit) return item;
-
-    const per100 = usdaPer100g(topHit.foodNutrients);
-    if (!per100) return item;
-
-    if (!(item.calories > 0)) return item;
-
-    const factor = item.gramsEstimate / 100;
-    const groundedCalories = per100.calories * factor;
-    const ratio = groundedCalories / item.calories;
-    if (ratio < GROUNDING_RATIO_MIN || ratio > GROUNDING_RATIO_MAX) return item;
-
-    // USDA's numbers win where it has them; the AI's estimate fills the gaps (USDA whole foods
-    // rarely list added sugar, for example).
-    const usdaMicros = scaleMicros(usdaMicrosPer100g(topHit.foodNutrients), factor);
-    const aiMicros = cleanMicros(item.micros);
-    let micros = aiMicros;
-    if (usdaMicros) {
-      micros = { ...(aiMicros ?? {}) };
-      for (const [k, v] of Object.entries(usdaMicros)) if (v !== null) micros[k] = v;
-      micros = cleanMicros(micros);
+    const hits = Array.isArray(body?.hits) ? body.hits : [];
+    // the first result that is really this food, not just the first result
+    for (const hit of hits) {
+      const out = groundWith(item, hit);
+      if (out) return out;
+      if (sameFood(item.name, hit.description)) return item; // same food, numbers too far apart: keep the AI's
     }
-
-    return {
-      ...item,
-      calories: groundedCalories,
-      proteinG: per100.protein * factor,
-      carbsG: per100.carbs * factor,
-      fatG: per100.fat * factor,
-      micros,
-      grounded: true,
-    };
+    return item;
   } catch {
     return item; // network failure/timeout never fails the overall analysis
   }
