@@ -90,3 +90,14 @@ test("week strip day names line up in Chicago time", async () => {
   const { weekdayLabels } = await import("../js/i18n.js");
   assert.deepEqual(weekdayLabels().map((s) => s.slice(0, 3)), ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
 });
+
+test("a recap written against old targets is rebuilt with the current ones", async () => {
+  const { recapIsStale } = await import("../api/weekly.js");
+  const goals = { calories: 2828, proteinG: 116, carbsG: 379, fatG: 94 };
+  // luiswayne's real case: 186 g a day read as short of an old 212 g protein target
+  assert.equal(recapIsStale({ stats: { targetCalories: 2828, targetProteinG: 212 } }, goals), true);
+  assert.equal(recapIsStale({ stats: { targetCalories: 2253, targetProteinG: 116 } }, goals), true);
+  assert.equal(recapIsStale({ stats: { targetCalories: 2829, targetProteinG: 117 } }, goals), false, "rounding isn't a change");
+  assert.equal(recapIsStale({ stats: { targetCalories: null, targetProteinG: null } }, goals), false);
+  assert.equal(recapIsStale({ stats: { targetCalories: 2000 } }, null), false);
+});

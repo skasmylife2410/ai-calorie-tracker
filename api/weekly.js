@@ -15,7 +15,7 @@
 import { requireUser } from "./_auth.js";
 import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
-import { boardGoals } from "../js/nutrition.js";
+import { boardGoals, GOALS_VERSION } from "../js/nutrition.js";
 import { weekWindow, localWeekday, summarizeWeek, candidateMeals, buildPrompt, cleanRecap, RECAP_SCHEMA, TRANSLATE_SCHEMA, translatePrompt, textIn, localDay } from "./_week.js";
 
 const MODEL_ID = "gemini-3.5-flash";
@@ -88,9 +88,20 @@ export async function recapFor(owner, win) {
     const raw = await askGemini(buildPrompt({ name: profile.displayName, stats, candidates }));
     recap = cleanRecap(raw, candidates);
   }
-  const data = { weekStart: win.start, weekEnd: win.end, stats: { ...shownStats, days }, ...recap, createdAt: new Date().toISOString() };
+  const data = { weekStart: win.start, weekEnd: win.end, stats: { ...shownStats, days }, ...recap, goalsV: GOALS_VERSION, createdAt: new Date().toISOString() };
   await upsert("snapcal_recaps", { owner, week_start: win.start, data });
   return data;
+}
+
+/**
+ * A recap written against targets the person no longer has (before the current method, or before
+ * their targets moved): its "under" and "over" would judge the week by the wrong numbers.
+ */
+export function recapIsStale(recap, goals) {
+  if (!recap?.stats || !goals) return false;
+  const num = (v) => (v === null || v === undefined || v === "" ? NaN : Number(v));
+  const off = (a, b) => Number.isFinite(num(a)) && Number.isFinite(num(b)) && Math.abs(num(a) - num(b)) > 2;
+  return off(recap.stats.targetCalories, goals.calories) || off(recap.stats.targetProteinG, goals.proteinG);
 }
 
 /**
@@ -191,6 +202,10 @@ export default async function handler(req, res) {
     let recap = rows[0]?.data ?? null;
     // shown until the next Friday's replaces it; older than 8 days means the job missed a week
     if (!recap || localDay(new Date()) > addDays(recap.weekEnd, 8)) return res.status(200).json({ ok: true, recap: null });
+    // written with old targets: the same week again, judged by the targets they have now
+    if (recap.goalsV !== GOALS_VERSION || recapIsStale(recap, goalsFrom((await select("snapcal_profile", { select: "data", owner: `eq.${me}`, limit: "1" }))[0]?.data))) {
+      try { recap = await recapFor(me, { start: recap.weekStart, end: recap.weekEnd }); } catch { /* keep the old one rather than none */ }
+    }
     if (recap.tips?.length && !recap.byLang?.[lang]) recap = await addLanguage(me, rows[0].week_start, recap, lang);
     const text = textIn(recap, lang);
     const rest = { ...recap };
