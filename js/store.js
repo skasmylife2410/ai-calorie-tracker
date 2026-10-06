@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
+import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, REVIEW_EVERY_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
 import { mealName } from "./meal-builder.js";
 import { goalsV1 } from "./goals-v1.js";
 
@@ -815,6 +815,72 @@ export function learnedMaintenanceNow({ now = Date.now(), windowDays = 28 } = {}
 
   const out = learnedMaintenance({ days, weights, formulaTdee: formula });
   return out ? { ...out, formulaTdee: Math.round(formula), skippedDays: perDay.size - days.length } : null;
+}
+
+// ---------------------------------------------------------------------------
+// Monthly review (nutrition.monthlyReview): every 30 days the weight trend is checked against the
+// goal and the targets adjust themselves. The person sees what changed and can undo it.
+// ---------------------------------------------------------------------------
+
+const DAY_MS = 86400000;
+const goalNumbers = (g) => ({
+  calories: Math.round(g.targetCalories), proteinG: Math.round(g.proteinTargetG),
+  carbsG: Math.round(g.carbsTargetG), fatG: Math.round(g.fatTargetG),
+});
+
+/** When the next check-in is due (ms), or null before the first weigh-in. */
+export function reviewDueAt(profile = getProfile()) {
+  if (Number(profile.nextReviewAt) > 0) return Number(profile.nextReviewAt);
+  if (Number(profile.lastReviewAt) > 0) return Number(profile.lastReviewAt) + REVIEW_EVERY_DAYS * DAY_MS;
+  // never reviewed: a month after the first weigh-in, so there's a month to look at
+  const first = allWeightRaw().reduce((min, w) => Math.min(min, Number(w.timestamp) || Infinity), Infinity);
+  return Number.isFinite(first) ? first + REVIEW_EVERY_DAYS * DAY_MS : null;
+}
+
+export function reviewIsDue(now = Date.now()) {
+  const profile = getProfile();
+  if (!profileComplete(profile)) return false;
+  const due = reviewDueAt(profile);
+  return due !== null && now >= due;
+}
+
+/** The check-in for the last 30 days, worked out but not applied. */
+export function monthlyReviewNow({ now = Date.now() } = {}) {
+  const profile = getProfile();
+  const from = now - REVIEW_EVERY_DAYS * DAY_MS;
+  const weights = allWeightRaw()
+    .filter((w) => w.timestamp >= from && w.timestamp <= now)
+    .map((w) => ({ t: w.timestamp, kg: w.kg }));
+  const learnedOn = computeGoals().tdeeSource === "learned";
+  return { ...monthlyReview({ profile, weights, now, learnedOn }), learnedOn };
+}
+
+/** Applies a ready review to the profile and records it (with what to restore on undo). */
+export function applyMonthlyReview(review, { now = Date.now() } = {}) {
+  if (review?.status !== "ready") return null;
+  const profile = getProfile();
+  const from = goalNumbers(computeGoals());
+  const prev = {};
+  for (const k of Object.keys(review.patch)) prev[k] = profile[k] ?? null;
+  setProfile({ ...review.patch, lastReviewAt: now, nextReviewAt: null });
+  const to = goalNumbers(computeGoals());
+  const { patch, status, ...facts } = review;
+  const record = { ...facts, at: now, from, to, prev, undone: false };
+  setProfile({ lastReview: record });
+  return record;
+}
+
+/** Puts back what the last review changed. The check-in stays done; the next is in 30 days. */
+export function undoMonthlyReview() {
+  const r = getProfile().lastReview;
+  if (!r || r.undone || !r.prev) return false;
+  setProfile({ ...r.prev, lastReview: { ...r, undone: true } });
+  return true;
+}
+
+/** Not enough weigh-ins yet: look again in a week. */
+export function snoozeMonthlyReview({ now = Date.now(), days = 7 } = {}) {
+  setProfile({ nextReviewAt: now + days * DAY_MS });
 }
 
 /** Sync-only: merges a remote profile row (LWW on updatedAt, ms epoch). */

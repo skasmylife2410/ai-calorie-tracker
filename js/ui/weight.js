@@ -18,6 +18,7 @@ import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 import { buildDays, summarize, insights, milestones, weightDirection } from "../progress.js";
 import { localDateString } from "../nutrition.js";
+import { reviewCardHtml, wireReviewCard } from "./monthly-review.js";
 
 const RANGES = [30, 90, 365];
 let range = 30;
@@ -109,6 +110,7 @@ export function render(container) {
       </div>
 
       ${maintenanceHtml()}
+      ${reviewCardHtml()}
 
       ${series.length > 0 ? `
         <div class="wt-list-head">${t("weight.history")}</div>
@@ -132,6 +134,7 @@ export function render(container) {
   );
   container.querySelector("#wt-add")?.addEventListener("click", () => openWeightSheet({ onSaved: () => render(container) }));
   container.querySelector("#wt-goal")?.addEventListener("click", () => openGoalSheet({ onSaved: () => render(container) }));
+  wireReviewCard(container, { onChange: () => render(container) });
   container.querySelectorAll("[data-del]").forEach((b) =>
     b.addEventListener("click", () => {
       const entry = store.allWeightEntries().find((w) => w.day === b.dataset.del);

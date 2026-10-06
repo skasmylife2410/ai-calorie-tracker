@@ -342,6 +342,137 @@ export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 })
   };
 }
 
+/** Weekly change each pace aims for, as a share of body weight. */
+export const GOAL_RATE_PCT = Object.freeze({ slow: 0.0035, normal: 0.006, fast: 0.009 });
+
+/** Daily calorie change for a goal and pace: a deficit to lose, a small surplus to gain. */
+export function targetDelta({ goal, rate, weightKg }) {
+  if (goal === "maintain") return 0;
+  const pctPerWeek = GOAL_RATE_PCT[rate] ?? GOAL_RATE_PCT.normal;
+  const kgPerWeek = weightKg * pctPerWeek;
+  const perDay = Math.round((kgPerWeek * 7700) / 7 / 10) * 10;
+  // Gaining muscle needs a much smaller surplus than a fat-loss deficit, or it's mostly fat
+  return goal === "gain" ? Math.min(400, Math.round(perDay * 0.55)) : -perDay;
+}
+
+// ---------------------------------------------------------------------------
+// Monthly review
+// ---------------------------------------------------------------------------
+
+export const REVIEW_EVERY_DAYS = 30;
+/** Most a single review moves the daily calorie target on its own (beyond the new weight). */
+export const REVIEW_MAX_STEP_KCAL = 150;
+/** Within this many kg of the goal weight, a fast pace eases to normal so the last kilos stick. */
+export const REVIEW_NEAR_GOAL_KG = 2;
+
+/**
+ * The 30-day check: what the scale did, compared with what the goal planned, and the new
+ * targets that follow. Pure: the caller applies `patch` to the profile.
+ *
+ * Adjusts three things, in this order:
+ *   1. Weight: the profile's weight becomes the trend weight (not one morning's reading), so
+ *      maintenance, protein and the size of the deficit follow the body as it changes.
+ *   2. Goal weight: reached → the goal becomes "maintain"; close → a fast pace eases to normal.
+ *   3. Pace: when the scale moved slower or faster than planned and the learned maintenance
+ *      isn't already correcting for it, the daily target moves by at most 150 kcal toward the
+ *      plan. The learned maintenance does this job by itself once it's in use, so it isn't
+ *      done twice. The safety limits in resolveUserGoals still apply to whatever comes out.
+ *
+ * @param {{profile:object, weights:Array<{t:number, kg:number}>, now?:number, learnedOn?:boolean}} input
+ *   weights: the readings of the last 30 days
+ * @returns {{status:"needWeighIns", weighIns:number} | {status:"ready", verdict:string, startKg:number,
+ *   endKg:number, changeKg:number, kgPerWeek:number, plannedKgPerWeek:number, goal:string,
+ *   goalKg:number|null, reached:boolean, eased:boolean, stepKcal:number, weeksToGoal:number|null,
+ *   patch:object}}
+ */
+export function monthlyReview({ profile = {}, weights = [], now = Date.now(), learnedOn = false }) {
+  const sorted = [...weights].filter((w) => Number(w?.kg) > 0).sort((a, b) => a.t - b.t);
+  const spanDays = sorted.length ? (sorted[sorted.length - 1].t - sorted[0].t) / 86400000 : 0;
+  if (sorted.length < 4 || spanDays < 14) return { status: "needWeighIns", weighIns: sorted.length };
+
+  // least-squares line through the readings: one salty dinner doesn't decide the month
+  const t0 = sorted[0].t;
+  const xs = sorted.map((w) => (w.t - t0) / 86400000);
+  const ys = sorted.map((w) => w.kg);
+  const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
+  const my = ys.reduce((a, b) => a + b, 0) / ys.length;
+  let num = 0, den = 0;
+  for (let i = 0; i < xs.length; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+  const slope = den > 0 ? num / den : 0;
+  const startKg = my + slope * (0 - mx);
+  const endKg = my + slope * (xs[xs.length - 1] - mx);
+  const kgPerWeek = slope * 7;
+
+  const delta = Number(profile.targetDeltaKcal) || 0;
+  const goal = ["lose", "gain", "maintain"].includes(profile.goal) ? profile.goal : delta < 0 ? "lose" : delta > 0 ? "gain" : "maintain";
+  const plannedKgPerWeek = (delta * 7) / KCAL_PER_KG;
+  const oldKg = Number(profile.weightKg) > 0 ? Number(profile.weightKg) : endKg;
+  const newKg = Math.round(endKg * 10) / 10;
+
+  // how far off plan, with room for normal noise (water, salt, a hard training week)
+  const tol = Math.max(0.15, Math.abs(plannedKgPerWeek) * 0.35);
+  const diff = kgPerWeek - plannedKgPerWeek; // + = heavier than planned
+  let verdict = "onTrack";
+  if (goal === "lose") {
+    if (diff > tol) verdict = kgPerWeek >= 0.1 ? "gaining" : "slower";
+    else if (diff < -tol) verdict = "faster";
+  } else if (goal === "gain") {
+    if (diff < -tol) verdict = kgPerWeek <= -0.1 ? "losing" : "slower";
+    else if (diff > tol) verdict = "faster";
+  } else if (Math.abs(kgPerWeek) > 0.15) {
+    verdict = kgPerWeek > 0 ? "driftUp" : "driftDown";
+  }
+
+  // 2. the goal weight, when there is one that lies the way the goal points
+  const goalKg = Number(profile.goalWeightKg) > 0 ? Number(profile.goalWeightKg) : null;
+  const pointsRight = goalKg !== null && ((goal === "lose" && goalKg < oldKg + 0.5) || (goal === "gain" && goalKg > oldKg - 0.5));
+  const reached = pointsRight && (goal === "lose" ? newKg <= goalKg + 0.3 : newKg >= goalKg - 0.3);
+  const patch = { weightKg: newKg };
+  let eased = false;
+  let stepKcal = 0;
+  if (reached) {
+    patch.goal = "maintain";
+    patch.targetDeltaKcal = 0;
+  } else {
+    let rate = profile.goalRate;
+    if (pointsRight && rate === "fast" && Math.abs(goalKg - newKg) <= REVIEW_NEAR_GOAL_KG) { rate = "normal"; eased = true; patch.goalRate = rate; }
+    // the deficit or surplus is a share of body weight, so it follows the new weight
+    let nextDelta = rate && goal !== "maintain"
+      ? targetDelta({ goal, rate, weightKg: newKg })
+      : Math.round((delta * (newKg / oldKg)) / 10) * 10;
+    // 3. off plan and nothing else is correcting it: a small step toward the plan
+    if (!learnedOn && verdict !== "onTrack") {
+      const want = -diff * (KCAL_PER_KG / 7); // eat this much less (−) or more (+) per day
+      stepKcal = Math.round(Math.max(-REVIEW_MAX_STEP_KCAL, Math.min(REVIEW_MAX_STEP_KCAL, want)) / 10) * 10;
+      nextDelta += stepKcal;
+    }
+    if (goal === "gain") nextDelta = Math.max(0, Math.min(500, nextDelta));
+    if (goal === "lose") nextDelta = Math.min(0, nextDelta);
+    patch.targetDeltaKcal = nextDelta;
+  }
+
+  // at the planned pace from here, roughly how long until the goal weight
+  const pace = Math.abs((Number(patch.targetDeltaKcal) * 7) / KCAL_PER_KG);
+  const weeksToGoal = pointsRight && !reached && pace > 0.05 ? Math.ceil(Math.abs(goalKg - newKg) / pace) : null;
+
+  return {
+    status: "ready",
+    verdict,
+    startKg: Math.round(startKg * 10) / 10,
+    endKg: newKg,
+    changeKg: Math.round((endKg - startKg) * 10) / 10,
+    kgPerWeek: Math.round(kgPerWeek * 100) / 100,
+    plannedKgPerWeek: Math.round(plannedKgPerWeek * 100) / 100,
+    goal,
+    goalKg,
+    reached,
+    eased,
+    stepKcal,
+    weeksToGoal,
+    patch,
+  };
+}
+
 /** Device-local start-of-day timestamp (ms since epoch), matching Calendar.current.startOfDay semantics. */
 // ---------------------------------------------------------------------------
 // Exercise

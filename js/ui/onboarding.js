@@ -12,7 +12,7 @@ import * as store from "../store.js";
 import { DIETS, cleanDiets, toggleDiet } from "../diets.js";
 import { isStandalone, onInstallChange } from "../install.js";
 import { installGuideHtml, wireInstallGuide, defaultInstallFor } from "./install-guide.js";
-import { resolveUserGoals, estimateBodyFatPct, leanMassKg, GOALS_VERSION } from "../nutrition.js";
+import { resolveUserGoals, estimateBodyFatPct, leanMassKg, GOALS_VERSION, targetDelta } from "../nutrition.js";
 import { BF_RANGES, silhouetteSvg, navyBodyFat, rangeFor } from "../bodyfat.js";
 import { t, currentLanguage, setLanguage, formatNumber } from "../i18n.js";
 
@@ -74,14 +74,7 @@ const cmToIn = (cm) => cm / 2.54;
 const inToCm = (inch) => inch * 2.54;
 
 /** Daily calorie change for the chosen goal and pace, from % of body weight per week. */
-export function targetDelta({ goal, rate, weightKg }) {
-  if (goal === "maintain") return 0;
-  const pctPerWeek = { slow: 0.0035, normal: 0.006, fast: 0.009 }[rate] ?? 0.006;
-  const kgPerWeek = weightKg * pctPerWeek;
-  const perDay = Math.round((kgPerWeek * 7700) / 7 / 10) * 10;
-  // Gaining muscle needs a much smaller surplus than a fat-loss deficit, or it's mostly fat
-  return goal === "gain" ? Math.min(400, Math.round(perDay * 0.55)) : -perDay;
-}
+export { targetDelta }; // lives in nutrition.js so the monthly review uses the same rule
 
 /**
  * @param {HTMLElement} container

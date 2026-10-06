@@ -247,6 +247,12 @@ async function boot() {
   whenFirstSynced(8000).then(() => setTimeout(() => {
     try { store.syncLearnedTdeeFlag(); } catch { /* never block the app */ }
     if (hasProfile && !document.querySelector(".sheet-panel")) maybeShowGoalsUpdate();
+    // the 30-day check-in runs after the sync, so a second phone sees it was already done
+    if (hasProfile && !document.querySelector(".sheet-panel")) {
+      import("./ui/monthly-review.js")
+        .then((m) => m.maybeRunMonthlyReview({ onChange: () => { try { refreshMood(); } catch { /* never block */ } } }))
+        .catch(() => {});
+    }
   }, 1500));
 }
 

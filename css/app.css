@@ -2659,6 +2659,13 @@ body.setup-open { overflow: hidden; }
 .gu-table tbody tr + tr { border-top: 1px solid var(--sc-separator, rgba(0,0,0,.08)); }
 .gu-table .gu-old { color: var(--sc-secondary); text-decoration: line-through; }
 .gu-table .gu-arrow { width: 28px; text-align: center; color: var(--sc-secondary); }
+/* the 30-day check-in (js/ui/monthly-review.js) */
+.review-weights { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+.review-weights span { font-size: 17px; color: var(--sc-secondary); }
+.review-weights b { font-size: 28px; font-weight: 700; }
+.review .whatsnew-item { margin-bottom: 12px; }
+.review .gu-table { margin-top: 6px; }
+.review-card-open { border: 0; background: none; padding: 4px 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-primary-text); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .gu-table .gu-new { font-weight: 800; }
 .gu-table .gu-new small { font-weight: 500; color: var(--sc-secondary); }
 .gu-table .gu-same .gu-old { text-decoration: none; }
