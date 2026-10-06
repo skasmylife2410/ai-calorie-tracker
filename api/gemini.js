@@ -15,7 +15,7 @@ import { useAllowance, AI_PER_HOUR, overAllowance } from "./_limits.js";
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
 const REQUEST_TIMEOUT_MS = 45_000;
-const REQUIRES_IMAGE = Object.freeze({ meal: true, label: true, text: false, exercise: false, recipes: false, transcribe: false });
+const REQUIRES_IMAGE = Object.freeze({ meal: true, label: true, text: false, exercise: false, recipes: false, transcribe: false, leftovers: true });
 
 // Nutrients beyond the macros, for the same stated portion as calories/protein.
 const MICRO_FIELDS = ["fiber_g", "sugar_g", "added_sugar_g", "sat_fat_g", "sodium_mg", "potassium_mg"];
@@ -124,6 +124,39 @@ const RECIPE_SCHEMA = {
 };
 
 const LANGUAGE_NAMES = { en: "English", es: "Spanish" };
+
+// Leftovers: a photo of what's left of a meal already logged. For each logged item, how many
+// of it is still on the plate (0–1); the app takes that off the meal (js/leftovers.js).
+const LEFTOVERS_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    items: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: { index: { type: "INTEGER" }, left_fraction: { type: "NUMBER" } },
+        required: ["index", "left_fraction"],
+      },
+    },
+    confidence: { type: "NUMBER" },
+  },
+  required: ["items", "confidence"],
+};
+
+function buildLeftoversPrompt(text, { hasBefore = false } = {}) {
+  return `You help a calorie-tracking app subtract what someone did NOT eat.
+${hasBefore ? "The FIRST photo shows what's LEFT after eating. The SECOND photo shows the same meal before eating." : "The photo shows what's LEFT on the plate after eating."}
+The meal was logged as these items (index. name — amount served, when known):
+${text}
+
+Rules:
+- For each logged item, estimate left_fraction: the share of the served amount still left in the leftovers photo, from 0 (all eaten) to 1 (untouched). Return one entry per logged item, using its index.
+- An item that isn't visible in the leftovers photo is 0 (it was eaten).
+- Judge amounts against the same plate, bowl, cutlery or packaging${hasBefore ? " and against the before photo" : ""}. Bones, peels, shells, wrappers and garnish that isn't food don't count as leftovers.
+- Don't add foods that weren't logged.
+- confidence 0–1: how sure you are of the grams left overall.
+Return ONLY JSON matching the schema.`;
+}
 
 const TRANSCRIBE_SCHEMA = {
   type: "OBJECT",
@@ -398,13 +431,13 @@ export default async function handler(req, res) {
   }
 
   const body = parseRequestBody(req);
-  const mode = ["meal", "label", "text", "exercise", "recipes", "transcribe"].includes(body.mode) ? body.mode : "meal";
+  const mode = ["meal", "label", "text", "exercise", "recipes", "transcribe", "leftovers"].includes(body.mode) ? body.mode : "meal";
   // Bounded inputs: a photo is a base64 string (the app sends ~1 MB at most), a description a
   // few sentences. Anything else is refused before it can run up the Gemini bill.
   const image = typeof body.image === "string" && body.image.length <= MAX_IMAGE_BASE64 ? body.image : "";
   const text = typeof body.text === "string" ? body.text.slice(0, MAX_TEXT) : "";
   // a second photo of the same meal with something of known size beside it (meal mode only)
-  const image2 = mode === "meal" && typeof body.image2 === "string" && body.image2.length <= MAX_IMAGE_BASE64 ? body.image2 : "";
+  const image2 = (mode === "meal" || mode === "leftovers") && typeof body.image2 === "string" && body.image2.length <= MAX_IMAGE_BASE64 ? body.image2 : "";
   if (typeof body.image === "string" && body.image.length > MAX_IMAGE_BASE64) {
     res.status(200).json({ errorType: "other", message: "That photo is too large — try again." });
     return;
@@ -415,6 +448,10 @@ export default async function handler(req, res) {
     res
       .status(200)
       .json({ errorType: "other", message: "That photo couldn't be read — retake it or add the meal manually." });
+    return;
+  }
+  if (mode === "leftovers" && (!text || text.trim() === "")) {
+    res.status(200).json({ errorType: "other", message: "Pick the meal the leftovers are from." });
     return;
   }
   if (mode === "text" && (!text || text.trim() === "")) {
@@ -452,6 +489,7 @@ export default async function handler(req, res) {
 
   const promptText =
     mode === "meal" ? buildMealPrompt(text, body.lang, { twoPhotos: image2.length > 0 })
+    : mode === "leftovers" ? buildLeftoversPrompt(text, { hasBefore: image2.length > 0 })
     : mode === "text" ? buildTextPrompt(text, body.lang)
     : mode === "exercise" ? buildExercisePrompt(text, body.lang)
     : mode === "transcribe" ? buildTranscribePrompt(body.lang)
@@ -462,7 +500,7 @@ export default async function handler(req, res) {
         lang: body.lang,
       })
     : LABEL_PROMPT;
-  const schema = mode === "exercise" ? EXERCISE_SCHEMA : mode === "recipes" ? RECIPE_SCHEMA : mode === "transcribe" ? TRANSCRIBE_SCHEMA
+  const schema = mode === "leftovers" ? LEFTOVERS_SCHEMA : mode === "exercise" ? EXERCISE_SCHEMA : mode === "recipes" ? RECIPE_SCHEMA : mode === "transcribe" ? TRANSCRIBE_SCHEMA
     : mode === "meal" || mode === "text" ? MEAL_SCHEMA : RESPONSE_SCHEMA;
   // Empty-image rule: a 0-byte image must never be base64-encoded into inline_data (§3).
   const normalizedImage = image && image.length > 0 ? image : undefined;

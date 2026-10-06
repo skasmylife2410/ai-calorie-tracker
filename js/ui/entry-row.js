@@ -111,6 +111,7 @@ function completedRowHtml(entry) {
       <div class="entry-cal-row"><span class="entry-kcal">${Math.round(entry.calories)} kcal</span>${asking
         ? `<span class="entry-ask">${t("ask.rowCta", { n: entry.analysisQuestions.length })}</span>`
         : sizing ? `<span class="entry-ask">${t("size.rowCta")}</span>`
+        : Number(entry.leftovers?.removedKcal) > 0 ? `<span class="entry-leftover">${icon("plateHalf", { size: 12 })}${t("left.mark", { n: Math.round(entry.leftovers.removedKcal).toLocaleString() })}</span>`
         : `<span class="entry-kind">${t(`food.${kind}`)}</span>`}</div>
       <div class="macro-chip-row">${macroChips}</div>
     </div>

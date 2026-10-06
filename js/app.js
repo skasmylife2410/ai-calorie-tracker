@@ -81,6 +81,7 @@ const POPUP_TILES = [
   { id: "scan", icon: "cameraViewfinder", labelKey: "menu.scan", color: "#F0562D", primary: true },
   { id: "voice", icon: "mic", labelKey: "voice.tile", color: "#3BA7DB" },
   { id: "exercise", icon: "boltFill", labelKey: "menu.exercise", color: "#2AA66B" },
+  { id: "leftovers", icon: "plateHalf", labelKey: "menu.leftovers", color: "#A5672A" }, // takes off what wasn't eaten
   // "What should I eat?" lives on Home only (it answers "what fits in what's left today")
 ];
 
@@ -242,7 +243,15 @@ async function boot() {
   refreshPush().catch(() => {});
   const opened = openFromUrl(location.href);
   // the message about updated targets comes first; the general "what's new" waits its turn
-  const showUpdates = () => { if (!maybeShowGoalsUpdate()) maybeShowWhatsNew().catch(() => {}); };
+  const showUpdates = async () => {
+    if (maybeShowGoalsUpdate()) return;
+    // the Leftovers tutorial, once per phone, the next time the app opens
+    try {
+      const m = await import("./ui/leftovers-intro.js");
+      if (!document.querySelector(".sheet-panel") && m.maybeShowLeftoversIntro({ onTry: () => handleTileAction("leftovers") })) return;
+    } catch { /* never block the app */ }
+    maybeShowWhatsNew().catch(() => {});
+  };
   if (hasProfile && !opened) setTimeout(showUpdates, 800);
   // on a phone that only gets its profile from the server, the change is noted after the first sync
   whenFirstSynced(8000).then(() => setTimeout(() => {
@@ -434,6 +443,9 @@ function handleTileAction(tileId) {
       break;
     case "recipes":
       openRecipesSheet();
+      break;
+    case "leftovers":
+      import("./ui/leftovers-sheet.js").then((m) => m.openLeftoversSheet({ onChange: () => renderCurrentTab() })).catch(() => {});
       break;
   }
 }

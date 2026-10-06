@@ -78,6 +78,9 @@ export function openResultsSheet(entry, { template = null } = {}) {
           </div>
           <div class="results-items-section-footer">Tap any number to edit it. Editing grams rescales that item's macros proportionally.</div>
           <button type="button" class="add-to-meal-btn" id="add-to-meal">＋ ${t("group.addFood")}</button>
+          ${template ? "" : entry.leftovers?.removedKcal > 0
+            ? `<div class="left-note">${icon("plateHalf", { size: 15 })}<span>${t("left.mealNote", { n: Math.round(entry.leftovers.removedKcal) })}</span><button type="button" id="left-undo-meal">${t("left.undo")}</button></div>`
+            : `<button type="button" class="add-to-meal-btn" id="left-meal">${icon("plateHalf", { size: 15 })} ${t("left.mealCta")}</button>`}
           <button type="button" class="plate-toggle" id="plate-toggle" aria-expanded="false">🍽️ ${t("plate.open")}</button>
           <div class="plate-card hidden" id="plate-card"></div>
         </div>
@@ -369,6 +372,16 @@ export function openResultsSheet(entry, { template = null } = {}) {
       renderItems();
 
       // Add more foods to this meal from the food search; they join as extra items.
+      // leftovers: photograph what wasn't eaten (js/ui/leftovers-sheet.js); the meal reopens updated
+      panel.querySelector("#left-meal")?.addEventListener("click", () => {
+        close();
+        import("./leftovers-sheet.js").then((m) => m.openLeftoversSheet({ entryId: entry.id }));
+      });
+      panel.querySelector("#left-undo-meal")?.addEventListener("click", async () => {
+        const { undoLeftovers } = await import("../leftovers.js");
+        undoLeftovers(entry.id);
+        close();
+      });
       panel.querySelector("#add-to-meal").addEventListener("click", () => {
         openFoodSearchSheet({
           pickLabel: t("group.addToMeal"),

@@ -50,6 +50,7 @@
     "scan": "Escanear comida",
     "describe": "Describir comida",
     "exercise": "Ejercicio",
+    "leftovers": "Sobras",
     "ideas": "¿Qué como?"
   },
   "meal": {
@@ -1080,6 +1081,37 @@
     "remove": "Quitar GIF",
     "by": "GIF de {name}",
     "homeTitle": "Elige el GIF del botón"
+  },
+  "left": {
+    "title": "Sobras",
+    "pick": "¿Qué comida no terminaste?",
+    "none": "No hay comidas registradas en el último día. Registra la comida primero y luego fotografía lo que sobró.",
+    "step1": "Deja lo que sobró en el mismo plato o envase.",
+    "step2": "Tómale una foto. La app calcula lo que realmente comiste.",
+    "take": "Fotografiar las sobras",
+    "other": "Elegir otra comida",
+    "working": "Mirando lo que sobró…",
+    "error": "No funcionó. Intenta la foto otra vez.",
+    "done": "Comiste {ate} de {was} kcal. La comida está actualizada.",
+    "allEaten": "Parece que te lo comiste todo, así que no cambió nada.",
+    "ok": "Listo",
+    "undo": "Deshacer",
+    "mark": "−{n} de sobras",
+    "mealCta": "¿No lo terminaste? Fotografía las sobras",
+    "mealNote": "Se restaron {n} kcal de sobras"
+  },
+  "leftIntro": {
+    "title": "Nuevo: fotografía tus sobras",
+    "lead": "¿No terminaste el plato? No cuentes lo que dejaste.",
+    "photo": "foto",
+    "how1Title": "Registra la comida como siempre",
+    "how1Body": "Con foto, descripción o voz. Ahí no cambia nada.",
+    "how2Title": "Luego fotografía lo que sobró",
+    "how2Body": "Toca + y elige Sobras, o abre la comida y toca \"¿No lo terminaste?\". Mismo plato, una foto.",
+    "how3Title": "Solo cuenta lo que comiste",
+    "how3Body": "Las calorías y macros bajan según lo que dejaste. La comida muestra \"sobraron\" para que lo veas, y Deshacer la devuelve como estaba.",
+    "try": "Probarlo",
+    "later": "Entendido"
   },
   "size": {
     "title": "Revisa el tamaño",

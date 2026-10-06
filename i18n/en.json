@@ -50,6 +50,7 @@
     "scan": "Scan food",
     "describe": "Describe meal",
     "exercise": "Exercise",
+    "leftovers": "Leftovers",
     "ideas": "What should I eat?"
   },
   "meal": {
@@ -1080,6 +1081,37 @@
     "remove": "Remove GIF",
     "by": "GIF from {name}",
     "homeTitle": "Pick the button's GIF"
+  },
+  "left": {
+    "title": "Leftovers",
+    "pick": "Which meal didn't you finish?",
+    "none": "No meals logged in the last day. Log the meal first, then photograph what's left.",
+    "step1": "Keep what's left on the same plate or in the same box.",
+    "step2": "Take a photo of it. The app works out what you actually ate.",
+    "take": "Photograph the leftovers",
+    "other": "Pick another meal",
+    "working": "Looking at what's left…",
+    "error": "That didn't work. Try the photo again.",
+    "done": "You ate {ate} of {was} kcal. The meal is updated.",
+    "allEaten": "Looks like you ate it all, so nothing changed.",
+    "ok": "Done",
+    "undo": "Undo",
+    "mark": "−{n} leftover",
+    "mealCta": "Didn't finish it? Photo the leftovers",
+    "mealNote": "{n} kcal of leftovers taken off"
+  },
+  "leftIntro": {
+    "title": "New: photograph your leftovers",
+    "lead": "Didn't finish your plate? Don't count what you left.",
+    "photo": "photo",
+    "how1Title": "Log the meal as usual",
+    "how1Body": "A photo, a description or your voice. Nothing changes there.",
+    "how2Title": "Then photograph what's left",
+    "how2Body": "Tap + and choose Leftovers, or open the meal and tap \"Didn't finish it?\". Same plate, one photo.",
+    "how3Title": "It counts only what you ate",
+    "how3Body": "The calories and macros go down by what you left. The meal shows \"leftover\" so you can tell, and Undo puts it back.",
+    "try": "Try it",
+    "later": "Got it"
   },
   "size": {
     "title": "Check the size",

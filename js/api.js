@@ -777,7 +777,8 @@ const GEMINI_TIMEOUT_MS = 75000;
 export async function analyzeWithGemini({ mode, imageDataUrl, imageDataUrl2, text }) {
   const base64 = (url) => (url ? (url.indexOf(",") === -1 ? url : url.slice(url.indexOf(",") + 1)) : undefined);
   const image = base64(imageDataUrl);
-  const image2 = mode === "meal" ? base64(imageDataUrl2) : undefined; // the size-check photo
+  // the size-check photo (meal), or the meal before eating (leftovers)
+  const image2 = mode === "meal" || mode === "leftovers" ? base64(imageDataUrl2) : undefined;
 
   // The server gives up at 60 s; a request still open well after that is dead (a phone that
   // suspended the app mid-request can hold it for minutes), so it counts as a network error
