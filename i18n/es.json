@@ -876,6 +876,16 @@
     "usTitle": "{n} días seguidos"
   },
   "coach": {
+    "ofTotal": "{n} de {total} personas comparten contigo",
+    "loggedToday": "{n} registraron hoy",
+    "cardEmpty": "Nadie todavía. A cada persona se le pregunta una vez y decide en Perfil › Coach.",
+    "lastMeal": "última comida {when}",
+    "noMealsYet": "sin comidas aún",
+    "since": "comparte desde {date}",
+    "minAgo": "hace {n} min",
+    "hAgo": "hace {n} h",
+    "yesterday": "ayer",
+    "dAgo": "hace {n} días",
     "section": "Coach",
     "share": "Compartir mis comidas con mi coach",
     "onHint": "Tu coach (Aelson) puede ver tus comidas, sus fotos y tus metas diarias para ayudarte. No tu peso, tus datos corporales ni tus mensajes. Desactívalo cuando quieras y deja de verlo.",

@@ -58,3 +58,15 @@ test("meals of someone sharing, with photo and foods; someone not sharing is ref
   assert.equal(no.errorType, "forbidden");
   assert.equal(no.meals, undefined);
 });
+
+test("the list says how many of everyone share, with each person's streak and last meal", async () => {
+  const out = await call("a1", { op: "coach", today: "2026-10-07" });
+  assert.equal(out.total, 2, "everyone but the coach");
+  assert.equal(out.people[0].lastMealAt, null, "the mock has no timestamps column");
+  assert.equal(typeof out.people[0].streak, "number");
+});
+
+test("turning sharing on tells the coach; the coach's own account doesn't", async () => {
+  assert.equal((await call("m2", { op: "coachJoined", name: "María" })).ok, true);
+  assert.equal((await call("a1", { op: "coachJoined" })).ok, true);
+});

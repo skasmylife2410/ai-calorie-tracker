@@ -9,8 +9,10 @@
 import { isSafeDataImage } from "../js/safe-src.js";
 import { requireUser, parseUsers, DEFAULT_OWNER } from "./_auth.js";
 import { resolveGroup, membersOf } from "./_groups.js";
-import { boardGoals, exerciseCredit, creditRatioFor, estimateCaloriesBurned } from "../js/nutrition.js";
-import { isAdmin } from "./_members.js";
+import { boardGoals, exerciseCredit, creditRatioFor, estimateCaloriesBurned, streakFromDays, addDayKey } from "../js/nutrition.js";
+import { isAdmin, ADMIN } from "./_members.js";
+import { notify } from "./_push.js";
+import { useAllowance } from "./_limits.js";
 
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -97,6 +99,7 @@ export default async function handler(req, res) {
   }
 
   const body = parseBody(req);
+  if (body.op === "coachJoined") return coachJoined(me, body, res);
   if (body.op === "coach" || body.op === "coachMeals") return coach(me, body, res);
   const earliest = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
   let from = typeof body.from === "string" && DAY_RE.test(body.from) ? body.from : earliest;
@@ -239,12 +242,28 @@ async function coach(me, body, res) {
     if (body.op === "coach") {
       const profiles = await select("snapcal_profile", { select: "owner,data", limit: "500" });
       const from = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
-      const people = profiles
-        .filter((p) => p.owner !== me && sharesWithCoach(p.data))
+      const sharing = profiles.filter((p) => p.owner !== me && sharesWithCoach(p.data));
+      // their logged days (streak) and last meal, from the server's copy
+      const since = addDayKey(new Date().toISOString().slice(0, 10), -120);
+      const rows = sharing.length
+        ? await select("snapcal_food_entries", { select: "owner,day,ts:data->>timestamp", owner: `in.(${sharing.map((p) => p.owner).join(",")})`, deleted: "is.false", day: `gte.${since}`, limit: "20000" })
+        : [];
+      const daysOf = new Map();
+      const lastOf = new Map();
+      for (const r of rows) {
+        if (!daysOf.has(r.owner)) daysOf.set(r.owner, new Set());
+        daysOf.get(r.owner).add(r.day);
+        const ts = Number(r.ts) || 0;
+        if (ts > (lastOf.get(r.owner) ?? 0)) lastOf.set(r.owner, ts);
+      }
+      const today = typeof body.today === "string" && DAY_RE.test(body.today) ? body.today : new Date().toISOString().slice(0, 10);
+      const people = sharing
         .map((p) => {
           const d = p.data ?? {};
           const raw = d.avatar;
           return {
+            lastMealAt: lastOf.get(p.owner) ?? null,
+            streak: streakFromDays(daysOf.get(p.owner) ?? [], Array.isArray(d.streak?.frozenDays) ? d.streak.frozenDays : [], today),
             owner: p.owner,
             name: typeof d.displayName === "string" ? d.displayName.trim().slice(0, 40) || null : null,
             avatar: typeof raw === "string" && isSafeDataImage(raw) && raw.length < 120000 ? raw : null,
@@ -253,8 +272,9 @@ async function coach(me, body, res) {
             days: reportedDays(d, from), // their phone's own day totals, last week
           };
         })
-        .sort((a, b) => String(a.name ?? a.owner).localeCompare(String(b.name ?? b.owner)));
-      return res.status(200).json({ ok: true, people });
+        // most recently active first
+        .sort((a, b) => (b.lastMealAt ?? 0) - (a.lastMealAt ?? 0) || String(a.name ?? a.owner).localeCompare(String(b.name ?? b.owner)));
+      return res.status(200).json({ ok: true, people, total: profiles.filter((p) => p.owner !== me).length });
     }
     const owner = String(body.owner ?? "").toLowerCase();
     const day = typeof body.day === "string" && DAY_RE.test(body.day) ? body.day : null;
@@ -288,4 +308,22 @@ export function coachMeal(d) {
       ? d.analysisItems.slice(0, 20).map((i) => ({ name: String(i?.name ?? "").slice(0, 80), grams: Math.round(Number(i?.gramsEstimate) || 0), calories: Math.round(Number(i?.calories) || 0) }))
       : [],
   };
+}
+
+/** Someone just turned sharing on: tell the coach (at most 3 times a day per person). */
+async function coachJoined(me, body, res) {
+  if (isAdmin(me)) return res.status(200).json({ ok: true });
+  try {
+    if (!(await useAllowance(`coachJoined:${me}`, 3, 24 * 60))) return res.status(200).json({ ok: true, skipped: true });
+    const name = typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 40) : me;
+    await notify([ADMIN], (lang) => ({
+      title: lang === "es" ? `${name} comparte sus comidas contigo` : `${name} is sharing their meals with you`,
+      body: lang === "es" ? "Ábrelo en Nosotros › Coach." : "Open it from Us › Coach.",
+      url: "/?tab=us&coach=1",
+      tag: "coach",
+    }));
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    return res.status(200).json({ ok: false, message: err?.message ?? String(err) });
+  }
 }

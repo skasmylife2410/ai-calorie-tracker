@@ -876,6 +876,16 @@
     "usTitle": "{n} days in a row"
   },
   "coach": {
+    "ofTotal": "{n} of {total} people share with you",
+    "loggedToday": "{n} logged today",
+    "cardEmpty": "Nobody yet. Each person is asked once and decides in Profile › Coach.",
+    "lastMeal": "last meal {when}",
+    "noMealsYet": "no meals yet",
+    "since": "sharing since {date}",
+    "minAgo": "{n} min ago",
+    "hAgo": "{n} h ago",
+    "yesterday": "yesterday",
+    "dAgo": "{n} days ago",
     "section": "Coach",
     "share": "Share my meals with my coach",
     "onHint": "Your coach (Aelson) can see your meals, their photos and your daily targets, to help you. Not your weight, body details or messages. Turn it off any time and they can't see it any more.",

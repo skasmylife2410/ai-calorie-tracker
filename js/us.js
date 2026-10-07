@@ -762,7 +762,7 @@ function render() {
   // get sparklines, which stay legible however many rows there are.
   if (selectedDay && !days.some((d) => d.key === selectedDay)) selectedDay = null; // range shrank
   const chart = chartHtml(people, days);
-  body.innerHTML = groupBarHtml() + `<section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + todayHtml(people) + chart + summaryHtml(people, days) +
+  body.innerHTML = groupBarHtml() + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + todayHtml(people) + chart + summaryHtml(people, days) +
     (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: data.group?.name ?? "" })}</p>` : "");
   body.querySelectorAll("[data-group]").forEach((b) => b.addEventListener("click", () => {
     if (b.dataset.group === (data.group?.id ?? null)) return;
@@ -774,6 +774,8 @@ function render() {
   wireChart(people, days);
   if (body.id === "us-tab-body") renderPushCard(body.querySelector("#us-push")); // in the app only, not us.html
   renderRecap(body.querySelector("#us-recap"), { lang: currentLanguage() === "es" ? "es" : "en" });
+  // the coach's own account: who shares their log, one tap away (js/ui/coach.js)
+  if (body.id === "us-tab-body") import("./ui/coach.js").then((m) => m.renderCoachCard(body.querySelector("#us-coach"))).catch(() => {});
   body.querySelectorAll("[data-note-to]").forEach((b) => b.addEventListener("click", () => openNoteSheet(b.dataset.noteTo)));
   fillIncredulousBadges(body);
   moodSounds(people);

@@ -10,6 +10,7 @@ import { t, formatNumber, formatDate } from "../i18n.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { apiFetch } from "../net.js";
 import { localDateString } from "../nutrition.js";
+import { icon } from "./icons.js";
 
 export const COACH = "aelson"; // same account as api/_members.js ADMIN
 export const COACH_ASK_KEY = "snapcal.coachAskSeen";
@@ -20,7 +21,12 @@ export const isCoach = () => me() === COACH;
 
 /** Turns sharing on or off (the profile syncs; the server reads it from there). */
 export function setShareWithCoach(on) {
+  const was = store.getProfile().shareWithCoach === true;
   store.setProfile({ shareWithCoach: Boolean(on), shareWithCoachAt: on ? Date.now() : null });
+  // let the coach know someone new is sharing (the server limits how often)
+  if (on && !was) {
+    apiFetch("/api/compare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "coachJoined", name: store.getProfile().displayName || "" }) }).catch(() => {});
+  }
 }
 
 // --- Profile section --------------------------------------------------------------------------
@@ -97,6 +103,38 @@ async function post(body) {
 }
 
 const time = (ts) => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+/** "2 h ago", "yesterday", "3 days ago". */
+function ago(ts) {
+  const min = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (min < 60) return t("coach.minAgo", { n: Math.max(1, min) });
+  const h = Math.round(min / 60);
+  if (h < 24) return t("coach.hAgo", { n: h });
+  const d = Math.round(h / 24);
+  return d === 1 ? t("coach.yesterday") : t("coach.dAgo", { n: d });
+}
+
+// --- The Coach card at the top of Us (the coach's account only) ---------------------------------
+
+/** Fills `host` with "N of M share with you" and their faces; tap to open the list. */
+export async function renderCoachCard(host) {
+  if (!host || !isCoach()) { host?.remove(); return; }
+  let out;
+  try { out = await post({ op: "coach", today: localDateString(Date.now()) }); } catch { host.remove(); return; }
+  const list = out.people ?? [];
+  const today = localDateString(Date.now());
+  const loggedToday = list.filter((p) => (p.days?.[today]?.meals ?? 0) > 0).length;
+  host.innerHTML = `
+    <button type="button" class="coach-card" id="coach-card">
+      <span class="coach-card-text">
+        <span class="coach-card-title">${t("coach.title")}</span>
+        <b>${t("coach.ofTotal", { n: list.length, total: out.total ?? list.length })}</b>
+        <small>${list.length ? t("coach.loggedToday", { n: loggedToday }) : t("coach.cardEmpty")}</small>
+      </span>
+      <span class="coach-faces">${list.slice(0, 5).map((p) => p.avatar ? `<img src="${safeSrc(p.avatar)}" alt="">` : `<i>${esc((p.name || p.owner).slice(0, 1).toUpperCase())}</i>`).join("")}${list.length > 5 ? `<i>+${list.length - 5}</i>` : ""}</span>
+      <span class="coach-chev">›</span>
+    </button>`;
+  host.querySelector("#coach-card").addEventListener("click", () => openCoachSheet());
+}
 
 export function openCoachSheet() {
   let person = null;        // the person open, or null for the list
@@ -112,24 +150,29 @@ export function openCoachSheet() {
         wireNavBar(panel, { onLeading: () => (back ? (person = null, list()) : close()) });
       };
 
+      let total = null;
       const list = async () => {
         frame(t("coach.title"), `<div class="left-working"><span class="left-spin" aria-hidden="true"></span>${t("coach.loading")}</div>`);
         try {
-          if (!people) people = (await post({ op: "coach" })).people ?? [];
+          if (!people) { const out = await post({ op: "coach", today: localDateString(Date.now()) }); people = out.people ?? []; total = out.total ?? null; }
         } catch (err) {
           frame(t("coach.title"), `<p class="left-lead">${esc(err.message)}</p>`);
           return;
         }
         const today = localDateString(Date.now());
         frame(t("coach.title"), people.length
-          ? `<p class="left-lead">${t("coach.listLead", { n: people.length })}</p>
+          ? `<p class="left-lead">${total ? t("coach.ofTotal", { n: people.length, total }) : t("coach.listLead", { n: people.length })}</p>
              <div class="left-list">${people.map((p) => {
                const d = p.days?.[today];
                const goal = p.goals?.calories;
                return `
                  <button type="button" class="left-meal coach-person" data-owner="${esc(p.owner)}">
                    ${p.avatar ? `<img src="${safeSrc(p.avatar)}" alt="">` : `<span class="left-meal-ph coach-initial">${esc((p.name || p.owner).slice(0, 1).toUpperCase())}</span>`}
-                   <span class="left-meal-text"><b>${esc(p.name || p.owner)}</b><small>${d ? t("coach.today", { kcal: formatNumber(d.calories), goal: goal ? formatNumber(goal) : "–", meals: d.meals ?? 0 }) : t("coach.nothingToday")}</small></span>
+                   <span class="left-meal-text">
+                     <b>${esc(p.name || p.owner)}${p.streak >= 2 ? ` <span class="us-streak">${icon("flameFill", { size: 11, color: "var(--sc-streak-flame)" })}${p.streak}</span>` : ""}</b>
+                     <small>${d ? t("coach.today", { kcal: formatNumber(d.calories), goal: goal ? formatNumber(goal) : "–", meals: d.meals ?? 0 }) : t("coach.nothingToday")}</small>
+                     <small class="coach-meta">${p.lastMealAt ? t("coach.lastMeal", { when: ago(p.lastMealAt) }) : t("coach.noMealsYet")}${p.sharedAt ? ` · ${t("coach.since", { date: formatDate(p.sharedAt, { month: "short", day: "numeric" }) })}` : ""}</small>
+                   </span>
                    <span class="coach-chev">›</span>
                  </button>`;
              }).join("")}</div>`

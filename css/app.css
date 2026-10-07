@@ -2747,7 +2747,7 @@ body.setup-open { overflow: hidden; }
 .coach-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
 .coach-switch input { width: 44px; height: 26px; accent-color: var(--sc-primary-text); flex: none; }
 .coach-open { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; display: flex; justify-content: space-between; cursor: pointer; }
-.coach-body { display: grid; gap: 10px; align-content: start; grid-auto-rows: max-content; }
+.coach-body { display: grid; gap: 10px; align-content: start; grid-auto-rows: max-content; padding-left: 16px !important; padding-right: 16px !important; }
 .coach-initial { font-weight: 800; font-size: 18px; color: var(--sc-primary-text); }
 .coach-chev { color: var(--sc-secondary); font-size: 20px; }
 .coach-day { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; font-size: 16px; }
@@ -2796,3 +2796,15 @@ button.calorie-streak { border: 0; background: none; padding: 0; font: inherit; 
 .us-streak { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
 #undo-toast .icon { flex: none; }
 .st-wk { font-size: 11px; font-weight: 600; color: var(--sc-secondary); }
+
+/* the coach card on Us (js/ui/coach.js renderCoachCard) */
+.us-coach:empty { display: none; }
+.coach-card { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 14px; border: 0; border-radius: 20px; background: var(--sc-card, #fff); box-shadow: var(--sc-card-shadow); font: inherit; color: var(--sc-primary-text); text-align: left; cursor: pointer; box-sizing: border-box; }
+.coach-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.coach-card-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sc-secondary); }
+.coach-card b { font-size: 16px; }
+.coach-card small { font-size: 12.5px; color: var(--sc-secondary); }
+.coach-faces { display: flex; flex: none; }
+.coach-faces img, .coach-faces i { width: 30px; height: 30px; border-radius: 50%; margin-left: -8px; border: 2px solid var(--sc-card, #fff); object-fit: cover; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; background: var(--sc-secondary-14, rgba(0,0,0,.08)); color: var(--sc-primary-text); box-sizing: border-box; }
+.coach-faces :first-child { margin-left: 0; }
+.coach-meta { font-size: 12px !important; opacity: .85; }
