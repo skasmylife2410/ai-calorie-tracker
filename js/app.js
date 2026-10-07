@@ -250,6 +250,11 @@ async function boot() {
       const m = await import("./ui/leftovers-intro.js");
       if (!document.querySelector(".sheet-panel") && m.maybeShowLeftoversIntro({ onTry: () => handleTileAction("leftovers") })) return;
     } catch { /* never block the app */ }
+    // once: would they like to share their log with their coach? (off unless they say yes)
+    try {
+      const c = await import("./ui/coach.js");
+      if (!document.querySelector(".sheet-panel") && c.maybeAskCoachShare()) return;
+    } catch { /* never block the app */ }
     maybeShowWhatsNew().catch(() => {});
   };
   if (hasProfile && !opened) setTimeout(showUpdates, 800);

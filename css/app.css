@@ -2742,3 +2742,22 @@ body.setup-open { overflow: hidden; }
 .fav-stack-toggle { flex: 1; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sc-primary-text); }
 .fav-stack-toggle input { width: 18px; height: 18px; accent-color: var(--sc-primary-text); }
 .fav-log-many { flex: none; padding: 10px 14px !important; font-size: 13px !important; }
+
+/* coach (js/ui/coach.js) */
+.coach-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.coach-switch input { width: 44px; height: 26px; accent-color: var(--sc-primary-text); flex: none; }
+.coach-open { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; display: flex; justify-content: space-between; cursor: pointer; }
+.coach-body { display: grid; gap: 10px; align-content: start; grid-auto-rows: max-content; }
+.coach-initial { font-weight: 800; font-size: 18px; color: var(--sc-primary-text); }
+.coach-chev { color: var(--sc-secondary); font-size: 20px; }
+.coach-day { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; font-size: 16px; }
+.coach-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 12px; border-radius: 16px; background: var(--sc-card, #fff); box-shadow: var(--sc-card-shadow); }
+.coach-totals div { display: flex; flex-direction: column; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.coach-totals b { font-size: 17px; }
+.coach-totals small { font-size: 11px; color: var(--sc-secondary); text-align: center; }
+.coach-meal { padding: 12px; border-radius: 16px; background: var(--sc-card, #fff); box-shadow: var(--sc-card-shadow); display: grid; gap: 6px; }
+.coach-photo { width: 100%; max-height: 260px; object-fit: cover; border-radius: 12px; }
+.coach-meal-head { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+.coach-meal-head span { color: var(--sc-secondary); font-size: 13px; flex: none; }
+.coach-meal-nums { font-size: 13px; color: var(--sc-secondary); font-variant-numeric: tabular-nums; }
+.coach-items { margin: 0; padding-left: 18px; font-size: 13px; color: var(--sc-secondary); display: grid; gap: 2px; }

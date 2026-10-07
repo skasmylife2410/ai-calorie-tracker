@@ -10,6 +10,7 @@ import { isSafeDataImage } from "../js/safe-src.js";
 import { requireUser, parseUsers, DEFAULT_OWNER } from "./_auth.js";
 import { resolveGroup, membersOf } from "./_groups.js";
 import { boardGoals, exerciseCredit, creditRatioFor, estimateCaloriesBurned } from "../js/nutrition.js";
+import { isAdmin } from "./_members.js";
 
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -96,6 +97,7 @@ export default async function handler(req, res) {
   }
 
   const body = parseBody(req);
+  if (body.op === "coach" || body.op === "coachMeals") return coach(me, body, res);
   const earliest = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
   let from = typeof body.from === "string" && DAY_RE.test(body.from) ? body.from : earliest;
   if (from < earliest) from = earliest;
@@ -217,4 +219,71 @@ function partOfDay(timestamp) {
   }
 
   res.status(200).json({ me, people, group, groups });
+}
+
+// --- Coach view ---------------------------------------------------------------------------------
+// People can choose, in Profile, to share their meal log with the app's owner (their coach):
+// profile.shareWithCoach. Only the owner can ask, and only for people who have it on right now —
+// checked on every request, so turning it off takes effect at once.
+//
+// POST { op: "coach" }                       -> { ok, people: [{ owner, name, avatar, goals, sharedAt, days }] }
+// POST { op: "coachMeals", owner, day }      -> { ok, meals: [...] }  one day's meals, photos included
+
+const sharesWithCoach = (data) => data?.shareWithCoach === true;
+
+async function coach(me, body, res) {
+  if (!isAdmin(me)) return res.status(200).json({ errorType: "forbidden", message: "Only the coach can see this." });
+  try {
+    if (body.op === "coach") {
+      const profiles = await select("snapcal_profile", { select: "owner,data", limit: "500" });
+      const from = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
+      const people = profiles
+        .filter((p) => p.owner !== me && sharesWithCoach(p.data))
+        .map((p) => {
+          const d = p.data ?? {};
+          const raw = d.avatar;
+          return {
+            owner: p.owner,
+            name: typeof d.displayName === "string" ? d.displayName.trim().slice(0, 40) || null : null,
+            avatar: typeof raw === "string" && isSafeDataImage(raw) && raw.length < 120000 ? raw : null,
+            goals: goalsFrom(d),
+            sharedAt: Number(d.shareWithCoachAt) || null,
+            days: reportedDays(d, from), // their phone's own day totals, last week
+          };
+        })
+        .sort((a, b) => String(a.name ?? a.owner).localeCompare(String(b.name ?? b.owner)));
+      return res.status(200).json({ ok: true, people });
+    }
+    const owner = String(body.owner ?? "").toLowerCase();
+    const day = typeof body.day === "string" && DAY_RE.test(body.day) ? body.day : null;
+    if (!owner || !day) return res.status(200).json({ errorType: "other", message: "Pick a person and a day." });
+    const [profile] = await select("snapcal_profile", { select: "data", owner: `eq.${owner}`, limit: "1" });
+    if (!sharesWithCoach(profile?.data)) return res.status(200).json({ errorType: "forbidden", message: "This person isn't sharing their log." });
+    const rows = await select("snapcal_food_entries", { select: "data", owner: `eq.${owner}`, deleted: "is.false", day: `eq.${day}`, limit: "200" });
+    const meals = rows.map((r) => coachMeal(r.data)).filter(Boolean).sort((a, b) => a.ts - b.ts);
+    return res.status(200).json({ ok: true, meals, goals: goalsFrom(profile.data) });
+  } catch (err) {
+    return res.status(200).json({ errorType: "other", message: err?.message ?? String(err) });
+  }
+}
+
+/** One meal as the coach sees it: what, when, how much, the photo, and its foods. */
+export function coachMeal(d) {
+  if (!d || typeof d !== "object" || d.isPending === true) return null;
+  const n = (v) => Math.round((Number(v) || 0) * 10) / 10;
+  const photo = typeof d.photoDataUrl === "string" && isSafeDataImage(d.photoDataUrl) && d.photoDataUrl.length < 1500000 ? d.photoDataUrl : null;
+  return {
+    id: String(d.id ?? ""),
+    ts: Number(d.timestamp) || 0,
+    name: String(d.name ?? "").slice(0, 120),
+    calories: Math.round(Number(d.calories) || 0),
+    proteinG: n(d.proteinG), carbsG: n(d.carbsG), fatG: n(d.fatG),
+    servings: Number(d.servings) || 1,
+    source: typeof d.source === "string" ? d.source : null,
+    photo,
+    leftoverKcal: Math.round(Number(d.leftovers?.removedKcal) || 0) || null,
+    items: Array.isArray(d.analysisItems)
+      ? d.analysisItems.slice(0, 20).map((i) => ({ name: String(i?.name ?? "").slice(0, 80), grams: Math.round(Number(i?.gramsEstimate) || 0), calories: Math.round(Number(i?.calories) || 0) }))
+      : [],
+  };
 }

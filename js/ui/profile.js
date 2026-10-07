@@ -11,6 +11,7 @@ import { postAuth } from "./login.js";
 import { nanoFailure } from "./nano-doodle.js";
 import { setStoredToken } from "../net.js";
 import { roundDisplay } from "../nutrition.js";
+import { coachSectionHtml, wireCoachSection } from "./coach.js";
 import { wireNumericInput } from "./numeric-field.js";
 import { THEMES, resolveTheme } from "../theme.js";
 import {
@@ -69,6 +70,7 @@ export function render(container) {
         <div class="ios-section-footer">${t("displayName.hint")}</div>
       </div>
       ${accountSectionHtml(currentUsername)}
+      ${coachSectionHtml()}
       ${privacySectionHtml()}
       ${membersSectionHtml()}
       <div class="ios-section" id="diag-section"></div>
@@ -103,6 +105,7 @@ export function render(container) {
   container.querySelector("#profile-back")?.addEventListener("click", () => globalThis.snapcalGoTo?.("home"));
   wireAccount(container, currentUsername);
   wirePrivacy(container);
+  wireCoachSection(container, { onChange: () => render(container) });
   wireInvites(container);
   wireMembers(container, currentUsername);
   wireDiagnostics(container);
