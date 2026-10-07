@@ -736,6 +736,26 @@
     "stripOpen": "Ver todos los nutrientes",
     "stripPartial": "{n} comida sin datos|{n} comidas sin datos"
   },
+  "stack": {
+    "select": "Seleccionar",
+    "tip": "Mantén una comida y suéltala sobre otra para juntarlas.",
+    "tipPast": "Toca Hoy para comerla otra vez hoy.",
+    "selected": "{n} seleccionadas",
+    "pick": "Toca comidas para seleccionarlas",
+    "sum": "{n} seleccionadas · {kcal} kcal",
+    "stack": "Juntar",
+    "favourite": "Favorito",
+    "toToday": "Añadir a hoy",
+    "todayShort": "Hoy",
+    "copiedOne": "Añadida a hoy",
+    "copied": "{n} comida añadida a hoy|{n} comidas añadidas a hoy",
+    "favOne": "Guardada en favoritos",
+    "favMany": "{n} alimentos guardados como una comida favorita",
+    "favTip": "Marca varias para registrarlas juntas.",
+    "pickFood": "Seleccionar {name}",
+    "asOne": "Como una comida",
+    "logMany": "Registrar {n} · {kcal} kcal"
+  },
   "group": {
     "hint": "Truco: mantén presionada una comida y suéltala sobre otra para agruparlas.",
     "done": "Agrupado en {name}",

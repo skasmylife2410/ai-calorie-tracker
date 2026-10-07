@@ -736,6 +736,26 @@
     "stripOpen": "Show all nutrients",
     "stripPartial": "{n} meal missing data|{n} meals missing data"
   },
+  "stack": {
+    "select": "Select",
+    "tip": "Hold a meal and drop it on another to stack them.",
+    "tipPast": "Tap Today to have it again today.",
+    "selected": "{n} selected",
+    "pick": "Tap meals to select them",
+    "sum": "{n} selected · {kcal} kcal",
+    "stack": "Stack",
+    "favourite": "Favourite",
+    "toToday": "Add to today",
+    "todayShort": "Today",
+    "copiedOne": "Added to today",
+    "copied": "{n} meal added to today|{n} meals added to today",
+    "favOne": "Saved to favourites",
+    "favMany": "{n} foods saved as one favourite meal",
+    "favTip": "Tick several to log them together.",
+    "pickFood": "Select {name}",
+    "asOne": "As one meal",
+    "logMany": "Log {n} · {kcal} kcal"
+  },
   "group": {
     "hint": "Tip: hold a meal and drop it on another to group them.",
     "done": "Grouped into {name}",

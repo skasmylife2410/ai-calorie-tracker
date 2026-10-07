@@ -28,7 +28,6 @@ export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
           ${navBar({ title: t("day.meals"), leading: { label: t("app.close") } })}
           <div class="sheet-panel-body">
             <div class="day-meals-head">${formatDate(date, { weekday: "long", month: "short", day: "numeric" })}</div>
-            ${meals.length >= 2 ? `<div class="group-hint">${t("group.hint")}</div>` : ""}
             <div class="day-meals-list" id="day-meals-list"></div>
           </div>`;
 

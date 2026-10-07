@@ -414,6 +414,52 @@ export function groupEntries(sourceId, targetId) {
   return { entry, undo };
 }
 
+/**
+ * Stacks several meals into one (the first in `ids` keeps its place and time). Returns
+ * { entry, undo } or null when fewer than two can be stacked.
+ */
+export function groupMany(ids) {
+  const list = [...new Set(ids ?? [])].filter((id) => getFoodEntry(id));
+  if (list.length < 2) return null;
+  const [target, ...rest] = list;
+  const undos = [];
+  let entry = null;
+  for (const src of rest) {
+    const out = groupEntries(src, target);
+    if (!out) continue;
+    entry = out.entry;
+    undos.push(out.undo);
+  }
+  if (!entry) return null;
+  return { entry, undo: () => undos.reverse().forEach((u) => u()) };
+}
+
+/**
+ * Logs a meal again at another time (an earlier day's meal for today): the same foods, amounts,
+ * photo and servings, as a new meal. Questions, size checks and leftovers aren't carried over.
+ */
+export function copyEntryTo(entryId, timestamp = Date.now()) {
+  const e = getFoodEntry(entryId);
+  if (!e || e.isPending === true || e.analysisFailed === true) return null;
+  const { id, updatedAt, timestamp: _t, analysisQuestions, questionsAnswered, analysisSizeCheck, sizeChecked, leftovers, ...rest } = JSON.parse(JSON.stringify(e));
+  return addFoodEntry({ ...rest, timestamp, analysisItems: rest.analysisItems ?? null });
+}
+
+/**
+ * Favourites a selection: one meal is hearted as it is; several are saved as one meal made of
+ * all their foods. Returns the saved food.
+ */
+export function favouriteMany(ids) {
+  const entries = (ids ?? []).map(getFoodEntry).filter(Boolean);
+  if (entries.length === 0) return null;
+  if (entries.length === 1) {
+    if (!isFavorited(entries[0])) toggleFavorite(entries[0].id);
+    return entries[0];
+  }
+  const items = entries.flatMap((e) => itemsOfEntry(e));
+  return saveMealTemplate({ items, photoDataUrl: entries.find((e) => e.photoDataUrl)?.photoDataUrl ?? null });
+}
+
 // ---------------------------------------------------------------------------
 // Sync support — tombstones (deletions) + LWW merge of remote records.
 // Never called from UI code; see js/sync.js.

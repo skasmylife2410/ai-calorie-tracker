@@ -10,6 +10,7 @@ import { foodCategory, foodIconSvg } from "./food-icons.js";
 import { ringGauge } from "./ring.js";
 import { t } from "../i18n.js";
 import { sureBadgeHtml } from "./questions.js";
+import { isFavorited } from "../store.js";
 
 const MACRO_META = [
   { key: "proteinG", label: "P", icon: "fishFill", color: "var(--sc-protein)" },
@@ -79,9 +80,9 @@ export function groupThumbHtml(entry, { className = "entry-thumb" } = {}) {
   const n = Array.isArray(entry.analysisItems) ? entry.analysisItems.length : Array.isArray(entry.items) ? entry.items.length : 0;
   const count = n > 1 ? `<span class="group-count" aria-hidden="true">${n}</span>` : "";
   if (entry.photoDataUrl) {
-    return `<div class="${className} is-group has-photo"><img src="${safeSrc(entry.photoDataUrl)}" alt="" /><span class="group-badge">${icon("layersFill", { size: 11, color: "#fff" })}${n > 1 ? n : ""}</span>${sureBadgeHtml(entry)}</div>`;
+    return `<div class="${className} is-group has-photo"><img src="${safeSrc(entry.photoDataUrl)}" alt="" /><span class="group-badge">${icon("stack", { size: 11, color: "#fff" })}${n > 1 ? n : ""}</span>${sureBadgeHtml(entry)}</div>`;
   }
-  return `<div class="${className} is-group">${icon("layersFill", { size: 22, color: "#fff" })}${count}</div>`;
+  return `<div class="${className} is-group">${icon("stack", { size: 24, color: "var(--sc-background, #fff)" })}${count}</div>`;
 }
 
 function completedRowHtml(entry) {
@@ -129,30 +130,43 @@ function escapeHtml(str) {
  * re-render (clears the pending-ring ticking interval, if any).
  * @param {HTMLElement} container
  * @param {object} entry
- * @param {{onTap:(entry)=>void, onDelete:(entry)=>void}} handlers
+ * @param {{onTap:(entry)=>void, onDelete:(entry)=>void, onShare?:Function, onFavorite?:Function,
+ *   onCopyToday?:Function, select?:{on:boolean, selected:boolean, onToggle:(entry)=>void}}} handlers
+ *   select: the list is in Select mode: the row shows a check and a tap selects it instead of opening
  */
-export function mountEntryRow(container, entry, { onTap, onDelete, onShare = null }) {
+export function mountEntryRow(container, entry, { onTap, onDelete, onShare = null, onFavorite = null, onCopyToday = null, select = null }) {
   const state = entryState(entry);
   const wrap = document.createElement("div");
-  wrap.className = "entry-row";
+  const selecting = Boolean(select?.on) && state !== "pending";
+  wrap.className = `entry-row${selecting ? " is-selecting" : ""}${selecting && select.selected ? " is-selected" : ""}`;
   wrap.dataset.entryId = entry.id;
   wrap.dataset.state = state;
+  const fav = onFavorite && state !== "pending" && state !== "failed" ? isFavorited(entry) : false;
+  // a meal from an earlier day offers "+ Today" where today's meals offer Share
+  const acts = selecting || state === "pending" ? [] : [
+    onCopyToday && state !== "failed" ? `<button type="button" class="entry-row-today" aria-label="${t("stack.toToday")}">${icon("plus", { size: 14 })}<span>${t("stack.todayShort")}</span></button>`
+      : onShare ? `<button type="button" class="entry-row-share" aria-label="Share">↗︎</button>` : "",
+    onFavorite && !onCopyToday && state !== "failed" ? `<button type="button" class="entry-row-fav${fav ? " is-on" : ""}" aria-pressed="${fav}" aria-label="${t("stack.favourite")}">${fav ? "♥" : "♡"}</button>` : "",
+    `<button type="button" class="entry-row-bin" aria-label="Remove">${icon("trashFill", { size: 17 })}</button>`,
+  ].filter(Boolean);
+  // room the buttons take, so the name and time never run under them ("+ Today" is wider)
+  const actsWidth = acts.reduce((w, html) => w + (html.includes("entry-row-today") ? 86 : 44), 0);
+  wrap.style.setProperty("--acts-w", `${actsWidth}px`);
   // No swipe gestures on rows any more: sideways swipes now move between tabs, and a visible
   // bin is quicker than any gesture anyway. Tap the row to edit, tap the bin to remove.
   wrap.innerHTML = `
     <div class="entry-row-fg${state === "failed" ? " failed" : ""}">
       ${state === "pending" ? pendingRowHtml(entry) : state === "failed" ? failedRowHtml(entry) : completedRowHtml(entry)}
     </div>
-    ${state === "pending" ? "" : `
-      <div class="entry-row-actions">
-        ${onShare ? `<button type="button" class="entry-row-share" aria-label="Share">↗︎</button>` : ""}
-        <button type="button" class="entry-row-bin" aria-label="Remove">${icon("trashFill", { size: 17 })}</button>
-      </div>`}
+    ${acts.length ? `<div class="entry-row-actions">${acts.join("")}</div>` : ""}
+    ${selecting ? `<span class="entry-row-check" aria-hidden="true">${select.selected ? icon("checkmark", { size: 14 }) : ""}</span>` : ""}
   `;
+  if (selecting) { wrap.setAttribute("role", "checkbox"); wrap.setAttribute("aria-checked", String(Boolean(select.selected))); }
   container.appendChild(wrap);
 
   wrap.addEventListener("click", (e) => {
-    if (e.target.closest(".entry-row-bin") || e.target.closest(".entry-row-share")) return;
+    if (e.target.closest(".entry-row-actions")) return;
+    if (selecting) { select.onToggle(entry); return; }
     // an unsure analysis with questions waiting: ask them first
     if (state !== "pending" && Array.isArray(entry.analysisQuestions) && entry.analysisQuestions.length > 0) {
       import("./questions.js").then((m) => m.openQuestionsSheet(entry));
@@ -172,6 +186,22 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
     const done = await onShare(entry);
     btn.textContent = done ? "✓" : "↗︎";
     btn.disabled = !done;
+  });
+  wrap.querySelector(".entry-row-fav")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const on = onFavorite(entry);
+    const b = e.currentTarget;
+    b.classList.toggle("is-on", on);
+    b.setAttribute("aria-pressed", String(on));
+    b.textContent = on ? "♥" : "♡";
+  });
+  wrap.querySelector(".entry-row-today")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const b = e.currentTarget;
+    onCopyToday(entry);
+    b.classList.add("is-done");
+    b.innerHTML = `${icon("checkmark", { size: 14 })}<span>${t("stack.todayShort")}</span>`;
+    b.disabled = true;
   });
   wrap.querySelector(".entry-row-bin")?.addEventListener("click", (e) => {
     e.stopPropagation();

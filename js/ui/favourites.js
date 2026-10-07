@@ -37,6 +37,8 @@ function recentFoods() {
       photoDataUrl: e.photoDataUrl ?? null,
       source: e.source,
       recentEntryId: e.id,
+      // a stacked meal shows as one (stack icon, "3 foods")
+      items: store.isGroupedEntry(e) && Array.isArray(e.analysisItems) ? e.analysisItems : null,
     });
     if (out.length >= MAX_RECENT) break;
   }
@@ -52,6 +54,9 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
     render(panel, close) {
       let current = tab;
       const servings = new Map(); // id -> multiplier, reset each time the sheet opens
+      const picked = new Set();   // ticked foods (either tab), logged together from the bar
+      let stackThem = false;      // log the ticked foods as one stacked meal
+      const pool = new Map();     // id -> food, for ticked foods from either tab
 
       panel.innerHTML = `
         ${navBar({ title: t("favourites.title"), leading: { label: t("app.close") } })}
@@ -71,8 +76,10 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
           : f.photoDataUrl
           ? `<img class="fav-thumb" src="${safeSrc(f.photoDataUrl)}" alt="">`
           : `<div class="fav-thumb"></div>`;
+        const on = picked.has(f.id);
         return `
-          <div class="fav-row" data-id="${f.id}">
+          <div class="fav-row${on ? " is-picked" : ""}" data-id="${f.id}">
+            <button type="button" class="fav-pick" data-pick role="checkbox" aria-checked="${on}" aria-label="${escapeHtml(t("stack.pickFood", { name: f.name }))}">${on ? icon("checkmark", { size: 14 }) : ""}</button>
             ${thumb}
             <div class="fav-text">
               <div class="fav-name">${escapeHtml(f.name)}</div>
@@ -87,6 +94,7 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
                 <button type="button" class="fav-log" data-log>${t("app.log")}</button>
                 ${current === "saved" ? `<button type="button" class="fav-edit" data-edit>${t("group.edit")}</button>` : ""}
                 ${current === "saved" ? `<button type="button" class="fav-heart" data-unfav aria-label="Remove from favourites">♥</button>` : ""}
+                ${current === "recent" ? (() => { const on = store.isFavorited({ id: f.recentEntryId, name: f.name }); return `<button type="button" class="fav-heart${on ? " is-on" : ""}" data-fav aria-pressed="${on}" aria-label="${escapeHtml(t("stack.favourite"))}">${on ? "♥" : "♡"}</button>`; })() : ""}
               </div>
             </div>
           </div>`;
@@ -132,14 +140,23 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
           return;
         }
 
+        foods.forEach((f) => pool.set(f.id, f));
         content.innerHTML = `
           ${current === "saved" ? `<button type="button" class="fav-new-meal" id="fav-new-meal">＋ ${t("group.newMeal")}</button>` : ""}
-          <div class="fav-list">${foods.map(rowHtml).join("")}</div>`;
+          <p class="fav-tip">${t("stack.favTip")}</p>
+          <div class="fav-list">${foods.map(rowHtml).join("")}</div>
+          ${picked.size ? pickBarHtml() : ""}`;
+        wirePickBar();
         content.querySelector("#fav-new-meal")?.addEventListener("click", newMeal);
 
         content.querySelectorAll(".fav-row").forEach((row) => {
           const id = row.dataset.id;
           const food = foods.find((f) => f.id === id);
+
+          row.querySelector("[data-pick]").addEventListener("click", () => {
+            picked.has(id) ? picked.delete(id) : picked.add(id);
+            render();
+          });
 
           row.querySelectorAll("[data-step]").forEach((btn) => {
             btn.addEventListener("click", () => {
@@ -151,32 +168,73 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
           });
 
           row.querySelector("[data-log]")?.addEventListener("click", () => {
-            const n = servings.get(id) ?? 1;
-            if (current === "saved") {
-              store.logSavedFood(id, { servings: n, timestamp: timestamp ?? Date.now() });
-            } else {
-              const base = { calories: food.calories, proteinG: food.proteinG, carbsG: food.carbsG, fatG: food.fatG, micros: food.micros ?? null };
-              store.addFoodEntry({
-                name: food.name,
-                ...store.totalsFor(base, n),
-                base,
-                servings: n,
-                source: food.source,
-                photoDataUrl: food.photoDataUrl,
-                timestamp: timestamp ?? Date.now(),
-                analysisItems: null, // never reopens the AI results screen
-              });
-            }
+            logOne(food, servings.get(id) ?? 1, timestamp ?? Date.now());
             if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(20);
             close();
           });
 
           row.querySelector("[data-edit]")?.addEventListener("click", () => editSaved(food));
+          row.querySelector("[data-fav]")?.addEventListener("click", () => { store.toggleFavorite(food.recentEntryId); render(); });
 
           row.querySelector("[data-unfav]")?.addEventListener("click", () => {
             store.deleteSavedFood(id);
             render();
           });
+        });
+      };
+
+      /** Logs one food as its own meal: a favourite (its foods, if a meal) or a recent food. */
+      const logOne = (food, n, at) => {
+        if (!food.recentEntryId) return store.logSavedFood(food.id, { servings: n, timestamp: at });
+        const base = { calories: food.calories, proteinG: food.proteinG, carbsG: food.carbsG, fatG: food.fatG, micros: food.micros ?? null };
+        return store.addFoodEntry({
+          name: food.name,
+          ...store.totalsFor(base, n),
+          base,
+          servings: n,
+          source: food.source,
+          photoDataUrl: food.photoDataUrl,
+          timestamp: at,
+          analysisItems: null, // never reopens the AI results screen
+        });
+      };
+
+      const pickBarHtml = () => {
+        const kcal = [...picked].reduce((a, id) => a + (pool.get(id)?.calories || 0) * (servings.get(id) ?? 1), 0);
+        return `
+          <div class="fav-pickbar">
+            <label class="fav-stack-toggle"><input type="checkbox" id="fav-stack" ${stackThem ? "checked" : ""} ${picked.size < 2 ? "disabled" : ""}> ${icon("stack", { size: 15 })} ${t("stack.asOne")}</label>
+            <button type="button" class="fav-log fav-log-many" id="fav-log-many">${t("stack.logMany", { n: picked.size, kcal: Math.round(kcal).toLocaleString() })}</button>
+          </div>`;
+      };
+
+      const wirePickBar = () => {
+        content.querySelector("#fav-stack")?.addEventListener("change", (e) => { stackThem = e.target.checked; });
+        content.querySelector("#fav-log-many")?.addEventListener("click", () => {
+          const at = timestamp ?? Date.now();
+          const chosen = [...picked].map((id) => pool.get(id)).filter(Boolean);
+          if (stackThem && chosen.length > 1) {
+            // one meal holding every ticked food, each at its servings
+            const items = chosen.flatMap((f) => {
+              const n = servings.get(f.id) ?? 1;
+              const parts = Array.isArray(f.items) && f.items.length ? f.items : [{ name: f.name, calories: f.calories, proteinG: f.proteinG, carbsG: f.carbsG, fatG: f.fatG, micros: f.micros ?? null, unit: "serving", amount: 1, gramsEstimate: 0 }];
+              return parts.map((i) => ({ ...i, id: undefined, calories: (i.calories || 0) * n, proteinG: (i.proteinG || 0) * n, carbsG: (i.carbsG || 0) * n, fatG: (i.fatG || 0) * n, gramsEstimate: Math.round((i.gramsEstimate || 0) * n), ...(Number.isFinite(Number(i.amount)) ? { amount: Number(i.amount) * n } : {}) }));
+            });
+            store.addFoodEntry({
+              name: chosen.map((f) => f.name).join(", ").slice(0, 90),
+              ...store.fieldsFromItems(items, 1),
+              servings: 1,
+              grouped: true,
+              source: "manual",
+              photoDataUrl: chosen.find((f) => f.photoDataUrl)?.photoDataUrl ?? null,
+              timestamp: at,
+              analysisItems: items,
+            });
+          } else {
+            chosen.forEach((f, i) => logOne(f, servings.get(f.id) ?? 1, at + i));
+          }
+          if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(20);
+          close();
         });
       };
 
