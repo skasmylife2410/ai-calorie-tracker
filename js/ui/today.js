@@ -149,6 +149,7 @@ export function render(container) {
   wireSwiper(container);
   wireWaterButtons(container);
   wireMealsTab(container, date);
+  container.querySelector("#streak-open")?.addEventListener("click", () => import("./streak.js").then((m) => m.openStreakSheet()));
   countNumbers(container, `${startOfDay(date)}`, [
     remaining,
     ...MACRO_DEFS.map((m) => (goals[m.targetKey] ?? 0) - (totals[m.key] ?? 0)),
@@ -380,7 +381,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
           <div class="calorie-remaining${overBudget ? " over" : ""}">${roundDisplay(Math.abs(remaining))}</div>
           <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>
           <button type="button" class="calorie-meals" id="see-meals">${t("us.mealsCount", { n: mealCount })} · ${t("day.tapToSee")} ›</button>
-          ${streakCount > 0 ? `<div class="calorie-streak">${icon("flameFill", { size: 13, color: "var(--sc-streak-flame)" })}<span>${t("home.streakLine", { n: streakCount })}</span></div>` : ""}
+          ${streakCount > 0 ? `<button type="button" class="calorie-streak" id="streak-open">${icon("flameFill", { size: 13, color: "var(--sc-streak-flame)" })}<span>${t("home.streakLine", { n: streakCount })}</span>${(store.getProfile().streak?.freezes ?? 0) > 0 ? `<span class="calorie-freeze" title="${t("streak.freezes")}">${icon("freeze", { size: 12 })}${store.getProfile().streak.freezes}</span>` : ""}<span class="calorie-streak-more">›</span></button>` : ""}
           <div class="calorie-budget">${t("home.budget")} <b class="calorie-budget-num" data-suffix="">${roundDisplay(energy.adjustedTarget)}</b></div>
           ${energy.burned > 0 ? `<button type="button" class="calorie-exercise" id="calorie-exercise">${icon("boltFill", { size: 12 })}<span>${energy.credit > 0
             ? t("home.exerciseAdded", { burned: roundDisplay(energy.burned), credit: roundDisplay(energy.credit) })

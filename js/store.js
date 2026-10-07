@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, REVIEW_EVERY_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
+import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, streakFromDays, nextStreakState, REVIEW_EVERY_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
 import { mealName } from "./meal-builder.js";
 import { goalsV1 } from "./goals-v1.js";
 
@@ -595,9 +595,32 @@ export function loggedDaySet() {
   return new Set(allFoodEntriesRaw().map((e) => startOfDay(e.timestamp)));
 }
 
-/** Current streak in days, as of `today`. */
+/** Day keys ("YYYY-MM-DD") with at least one finished meal. */
+export function loggedDayKeys() {
+  return new Set(allFoodEntriesRaw().filter((e) => e.isPending !== true).map((e) => localDateString(e.timestamp)));
+}
+
+/** Current streak in days, as of `today`: days in a row with a meal, freezes included. */
 export function streak(today = new Date()) {
-  return computeStreak(loggedDaySet(), today);
+  return streakFromDays(loggedDayKeys(), getProfile().streak?.frozenDays ?? [], localDateString(today.getTime?.() ?? today));
+}
+
+/**
+ * Brings the streak state on the profile up to date (freezes used and earned, best, milestone
+ * to celebrate; nutrition.nextStreakState) and saves it when it changed, so every phone and the
+ * evening reminder agree. Returns what happened.
+ */
+export function syncStreak(now = Date.now()) {
+  const p = getProfile();
+  const out = nextStreakState(p.streak ?? {}, loggedDayKeys(), localDateString(now));
+  if (JSON.stringify(out.state) !== JSON.stringify(p.streak ?? null)) setProfile({ streak: out.state });
+  return out;
+}
+
+/** The milestone was celebrated: don't show it again. */
+export function markMilestoneSeen(n) {
+  const st = getProfile().streak ?? {};
+  if ((Number(st.celebrated) || 0) < n) setProfile({ streak: { ...st, celebrated: n } });
 }
 
 /** allEntries sorted timestamp-descending, capped to the first `limit` (default 10). */

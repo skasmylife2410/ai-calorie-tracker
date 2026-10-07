@@ -9,7 +9,7 @@ import { doodleSvg } from "./ui/doodle.js";
 import { openNoteSheet } from "./ui/us-social.js";
 import { renderRecap } from "./ui/us-recap.js";
 import { renderPushCard } from "./ui/push-ui.js";
-import { localDateString, addDays, startOfDay, daysForAverage } from "./nutrition.js";
+import { localDateString, addDays, startOfDay, daysForAverage, streakFromDays } from "./nutrition.js";
 import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
 import { searchGifs } from "./social.js";
@@ -228,6 +228,14 @@ function moodBitsHtml(mood) {
   return "";
 }
 
+/** A person's streak: yours from this phone (exactly Home's), others' from the board's 30 days. */
+export function personStreak(p, me, todayKey = localDateString(Date.now())) {
+  if (p.owner === me) return { n: store.streak(), more: false };
+  const logged = Object.entries(p.days ?? {}).filter(([, d]) => (d?.meals ?? 0) > 0 || (d?.calories ?? 0) > 0).map(([k]) => k);
+  const n = streakFromDays(logged, p.frozenDays ?? [], todayKey);
+  return { n, more: n >= 29 }; // the board only reaches 30 days back
+}
+
 function todayHtml(people) {
   const key = localDateString(Date.now());
 
@@ -246,6 +254,7 @@ function todayHtml(people) {
         <div class="us-row-top">
           ${avatarHtml(p, i)}
           <span class="us-name">${escHtml(p.name || titleCase(p.owner))}</span>
+          ${(() => { const s = personStreak(p, data.me); return s.n >= 2 ? `<span class="us-streak" title="${escHtml(t("streak.usTitle", { n: s.n }))}">${icon("flameFill", { size: 11, color: "var(--sc-streak-flame)" })}${s.n}${s.more ? "+" : ""}</span>` : ""; })()}
           ${mood?.kind === "low" ? `<span class="us-gif-badge" data-incredulous role="img" aria-label="${escHtml(t("us.lowTitle", { n: mood.share }))}" title="${escHtml(t("us.lowTitle", { n: mood.share }))}">?!</span>` : ""}
           ${p.owner === data.me ? `<span class="tg-you">${t("us.you")}</span>` : `<button type="button" class="us-note-btn" data-note-to="${escHtml(p.owner)}" aria-label="${t("social.writeNote")}">✉︎</button>`}
           <span class="us-spacer"></span>

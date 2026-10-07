@@ -15,7 +15,7 @@
 import { requireUser } from "./_auth.js";
 import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
-import { boardGoals, GOALS_VERSION } from "../js/nutrition.js";
+import { boardGoals, GOALS_VERSION, streakFromDays } from "../js/nutrition.js";
 import { weekWindow, localWeekday, summarizeWeek, candidateMeals, buildPrompt, cleanRecap, RECAP_SCHEMA, TRANSLATE_SCHEMA, translatePrompt, textIn, localDay } from "./_week.js";
 
 const MODEL_ID = "gemini-3.5-flash";
@@ -94,6 +94,52 @@ export async function recapFor(owner, win) {
 }
 
 /**
+ * People whose streak (2+ days) ends at midnight because nothing is logged today yet, as
+ * { owner, streak, freezes }. Days are the app's local days (America/Chicago, like the rest of
+ * this job); freezes come from each person's profile, so the count matches their Home screen.
+ */
+export function streaksAtRisk({ rows, profiles, today }) {
+  const days = new Map();
+  for (const r of rows) {
+    if (!days.has(r.owner)) days.set(r.owner, new Set());
+    days.get(r.owner).add(r.day);
+  }
+  const out = [];
+  for (const p of profiles) {
+    const logged = days.get(p.owner);
+    if (!logged || logged.has(today)) continue;
+    const st = p.streak && typeof p.streak === "object" ? p.streak : {};
+    const n = streakFromDays(logged, Array.isArray(st.frozenDays) ? st.frozenDays : [], today);
+    if (n >= 2) out.push({ owner: p.owner, name: p.name || null, streak: n, freezes: Number(st.freezes) || 0 });
+  }
+  return out;
+}
+
+/** The evening reminder: "your 12-day streak ends tonight", only to people it applies to. */
+export async function streakReminders(now = Date.now()) {
+  const today = localDay(new Date(now));
+  const [rows, profiles] = await Promise.all([
+    select("snapcal_food_entries", { select: "owner,day", deleted: "is.false", day: `gte.${addDays(today, -400)}`, limit: "50000" }),
+    select("snapcal_profile", { select: "owner,name:data->>displayName,streak:data->streak" }),
+  ]);
+  const due = streaksAtRisk({ rows, profiles, today });
+  let sent = 0;
+  for (const p of due) {
+    const name = String(p.name ?? "").trim() || p.owner.replace(/^./, (c) => c.toUpperCase());
+    const out = await notify([p.owner], (lang) => ({
+      title: lang === "es" ? `${name}, tu racha de ${p.streak} días acaba esta noche` : `${name}, your ${p.streak}-day streak ends tonight`,
+      body: p.freezes > 0
+        ? (lang === "es" ? "Tienes una protección guardada, pero una comida la mantiene sin gastarla." : "You have a freeze saved, but one meal keeps it without using it.")
+        : (lang === "es" ? "Registra una comida antes de medianoche para mantenerla." : "Log one meal before midnight to keep it."),
+      url: "/",
+      tag: "streak",
+    }));
+    sent += out?.sent ?? 0;
+  }
+  return { due: due.length, sent };
+}
+
+/**
  * A recap written against targets the person no longer has (before the current method, or before
  * their targets moved): its "under" and "over" would judge the week by the wrong numbers.
  */
@@ -166,6 +212,10 @@ export default async function handler(req, res) {
     const secret = (process.env.CRON_SECRET || "").trim();
     if (!secret || req.headers?.authorization !== `Bearer ${secret}`) return fail(res, "auth", "Not allowed.", 401);
     const now = new Date();
+    // the evening run (second cron, ~7:30pm): only the streak reminder
+    if (String(req.query?.job ?? new URL(req.url, "http://x").searchParams.get("job") ?? "") === "evening") {
+      return res.status(200).json({ ok: true, streaks: await streakReminders(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) })) });
+    }
     const out = { ok: true, purgedBefore: await purgeOldPosts(now.getTime()), recaps: [] };
     out.nudges = await nudgeInactive(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) }));
     if (now.toISOString().slice(0, 10) === GOALS_NOTICE_DAY) {

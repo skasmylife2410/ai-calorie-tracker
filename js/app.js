@@ -464,6 +464,15 @@ globalThis.snapcalGoTo = (tab) => {
 /** Over budget today → meltdown; two days without a meal → gloom (see js/mood.js). */
 function refreshMood() {
   try { if (hasProfile) { store.syncLearnedTdeeFlag(); store.syncDaySummaries(); } } catch { /* never block the app */ }
+  // streak: freezes used or earned, and a milestone to celebrate (js/ui/streak.js)
+  try {
+    if (hasProfile) {
+      const res = store.syncStreak();
+      if (res.milestone || res.used.length || res.earned) {
+        setTimeout(() => import("./ui/streak.js").then((m) => m.announceStreak(res)).catch(() => {}), 900);
+      }
+    }
+  } catch { /* never block the app */ }
   try {
     applyMood(moodFor({ remainingToday: store.dayEnergy(new Date()).remaining, lastMeal: lastMealAt(store.allFoodEntries()) }));
   } catch (err) {

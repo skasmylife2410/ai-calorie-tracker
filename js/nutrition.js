@@ -473,6 +473,87 @@ export function monthlyReview({ profile = {}, weights = [], now = Date.now(), le
   };
 }
 
+// ---------------------------------------------------------------------------
+// Streaks: days in a row with at least one meal logged. A missed day can be covered by a streak
+// freeze: one is earned every 7 days in a row (2 banked at most) and used up automatically, so
+// one bad day doesn't wipe out weeks. The app (store.syncStreak), the Us board and the evening
+// reminder (api/weekly.js) all count with these same functions.
+// ---------------------------------------------------------------------------
+
+export const STREAK_MILESTONES = Object.freeze([3, 7, 14, 30, 50, 100, 150, 200, 365]);
+export const FREEZE_EVERY = 7;
+export const MAX_FREEZES = 2;
+
+/** "2026-10-07" + n days, as a day key (calendar arithmetic, no time zones involved). */
+export function addDayKey(key, n) {
+  const d = new Date(`${key}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Days in a row, counting back from today (or from yesterday while today has nothing logged
+ * yet, so the streak doesn't look lost in the morning). Frozen days count as kept.
+ * @param {Set<string>|string[]} logged  day keys with a meal
+ * @param {Set<string>|string[]} frozen  day keys covered by a freeze
+ */
+export function streakFromDays(logged, frozen, todayKey) {
+  const has = new Set(logged ?? []);
+  const ice = new Set(frozen ?? []);
+  const kept = (k) => has.has(k) || ice.has(k);
+  let cursor = has.has(todayKey) ? todayKey : addDayKey(todayKey, -1);
+  let n = 0;
+  while (kept(cursor) && n < 5000) { n += 1; cursor = addDayKey(cursor, -1); }
+  return n;
+}
+
+/** The next milestone above `n`, or null past the last one. */
+export const nextMilestone = (n) => STREAK_MILESTONES.find((m) => m > n) ?? null;
+
+/**
+ * Brings the saved streak state up to date: uses freezes on days that were missed (only right
+ * after a run, never to rebuild an old one), awards a freeze every 7 days in a row, keeps the
+ * best. Returns the new state plus what happened, for the app to celebrate or explain.
+ * @param {{freezes?:number, frozenDays?:string[], best?:number, awardedAt?:number, celebrated?:number}} prev
+ */
+export function nextStreakState(prev = {}, logged, todayKey) {
+  const has = new Set(logged ?? []);
+  let freezes = Math.max(0, Math.min(MAX_FREEZES, Number(prev.freezes) || 0));
+  const frozen = new Set((prev.frozenDays ?? []).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)));
+  const used = [];
+  // Missed days since the last logged (or frozen) day, oldest first. Today isn't over, so it's
+  // never frozen; a gap longer than the freezes on hand can't be covered and the run ends.
+  const yesterday = addDayKey(todayKey, -1);
+  let k = yesterday;
+  const gap = [];
+  while (!has.has(k) && !frozen.has(k) && gap.length <= MAX_FREEZES) { gap.unshift(k); k = addDayKey(k, -1); }
+  const runBefore = streakFromDays(has, frozen, addDayKey(k, 1)); // the run that ended at k
+  if (gap.length > 0 && gap.length <= freezes && runBefore > 0) {
+    for (const day of gap) { frozen.add(day); used.push(day); freezes -= 1; }
+  }
+  const streak = streakFromDays(has, frozen, todayKey);
+  // a freeze for every 7 days in a row; starting over resets the count
+  let awardedAt = Number(prev.awardedAt) || 0;
+  if (streak < awardedAt) awardedAt = 0;
+  let earned = 0;
+  while (streak >= awardedAt + FREEZE_EVERY) {
+    awardedAt += FREEZE_EVERY;
+    if (freezes < MAX_FREEZES) { freezes += 1; earned += 1; }
+  }
+  const best = Math.max(Number(prev.best) || 0, streak);
+  // the milestone reached and not celebrated yet (a new run starts celebrating again)
+  let celebrated = Number(prev.celebrated) || 0;
+  if (streak < celebrated) celebrated = STREAK_MILESTONES.filter((m) => m <= streak).pop() ?? 0;
+  const reached = STREAK_MILESTONES.filter((m) => m <= streak).pop() ?? 0;
+  const milestone = reached > celebrated ? reached : null;
+  // frozen days older than the current run don't matter any more: keep the list short
+  const keepFrom = addDayKey(todayKey, -(streak + 2));
+  return {
+    state: { freezes, frozenDays: [...frozen].filter((d) => d >= keepFrom).sort(), best, awardedAt, celebrated }, // marked seen when shown (store.markMilestoneSeen)
+    streak, used, earned, milestone,
+  };
+}
+
 /** Device-local start-of-day timestamp (ms since epoch), matching Calendar.current.startOfDay semantics. */
 // ---------------------------------------------------------------------------
 // Exercise

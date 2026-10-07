@@ -11,6 +11,10 @@
     {
       "path": "/api/weekly",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/weekly?job=evening",
+      "schedule": "30 0 * * *"
     }
   ],
   "headers": [

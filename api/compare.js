@@ -153,7 +153,9 @@ export default async function handler(req, res) {
     const raw = profile?.data?.avatar;
     const avatar = typeof raw === "string" && isSafeDataImage(raw) && raw.length < 120000 ? raw : null;
     const d = profile?.data ?? {};
-    return { owner, name: displayName || null, avatar, goals: goalsFrom(profile?.data), creditRatio: creditRatioFor(profile?.data),
+    // days a streak freeze covered, so the board counts the same streak as their Home screen
+    const frozenDays = (Array.isArray(d.streak?.frozenDays) ? d.streak.frozenDays : []).filter((k) => typeof k === "string" && DAY_RE.test(k)).slice(-60);
+    return { owner, name: displayName || null, avatar, goals: goalsFrom(profile?.data), creditRatio: creditRatioFor(profile?.data), frozenDays,
       body: { weightKg: d.weightKg, heightCm: d.heightCm, age: d.age, sex: d.sex }, days: {} };
   });
   const byOwner = Object.fromEntries(people.map((p) => [p.owner, p]));

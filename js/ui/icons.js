@@ -7,6 +7,8 @@ const RAW = {
   // --- filled glyphs -------------------------------------------------------
   // three stacked layers: a meal made of several foods grouped together
   layersFill: `<path d="M12 2.4 2.9 7.05a.62.62 0 0 0 0 1.1L12 12.8l9.1-4.65a.62.62 0 0 0 0-1.1L12 2.4Z"/><path opacity=".72" d="m5.2 10.9-2.3 1.17a.62.62 0 0 0 0 1.1L12 17.8l9.1-4.63a.62.62 0 0 0 0-1.1l-2.3-1.17L12 14.37 5.2 10.9Z"/><path opacity=".45" d="m5.2 15.9-2.3 1.17a.62.62 0 0 0 0 1.1L12 22.8l9.1-4.63a.62.62 0 0 0 0-1.1l-2.3-1.17L12 19.37 5.2 15.9Z"/>`,
+  // a streak freeze: a snowflake
+  freeze: `<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5"/></g>`,
   // a stacked meal: one plate, several foods
   stack: `<circle cx="12" cy="12" r="9.6" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9.1" cy="9.6" r="2.6"/><circle cx="15" cy="10.2" r="2.1"/><circle cx="11.6" cy="15.2" r="2.3"/>`,
   plateHalf: `<circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 6.2a5.8 5.8 0 0 1 0 11.6Z" fill="currentColor"/>`,
