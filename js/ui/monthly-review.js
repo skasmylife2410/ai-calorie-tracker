@@ -38,6 +38,9 @@ function changesHtml(r) {
   if (r.prev && Number(r.prev.weightKg) > 0 && Math.abs(r.prev.weightKg - r.endKg) >= 0.1) {
     items.push([t("review.weightTitle", { kg: kg(r.endKg) }), t("review.weightBody", { kg: kg(r.prev.weightKg) })]);
   }
+  if (Number(r.maintenanceTo) > 0 && Math.abs((Number(r.maintenanceFrom) || 0) - r.maintenanceTo) >= 20) {
+    items.push([t("review.maintTitle", { from: formatNumber(Math.round(r.maintenanceFrom)), to: formatNumber(Math.round(r.maintenanceTo)) }), t("review.maintBody")]);
+  }
   if (r.reached) items.push([t("review.reachedTitle"), t("review.reachedBody")]);
   if (r.eased) items.push([t("review.easedTitle"), t("review.easedBody", { kg: kg(REVIEW_NEAR_GOAL_KG) })]);
   if (r.stepKcal) {

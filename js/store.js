@@ -777,12 +777,35 @@ export function setProfile(patch) {
   return next;
 }
 
+/**
+ * The maintenance the targets use when it's measured from the person's own logs: saved on the
+ * profile and only replaced at the 30-day check-in (or when they turn it on in Profile), so a
+ * weigh-in or a meal never moves the day's target. One morning's water weight used to swing it
+ * by 200+ kcal. Null: the formula is used.
+ */
+export function maintenanceLock(profile = getProfile()) {
+  if (profile.useLearnedTdee === false) return null;
+  const lock = profile.maintenanceLock;
+  return lock && Number(lock.tdee) > 0 ? lock : null;
+}
+
+/**
+ * Measures maintenance now and saves it for the targets, when there's enough data (medium
+ * confidence or better). Returns the saved lock, or null if it couldn't be measured.
+ * @param {{source?:string, now?:number, weightsBefore?:number}} [opts]
+ */
+export function lockMaintenanceNow({ source = "checkin", now = Date.now(), weightsBefore } = {}) {
+  const learned = learnedMaintenanceNow({ now, weightsBefore });
+  if (!learned || learned.confidence === "low") return null;
+  const lock = { tdee: learned.tdee, at: now, confidence: learned.confidence, source };
+  setProfile({ maintenanceLock: lock });
+  return lock;
+}
+
 /** TDEE/goals helper — custom-first resolution per NutritionMath.resolveUserGoals. */
 export function computeGoals() {
   const profile = getProfile();
-  const learned = profile.useLearnedTdee === false ? null : learnedMaintenanceNow();
-  const apply = learned && learned.confidence !== "low";
-  return resolveUserGoals(profile, { learnedTdee: apply ? learned.tdee : null });
+  return resolveUserGoals(profile, { learnedTdee: maintenanceLock(profile)?.tdee ?? null });
 }
 
 /** Share of exercise burn added back to the day's budget: this person's setting, else Auto. */
@@ -796,9 +819,17 @@ export function exerciseCreditRatio() {
  * Writes only when it changes.
  */
 export function syncLearnedTdeeFlag() {
-  const profile = getProfile();
-  const learned = profile.useLearnedTdee === false ? null : learnedMaintenanceNow();
-  const on = Boolean(learned && learned.confidence !== "low");
+  let profile = getProfile();
+  // People who were already on measured maintenance when it stopped moving every day: keep it,
+  // measured with the days before today (so this morning's weigh-in doesn't decide it), until
+  // their next check-in.
+  if (profile.learnedTdeeOn === true && !profile.maintenanceLock && profile.useLearnedTdee !== false) {
+    lockMaintenanceNow({ source: "kept", weightsBefore: startOfDay(Date.now()) });
+    profile = getProfile();
+  }
+  const lock = maintenanceLock(profile);
+  const on = Boolean(lock);
+  const learned = lock;
   // The goals this phone really uses (learned maintenance included), so the Us board shows the
   // same budget as Home instead of working one out from the profile alone.
   const g = resolveUserGoals(profile, { learnedTdee: on ? learned.tdee : null });
@@ -862,7 +893,7 @@ export function weekendGap({ now = Date.now(), weeks = 6 } = {}) {
  * Days logged at under half the formula maintenance are treated as incomplete and skipped,
  * because a forgotten dinner would otherwise make maintenance look far lower than it is.
  */
-export function learnedMaintenanceNow({ now = Date.now(), windowDays = 28 } = {}) {
+export function learnedMaintenanceNow({ now = Date.now(), windowDays = 28, weightsBefore } = {}) {
   const profile = getProfile();
   const formula = resolveUserGoals(profile).formulaTdee;
   if (!(formula > 0)) return null;
@@ -879,7 +910,7 @@ export function learnedMaintenanceNow({ now = Date.now(), windowDays = 28 } = {}
   const days = [...perDay.values()].filter((kcal) => kcal >= formula * 0.5).map((calories) => ({ calories }));
 
   const weights = allWeightEntries()
-    .filter((w) => w.timestamp >= from && w.timestamp < todayStart + 86400000)
+    .filter((w) => w.timestamp >= from && w.timestamp < (weightsBefore ?? todayStart + 86400000))
     .map((w) => ({ t: w.timestamp, kg: w.kg }));
 
   const out = learnedMaintenance({ days, weights, formulaTdee: formula });
@@ -920,8 +951,17 @@ export function monthlyReviewNow({ now = Date.now() } = {}) {
   const weights = allWeightRaw()
     .filter((w) => w.timestamp >= from && w.timestamp <= now)
     .map((w) => ({ t: w.timestamp, kg: w.kg }));
-  const learnedOn = computeGoals().tdeeSource === "learned";
-  return { ...monthlyReview({ profile, weights, now, learnedOn }), learnedOn };
+  // the check-in is when maintenance is measured again, from the last 30 days
+  const fresh = profile.useLearnedTdee === false ? null : learnedMaintenanceNow({ now, windowDays: REVIEW_EVERY_DAYS });
+  const measured = fresh && fresh.confidence !== "low" ? fresh : null;
+  const learnedOn = Boolean(measured);
+  const out = monthlyReview({ profile, weights, now, learnedOn });
+  if (out.status === "ready" && measured) {
+    out.patch.maintenanceLock = { tdee: measured.tdee, at: now, confidence: measured.confidence, source: "checkin" };
+    out.maintenanceFrom = maintenanceLock(profile)?.tdee ?? Math.round(resolveUserGoals(profile).formulaTdee);
+    out.maintenanceTo = measured.tdee;
+  }
+  return { ...out, learnedOn };
 }
 
 /** Applies a ready review to the profile and records it (with what to restore on undo). */

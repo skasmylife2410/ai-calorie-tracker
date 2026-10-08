@@ -456,6 +456,8 @@
     "mythLabel": "Mito o realidad"
   },
   "accuracy": {
+    "cardLocked": "Tus metas usan {n} kcal. Se vuelve a medir en tu revisión de 30 días ({date}), así que los pesajes no la mueven día a día.",
+    "cardAtCheckin": "Por ahora tus metas usan la fórmula. Desde tu revisión de 30 días ({date}) usarán tu número medido.",
     "exTitle": "Calorías del ejercicio",
     "ex0": "Nada",
     "ex25": "25%",
@@ -1277,6 +1279,8 @@
     "ok": "Entendido"
   },
   "review": {
+    "maintTitle": "Mantenimiento: {from} → {to} kcal",
+    "maintBody": "Medido con lo que registraste y cómo se movió tu peso en los últimos 30 días. Tus metas lo usan hasta la próxima revisión.",
     "title": "Tu revisión de 30 días",
     "before": "Antes",
     "now": "Ahora",

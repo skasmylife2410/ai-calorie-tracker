@@ -494,7 +494,16 @@ function maintenanceHtml() {
         <span class="mt-conf mt-${m.confidence}">${t(`accuracy.conf.${m.confidence}`)}</span>
       </div>
       <div class="mt-big">${formatNumber(m.tdee)}<small> kcal</small></div>
-      <div class="mt-sub">${t("accuracy.cardFormula", { n: formatNumber(m.formulaTdee) })} · ${using ? t("accuracy.cardUsing") : t("accuracy.cardNotYet")}</div>
+      <div class="mt-sub">${t("accuracy.cardFormula", { n: formatNumber(m.formulaTdee) })}</div>
+      <div class="mt-how mt-lock">${(() => {
+        // targets use the number saved at the last check-in; it's measured again at the next one
+        const lock = store.maintenanceLock();
+        const due = store.reviewDueAt();
+        const next = due ? formatDate(due, { month: "short", day: "numeric" }) : null;
+        return lock
+          ? t("accuracy.cardLocked", { n: formatNumber(lock.tdee), date: next ?? "–" })
+          : t("accuracy.cardAtCheckin", { date: next ?? "–" });
+      })()}</div>
       <div class="mt-how">${t("accuracy.cardHow", { days: m.loggedDays, intake: formatNumber(m.avgIntake), rate: fmt1(m.kgPerWeek) })}</div>
       ${m.skippedDays > 0 ? `<div class="mt-how">${t("accuracy.cardSkipped", { n: m.skippedDays })}</div>` : ""}
     </div>`;

@@ -480,14 +480,62 @@ test("the app only switches to learned maintenance at medium confidence or bette
   }
   const learned = store.learnedMaintenanceNow();
   assert.notEqual(learned.confidence, "low");
+  // measured, but the targets only take it at a check-in (or when turned on by hand)
+  assert.equal(store.computeGoals().tdeeSource, "formula", "data alone never moves the target");
+  store.lockMaintenanceNow();
   const goals = store.computeGoals();
   assert.equal(goals.tdeeSource, "learned");
   assert.ok(Math.abs(goals.tdee - (1900 + 275)) < 120, `learned ~2175, got ${goals.tdee}`);
   assert.notEqual(goals.targetCalories, formulaTarget, "the target follows the learned number");
 
+  // a heavy weigh-in and a big day afterwards don't move it until the next check-in
+  store.addWeightEntry({ kg: 81.5, timestamp: today.getTime() });
+  store.addFoodEntry({ name: "Feast", calories: 4000, timestamp: today.getTime() - day + 1000 });
+  assert.equal(store.computeGoals().targetCalories, goals.targetCalories);
+
   // switched off in Profile -> back to the formula
   store.setProfile({ useLearnedTdee: false });
   assert.equal(store.computeGoals().tdeeSource, "formula");
+});
+
+test("someone already on measured maintenance keeps it, measured without today's weigh-in", () => {
+  localStorage.clear();
+  store.setProfile({ ...PROFILE, customTargetKcal: null, targetDeltaKcal: -400, learnedTdeeOn: true });
+  const day = 86400000;
+  const today = new Date(); today.setHours(12, 0, 0, 0);
+  for (let i = 28; i >= 1; i--) {
+    store.addFoodEntry({ name: "Day", calories: 1900, timestamp: today.getTime() - i * day });
+    store.addWeightEntry({ kg: 80 - (0.25 / 7) * (28 - i), timestamp: today.getTime() - i * day });
+  }
+  const before = store.learnedMaintenanceNow({ weightsBefore: new Date(today).setHours(0, 0, 0, 0) }).tdee;
+  store.addWeightEntry({ kg: 82, timestamp: today.getTime() }); // this morning's water weight
+  store.syncLearnedTdeeFlag();
+  const lock = store.getProfile().maintenanceLock;
+  assert.equal(lock.tdee, before, "today's weigh-in left out");
+  assert.equal(lock.source, "kept");
+  assert.equal(store.computeGoals().tdee, before);
+});
+
+test("the 30-day check-in measures maintenance again; undo puts the old number back", () => {
+  localStorage.clear();
+  const day = 86400000;
+  const now = Date.now();
+  store.setProfile({ ...PROFILE, customTargetKcal: null, targetDeltaKcal: -400, goal: "lose", goalRate: "normal", hasCompletedOnboarding: true, maintenanceLock: { tdee: 2600, at: now - 31 * day, source: "kept" } });
+  const today = new Date(now); today.setHours(12, 0, 0, 0);
+  for (let i = 30; i >= 1; i--) {
+    store.addFoodEntry({ name: "Day", calories: 1900, timestamp: today.getTime() - i * day });
+    if (i % 2 === 0) store.addWeightEntry({ kg: 80 - (0.25 / 7) * (30 - i), timestamp: today.getTime() - i * day });
+  }
+  const review = store.monthlyReviewNow({ now });
+  assert.equal(review.status, "ready");
+  assert.equal(review.maintenanceFrom, 2600);
+  assert.ok(Math.abs(review.maintenanceTo - 2175) < 150, `measured ~2175, got ${review.maintenanceTo}`);
+  assert.equal(review.stepKcal, 0, "the measured number already corrects the pace");
+  store.applyMonthlyReview(review, { now });
+  assert.equal(store.getProfile().maintenanceLock.tdee, review.maintenanceTo);
+  assert.equal(store.computeGoals().tdee, review.maintenanceTo);
+  store.undoMonthlyReview();
+  assert.equal(store.getProfile().maintenanceLock.tdee, 2600);
 });
 
 test("a forgotten dinner doesn't drag learned maintenance down", () => {

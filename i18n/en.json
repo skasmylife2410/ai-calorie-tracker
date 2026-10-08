@@ -456,6 +456,8 @@
     "mythLabel": "Myth or fact"
   },
   "accuracy": {
+    "cardLocked": "Your targets use {n} kcal. It's measured again at your 30-day check-in ({date}), so weigh-ins don't move it day to day.",
+    "cardAtCheckin": "Your targets use the formula for now. From your 30-day check-in ({date}) they'll use your measured number.",
     "exTitle": "Exercise calories",
     "ex0": "None",
     "ex25": "25%",
@@ -1277,6 +1279,8 @@
     "ok": "Got it"
   },
   "review": {
+    "maintTitle": "Maintenance: {from} → {to} kcal",
+    "maintBody": "Measured from what you logged and how your weight moved over the last 30 days. Your targets use this until the next check-in.",
     "title": "Your 30-day check-in",
     "before": "Before",
     "now": "Now",

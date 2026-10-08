@@ -120,7 +120,14 @@ export function render(container) {
     b.addEventListener("click", () => { store.setProfile({ exerciseCreditPct: b.dataset.excredit === "auto" ? "auto" : Number(b.dataset.excredit) }); render(container); })
   );
   container.querySelectorAll("[data-learn]").forEach((b) =>
-    b.addEventListener("click", () => { store.setProfile({ useLearnedTdee: b.dataset.learn === "on" }); store.syncLearnedTdeeFlag(); render(container); })
+    b.addEventListener("click", () => {
+      const on = b.dataset.learn === "on";
+      store.setProfile({ useLearnedTdee: on });
+      // turned on by hand: measure it now (afterwards it only changes at the 30-day check-in)
+      if (on && !store.getProfile().maintenanceLock) store.lockMaintenanceNow({ source: "profile" });
+      store.syncLearnedTdeeFlag();
+      render(container);
+    })
   );
   container.querySelector("#install-row")?.addEventListener("click", () => openInstallSheet());
   container.querySelectorAll("[data-diet]").forEach((b) =>
