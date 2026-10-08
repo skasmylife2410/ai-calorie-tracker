@@ -7,6 +7,7 @@
 
 import { ANALYSIS_MODES, analyzeMeal } from "./api.js";
 import * as store from "./store.js";
+import { leftoversForItems, leftoversRecord } from "./leftovers.js";
 
 const JOINED_NAME_LIMIT = 80;
 const JOINED_NAME_TRUNCATE_TO = 77;
@@ -59,9 +60,13 @@ export function enqueuePhoto(imageDataUrl, mode, { description = null } = {}) {
  * @param {string} description
  * @returns {object|null} the pending FoodEntry, or null if nothing was inserted
  */
-export function enqueueText(description, { timestamp } = {}) {
+export function enqueueText(description, { timestamp, photoDataUrl = null, leftoversDataUrl = null } = {}) {
   const trimmed = (description ?? "").trim();
   if (trimmed === "") return null;
+  // photoDataUrl: a photo of the meal for context — it fills in what the words leave out but
+  // never changes an amount they give (api/gemini.js, js/stated.js); it stays with the meal and
+  // goes along on every re-analysis. leftoversDataUrl: what wasn't eaten, taken off once the
+  // meal is known (js/leftovers.js); not kept.
 
   const entry = store.addFoodEntry({
     // lands on the day being viewed when logged from a past day; otherwise now
@@ -72,14 +77,14 @@ export function enqueueText(description, { timestamp } = {}) {
     carbsG: 0,
     fatG: 0,
     source: "text",
-    photoDataUrl: null,
+    photoDataUrl: photoDataUrl || null,
     isPending: true,
     analysisFailed: false,
     analysisItems: null,
     analysisMode: "text",
     analysisDescription: trimmed,
   });
-  runAnalysis(entry.id, { description: trimmed, mode: "text" });
+  runAnalysis(entry.id, { imageDataUrl: photoDataUrl || undefined, description: trimmed, mode: "text", leftoversDataUrl });
   return entry;
 }
 
@@ -382,7 +387,7 @@ const isNetworkFailure = (outcome) =>
  * network failure keeps the meal pending, waits until the app is on screen again and retries,
  * instead of turning it into "Analysis failed".
  */
-async function runAnalysis(entryId, { imageDataUrl, imageDataUrl2, description, mode }) {
+async function runAnalysis(entryId, { imageDataUrl, imageDataUrl2, description, mode, leftoversDataUrl = null }) {
   let outcome = await analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text: description });
   for (let attempt = 0; attempt < NETWORK_RETRIES && isNetworkFailure(outcome); attempt += 1) {
     await whenVisible();
@@ -390,7 +395,23 @@ async function runAnalysis(entryId, { imageDataUrl, imageDataUrl2, description, 
     if (!store.getFoodEntry(entryId)) return; // deleted while waiting
     outcome = await analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text: description });
   }
+  if (leftoversDataUrl && outcome.success && outcome.items.length > 0 && store.getFoodEntry(entryId)) {
+    outcome = await withLeftovers(outcome, leftoversDataUrl, imageDataUrl);
+  }
   handleOutcome(entryId, mode, outcome);
+}
+
+/**
+ * Takes a leftovers photo off a fresh analysis: the meal is logged at what was eaten, and keeps
+ * what it was before for Undo. Foods measured by the person are left as they are. If the
+ * leftovers can't be read the meal is logged whole (it can be done again from the meal).
+ */
+export async function withLeftovers(outcome, leftoversDataUrl, beforeDataUrl = null) {
+  const res = await leftoversForItems(outcome.items, leftoversDataUrl, beforeDataUrl, 1);
+  if (!res.ok) return { ...outcome, leftoversError: res.message || "leftovers" };
+  if (res.removedKcal <= 0) return { ...outcome, keptMeasured: res.keptMeasured };
+  const whole = { analysisItems: outcome.items, ...store.fieldsFromItems(outcome.items, 1) };
+  return { ...outcome, items: res.items, leftovers: leftoversRecord(whole, res), keptMeasured: res.keptMeasured };
 }
 
 function handleOutcome(entryId, mode, outcome) {
@@ -426,6 +447,9 @@ function handleOutcome(entryId, mode, outcome) {
       analysisFailed: false,
       analysisFailureReason: null,
       ...metaFields(entry, outcome.meta, items),
+      // fresh foods replace any leftovers taken off before (it can be done again from the meal)
+      leftovers: outcome.leftovers ?? null,
+      ...(outcome.leftoversError ? { leftoversFailed: true } : entry.leftoversFailed ? { leftoversFailed: null } : {}),
     });
 
     if (isDocumentForeground()) {

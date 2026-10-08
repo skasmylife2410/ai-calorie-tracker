@@ -72,7 +72,8 @@
     "unit": "Unit",
     "portion": "Portion",
     "less": "Less",
-    "more": "More"
+    "more": "More",
+    "asWritten": "As you wrote: {amount}"
   },
   "favourites": {
     "title": "Favourites",
@@ -1188,7 +1189,9 @@
     "undo": "Undo",
     "mark": "−{n} leftover",
     "mealCta": "Didn't finish it? Photo the leftovers",
-    "mealNote": "{n} kcal of leftovers taken off"
+    "mealNote": "{n} kcal of leftovers taken off",
+    "keptMeasured": "{n} food you measured was kept as you wrote it.|{n} foods you measured were kept as you wrote them.",
+    "failedCta": "The leftovers photo couldn’t be read · take it again"
   },
   "leftIntro": {
     "title": "New: photograph your leftovers",
@@ -1354,5 +1357,16 @@
     "barcodeWork": "Barcode {code}",
     "failed": "Couldn’t analyse that. Try again or add it another way.",
     "noFood": "No food found in that."
+  },
+  "descPhotos": {
+    "title": "Add photos (optional)",
+    "meal": "Meal photo",
+    "mealSub": "Fills in what you didn’t say",
+    "left": "Leftovers",
+    "leftSub": "What you didn’t eat",
+    "added": "Added",
+    "remove": "Remove photo",
+    "working": "Preparing the photo…",
+    "note": "Amounts you write (grams, ml, cups, pieces) stay exactly as you said. The meal photo only adds what you didn’t mention and sizes what you didn’t measure. Leftovers never come off what you measured."
   }
 }

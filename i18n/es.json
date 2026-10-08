@@ -72,7 +72,8 @@
     "unit": "Unidad",
     "portion": "Porción",
     "less": "Menos",
-    "more": "Más"
+    "more": "Más",
+    "asWritten": "Como escribiste: {amount}"
   },
   "favourites": {
     "title": "Favoritos",
@@ -1188,7 +1189,9 @@
     "undo": "Deshacer",
     "mark": "−{n} de sobras",
     "mealCta": "¿No lo terminaste? Fotografía las sobras",
-    "mealNote": "Se restaron {n} kcal de sobras"
+    "mealNote": "Se restaron {n} kcal de sobras",
+    "keptMeasured": "{n} alimento que mediste se dejó como lo escribiste.|{n} alimentos que mediste se dejaron como los escribiste.",
+    "failedCta": "No se pudo leer la foto de sobras · tómala de nuevo"
   },
   "leftIntro": {
     "title": "Nuevo: fotografía tus sobras",
@@ -1354,5 +1357,16 @@
     "barcodeWork": "Código {code}",
     "failed": "No se pudo analizar. Inténtalo de nuevo o añádelo de otra forma.",
     "noFood": "No se encontró comida en eso."
+  },
+  "descPhotos": {
+    "title": "Añade fotos (opcional)",
+    "meal": "Foto de la comida",
+    "mealSub": "Completa lo que no dijiste",
+    "left": "Sobras",
+    "leftSub": "Lo que no comiste",
+    "added": "Añadida",
+    "remove": "Quitar foto",
+    "working": "Preparando la foto…",
+    "note": "Las cantidades que escribas (gramos, ml, tazas, unidades) se quedan tal como las dijiste. La foto solo añade lo que no mencionaste y calcula lo que no mediste. Las sobras nunca se restan de lo que mediste."
   }
 }

@@ -2827,7 +2827,7 @@ button.calorie-streak { border: 0; background: none; padding: 0; font: inherit; 
 .meal-item-pending .spinner { width: 18px; height: 18px; border-width: 2px; flex: none; }
 .meal-item-pending.is-error { color: var(--sc-primary-text); }
 .meal-item-pending.is-error > span { flex: 1; min-width: 0; line-height: 1.35; }
-.meal-item-pending.is-error b { color: var(--sc-red); font-weight: 700; margin-right: 4px; }
+.meal-item-pending.is-error b { color: #C4281C; font-weight: 700; margin-right: 4px; }
 .meal-item-pending button { flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--sc-secondary-15); color: var(--sc-secondary); }
 
 /* servings and ml keep their weight in view; a serving of unknown weight asks for it */
@@ -2840,3 +2840,25 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .meal-item-weigh span { color: var(--sc-secondary); }
 .meal-item-weigh button { font: inherit; font-size: 12px; font-weight: 700; padding: 7px 10px; border: 0; border-radius: 9px; background: none; color: var(--sc-secondary); display: grid; place-items: center; }
 .meal-item-weigh button.is-ok { background: var(--sc-primary-text); color: var(--sc-background, #fff); }
+
+/* ---- Describe: a photo of the meal for context, and the leftovers (js/ui/describe.js) ---- */
+.describe-photos { margin-top: 18px; }
+.describe-photos-head { font-size: 13px; font-weight: 700; color: var(--sc-primary-text); margin: 0 2px 8px; }
+.describe-photo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.describe-photo { box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; border-radius: 14px;
+  border: 1.5px dashed var(--sc-secondary-35); background: none; color: var(--sc-primary-text); cursor: pointer; }
+.describe-photo.is-set { border-style: solid; border-color: var(--sc-secondary-15); background: var(--sc-card-bg, #fff); box-shadow: var(--sc-card-shadow); cursor: default; padding-right: 34px; }
+.describe-photo-ic { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.describe-photo img { flex: none; width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
+.describe-photo-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.describe-photo-text b { font-size: 13.5px; font-weight: 700; }
+.describe-photo-text small { font-size: 11.5px; line-height: 1.3; color: var(--sc-secondary); }
+.describe-photo-x { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--sc-secondary-15); color: var(--sc-secondary); }
+.describe-photos-note { margin: 8px 2px 0; font-size: 12px; line-height: 1.4; color: var(--sc-secondary); }
+@media (max-width: 340px) { .describe-photo-row { grid-template-columns: 1fr; } }
+
+/* the person's own amount, kept exactly (js/stated.js) */
+.meal-item-stated { display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--sc-primary-text); }
+.meal-item-stated .icon { width: 12px; height: 12px; color: #1E7A4C; }
+.results-desc-quote.is-with-photo { padding-bottom: 10px; }
+.left-kept { font-size: 13px !important; }

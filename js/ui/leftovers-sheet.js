@@ -57,10 +57,11 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
             ? `<div class="left-done">
                  <div class="left-big">−${formatNumber(result.removedKcal)}<small> kcal</small></div>
                  <p>${t("left.done", { ate: formatNumber(ate), was: formatNumber(ate + result.removedKcal) })}</p>
+                 ${result.keptMeasured > 0 ? `<p class="left-kept">${t("left.keptMeasured", { n: result.keptMeasured })}</p>` : ""}
                </div>
                <button type="button" class="ask-send" id="left-ok">${t("left.ok")}</button>
                <button type="button" class="ask-skip" id="left-undo">${t("left.undo")}</button>`
-            : `<div class="left-done"><p>${t("left.allEaten")}</p></div>
+            : `<div class="left-done"><p>${t("left.allEaten")}</p>${result.keptMeasured > 0 ? `<p class="left-kept">${t("left.keptMeasured", { n: result.keptMeasured })}</p>` : ""}</div>
                <button type="button" class="ask-send" id="left-ok">${t("left.ok")}</button>`;
         }
         panel.innerHTML = `

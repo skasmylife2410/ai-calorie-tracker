@@ -505,3 +505,4 @@
 /* Edit Meal › + Add food: the option markers are ink like the + menu */
 :root[data-theme="mono"] .addto-opt { --c: var(--mn-ink) !important; }
 :root[data-theme="mono"] .meal-item-pending.is-error b { color: var(--mn-ink); }
+:root[data-theme="mono"] .meal-item-stated .icon { color: var(--mn-ink); }

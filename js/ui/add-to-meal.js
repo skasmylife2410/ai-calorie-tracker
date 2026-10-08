@@ -27,6 +27,16 @@ export async function analyzeToItems(args) {
   return out.items;
 }
 
+/** Words (with a photo of the meal for context, and the leftovers) as foods for this meal. */
+async function describedItems(text, photoDataUrl, leftoversDataUrl) {
+  const out = await analyzeMeal({ mode: "text", text, imageDataUrl: photoDataUrl || undefined });
+  if (!out.success) throw new Error(out.reason || t("addTo.failed"));
+  if (!out.items?.length) throw new Error(t("addTo.noFood"));
+  if (!leftoversDataUrl) return out.items;
+  const { withLeftovers } = await import("../queue.js");
+  return (await withLeftovers(out, leftoversDataUrl, photoDataUrl)).items;
+}
+
 /**
  * @param {object} opts
  * @param {(items:object[])=>void} opts.onItems  foods to add now
@@ -66,7 +76,8 @@ async function start(kind, { onItems, onWork, mealId }) {
     const { openDescribeMealSheet } = await import("./describe.js");
     openDescribeMealSheet({
       voice: kind === "voice",
-      onText: (text) => onWork(`“${text.length > 40 ? `${text.slice(0, 40)}…` : text}”`, analyzeToItems({ mode: "text", text })),
+      onText: (text, { photoDataUrl = null, leftoversDataUrl = null } = {}) =>
+        onWork(`“${text.length > 40 ? `${text.slice(0, 40)}…` : text}”`, describedItems(text, photoDataUrl, leftoversDataUrl)),
     });
   } else if (kind === "saved") {
     const { openFavouritesSheet } = await import("./favourites.js");

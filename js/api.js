@@ -6,6 +6,7 @@
 
 import { apiFetch } from "./net.js";
 import { cleanMicros, scaleMicros, MICRO_KEYS } from "./nutrition.js";
+import { holdItemsToStated } from "./stated.js";
 
 // Open Food Facts asks apps to identify themselves with a contact email — put YOURS here.
 const OFF_USER_AGENT = "SnapCal/1.0 (personal calorie tracker; you@example.com)";
@@ -751,6 +752,8 @@ export function mapRawItemToAnalyzedItem(raw) {
     confidence: raw.confidence,
     grounded: false,
     ...pieces,
+    // the person's own words for this food's weight or volume, if they gave one (js/stated.js)
+    ...(typeof raw.stated_amount === "string" && raw.stated_amount.trim() ? { statedAmount: raw.stated_amount.trim().slice(0, 60) } : {}),
   };
 }
 
@@ -956,10 +959,12 @@ export async function analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text }) {
     return { success: true, items: [], meta }; // valid "no food found" result, skip grounding
   }
 
+  // amounts the person gave (grams, ml…) are kept exactly, whatever the photo or the model says
+  const hold = (list) => (mode === "meal" || mode === "text" ? holdItemsToStated(list, text ?? "") : list);
   if (modeInfo.groundsAgainstUSDA) {
     const grounded = await groundItems(items);
-    return { success: true, items: grounded, meta };
+    return { success: true, items: hold(grounded), meta };
   }
 
-  return { success: true, items, meta };
+  return { success: true, items: hold(items), meta };
 }

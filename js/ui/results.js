@@ -84,7 +84,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
           <button type="button" class="add-to-meal-btn" id="add-to-meal">＋ ${t("group.addFood")}</button>
           ${template ? "" : entry.leftovers?.removedKcal > 0
             ? `<div class="left-note">${icon("plateHalf", { size: 15 })}<span>${t("left.mealNote", { n: Math.round(entry.leftovers.removedKcal) })}</span><button type="button" id="left-undo-meal">${t("left.undo")}</button></div>`
-            : `<button type="button" class="add-to-meal-btn" id="left-meal">${icon("plateHalf", { size: 15 })} ${t("left.mealCta")}</button>`}
+            : `<button type="button" class="add-to-meal-btn" id="left-meal">${icon("plateHalf", { size: 15 })} ${t(entry.leftoversFailed ? "left.failedCta" : "left.mealCta")}</button>`}
           <button type="button" class="plate-toggle" id="plate-toggle" aria-expanded="false">🍽️ ${t("plate.open")}</button>
           <div class="plate-card hidden" id="plate-card"></div>
         </div>
@@ -319,6 +319,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
               item.micros = scaleMicros(base.micros, factor);
             }
             item.amount = next;
+            unstate(item);
             const gpu = gramsPerUnit(item);
             item.gramsEstimate = gpu ? Math.max(1, Math.round(next * gpu)) : 0;
             renderItems();
@@ -414,6 +415,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
               if (f.key === "amount") {
                 // Amount rescale — skip transient zero/empty; rescale against baseline snapshot.
                 if (!(parsed > 0)) return;
+                if (item.stated) { unstate(item); row.querySelector(".meal-item-stated")?.remove(); }
                 const base = baselines[idx];
                 const baseAmount = Number(base.amount) || Number(base.gramsEstimate) || 0;
                 if (baseAmount > 0) {
@@ -545,6 +547,12 @@ export function openResultsSheet(entry, { template = null } = {}) {
   });
 }
 
+/** A changed amount is no longer the one the person wrote (js/stated.js): leftovers may apply. */
+function unstate(item) {
+  delete item.stated;
+  delete item.statedAmount;
+}
+
 function snapshotBaseline(item) {
   return {
     gramsEstimate: item.gramsEstimate,
@@ -559,7 +567,11 @@ function snapshotBaseline(item) {
 
 function thumbHtml(entry) {
   if (entry.photoDataUrl) {
-    return `<div class="results-thumb-wrap"><img class="results-thumb" src="${safeSrc(entry.photoDataUrl)}" alt="" />${sureBadgeHtml(entry, "sure-badge is-big")}</div>`;
+    // a described meal with a photo for context: the words first, then the photo
+    const words = entry.analysisMode === "text" && typeof entry.analysisDescription === "string" && entry.analysisDescription.trim() !== ""
+      ? `<div class="results-desc-quote is-with-photo">${icon("textBubbleFill", { size: 15 })}<div class="results-desc-quote-text">“${escapeHtml(entry.analysisDescription)}”</div></div>`
+      : "";
+    return `${words}<div class="results-thumb-wrap"><img class="results-thumb" src="${safeSrc(entry.photoDataUrl)}" alt="" />${sureBadgeHtml(entry, "sure-badge is-big")}</div>`;
   }
   if (typeof entry.analysisDescription === "string" && entry.analysisDescription.trim() !== "") {
     return `
@@ -601,6 +613,7 @@ function itemRowHtml(item, idx, microsOpen = false, { gpu = null, asking } = {})
       <div class="meal-item-units" role="group" aria-label="${escapeAttr(t("meal.unit"))}">
         ${["g", "ml", "serving"].map((u) => `<button type="button" data-unit="${u}" aria-pressed="${unit === u}">${u === "serving" ? t("edit.serving") : u}</button>`).join("")}
       </div>
+      ${item.stated === true && item.statedAmount ? `<div class="meal-item-stated">${icon("checkmark", { size: 12 })}<span>${escapeHtml(t("meal.asWritten", { amount: item.statedAmount }))}</span></div>` : ""}
       ${weightLine && asking === undefined ? `<div class="meal-item-weight">${weightLine}</div>` : ""}
       ${asking !== undefined ? `
       <div class="meal-item-weigh">

@@ -456,7 +456,7 @@ export function groupMany(ids) {
 export function copyEntryTo(entryId, timestamp = Date.now()) {
   const e = getFoodEntry(entryId);
   if (!e || e.isPending === true || e.analysisFailed === true) return null;
-  const { id, updatedAt, timestamp: _t, analysisQuestions, questionsAnswered, analysisSizeCheck, sizeChecked, leftovers, ...rest } = JSON.parse(JSON.stringify(e));
+  const { id, updatedAt, timestamp: _t, analysisQuestions, questionsAnswered, analysisSizeCheck, sizeChecked, leftovers, leftoversFailed, ...rest } = JSON.parse(JSON.stringify(e));
   return addFoodEntry({ ...rest, timestamp, analysisItems: rest.analysisItems ?? null });
 }
 

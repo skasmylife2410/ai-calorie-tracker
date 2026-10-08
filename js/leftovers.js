@@ -2,6 +2,9 @@
 // how much of each logged item is still on the plate (api/gemini.js, mode "leftovers") and the
 // meal is scaled down to what was actually eaten. The meal remembers what it was before, so it can
 // be undone, and is marked as having had leftovers taken off.
+//
+// A food whose weight or volume the person gave themselves ("200 g", "a 330 ml can" — marked
+// `stated`, js/stated.js) is an objective measurement: no leftovers photo takes anything off it.
 
 import * as store from "./store.js";
 import { analyzeWithGemini } from "./api.js";
@@ -30,14 +33,15 @@ export function leftoversText(items, servings = 1) {
   return items.map((i, idx) => {
     const g = Math.round((Number(i.gramsEstimate) || 0) * servings);
     const name = String(i.name ?? "food").replace(/\s+/g, " ").slice(0, 60);
-    return `${idx}. ${name}${g > 0 ? ` — ${g} g` : ""}`;
+    return `${idx}. ${name}${g > 0 ? ` — ${g} g` : ""}${i.stated === true ? " (measured)" : ""}`;
   }).join("\n").slice(0, 1400);
 }
 
 /**
  * Scales each item to what was eaten. `answers` are { index, left_fraction } from the AI; items
- * it didn't mention were eaten. Returns the new one-serving items and the kcal taken off (for the
- * whole meal, servings included).
+ * it didn't mention were eaten. Returns the new one-serving items, the kcal taken off (for the
+ * whole meal, servings included) and how many measured foods were kept although the photo
+ * showed some of them left.
  */
 export function applyLeftovers(items, answers, servings = 1) {
   const left = new Map();
@@ -46,8 +50,10 @@ export function applyLeftovers(items, answers, servings = 1) {
     if (Number.isInteger(idx) && idx >= 0 && idx < items.length && Number.isFinite(f)) left.set(idx, Math.min(1, Math.max(0, f)));
   }
   let removed = 0;
+  let keptMeasured = 0;
   const out = items.map((item, idx) => {
     const f = left.get(idx) ?? 0;
+    if (f > 0.02 && item.stated === true) { keptMeasured += 1; return { ...item }; }
     if (f <= 0) return { ...item };
     const keep = 1 - f;
     removed += (Number(item.calories) || 0) * f;
@@ -62,7 +68,34 @@ export function applyLeftovers(items, answers, servings = 1) {
       leftFraction: f,
     };
   });
-  return { items: out, removedKcal: Math.round(removed * servings) };
+  return { items: out, removedKcal: Math.round(removed * servings), keptMeasured };
+}
+
+/**
+ * What was eaten of these items, from a photo of what's left (and, when there is one, a photo of
+ * the meal before). Resolves to { ok:true, items, removedKcal, keptMeasured, confidence } or
+ * { ok:false, message }.
+ */
+export async function leftoversForItems(items, leftoverPhotoDataUrl, beforePhotoDataUrl = null, servings = 1) {
+  const out = await analyzeWithGemini({
+    mode: "leftovers",
+    imageDataUrl: leftoverPhotoDataUrl,
+    imageDataUrl2: beforePhotoDataUrl || undefined,
+    text: leftoversText(items, servings),
+  });
+  if (!out.ok) return { ok: false, message: out.message };
+  const res = applyLeftovers(items, out.items, servings);
+  return { ok: true, ...res, confidence: Number.isFinite(out.meta?.confidence) ? out.meta.confidence : null };
+}
+
+/** The meal's `leftovers` record: what came off, and what it was before (for Undo). */
+export function leftoversRecord(before, res) {
+  return {
+    at: Date.now(),
+    removedKcal: res.removedKcal,
+    confidence: res.confidence ?? null,
+    before: { analysisItems: before.analysisItems ?? null, calories: before.calories, proteinG: before.proteinG, carbsG: before.carbsG, fatG: before.fatG, micros: before.micros ?? null, base: before.base ?? null },
+  };
 }
 
 /**
@@ -76,27 +109,16 @@ export async function takeLeftovers(entryId, leftoverPhotoDataUrl) {
   const base = entry.leftovers?.before ? { ...entry, ...entry.leftovers.before } : entry;
   const servings = store.normalizeServings(base.servings);
   const items = itemsOf(base);
-  const out = await analyzeWithGemini({
-    mode: "leftovers",
-    imageDataUrl: leftoverPhotoDataUrl,
-    imageDataUrl2: base.photoDataUrl || undefined,
-    text: leftoversText(items, servings),
-  });
-  if (!out.ok) return { ok: false, message: out.message };
-  const { items: eaten, removedKcal } = applyLeftovers(items, out.items, servings);
-  if (removedKcal <= 0) return { ok: true, removedKcal: 0 };
+  const res = await leftoversForItems(items, leftoverPhotoDataUrl, base.photoDataUrl, servings);
+  if (!res.ok) return res;
+  if (entry.leftoversFailed) store.updateFoodEntry(entryId, { leftoversFailed: null });
+  if (res.removedKcal <= 0) return { ok: true, removedKcal: 0, keptMeasured: res.keptMeasured };
   store.updateFoodEntry(entryId, {
-    analysisItems: eaten,
-    ...store.fieldsFromItems(eaten, servings),
-    leftovers: {
-      at: Date.now(),
-      removedKcal,
-      confidence: Number.isFinite(out.meta?.confidence) ? out.meta.confidence : null,
-      // what the meal was, to undo it
-      before: { analysisItems: base.analysisItems ?? null, calories: base.calories, proteinG: base.proteinG, carbsG: base.carbsG, fatG: base.fatG, micros: base.micros ?? null, base: base.base ?? null },
-    },
+    analysisItems: res.items,
+    ...store.fieldsFromItems(res.items, servings),
+    leftovers: leftoversRecord(base, res), // what the meal was, to undo it
   });
-  return { ok: true, removedKcal };
+  return { ok: true, removedKcal: res.removedKcal, keptMeasured: res.keptMeasured };
 }
 
 /** Puts the meal back as it was logged. */
