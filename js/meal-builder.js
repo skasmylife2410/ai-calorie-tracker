@@ -35,6 +35,8 @@ export function trayItemFromProduct(product, key = null) {
       micros: cleanMicros(product?.micros),
     },
     amount: base.amount,
+    // what one serving weighs, when known (your own meals), so servings still have grams
+    ...(base.unit === "serving" && Number(product?.servingGrams) > 0 ? { servingGrams: Math.round(Number(product.servingGrams)) } : {}),
     // a saved meal's own foods (one serving), so it unpacks back into separate foods when added
     ...(Array.isArray(product?.items) && product.items.length > 0 ? { sub: product.items } : {}),
   };
@@ -107,12 +109,14 @@ export function trayToEntry(items, timestamp = Date.now()) {
       }
       const s = scaled(i);
       const unit = i.per.unit;
+      const perServing = unit === "serving" && Number(i.servingGrams) > 0 ? Number(i.servingGrams) : null;
       return {
         name: i.name,
         unit,
         amount: i.amount,
-        // grams underneath for the totals and portion plate; a serving keeps its own weight unknown
-        gramsEstimate: unit === "serving" ? 0 : i.amount,
+        // grams underneath for the totals and portion plate; a serving of unknown weight stays 0
+        gramsEstimate: unit === "serving" ? (perServing ? Math.round(i.amount * perServing) : 0) : i.amount,
+        ...(perServing ? { gramsPerServing: perServing } : {}),
         ...s,
       };
     }),

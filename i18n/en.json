@@ -64,7 +64,15 @@
     "itemsHint": "Tap any number to edit it. Editing grams rescales that item's macros proportionally.",
     "fixResults": "Fix results",
     "saveChanges": "Save changes",
-    "noItems": "No items left — add one back with \"Fix results\" or cancel."
+    "noItems": "No foods left. Add one with “+ Add food”, or cancel.",
+    "doubleCheck": "Double-check this one",
+    "weightUnknown": "Weight of a serving unknown · set it",
+    "oneServingWeighs": "1 serving weighs",
+    "setWeight": "Set",
+    "unit": "Unit",
+    "portion": "Portion",
+    "less": "Less",
+    "more": "More"
   },
   "favourites": {
     "title": "Favourites",
@@ -1321,5 +1329,30 @@
     "cardToday": "Due today",
     "cardIn": "Next in {n} days",
     "cardEvery": "targets adjust to your weight every {n} days"
+  },
+  "addTo": {
+    "title": "Add to this meal",
+    "lead": "Any way you log works here. The foods join this meal.",
+    "scan": "Camera",
+    "scanSub": "Photo, label or barcode",
+    "saved": "Favourites",
+    "savedSub": "Saved and recent foods",
+    "describe": "Describe it",
+    "describeSub": "Type what it was",
+    "voice": "Say it",
+    "voiceSub": "Speak, we’ll write it",
+    "search": "Food database",
+    "searchSub": "Search any food",
+    "manual": "By hand",
+    "manualSub": "Type the numbers",
+    "add": "Add",
+    "addMany": "Add {n} · {kcal} kcal",
+    "favTip": "Tick several to add them all.",
+    "working": "analysing…",
+    "photoWork": "Photo",
+    "labelWork": "Label",
+    "barcodeWork": "Barcode {code}",
+    "failed": "Couldn’t analyse that. Try again or add it another way.",
+    "noFood": "No food found in that."
   }
 }

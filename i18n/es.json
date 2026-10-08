@@ -64,7 +64,15 @@
     "itemsHint": "Toca cualquier número para editarlo. Al cambiar los gramos, los macros se ajustan solos.",
     "fixResults": "Corregir",
     "saveChanges": "Guardar cambios",
-    "noItems": "No queda ningún alimento: añade uno con «Corregir» o cancela."
+    "noItems": "No queda ningún alimento. Añade uno con «+ Añadir alimento» o cancela.",
+    "doubleCheck": "Revisa este",
+    "weightUnknown": "Peso de la porción desconocido · indícalo",
+    "oneServingWeighs": "1 porción pesa",
+    "setWeight": "Listo",
+    "unit": "Unidad",
+    "portion": "Porción",
+    "less": "Menos",
+    "more": "Más"
   },
   "favourites": {
     "title": "Favoritos",
@@ -1321,5 +1329,30 @@
     "cardToday": "Toca hoy",
     "cardIn": "Próxima en {n} días",
     "cardEvery": "las metas se ajustan a tu peso cada {n} días"
+  },
+  "addTo": {
+    "title": "Añadir a esta comida",
+    "lead": "Cualquier forma de registrar sirve aquí. Los alimentos se suman a esta comida.",
+    "scan": "Cámara",
+    "scanSub": "Foto, etiqueta o código",
+    "saved": "Favoritos",
+    "savedSub": "Guardados y recientes",
+    "describe": "Descríbelo",
+    "describeSub": "Escribe qué era",
+    "voice": "Dilo",
+    "voiceSub": "Habla y lo escribimos",
+    "search": "Base de alimentos",
+    "searchSub": "Busca cualquier alimento",
+    "manual": "A mano",
+    "manualSub": "Escribe los números",
+    "add": "Añadir",
+    "addMany": "Añadir {n} · {kcal} kcal",
+    "favTip": "Marca varios para añadirlos todos.",
+    "working": "analizando…",
+    "photoWork": "Foto",
+    "labelWork": "Etiqueta",
+    "barcodeWork": "Código {code}",
+    "failed": "No se pudo analizar. Inténtalo de nuevo o añádelo de otra forma.",
+    "noFood": "No se encontró comida en eso."
   }
 }

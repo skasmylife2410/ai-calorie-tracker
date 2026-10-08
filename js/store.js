@@ -342,25 +342,33 @@ export function isGroupedEntry(entry) {
   return n > 1 && !entry?.analysisMode;
 }
 
+/** An item times `f`: calories, macros, micros, grams and its amount all scale together. */
+export function scaleItem(item, f) {
+  return {
+    ...item,
+    calories: (Number(item?.calories) || 0) * f,
+    proteinG: r1((Number(item?.proteinG) || 0) * f),
+    carbsG: r1((Number(item?.carbsG) || 0) * f),
+    fatG: r1((Number(item?.fatG) || 0) * f),
+    micros: scaleMicros(item?.micros, f),
+    gramsEstimate: Math.round((Number(item?.gramsEstimate) || 0) * f),
+    ...(Number(item?.amount) > 0 ? { amount: r1(Number(item.amount) * f) } : {}),
+  };
+}
+
 /** An entry's foods as items for exactly what was eaten (servings already applied). */
 export function itemsOfEntry(entry) {
   const n = normalizeServings(entry?.servings);
   const items = Array.isArray(entry?.analysisItems) ? entry.analysisItems : [];
   if (items.length > 0) {
-    return items.map((i) => ({
-      ...i,
-      id: i.id ?? generateId(),
-      calories: (Number(i.calories) || 0) * n,
-      proteinG: r1((Number(i.proteinG) || 0) * n),
-      carbsG: r1((Number(i.carbsG) || 0) * n),
-      fatG: r1((Number(i.fatG) || 0) * n),
-      micros: scaleMicros(i.micros, n),
-      gramsEstimate: Math.round((Number(i.gramsEstimate) || 0) * n),
-      ...(Number.isFinite(Number(i.amount)) ? { amount: r1(Number(i.amount) * n) } : {}),
-    }));
+    return items.map((i) => ({ ...scaleItem(i, n), id: i.id ?? generateId() }));
   }
   const unit = entry?.amountUnit ?? null;
   const amount = Number(entry?.amount) > 0 ? Number(entry.amount) : null;
+  const measured = (unit === "g" || unit === "ml") && amount;
+  // in servings: how many were eaten, and what one weighs when that's known (never "1 g")
+  const count = measured ? null : r1(unit === "serving" && amount ? amount : n);
+  const perServing = Number(entry?.servingGrams) > 0 ? Number(entry.servingGrams) : null;
   return [{
     id: generateId(),
     name: String(entry?.name ?? "").trim() || "Food",
@@ -369,12 +377,19 @@ export function itemsOfEntry(entry) {
     carbsG: Number(entry?.carbsG) || 0,
     fatG: Number(entry?.fatG) || 0,
     micros: cleanMicros(entry?.micros),
-    unit: unit === "g" || unit === "ml" ? unit : "serving",
-    amount: unit === "g" || unit === "ml" ? amount : n,
-    gramsEstimate: unit === "g" && amount ? amount : 0,
+    unit: measured ? unit : "serving",
+    amount: measured ? amount : count,
+    gramsEstimate: measured ? (unit === "g" ? amount : 0) : perServing ? Math.round(count * perServing) : 0,
+    ...(!measured && perServing ? { gramsPerServing: perServing } : {}),
     confidence: 1,
     grounded: false,
   }];
+}
+
+/** An entry's foods for ONE serving of it (what Favourites › Recent offers), to add elsewhere. */
+export function oneServingItems(entry) {
+  const n = normalizeServings(entry?.servings);
+  return itemsOfEntry(entry).map((i) => scaleItem(i, 1 / n));
 }
 
 /**
@@ -1146,9 +1161,16 @@ export function quickFoods(limit = 12) {
     .sort((a, b) => b.timestamp - a.timestamp);
   for (const e of recent) {
     const b = baseMacros(e);
-    push({ barcode: null, name: e.name, brand: null, servingDescription: "1 serving", calories: Math.round(b.calories), proteinG: r1(b.proteinG), carbsG: r1(b.carbsG), fatG: r1(b.fatG), micros: b.micros ?? null, source: "mine" });
+    push({ barcode: null, name: e.name, brand: null, servingDescription: "1 serving", calories: Math.round(b.calories), proteinG: r1(b.proteinG), carbsG: r1(b.carbsG), fatG: r1(b.fatG), micros: b.micros ?? null, source: "mine", servingGrams: servingGramsOf(e) });
   }
   return out;
+}
+
+/** What one serving of a logged meal weighs, when every food in it has a weight; else null. */
+export function servingGramsOf(entry) {
+  const parts = oneServingItems(entry);
+  if (parts.length === 0 || parts.some((i) => !(Number(i.gramsEstimate) > 0))) return null;
+  return Math.round(parts.reduce((a, i) => a + Number(i.gramsEstimate), 0));
 }
 
 /** True when an entry has already been hearted (matched by origin entry id, else by name). */

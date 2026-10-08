@@ -17,9 +17,11 @@ const MACRO_FIELDS = [
 ];
 
 /**
- * @param {{entry?:object, prefill?:object, prefillBarcode?:string, failureReason?:string, onSaved?:(entry)=>void}} opts
+ * @param {{entry?:object, prefill?:object, prefillBarcode?:string, failureReason?:string, onSaved?:(entry)=>void, onPick?:(item:object)=>void}} opts
+ *   onPick: "pick" mode (adding to a meal being edited) — the food is handed back as a meal item
+ *   instead of being logged
  */
-export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode = null, failureReason = null, timestamp = null, onSaved } = {}) {
+export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode = null, failureReason = null, timestamp = null, onSaved, onPick = null } = {}) {
   const isEditing = entry != null;
   const draft = {
     name: entry?.name ?? prefill?.name ?? "",
@@ -53,7 +55,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         ${navBar({
           title: isEditing ? t("edit.titleEdit") : t("edit.titleAdd"),
           leading: { label: t("app.cancel") },
-          trailing: { label: t("app.save"), bold: true, disabled: draft.name.trim() === "" },
+          trailing: { label: onPick ? t("addTo.add") : t("app.save"), bold: true, disabled: draft.name.trim() === "" },
         })}
         <div class="sheet-panel-body">
           <div class="ios-form">
@@ -255,6 +257,11 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         onTrailing: () => {
           const trimmedName = draft.name.trim();
           if (trimmedName === "") return;
+          if (onPick) {
+            onPick(itemFromDraft({ ...draft, name: trimmedName }, gramsOf));
+            close();
+            return;
+          }
           let saved;
           if (isEditing) {
             saved = store.updateFoodEntry(entry.id, {
@@ -292,6 +299,31 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
       });
     },
   });
+}
+
+/**
+ * The form as one meal item. How much was eaten is kept in its own unit with grams underneath;
+ * no amount typed means one serving (of unknown weight unless it was measured before).
+ */
+export function itemFromDraft(draft, gramsOf = (a, u) => (u === "g" ? a : null)) {
+  const amount = Number(draft.amount) > 0 ? Number(draft.amount) : null;
+  const unit = amount ? draft.amountUnit ?? "g" : "serving";
+  const perServing = Number(draft.servingGrams) > 0 ? Number(draft.servingGrams) : null;
+  const grams = amount ? gramsOf(amount, unit) : perServing;
+  return {
+    name: draft.name,
+    calories: Number(draft.calories) || 0,
+    proteinG: Number(draft.proteinG) || 0,
+    carbsG: Number(draft.carbsG) || 0,
+    fatG: Number(draft.fatG) || 0,
+    micros: cleanMicros(draft.micros),
+    unit,
+    amount: amount ?? 1,
+    gramsEstimate: grams ? Math.round(grams) : 0,
+    ...(unit === "serving" && perServing ? { gramsPerServing: perServing } : {}),
+    confidence: 1,
+    grounded: false,
+  };
 }
 
 function escapeAttr(str) {

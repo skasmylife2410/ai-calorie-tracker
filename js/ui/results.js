@@ -8,7 +8,7 @@ import { safeSrc } from "../safe-src.js";
 import * as store from "../store.js";
 import { t, currentLanguage } from "../i18n.js";
 import * as queue from "../queue.js";
-import { openFoodSearchSheet } from "./search.js";
+import { openAddToMealSheet } from "./add-to-meal.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { parseNumeric, formatNumeric } from "./numeric-field.js";
@@ -45,8 +45,12 @@ export function openResultsSheet(entry, { template = null } = {}) {
   let baselines = items.map(snapshotBaseline);
   const openMicros = new Set(); // which items have their nutrient fields expanded
   let addedFoods = false; // foods added with "+ Add food" turn the meal into a group
+  let pending = []; // foods on their way from "+ Add food" (a photo or words being analysed)
+  const askWeight = new Map(); // item idx -> the unit asked for, while "1 serving weighs … g" shows
+  let sheetClosed = false;
 
   openSheet({
+    onClosed: () => { sheetClosed = true; },
     render(panel, close) {
       panel.innerHTML = `
         ${navBar({ title: t("meal.title"), leading: { label: t("app.cancel") } })}
@@ -76,7 +80,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
           <div class="ios-section" style="margin-bottom:0;">
             <div class="ios-section-body" id="results-items"></div>
           </div>
-          <div class="results-items-section-footer">Tap any number to edit it. Editing grams rescales that item's macros proportionally.</div>
+          <div class="results-items-section-footer">${t("meal.itemsHint")}</div>
           <button type="button" class="add-to-meal-btn" id="add-to-meal">＋ ${t("group.addFood")}</button>
           ${template ? "" : entry.leftovers?.removedKcal > 0
             ? `<div class="left-note">${icon("plateHalf", { size: 15 })}<span>${t("left.mealNote", { n: Math.round(entry.leftovers.removedKcal) })}</span><button type="button" id="left-undo-meal">${t("left.undo")}</button></div>`
@@ -195,40 +199,98 @@ export function openResultsSheet(entry, { template = null } = {}) {
             </div>`;
         }).join("");
         // just the four totals, rounded: each food lists its own nutrients above
-        saveBtn.disabled = items.length === 0;
+        saveBtn.disabled = items.length === 0 || pending.some((p) => !p.error);
         renderPlate();
       };
 
       /**
        * Grams for one unit of this item, so amounts in ml or servings still have a weight
-       * underneath (the portion drawing, the totals and the AI all work in grams).
+       * underneath (the portion drawing, the totals and the AI all work in grams). Null when a
+       * serving's weight isn't known — never "1 g".
        */
       const gramsPerUnit = (item) => {
         const unit = item.unit ?? "g";
         if (unit === "g") return 1;
         if (unit === "ml") return densityOf(item.name);
-        return item.gramsPerServing || item.gramsEstimate || 1; // one serving = what it was
+        return Number(item.gramsPerServing) > 0 ? Number(item.gramsPerServing) : null;
       };
 
-      /** Fills in unit/amount for items that only ever had grams. */
+      /** Fills in unit/amount for items that only ever had grams, and the weight of a serving. */
       const ensureUnits = () => {
         for (const item of items) {
-          if (!item.unit) item.unit = "g";
-          if (!Number.isFinite(item.amount)) {
-            item.amount = item.unit === "g" ? (Number(item.gramsEstimate) || 0) : (Number(item.amount) || 1);
+          const grams = Number(item.gramsEstimate) || 0;
+          // no unit and no weight: it was one portion of something (a manual food, a favourite)
+          if (!item.unit) item.unit = grams > 0 || Number(item.amount) > 0 ? "g" : "serving";
+          if (!(Number(item.amount) > 0)) {
+            item.amount = item.unit === "g" ? grams : item.unit === "ml" && grams > 0 ? Math.round((grams / densityOf(item.name)) * 10) / 10 : 1;
+          }
+          if (item.unit === "serving" && !(Number(item.gramsPerServing) > 0) && grams > 0) {
+            item.gramsPerServing = Math.round(grams / item.amount); // 2 servings, 300 g -> 150 g each
+          }
+          if (grams <= 0 && item.unit !== "g") {
+            const gpu = gramsPerUnit(item);
+            if (gpu) item.gramsEstimate = Math.round(item.amount * gpu);
           }
         }
       };
       ensureUnits();
       baselines = items.map(snapshotBaseline); // now that every item has an amount
 
+      /** Bakes the servings multiplier into the foods: added foods then count once, not ×servings. */
+      const foldServings = () => {
+        if (template || servings === 1) return;
+        items = items.map((i) => store.scaleItem(i, servings));
+        servings = 1;
+        renderServings();
+      };
+
+      const newId = () => `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      /** Foods from "+ Add food" join the meal. */
+      const addItems = (newItems) => {
+        if (!Array.isArray(newItems) || newItems.length === 0) return;
+        foldServings();
+        addedFoods = true;
+        for (const it of newItems) items.push({ ...it, id: it.id ?? newId() });
+        ensureUnits();
+        baselines = items.map(snapshotBaseline);
+        askWeight.clear();
+        renderItems();
+      };
+      /** A photo or words being analysed: a row says so until the foods arrive (or it fails). */
+      const addWork = (label, work) => {
+        const job = { id: newId(), label, error: null };
+        pending.push(job);
+        renderItems();
+        work.then((newItems) => {
+          if (sheetClosed) return;
+          pending = pending.filter((p) => p !== job);
+          addItems(newItems);
+          if (!newItems?.length) renderItems();
+        }).catch((err) => {
+          if (sheetClosed) return;
+          const message = String(err?.message ?? "");
+          if (!message) pending = pending.filter((p) => p !== job); // closed without adding
+          else job.error = message;
+          renderItems();
+        });
+      };
+      const pendingHtml = () => pending.map((p) => p.error
+        ? `<div class="meal-item-pending is-error" role="alert"><span><b>${escapeHtml(p.label)}</b> ${escapeHtml(p.error)}</span><button type="button" data-pending-x="${p.id}" aria-label="${escapeAttr(t("app.close"))}">${icon("xmark", { size: 14 })}</button></div>`
+        : `<div class="meal-item-pending" role="status"><span class="spinner" aria-hidden="true"></span><span>${escapeHtml(p.label)} · ${t("addTo.working")}</span></div>`).join("");
+      const wirePending = () => itemsEl.querySelectorAll("[data-pending-x]").forEach((b) => b.addEventListener("click", () => {
+        pending = pending.filter((p) => p.id !== b.dataset.pendingX);
+        renderItems();
+      }));
+
       const renderItems = () => {
         if (items.length === 0) {
-          itemsEl.innerHTML = `<div class="results-empty-items">No items left — add one back with "Fix results" or cancel.</div>`;
+          itemsEl.innerHTML = (pending.length ? "" : `<div class="results-empty-items">${t("meal.noItems")}</div>`) + pendingHtml();
+          wirePending();
           renderTotals();
           return;
         }
-        itemsEl.innerHTML = items.map((item, idx) => itemRowHtml(item, idx, openMicros.has(idx))).join("");
+        itemsEl.innerHTML = items.map((item, idx) => itemRowHtml(item, idx, openMicros.has(idx), { gpu: gramsPerUnit(item), asking: askWeight.get(idx) })).join("") + pendingHtml();
+        wirePending();
 
         items.forEach((item, idx) => {
           const row = itemsEl.querySelector(`[data-item-idx="${idx}"]`);
@@ -257,30 +319,57 @@ export function openResultsSheet(entry, { template = null } = {}) {
               item.micros = scaleMicros(base.micros, factor);
             }
             item.amount = next;
-            item.gramsEstimate = Math.max(1, Math.round(next * gramsPerUnit(item)));
+            const gpu = gramsPerUnit(item);
+            item.gramsEstimate = gpu ? Math.max(1, Math.round(next * gpu)) : 0;
             renderItems();
           };
           const setGrams = setAmount; // the quick buttons work in the item's own unit
+          /** Same food, measured another way: 200 g of milk is 194 ml, what's there is 1 serving. */
+          const switchUnit = (next) => {
+            const grams = Number(item.gramsEstimate) || 0;
+            if (next === "serving") {
+              // one serving = what's on the plate right now (its weight unknown if that is)
+              if (grams > 0) item.gramsPerServing = grams;
+              else delete item.gramsPerServing;
+              item.amount = 1;
+            } else if (next === "ml") {
+              item.amount = Math.max(1, Math.round((grams / densityOf(item.name)) * 10) / 10);
+            } else {
+              item.amount = Math.max(1, Math.round(grams));
+            }
+            item.unit = next;
+            askWeight.delete(idx);
+            // the baseline moves with it, so later scaling is relative to this amount
+            baselines[idx] = snapshotBaseline(item);
+            renderItems();
+          };
           row.querySelectorAll("[data-unit]").forEach((b) =>
             b.addEventListener("click", () => {
               const next = b.dataset.unit;
-              if (next === (item.unit ?? "g")) return;
-              const grams = Number(item.gramsEstimate) || 0;
-              if (next === "serving") {
-                // one serving = what's on the plate right now
-                item.gramsPerServing = Math.max(1, grams);
-                item.amount = 1;
-              } else if (next === "ml") {
-                item.amount = Math.round((grams / densityOf(item.name)) * 10) / 10;
-              } else {
-                item.amount = Math.max(1, Math.round(grams));
+              if (next === (item.unit ?? "g")) { askWeight.delete(idx); renderItems(); return; }
+              // servings of unknown weight: ask what one weighs instead of guessing "1 g"
+              if (next !== "serving" && !(Number(item.gramsEstimate) > 0)) {
+                askWeight.set(idx, next);
+                renderItems();
+                setTimeout(() => itemsEl.querySelector(`[data-item-idx="${idx}"] [data-weigh-input]`)?.focus(), 30);
+                return;
               }
-              item.unit = next;
-              // the baseline moves with it, so later scaling is relative to this amount
-              baselines[idx] = { ...item, micros: cleanMicros(item.micros) };
-              renderItems();
+              switchUnit(next);
             })
           );
+          const weighInput = row.querySelector("[data-weigh-input]");
+          const applyWeight = () => {
+            const g = parseNumeric(weighInput?.value ?? "");
+            if (!(g > 0) || g > 5000) { weighInput?.focus(); return; }
+            item.gramsPerServing = Math.round(g);
+            item.gramsEstimate = Math.max(1, Math.round(item.amount * g));
+            const next = askWeight.get(idx);
+            if (next) switchUnit(next); else renderItems();
+          };
+          weighInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); applyWeight(); } });
+          row.querySelector("[data-weigh-ok]")?.addEventListener("click", applyWeight);
+          row.querySelector("[data-weigh-x]")?.addEventListener("click", () => { askWeight.delete(idx); renderItems(); });
+          row.querySelector("[data-weigh-open]")?.addEventListener("click", () => { askWeight.set(idx, null); renderItems(); setTimeout(() => itemsEl.querySelector(`[data-item-idx="${idx}"] [data-weigh-input]`)?.focus(), 30); });
 
           row.querySelectorAll("[data-mult]").forEach((b) =>
             b.addEventListener("click", () => setAmount((item.amount ?? item.gramsEstimate ?? 0) * Number(b.dataset.mult)))
@@ -297,6 +386,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
             items.splice(idx, 1);
             baselines.splice(idx, 1);
             openMicros.clear();
+            askWeight.clear();
             renderItems();
           });
 
@@ -329,7 +419,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
                 if (baseAmount > 0) {
                   const factor = parsed / baseAmount;
                   item.amount = parsed;
-                  item.gramsEstimate = Math.max(1, Math.round(parsed * gramsPerUnit(item)));
+                  item.gramsEstimate = gramsPerUnit(item) ? Math.max(1, Math.round(parsed * gramsPerUnit(item))) : 0;
                   item.calories = base.calories * factor;
                   item.proteinG = base.proteinG * factor;
                   item.carbsG = base.carbsG * factor;
@@ -351,8 +441,10 @@ export function openResultsSheet(entry, { template = null } = {}) {
                   }
                 } else {
                   item.amount = parsed;
-                  item.gramsEstimate = Math.max(1, Math.round(parsed * gramsPerUnit(item)));
+                  item.gramsEstimate = gramsPerUnit(item) ? Math.max(1, Math.round(parsed * gramsPerUnit(item))) : 0;
                 }
+                const gEl = row.querySelector(".meal-item-grams");
+                if (gEl && gramsPerUnit(item) && (item.unit ?? "g") !== "g") gEl.textContent = `≈ ${Math.round(item.gramsEstimate)} g`;
               } else {
                 // Direct macro edit = new ground truth: update value AND its baseline (§12.2).
                 item[f.key] = parsed;
@@ -371,7 +463,6 @@ export function openResultsSheet(entry, { template = null } = {}) {
 
       renderItems();
 
-      // Add more foods to this meal from the food search; they join as extra items.
       // leftovers: photograph what wasn't eaten (js/ui/leftovers-sheet.js); the meal reopens updated
       panel.querySelector("#left-meal")?.addEventListener("click", () => {
         close();
@@ -382,19 +473,10 @@ export function openResultsSheet(entry, { template = null } = {}) {
         undoLeftovers(entry.id);
         close();
       });
+      // "+ Add food": every way in that logging has (camera, words, voice, favourites, database,
+      // by hand); the foods join this meal (js/ui/add-to-meal.js)
       panel.querySelector("#add-to-meal").addEventListener("click", () => {
-        openFoodSearchSheet({
-          pickLabel: t("group.addToMeal"),
-          onPick: (newItems) => {
-            addedFoods = true;
-            for (const it of newItems) {
-              items.push({ ...it, id: it.id ?? `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}` });
-            }
-            ensureUnits();
-            baselines = items.map(snapshotBaseline);
-            renderItems();
-          },
-        });
+        openAddToMealSheet({ onItems: addItems, onWork: addWork, mealId: entry.id });
       });
 
       panel.querySelector("#fix-results-btn")?.addEventListener("click", () => {
@@ -404,6 +486,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
           if (fresh) {
             entry = fresh;
             items = (fresh.analysisItems ?? []).map((i) => ({ ...i }));
+            askWeight.clear();
             ensureUnits();
             baselines = items.map(snapshotBaseline);
             renderItems();
@@ -489,8 +572,14 @@ function thumbHtml(entry) {
   return "";
 }
 
-function itemRowHtml(item, idx, microsOpen = false) {
+function itemRowHtml(item, idx, microsOpen = false, { gpu = null, asking } = {}) {
   const lowConfidence = typeof item.confidence === "number" && item.confidence < 0.5;
+  const unit = item.unit ?? "g";
+  const grams = Number(item.gramsEstimate) || 0;
+  // under servings and ml, what it weighs; a serving of unknown weight says so and offers to set it
+  const weightLine = unit === "g" ? ""
+    : grams > 0 ? `<span class="meal-item-grams">≈ ${Math.round(grams)} g</span>`
+    : `<button type="button" class="meal-item-grams is-unknown" data-weigh-open>${t("meal.weightUnknown")}</button>`;
   return `
     <div class="meal-item-row" data-item-idx="${idx}">
       <div class="meal-item-top">
@@ -498,7 +587,7 @@ function itemRowHtml(item, idx, microsOpen = false) {
         ${item.grounded === true ? `<span class="meal-item-badge" role="img" aria-label="Verified against USDA nutrition database.">${icon("leafFill", { size: 16, color: "var(--sc-green)" })}</span>` : ""}
         <button class="meal-item-delete" data-item-delete aria-label="Delete item">${icon("trashFill", { size: 16, color: "var(--sc-red)" })}</button>
       </div>
-      ${lowConfidence ? `<div class="meal-item-warning">${icon("exclamationTriangleFill", { size: 13, color: "var(--sc-orange)" })}<span>Double-check this one</span></div>` : ""}
+      ${lowConfidence ? `<div class="meal-item-warning">${icon("exclamationTriangleFill", { size: 13, color: "var(--sc-orange)" })}<span>${t("meal.doubleCheck")}</span></div>` : ""}
       <div class="meal-item-fields">
         ${FIELD_DEFS.map(
           (f) => `
@@ -509,13 +598,22 @@ function itemRowHtml(item, idx, microsOpen = false) {
           </div>`
         ).join("")}
       </div>
-      <div class="meal-item-units" role="group" aria-label="Unit">
-        ${["g", "ml", "serving"].map((u) => `<button type="button" data-unit="${u}" aria-pressed="${(item.unit ?? "g") === u}">${u === "serving" ? t("edit.serving") : u}</button>`).join("")}
+      <div class="meal-item-units" role="group" aria-label="${escapeAttr(t("meal.unit"))}">
+        ${["g", "ml", "serving"].map((u) => `<button type="button" data-unit="${u}" aria-pressed="${unit === u}">${u === "serving" ? t("edit.serving") : u}</button>`).join("")}
       </div>
-      <div class="meal-item-portion" role="group" aria-label="Portion">
-        <button type="button" data-step="-10" aria-label="less">${(item.unit ?? "g") === "serving" ? "−½" : "−10"}</button>
+      ${weightLine && asking === undefined ? `<div class="meal-item-weight">${weightLine}</div>` : ""}
+      ${asking !== undefined ? `
+      <div class="meal-item-weigh">
+        <label for="weigh-${idx}">${t("meal.oneServingWeighs")}</label>
+        <input type="text" id="weigh-${idx}" inputmode="decimal" data-weigh-input placeholder="150" value="${gpu && unit === "serving" ? Math.round(gpu) : ""}">
+        <span>g</span>
+        <button type="button" class="is-ok" data-weigh-ok>${t("meal.setWeight")}</button>
+        <button type="button" data-weigh-x aria-label="${escapeAttr(t("app.cancel"))}">${icon("xmark", { size: 13 })}</button>
+      </div>` : ""}
+      <div class="meal-item-portion" role="group" aria-label="${escapeAttr(t("meal.portion"))}">
+        <button type="button" data-step="-10" aria-label="${escapeAttr(t("meal.less"))}">${unit === "serving" ? "−½" : "−10"}</button>
         ${[0.5, 0.75, 1.25, 1.5, 2].map((m) => `<button type="button" data-mult="${m}">×${m}</button>`).join("")}
-        <button type="button" data-step="10" aria-label="more">${(item.unit ?? "g") === "serving" ? "+½" : "+10"}</button>
+        <button type="button" data-step="10" aria-label="${escapeAttr(t("meal.more"))}">${unit === "serving" ? "+½" : "+10"}</button>
       </div>
       <details class="micro-details"${microsOpen ? " open" : ""}>
         <summary><span>${escapeHtml(microsSummary(item.micros))}</span></summary>

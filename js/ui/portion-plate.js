@@ -45,6 +45,8 @@ export function densityOf(name) {
 
 export function kindOf(name) {
   const n = String(name ?? "").toLowerCase();
+  // English puts a drink's head noun last: "orange juice", "almond milk", "iced coffee"
+  if (/\b(juice|milk|smoothie|shake|milkshake|tea|coffee|latte|soda|water|lemonade)\s*$/.test(n)) return "drink";
   let best = null;
   for (const [key, kind] of Object.entries(KINDS)) {
     for (const w of kind.words) {

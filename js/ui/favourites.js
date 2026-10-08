@@ -18,10 +18,10 @@ function escapeHtml(s) {
 }
 
 /** Last 20 distinct foods by name, newest first — the "Recent" tab. */
-function recentFoods() {
+function recentFoods({ excludeId = null } = {}) {
   const seen = new Set();
   const out = [];
-  for (const e of [...store.allFoodEntries()].filter((e) => e.isPending !== true && e.analysisFailed !== true).sort((a, b) => b.timestamp - a.timestamp)) {
+  for (const e of [...store.allFoodEntries()].filter((e) => e.isPending !== true && e.analysisFailed !== true && e.id !== excludeId).sort((a, b) => b.timestamp - a.timestamp)) {
     const key = String(e.name ?? "").trim().toLowerCase();
     if (key === "" || seen.has(key)) continue;
     seen.add(key);
@@ -49,7 +49,25 @@ function favouriteFoods() {
   return store.allSavedFoods().filter((f) => f.favorite !== false).sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
+/** One serving of a food as meal items (a meal's own foods, else the food with its weight), ×n. */
+function partsOf(f, n) {
+  let parts = Array.isArray(f.items) && f.items.length ? f.items : null;
+  if (!parts) {
+    // the meal it came from still has the grams, as long as it hasn't changed since
+    const src = store.getFoodEntry(f.recentEntryId ?? f.fromEntryId);
+    if (src && Math.abs(store.baseMacros(src).calories - f.calories) <= 1) parts = store.oneServingItems(src);
+  }
+  if (!parts) parts = [{ name: f.name, calories: f.calories, proteinG: f.proteinG, carbsG: f.carbsG, fatG: f.fatG, micros: f.micros ?? null, unit: "serving", amount: 1, gramsEstimate: 0 }];
+  return parts.map((i) => ({ ...store.scaleItem(i, n), id: undefined }));
+}
+
+/**
+ * @param {object} [opts]
+ * @param {(items:object[])=>void} [opts.onPick]  "pick" mode (adding to a meal being edited): the
+ *   chosen foods are handed back as meal items instead of being logged.
+ * @param {string} [opts.excludeId]  the meal being edited, left out of Recent
+ */
+export function openFavouritesSheet({ tab = "saved", timestamp = null, onPick = null, excludeId = null } = {}) {
   openSheet({
     render(panel, close) {
       let current = tab;
@@ -91,10 +109,10 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
                   <span class="fav-count">${n}</span>
                   <button type="button" data-step="1" aria-label="More servings">+</button>
                 </div>
-                <button type="button" class="fav-log" data-log>${t("app.log")}</button>
-                ${current === "saved" ? `<button type="button" class="fav-edit" data-edit>${t("group.edit")}</button>` : ""}
-                ${current === "saved" ? `<button type="button" class="fav-heart" data-unfav aria-label="Remove from favourites">♥</button>` : ""}
-                ${current === "recent" ? (() => { const on = store.isFavorited({ id: f.recentEntryId, name: f.name }); return `<button type="button" class="fav-heart${on ? " is-on" : ""}" data-fav aria-pressed="${on}" aria-label="${escapeHtml(t("stack.favourite"))}">${on ? "♥" : "♡"}</button>`; })() : ""}
+                <button type="button" class="fav-log" data-log>${onPick ? t("addTo.add") : t("app.log")}</button>
+                ${current === "saved" && !onPick ? `<button type="button" class="fav-edit" data-edit>${t("group.edit")}</button>` : ""}
+                ${current === "saved" && !onPick ? `<button type="button" class="fav-heart" data-unfav aria-label="Remove from favourites">♥</button>` : ""}
+                ${current === "recent" && !onPick ? (() => { const on = store.isFavorited({ id: f.recentEntryId, name: f.name }); return `<button type="button" class="fav-heart${on ? " is-on" : ""}" data-fav aria-pressed="${on}" aria-label="${escapeHtml(t("stack.favourite"))}">${on ? "♥" : "♡"}</button>`; })() : ""}
               </div>
             </div>
           </div>`;
@@ -124,11 +142,11 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
 
       const render = () => {
         panel.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === current)));
-        const foods = current === "saved" ? favouriteFoods() : recentFoods();
+        const foods = current === "saved" ? favouriteFoods() : recentFoods({ excludeId });
 
         if (foods.length === 0) {
           content.innerHTML = `
-            ${current === "saved" ? `<button type="button" class="fav-new-meal" id="fav-new-meal">＋ ${t("group.newMeal")}</button>` : ""}
+            ${current === "saved" && !onPick ? `<button type="button" class="fav-new-meal" id="fav-new-meal">＋ ${t("group.newMeal")}</button>` : ""}
             <div class="empty-state">
               ${icon(current === "saved" ? "bookmark" : "listBulletRectanglePortrait", { size: 40 })}
               <div class="empty-state-title">${current === "saved" ? t("favourites.emptySavedTitle") : t("favourites.emptyRecentTitle")}</div>
@@ -142,8 +160,8 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
 
         foods.forEach((f) => pool.set(f.id, f));
         content.innerHTML = `
-          ${current === "saved" ? `<button type="button" class="fav-new-meal" id="fav-new-meal">＋ ${t("group.newMeal")}</button>` : ""}
-          <p class="fav-tip">${t("stack.favTip")}</p>
+          ${current === "saved" && !onPick ? `<button type="button" class="fav-new-meal" id="fav-new-meal">＋ ${t("group.newMeal")}</button>` : ""}
+          <p class="fav-tip">${t(onPick ? "addTo.favTip" : "stack.favTip")}</p>
           <div class="fav-list">${foods.map(rowHtml).join("")}</div>
           ${picked.size ? pickBarHtml() : ""}`;
         wirePickBar();
@@ -168,6 +186,7 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
           });
 
           row.querySelector("[data-log]")?.addEventListener("click", () => {
+            if (onPick) { onPick(partsOf(food, servings.get(id) ?? 1)); close(); return; }
             logOne(food, servings.get(id) ?? 1, timestamp ?? Date.now());
             if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(20);
             close();
@@ -203,8 +222,9 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
         const kcal = [...picked].reduce((a, id) => a + (pool.get(id)?.calories || 0) * (servings.get(id) ?? 1), 0);
         return `
           <div class="fav-pickbar">
+            ${onPick ? `<button type="button" class="fav-log fav-log-many" id="fav-log-many">${t("addTo.addMany", { n: picked.size, kcal: Math.round(kcal).toLocaleString() })}</button>` : `
             <label class="fav-stack-toggle"><input type="checkbox" id="fav-stack" ${stackThem ? "checked" : ""} ${picked.size < 2 ? "disabled" : ""}> ${icon("stack", { size: 15 })} ${t("stack.asOne")}</label>
-            <button type="button" class="fav-log fav-log-many" id="fav-log-many">${t("stack.logMany", { n: picked.size, kcal: Math.round(kcal).toLocaleString() })}</button>
+            <button type="button" class="fav-log fav-log-many" id="fav-log-many">${t("stack.logMany", { n: picked.size, kcal: Math.round(kcal).toLocaleString() })}</button>`}
           </div>`;
       };
 
@@ -213,13 +233,14 @@ export function openFavouritesSheet({ tab = "saved", timestamp = null } = {}) {
         content.querySelector("#fav-log-many")?.addEventListener("click", () => {
           const at = timestamp ?? Date.now();
           const chosen = [...picked].map((id) => pool.get(id)).filter(Boolean);
+          if (onPick) {
+            onPick(chosen.flatMap((f) => partsOf(f, servings.get(f.id) ?? 1)));
+            close();
+            return;
+          }
           if (stackThem && chosen.length > 1) {
             // one meal holding every ticked food, each at its servings
-            const items = chosen.flatMap((f) => {
-              const n = servings.get(f.id) ?? 1;
-              const parts = Array.isArray(f.items) && f.items.length ? f.items : [{ name: f.name, calories: f.calories, proteinG: f.proteinG, carbsG: f.carbsG, fatG: f.fatG, micros: f.micros ?? null, unit: "serving", amount: 1, gramsEstimate: 0 }];
-              return parts.map((i) => ({ ...i, id: undefined, calories: (i.calories || 0) * n, proteinG: (i.proteinG || 0) * n, carbsG: (i.carbsG || 0) * n, fatG: (i.fatG || 0) * n, gramsEstimate: Math.round((i.gramsEstimate || 0) * n), ...(Number.isFinite(Number(i.amount)) ? { amount: Number(i.amount) * n } : {}) }));
-            });
+            const items = chosen.flatMap((f) => partsOf(f, servings.get(f.id) ?? 1));
             store.addFoodEntry({
               name: chosen.map((f) => f.name).join(", ").slice(0, 90),
               ...store.fieldsFromItems(items, 1),

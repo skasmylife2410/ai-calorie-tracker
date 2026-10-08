@@ -10,8 +10,12 @@ import { t, currentLanguage } from "../i18n.js";
 const CHAR_CAP = 500;
 const COUNTER_SHOW_AT = 400;
 
-/** @param {{voice?: boolean, timestamp?: number}} opts  voice: start listening straight away */
-export function openDescribeMealSheet({ voice = false, timestamp = null } = {}) {
+/**
+ * @param {{voice?: boolean, timestamp?: number, onText?: (text:string)=>void}} opts
+ *   voice: start listening straight away; onText: hand the words back (adding to a meal being
+ *   edited) instead of logging a new meal
+ */
+export function openDescribeMealSheet({ voice = false, timestamp = null, onText = null } = {}) {
   let dictation = null;
   openSheet({
     render(panel, close) {
@@ -98,7 +102,8 @@ export function openDescribeMealSheet({ voice = false, timestamp = null } = {}) 
           dictation?.stop();
           const trimmed = textarea.value.trim();
           if (trimmed === "") return;
-          queue.enqueueText(trimmed, timestamp ? { timestamp } : undefined);
+          if (onText) onText(trimmed);
+          else queue.enqueueText(trimmed, timestamp ? { timestamp } : undefined);
           close();
         },
       });

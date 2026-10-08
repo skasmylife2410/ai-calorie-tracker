@@ -4,7 +4,7 @@
 // waits on the network for ~100 files, and all files always come from the same deploy.
 // The page itself (index.html) is still network-first, so it's always current.
 
-const CACHE_VERSION = "snapcal-v71";
+const CACHE_VERSION = "snapcal-v72";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -83,6 +83,7 @@ const APP_SHELL = [
   "/js/ui/leftovers-intro.js",
   "/js/ui/coach.js",
   "/js/ui/streak.js",
+  "/js/ui/add-to-meal.js",
   "/js/ui/nano-doodle.js",
   "/js/ui/numeric-field.js",
   "/js/ui/onboarding.js",
