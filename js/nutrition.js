@@ -294,25 +294,40 @@ export const KCAL_PER_KG = 7700;
  * metabolism, and consistent logging habits (always forgetting the cooking oil shows up as a
  * lower maintenance, so targets stay honest).
  *
+ * The trend runs through WEEKLY averages, not single mornings: one salty dinner or a morning
+ * after a long run (±1 kg of water) used to move it by 300+ kcal. Each week is the mean of its
+ * readings, weighted by how many there are (up to 3), and a line is fitted through the weeks.
+ *
  * @param {{days:Array<{calories:number}>, weights:Array<{t:number, kg:number}>, formulaTdee:number}} input
  *   days: complete logged days in the window (already filtered); weights: one reading per day
+ *   (the caller leaves out the first week of a diet, which is mostly water — see store.js)
  * @returns {null|{tdee:number, raw:number, confidence:"low"|"medium"|"high", loggedDays:number,
- *   weighIns:number, spanDays:number, kgPerWeek:number, avgIntake:number}}
+ *   weighIns:number, weeks:number, spanDays:number, kgPerWeek:number, avgIntake:number}}
  */
 export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 }) {
   if (days.length < 7 || weights.length < 4) return null;
   const sorted = [...weights].sort((a, b) => a.t - b.t);
-  const t0 = sorted[0].t;
-  const xs = sorted.map((w) => (w.t - t0) / 86400000);
-  const ys = sorted.map((w) => w.kg);
-  const spanDays = xs[xs.length - 1];
+  const tEnd = sorted[sorted.length - 1].t;
+  const spanDays = (tEnd - sorted[0].t) / 86400000;
   if (spanDays < 7) return null;
 
-  // least-squares slope: robust to one odd morning, unlike first-vs-last
-  const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
-  const my = ys.reduce((a, b) => a + b, 0) / ys.length;
+  // weeks counted back from the latest reading, so the newest week is a whole one
+  const bins = new Map();
+  for (const w of sorted) {
+    const k = Math.floor((tEnd - w.t) / (7 * 86400000));
+    const b = bins.get(k) ?? { t: 0, kg: 0, n: 0 };
+    b.t += w.t; b.kg += w.kg; b.n += 1;
+    bins.set(k, b);
+  }
+  const weeks = [...bins.values()].map((b) => ({ x: b.t / b.n / 86400000, y: b.kg / b.n, w: Math.min(3, b.n) }));
+  if (weeks.length < 2) return null;
+
+  // weighted least-squares line through the weekly means
+  const W = weeks.reduce((a, p) => a + p.w, 0);
+  const mx = weeks.reduce((a, p) => a + p.w * p.x, 0) / W;
+  const my = weeks.reduce((a, p) => a + p.w * p.y, 0) / W;
   let num = 0, den = 0;
-  for (let i = 0; i < xs.length; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+  for (const p of weeks) { num += p.w * (p.x - mx) * (p.y - my); den += p.w * (p.x - mx) ** 2; }
   const slopePerDay = den > 0 ? num / den : 0;
 
   const avgIntake = days.reduce((a, d) => a + d.calories, 0) / days.length;
@@ -320,9 +335,11 @@ export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 })
 
   const loggedDays = days.length;
   const weighIns = sorted.length;
+  // at least three weeks of weigh-ins (after the first week of a diet: four weeks in all)
+  // before it's trusted for the targets; a full four for "high"
   let confidence = "low";
-  if (loggedDays >= 14 && weighIns >= 8 && spanDays >= 13) confidence = "medium";
-  if (loggedDays >= 21 && weighIns >= 14 && spanDays >= 20) confidence = "high";
+  if (loggedDays >= 14 && weighIns >= 8 && spanDays >= 20 && weeks.length >= 3) confidence = "medium";
+  if (loggedDays >= 21 && weighIns >= 12 && spanDays >= 27 && weeks.length >= 4) confidence = "high";
   // a result wildly different from the formula usually means incomplete logging, not a unicorn
   // metabolism — say so rather than act on it
   if (formulaTdee > 0 && (raw < formulaTdee * 0.6 || raw > formulaTdee * 1.5)) confidence = "low";
@@ -336,6 +353,7 @@ export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 })
     confidence,
     loggedDays,
     weighIns,
+    weeks: weeks.length,
     spanDays: Math.round(spanDays),
     kgPerWeek: Math.round(slopePerDay * 7 * 100) / 100,
     avgIntake: Math.round(avgIntake),
@@ -362,6 +380,10 @@ export function targetDelta({ goal, rate, weightKg }) {
 export const REVIEW_EVERY_DAYS = 30;
 /** Most a single review moves the daily calorie target on its own (beyond the new weight). */
 export const REVIEW_MAX_STEP_KCAL = 150;
+/** Most a single check-in moves the measured maintenance, up or down. */
+export const REVIEW_MAX_MAINT_STEP_KCAL = 150;
+/** The first days of a diet lose mostly water and glycogen, not fat: left out of the trends. */
+export const WATER_WEEK_DAYS = 7;
 /** Within this many kg of the goal weight, a fast pace eases to normal so the last kilos stick. */
 export const REVIEW_NEAR_GOAL_KG = 2;
 

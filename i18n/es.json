@@ -474,12 +474,12 @@
     "learnTitle": "Mantenimiento aprendido",
     "learnOn": "Usarlo",
     "learnOff": "Solo fórmula",
-    "learnHint": "Tras unas dos semanas registrando comidas y peso, SnapCal calcula lo que de verdad gastas con tus propios datos y fija tu meta con eso.",
+    "learnHint": "Desde tu primera revisión de 30 días, SnapCal calcula lo que de verdad gastas con tus propias comidas y pesajes y fija tu meta con eso. Se vuelve a medir en cada revisión y se mueve como mucho 150 kcal cada vez.",
     "cardTitle": "Tu mantenimiento real",
     "cardFormula": "La fórmula calculaba {n} kcal",
     "cardUsing": "Tu meta se basa en esto.",
     "cardNotYet": "Aún no se usa: faltan algunos datos.",
-    "cardBuilding": "Sigue registrando comidas y pesándote. En unas dos semanas SnapCal mostrará aquí lo que de verdad gastas.",
+    "cardBuilding": "Sigue registrando comidas y pesándote. En unas cuatro semanas SnapCal mostrará aquí lo que de verdad gastas.",
     "cardProgress": "{days} de 14 días registrados · {weighIns} de 8 pesajes",
     "cardHow": "Calculado con {days} días de comidas (promedio {intake} kcal) y la tendencia de tu peso ({rate} kg por semana). Incluye tu ejercicio, tu movimiento diario y tu forma de registrar.",
     "cardSkipped": "Se dejaron fuera {n} días que parecían registrados a medias.",
@@ -560,7 +560,7 @@
     "planTarget": "Meta diaria",
     "planMacros": "Proteína {p} g · Carbos {c} g · Grasa {f} g",
     "planLean": "Calculado con tu masa magra ({n} kg), porque nos dijiste tu contextura.",
-    "planLearn": "Son estimaciones. Tras unas dos semanas registrando y pesándote, SnapCal las reemplaza por lo que digan tus propios datos.",
+    "planLearn": "Son estimaciones. Desde tu primera revisión de 30 días, SnapCal las ajusta con lo que digan tus propios datos.",
     "back": "Atrás",
     "next": "Siguiente",
     "start": "Empezar",
@@ -670,7 +670,7 @@
   },
   "bf": {
     "title": "¿Cuál se parece más a ti?",
-    "sub": "Con que sea aproximado basta: solo fija tu número inicial y en dos semanas tus propios datos lo reemplazan.",
+    "sub": "Con que sea aproximado basta: solo fija tu número inicial y en un mes más o menos tus propios datos toman el relevo.",
     "skip": "Prefiero no decirlo",
     "tape": "Mejor medir con cinta",
     "tapeTitle": "Medir con cinta",
@@ -1331,7 +1331,8 @@
     "cardOpen": "Ver la última",
     "cardToday": "Toca hoy",
     "cardIn": "Próxima en {n} días",
-    "cardEvery": "las metas se ajustan a tu peso cada {n} días"
+    "cardEvery": "las metas se ajustan a tu peso cada {n} días",
+    "maintCapped": "Tus registros apuntan a unas {measured} kcal. El mantenimiento se mueve como mucho 150 kcal por revisión, para que un mes con ruido no cambie tus metas de golpe. Si se mantiene, la próxima revisión sigue en esa dirección."
   },
   "addTo": {
     "title": "Añadir a esta comida",

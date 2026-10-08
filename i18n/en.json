@@ -474,12 +474,12 @@
     "learnTitle": "Learned maintenance",
     "learnOn": "Use it",
     "learnOff": "Formula only",
-    "learnHint": "After about two weeks of logging and weighing in, SnapCal works out what you really burn from your own data and sets your target from that.",
+    "learnHint": "From your first 30-day check-in, SnapCal works out what you really burn from your own meals and weigh-ins and sets your target from that. It's measured again at each check-in and moves 150 kcal at most each time.",
     "cardTitle": "Your real maintenance",
     "cardFormula": "The formula guessed {n} kcal",
     "cardUsing": "Your target is based on this.",
     "cardNotYet": "Not used yet — needs a bit more data.",
-    "cardBuilding": "Keep logging meals and weighing in. After about two weeks, SnapCal will show what you really burn here.",
+    "cardBuilding": "Keep logging meals and weighing in. After about four weeks, SnapCal will show what you really burn here.",
     "cardProgress": "{days} of 14 days logged · {weighIns} of 8 weigh-ins",
     "cardHow": "Worked out from {days} days of eating (average {intake} kcal) and your weight trend ({rate} kg a week). It includes your exercise, daily movement and logging habits.",
     "cardSkipped": "{n} days that looked only partly logged were left out.",
@@ -560,7 +560,7 @@
     "planTarget": "Daily target",
     "planMacros": "Protein {p} g · Carbs {c} g · Fat {f} g",
     "planLean": "Worked out from your lean mass ({n} kg), because you told us your build.",
-    "planLearn": "These are estimates. After about two weeks of logging and weighing in, SnapCal replaces them with what your own data says.",
+    "planLearn": "These are estimates. From your first 30-day check-in, SnapCal adjusts them with what your own data says.",
     "back": "Back",
     "next": "Next",
     "start": "Start logging",
@@ -670,7 +670,7 @@
   },
   "bf": {
     "title": "Which looks most like you?",
-    "sub": "Rough is fine — it only sets your starting number, and after two weeks your own data replaces it.",
+    "sub": "Rough is fine — it only sets your starting number, and after about a month your own data takes over.",
     "skip": "I'd rather not say",
     "tape": "Measure with a tape instead",
     "tapeTitle": "Tape measure",
@@ -1331,7 +1331,8 @@
     "cardOpen": "See last",
     "cardToday": "Due today",
     "cardIn": "Next in {n} days",
-    "cardEvery": "targets adjust to your weight every {n} days"
+    "cardEvery": "targets adjust to your weight every {n} days",
+    "maintCapped": "Your logs point to about {measured} kcal. Maintenance moves 150 kcal at most per check-in, so one noisy month can't swing your targets. If it holds, the next check-in keeps going that way."
   },
   "addTo": {
     "title": "Add to this meal",

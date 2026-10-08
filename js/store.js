@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, streakFromDays, nextStreakState, REVIEW_EVERY_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
+import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, streakFromDays, nextStreakState, REVIEW_EVERY_DAYS, REVIEW_MAX_MAINT_STEP_KCAL, WATER_WEEK_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
 import { mealName } from "./meal-builder.js";
 import { goalsV1 } from "./goals-v1.js";
 
@@ -835,11 +835,13 @@ export function exerciseCreditRatio() {
  */
 export function syncLearnedTdeeFlag() {
   let profile = getProfile();
-  // People who were already on measured maintenance when it stopped moving every day: keep it,
-  // measured with the days before today (so this morning's weigh-in doesn't decide it), until
-  // their next check-in.
-  if (profile.learnedTdeeOn === true && !profile.maintenanceLock && profile.useLearnedTdee !== false) {
-    lockMaintenanceNow({ source: "kept", weightsBefore: startOfDay(Date.now()) });
+  // The switch to check-in-only maintenance first re-measured it for people already using it
+  // ("kept"), from whatever the last couple of weeks of weigh-ins said: 2,900 kcal for one
+  // person, 350 more than they'd had the day before. Those go back to the formula until their
+  // next check-in measures it properly; nobody gets a measured maintenance outside a check-in
+  // (or turning it on in Profile).
+  if (profile.maintenanceLock?.source === "kept") {
+    setProfile({ maintenanceLock: null });
     profile = getProfile();
   }
   const lock = maintenanceLock(profile);
@@ -904,6 +906,16 @@ export function weekendGap({ now = Date.now(), weeks = 6 } = {}) {
 }
 
 /**
+ * The end of the first week after the first weigh-in ever. A new diet's first week drops mostly
+ * water and glycogen (often 1–2 kg), which would read as a huge deficit, so weight trends start
+ * after it.
+ */
+function waterWeekEnd() {
+  const first = allWeightRaw().reduce((min, w) => Math.min(min, Number(w.timestamp) || Infinity), Infinity);
+  return Number.isFinite(first) ? first + WATER_WEEK_DAYS * 86400000 : 0;
+}
+
+/**
  * Learned maintenance from the last 28 complete days (today is excluded: it isn't over).
  * Days logged at under half the formula maintenance are treated as incomplete and skipped,
  * because a forgotten dinner would otherwise make maintenance look far lower than it is.
@@ -925,7 +937,7 @@ export function learnedMaintenanceNow({ now = Date.now(), windowDays = 28, weigh
   const days = [...perDay.values()].filter((kcal) => kcal >= formula * 0.5).map((calories) => ({ calories }));
 
   const weights = allWeightEntries()
-    .filter((w) => w.timestamp >= from && w.timestamp < (weightsBefore ?? todayStart + 86400000))
+    .filter((w) => w.timestamp >= Math.max(from, waterWeekEnd()) && w.timestamp < (weightsBefore ?? todayStart + 86400000))
     .map((w) => ({ t: w.timestamp, kg: w.kg }));
 
   const out = learnedMaintenance({ days, weights, formulaTdee: formula });
@@ -962,7 +974,7 @@ export function reviewIsDue(now = Date.now()) {
 /** The check-in for the last 30 days, worked out but not applied. */
 export function monthlyReviewNow({ now = Date.now() } = {}) {
   const profile = getProfile();
-  const from = now - REVIEW_EVERY_DAYS * DAY_MS;
+  const from = Math.max(now - REVIEW_EVERY_DAYS * DAY_MS, waterWeekEnd());
   const weights = allWeightRaw()
     .filter((w) => w.timestamp >= from && w.timestamp <= now)
     .map((w) => ({ t: w.timestamp, kg: w.kg }));
@@ -972,9 +984,16 @@ export function monthlyReviewNow({ now = Date.now() } = {}) {
   const learnedOn = Boolean(measured);
   const out = monthlyReview({ profile, weights, now, learnedOn });
   if (out.status === "ready" && measured) {
-    out.patch.maintenanceLock = { tdee: measured.tdee, at: now, confidence: measured.confidence, source: "checkin" };
-    out.maintenanceFrom = maintenanceLock(profile)?.tdee ?? Math.round(resolveUserGoals(profile).formulaTdee);
-    out.maintenanceTo = measured.tdee;
+    // one check-in moves maintenance by 150 kcal at most: a month of data still carries noise,
+    // and if the measurement is right the next check-in carries on in the same direction
+    const current = maintenanceLock(profile)?.tdee ?? Math.round(resolveUserGoals(profile).formulaTdee);
+    const step = Math.max(-REVIEW_MAX_MAINT_STEP_KCAL, Math.min(REVIEW_MAX_MAINT_STEP_KCAL, measured.tdee - current));
+    const to = Math.round(current + step);
+    out.patch.maintenanceLock = { tdee: to, at: now, confidence: measured.confidence, source: "checkin", measured: measured.tdee };
+    out.maintenanceFrom = current;
+    out.maintenanceTo = to;
+    out.maintenanceMeasured = measured.tdee;
+    out.maintenanceCapped = to !== measured.tdee;
   }
   return { ...out, learnedOn };
 }
