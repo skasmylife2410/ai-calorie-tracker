@@ -79,6 +79,20 @@ test("recent foods in the search carry what a serving weighs, and the tray keeps
   assert.equal(item.calories, 750);
 });
 
+test("a recent meal of several foods comes back as those foods, each editable", () => {
+  localStorage.clear();
+  const foods = ["Egg white", "White rice", "Banana", "Chicken thigh", "Skim milk"].map((name, i) => (
+    { name, calories: 100 + i, proteinG: 5, carbsG: 10, fatG: 2, gramsEstimate: 100, unit: "g", amount: 100 }));
+  store.addFoodEntry({ name: "Egg white, White rice +3", calories: 510, proteinG: 25, carbsG: 50, fatG: 10, source: "manual", analysisItems: foods });
+  const [recent] = store.quickFoods(5);
+  const tray = withAmount(trayItemFromProduct(recent), 2);
+  const items = trayToEntry([tray]).analysisItems;
+  assert.deepEqual(items.map((i) => i.name), foods.map((f) => f.name), "not one lump named \"…+3\"");
+  assert.equal(items[0].calories, 200, "two servings of the meal: each food doubled");
+  assert.equal(items[0].amount, 200);
+  assert.equal(trayToEntry([tray]).name, "Egg white, White rice +3", "keeps its own name");
+});
+
 test("a database serving of unknown weight stays 0 g in the meal", () => {
   const tray = trayItemFromProduct({ name: "Cookie", servingDescription: "1 serving", calories: 150 });
   const [item] = trayToEntry([tray]).analysisItems;

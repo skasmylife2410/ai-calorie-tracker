@@ -1180,7 +1180,10 @@ export function quickFoods(limit = 12) {
     .sort((a, b) => b.timestamp - a.timestamp);
   for (const e of recent) {
     const b = baseMacros(e);
-    push({ barcode: null, name: e.name, brand: null, servingDescription: "1 serving", calories: Math.round(b.calories), proteinG: r1(b.proteinG), carbsG: r1(b.carbsG), fatG: r1(b.fatG), micros: b.micros ?? null, source: "mine", servingGrams: servingGramsOf(e) });
+    // a meal of several foods brings them along (one serving), so it unpacks back into
+    // separate foods you can each edit, as a favourite does
+    const items = Array.isArray(e.analysisItems) && e.analysisItems.length > 1 ? e.analysisItems : null;
+    push({ barcode: null, name: e.name, brand: null, servingDescription: "1 serving", calories: Math.round(b.calories), proteinG: r1(b.proteinG), carbsG: r1(b.carbsG), fatG: r1(b.fatG), micros: b.micros ?? null, source: "mine", servingGrams: servingGramsOf(e), items });
   }
   return out;
 }

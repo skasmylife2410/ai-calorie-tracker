@@ -77,7 +77,8 @@ export function trayTotals(items) {
 
 /** "Arepa", "Arepa & Huevo", "Arepa, Huevo & Café", "Arepa, Huevo +2". */
 export function mealName(items) {
-  const names = items.map((i) => i.name.split(",")[0].trim());
+  // "Rice, white, cooked" is rice; a meal of your own keeps its whole name
+  const names = items.map((i) => (i.sub ? i.name : i.name.split(",")[0]).trim());
   if (names.length <= 1) return names[0] ?? "";
   if (names.length === 2) return `${names[0]} & ${names[1]}`;
   if (names.length === 3) return `${names[0]}, ${names[1]} & ${names[2]}`;
