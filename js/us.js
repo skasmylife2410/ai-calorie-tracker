@@ -14,6 +14,7 @@ import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
 import { searchGifs } from "./social.js";
 import { sfx } from "./sounds.js";
+import { mountTogether } from "./ui/us-together.js";
 import * as store from "./store.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
@@ -36,7 +37,6 @@ export const COLORS = [
 let range = 7;
 let data = null;
 let groupId = null; // which group the dashboard is showing; null = the server picks your first
-let selectedDay = null; // "YYYY-MM-DD" opened in the calories-by-day chart, or null
 
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const fmt = (n) => Math.round(n).toLocaleString();
@@ -286,23 +286,23 @@ function todayHtml(people) {
  * One sparkline per person instead of a grid of bars: seven days times three people was 21 bars
  * to compare by eye. The dashed line is that person's goal, the dot is today.
  */
-const SPARK_W = 180, SPARK_H = 44;
 
 const isWeekend = (ts) => [0, 6].includes(new Date(ts).getDay());
 const dayLabel = (ts, key) => (key === localDateString(Date.now()) ? t("us.today") : formatDate(ts, { weekday: "short", month: "numeric", day: "numeric" }));
 
 /**
  * One day, everyone in the group: calories against goal, macros, meals, exercise, water and when
- * the calories were eaten. Opened by tapping a day in either chart.
+ * the calories were eaten. Opened by letting go on a day in the chart; `mark(p)` gives each
+ * person the chart's own marker ({ html, color }), so a colour means the same person in both.
  */
-function dayDetailHtml(people, key) {
+function dayDetailHtml(people, key, mark) {
   const ts = startOfDay(new Date(`${key}T12:00:00`).getTime());
-  const rows = people.map((p, i) => {
-    const c = COLORS[i % COLORS.length];
+  const rows = people.map((p) => {
+    const mk = mark(p);
     const d = { ...EMPTY_DAY, ...(p.days[key] ?? {}) };
     const name = escHtml(p.name || titleCase(p.owner));
     if (!d.meals && !d.sessions && !d.water) {
-      return `<div class="us-dd-person is-empty"><span class="tg-dot" style="background:${c.solid}"></span><b>${name}</b><span class="us-dd-muted">${t("us.noLog")}</span></div>`;
+      return `<div class="us-dd-person is-empty"><span class="tc-mk">${mk.html}</span><b>${name}</b><span class="us-dd-muted">${t("us.noLog")}</span></div>`;
     }
     const goal = p.goals?.calories;
     const diff = goal ? Math.round(d.calories - goal) : null;
@@ -310,12 +310,12 @@ function dayDetailHtml(people, key) {
     const parts = ["morning", "afternoon", "evening"].map((k) => d[k] || 0);
     const total = parts.reduce((x, y) => x + y, 0);
     const split = total > 0
-      ? `<div class="us-dd-split" style="--c:${c.solid}">${parts.map((v, n) => (v > 0 ? `<i class="seg-${n}" style="flex:${v}" title="${t(`us.part${n}`)} ${fmt(v)}"></i>` : "")).join("")}</div>
+      ? `<div class="us-dd-split" style="--c:${mk.color}">${parts.map((v, n) => (v > 0 ? `<i class="seg-${n}" style="flex:${v}" title="${t(`us.part${n}`)} ${fmt(v)}"></i>` : "")).join("")}</div>
          <div class="us-dd-splitkey">${parts.map((v, n) => `<span>${t(`us.part${n}`)} ${v > 0 ? fmt(v) : "–"}</span>`).join("")}</div>`
       : "";
     return `
       <div class="us-dd-person">
-        <div class="us-dd-top"><span class="tg-dot" style="background:${c.solid}"></span><b>${name}</b>
+        <div class="us-dd-top"><span class="tc-mk">${mk.html}</span><b>${name}</b>
           <span class="us-dd-kcal">${fmt(d.calories)} kcal</span>${diffHtml}</div>
         <div class="us-dd-facts">
           <span>${t("us.macros", { p: fmt(d.proteinG), c: fmt(d.carbsG), f: fmt(d.fatG) })}</span>
@@ -335,119 +335,6 @@ function dayDetailHtml(people, key) {
     </div>`;
 }
 
-function trendHtml(people, days) {
-  const ordered = [...days].reverse(); // oldest -> newest, so the line reads left to right
-  const W = SPARK_W, H = SPARK_H;
-  const n = ordered.length;
-  const xOf = (idx) => (idx / Math.max(1, n - 1)) * W;
-  const step = W / Math.max(1, n - 1);
-  const selIdx = ordered.findIndex((d) => d.key === selectedDay);
-  // weekend bands: half a step either side of each Saturday/Sunday point, so Sat+Sun join up
-  const bands = ordered.map((d, idx) => (isWeekend(d.ts)
-    ? `<rect class="us-wk-band" x="${Math.max(0, xOf(idx) - step / 2).toFixed(1)}" y="0" width="${(Math.min(W, xOf(idx) + step / 2) - Math.max(0, xOf(idx) - step / 2)).toFixed(1)}" height="${H}"/>`
-    : "")).join("");
-
-  const rows = people.map((p, i) => {
-    const c = COLORS[i % COLORS.length];
-    const values = ordered.map((d) => (p.days[d.key] || EMPTY_DAY).calories);
-    const goal = p.goals?.calories || 0;
-    const max = Math.max(1, ...values, goal) * 1.12;
-    // only full days count: today and half-logged days would pull the average down
-    const counted = daysForAverage(ordered.map((d) => ({ key: d.key, ...(p.days[d.key] || EMPTY_DAY) })), { goal, todayKey: localDateString(Date.now()) }).days;
-    const avg = counted.length ? Math.round(counted.reduce((a, d) => a + d.calories, 0) / counted.length) : 0;
-
-    const pts = values.map((v, idx) => ({ x: xOf(idx), y: H - (v / max) * H }));
-    // protein as dots, scaled so its target sits on the same dashed goal line (see proteinThread)
-    const pGoal = p.goals?.proteinG || 0;
-    const protDots = goal && pGoal ? ordered.map((d, idx) => {
-      const g = (p.days[d.key] || EMPTY_DAY).proteinG;
-      if (!(g > 0)) return "";
-      const y = Math.max(1.5, H - Math.min(max, (g / pGoal) * goal) / max * H);
-      return `<circle class="us-pdot${g >= pGoal ? " is-met" : ""}" cx="${xOf(idx).toFixed(1)}" cy="${y.toFixed(1)}" r="1.6"/>`;
-    }).join("") : "";
-    const path = pts.map((pt, idx) => `${idx === 0 ? "M" : "L"}${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" ");
-    const last = pts[pts.length - 1];
-    const goalY = goal ? H - (goal / max) * H : null;
-    const sel = selIdx >= 0 ? pts[selIdx] : null;
-
-    return `
-      <div class="us-trend">
-        <div class="us-trend-label">
-          <div class="us-trend-name"><span class="tg-dot" style="background:${c.solid}"></span>${escHtml(p.name || titleCase(p.owner))}</div>
-          <div class="us-trend-avg">${sel ? (values[selIdx] > 0 ? `${fmt(values[selIdx])} kcal` : "–") : `${t("us.avgCalories")} ${fmt(avg)}`}</div>
-        </div>
-        <svg class="us-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" data-spark data-ys="${pts.map((pt) => pt.y.toFixed(1)).join(",")}" data-vals="${values.join(",")}" data-avg="${fmt(avg)}">
-          ${bands}
-          ${goalY !== null ? `<line x1="0" y1="${goalY.toFixed(1)}" x2="${W}" y2="${goalY.toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity=".45"/>` : ""}
-          ${protDots}
-          <path d="${path}" fill="none" stroke="${c.solid}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-          <line class="us-cursor" x1="${sel ? sel.x.toFixed(1) : -10}" x2="${sel ? sel.x.toFixed(1) : -10}" y1="0" y2="${H}" vector-effect="non-scaling-stroke"/>
-          <circle class="us-cursor-dot" cx="${(sel ?? last).x.toFixed(1)}" cy="${(sel ?? last).y.toFixed(1)}" r="3.5" fill="${c.solid}" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>
-        </svg>
-      </div>`;
-  });
-
-  // day strip under the lines: tap a day, weekends shaded; lines up with the sparklines
-  const every = n > 14 ? 7 : 1; // 30 days: label weekly, but every day is still tappable
-  const strip = `
-    <div class="us-axis">
-      <div class="us-trend-label"></div>
-      <div class="us-axis-days" style="--n:${n}"><div class="us-axis-grid">
-        ${ordered.map((d, idx) => `<button type="button" class="us-axis-day${isWeekend(d.ts) ? " is-weekend" : ""}${d.key === selectedDay ? " is-selected" : ""}" data-day="${d.key}" aria-pressed="${d.key === selectedDay}" aria-label="${escHtml(dayLabel(d.ts, d.key))}">${(n - 1 - idx) % every === 0 ? escHtml(n > 14 ? `${new Date(d.ts).getMonth() + 1}/${new Date(d.ts).getDate()}` : formatDate(d.ts, { weekday: "narrow" })) : ""}</button>`).join("")}
-      </div></div>
-    </div>`;
-
-  return `<section class="tg-section" id="us-chart">
-    <h2 class="tg-h2">${t("us.caloriesByDay")}</h2>
-    <div class="us-card">${rows.join("")}${strip}</div>
-    ${selectedDay && selIdx >= 0 ? dayDetailHtml(people, selectedDay) : ""}
-    <p class="tg-note"><span class="us-wk-key"></span> ${t("us.weekend")} · ${t("us.goalLine")} · <span class="pthread-key is-dots" aria-hidden="true"></span> ${t("us.proteinLine")} · ${t("us.tapDay")}</p>
-  </section>`;
-}
-
-function groupedHtml(people, days) {
-  const vals = days.flatMap((d) => people.map((p) => (p.days[d.key] || EMPTY_DAY).calories));
-  const goals = people.map((p) => p.goals?.calories || 0);
-  const max = Math.max(1, ...vals, ...goals) * 1.08;
-
-  const rows = days.map(({ ts, key }) => {
-    const dt = new Date(ts);
-    const label = key === localDateString(Date.now())
-      ? t("us.today")
-      : `${formatDate(ts, { weekday: "short" })} ${dt.getMonth() + 1}/${dt.getDate()}`;
-
-    const bars = people.map((p, i) => {
-      const c = COLORS[i % COLORS.length];
-      const kcal = (p.days[key] || EMPTY_DAY).calories;
-      const w = (kcal / max) * 100;
-      const goal = p.goals?.calories;
-      return `
-        <div class="tg-gbar">
-          <div class="tg-gtrack" style="background:${c.soft}">
-            ${["morning", "afternoon", "evening"].map((part, n) => {
-              const kcal = (p.days[key] ?? {})[part] ?? 0;
-              const pw = (kcal / max) * 100;
-              return pw > 0 ? `<div class="tg-gfill seg-${n}" style="width:${pw}%;background:${c.solid}"></div>` : "";
-            }).join("")}
-            ${goal ? `<div class="tg-ggoal" style="left:calc(${(goal / max) * 100}% - 1px)"></div>` : ""}
-          </div>
-          <span class="tg-gnum">${kcal > 0 ? fmt(kcal) : "–"}</span>
-        </div>`;
-    }).join("");
-
-    return `<div class="tg-grow"><div class="tg-gday">${escHtml(label)}</div><div class="tg-gbars">${bars}</div></div>`;
-  });
-
-  return `<section class="tg-section">
-    <h2 class="tg-h2">${t("us.caloriesByDay")}</h2>
-    <div class="tg-mirror">
-      <div class="tg-glegend">${people.map((p, i) => `<span><i style="background:${COLORS[i % COLORS.length].solid}"></i>${escHtml(p.name || titleCase(p.owner))}</span>`).join("")}</div>
-      ${rows.join("")}
-      <div class="tg-legend"><i></i> ${t("us.goalLine")}</div>
-    </div>
-  </section>`;
-}
-
 /**
  * Where a day's protein sits on the calorie chart: scaled so the protein target lands on the
  * calorie goal line. The dotted thread under a bar reaches that line on a day protein was hit
@@ -456,54 +343,6 @@ function groupedHtml(people, days) {
 export function proteinThread(proteinG, proteinGoal, goalAt) {
   if (!(proteinGoal > 0) || !(goalAt > 0) || !(proteinG > 0)) return null;
   return { at: Math.min(100, (proteinG / proteinGoal) * goalAt), met: proteinG >= proteinGoal };
-}
-
-function mirrorHtml(people, days) {
-  const [a, b] = people;
-  const vals = days.flatMap((d) => people.map((p) => (p.days[d.key] || EMPTY_DAY).calories));
-  const goals = people.map((p) => p.goals?.calories || 0);
-  const max = Math.max(1, ...vals, ...goals) * 1.08;
-
-  const side = (p, i, key, dir) => {
-    const c = COLORS[i % COLORS.length];
-    const kcal = (p.days[key] || EMPTY_DAY).calories;
-    const w = (kcal / max) * 100;
-    const goal = p.goals?.calories;
-    const over = goal && kcal > goal * 1.1;
-    const pos = dir === "left" ? "right" : "left";
-    const numPos = w > 45 ? `${pos}:6px;color:#fff` : `${pos}:calc(${w}% + 5px)`;
-    const prot = proteinThread((p.days[key] || EMPTY_DAY).proteinG, p.goals?.proteinG, goal ? (goal / max) * 100 : null);
-    return `<div class="tg-side ${dir}">
-      <div class="fill" style="width:${w}%;background:${c.solid};opacity:${over ? 1 : 0.78}"></div>
-      ${prot && kcal > 0 ? `<div class="pthread${prot.met ? " is-met" : ""}" style="width:${prot.at.toFixed(1)}%" title="${escHtml(t("us.proteinOf", { g: fmt((p.days[key] || EMPTY_DAY).proteinG), goal: fmt(p.goals.proteinG) }))}"></div>` : ""}
-      ${goal ? `<div class="goal" style="${pos}:calc(${(goal / max) * 100}% - 1px)"></div>` : ""}
-      ${kcal > 0 ? `<span class="num" style="${numPos}">${fmt(kcal)}</span>` : ""}
-    </div>`;
-  };
-
-  const rows = days.map(({ ts, key }) => {
-    const dt = new Date(ts);
-    const weekend = isWeekend(ts);
-    const selected = key === selectedDay;
-    const label = key === localDateString(Date.now())
-      ? `<strong>${t("us.today")}</strong>`
-      : `<strong>${formatDate(dt, { weekday: "short" })}</strong>${formatDate(dt, { month: "numeric", day: "numeric" })}`;
-    // Sunday closes a week (the list runs newest first), so a line above it separates weeks
-    const weekBreak = dt.getDay() === 0 && key !== days[0].key ? " is-week-start" : "";
-    const row = `<div class="tg-row${weekend ? " is-weekend" : ""}${selected ? " is-selected" : ""}${weekBreak}" role="button" tabindex="0" data-day="${key}" aria-pressed="${selected}" aria-label="${escHtml(dayLabel(ts, key))}">${side(a, 0, key, "left")}<div class="tg-day">${label}</div>${b ? side(b, 1, key, "right") : "<div></div>"}</div>`;
-    return selected ? row + dayDetailHtml(people, key) : row;
-  });
-
-  return `<section class="tg-section" id="us-chart">
-    <h2 class="tg-h2">${t("us.caloriesByDay")}</h2>
-    <div class="tg-mirror">
-      <div class="tg-mirror-head"><span>${escHtml(a.name || titleCase(a.owner))}</span><span></span><span>${b ? escHtml(b.name || titleCase(b.owner)) : ""}</span></div>
-      ${rows.join("")}
-      <div class="tg-legend"><i></i> ${t("us.goalLine")} <span class="us-wk-key"></span> ${t("us.weekend")}</div>
-      <div class="tg-legend"><span class="pthread-key" aria-hidden="true"></span> ${t("us.proteinLine")}</div>
-    </div>
-    <p class="tg-note">${t("us.tapDay")}</p>
-  </section>`;
 }
 
 /**
@@ -653,79 +492,6 @@ function groupBarHtml() {
     </div>`;
 }
 
-const chartHtml = (people, days) => (people.length > 2 ? trendHtml(people, days) : mirrorHtml(people, days));
-
-/** Redraws only the chart (a day was picked), leaving the rest of the page alone. */
-function redrawChart(people, days) {
-  const old = body.querySelector("#us-chart");
-  if (!old) return;
-  old.outerHTML = chartHtml(people, days);
-  wireChart(people, days);
-}
-
-function wireChart(people, days) {
-  const chart = body.querySelector("#us-chart");
-  if (!chart) return;
-  const pick = (key) => {
-    selectedDay = selectedDay === key ? null : key;
-    redrawChart(people, days);
-    body.querySelector(`#us-chart [data-day="${selectedDay}"]`)?.focus({ preventScroll: true });
-  };
-  chart.querySelectorAll("[data-day]").forEach((el) => {
-    el.addEventListener("click", () => pick(el.dataset.day));
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(el.dataset.day); }
-    });
-  });
-  chart.querySelector("[data-close-day]")?.addEventListener("click", () => { selectedDay = null; redrawChart(people, days); });
-
-  // Trend lines: drag a finger across any line to scrub through the days; every line's cursor
-  // follows, and lifting the finger opens that day's details.
-  const sparks = [...chart.querySelectorAll("[data-spark]")];
-  if (sparks.length === 0) return;
-  const ordered = [...days].reverse();
-  const n = ordered.length;
-  const moveTo = (idx) => {
-    for (const svg of sparks) {
-      const ys = svg.dataset.ys.split(",");
-      const vals = svg.dataset.vals.split(",");
-      const x = ((idx / Math.max(1, n - 1)) * SPARK_W).toFixed(1);
-      svg.querySelector(".us-cursor")?.setAttribute("x1", x);
-      svg.querySelector(".us-cursor")?.setAttribute("x2", x);
-      svg.querySelector(".us-cursor-dot")?.setAttribute("cx", x);
-      svg.querySelector(".us-cursor-dot")?.setAttribute("cy", ys[idx]);
-      const label = svg.closest(".us-trend")?.querySelector(".us-trend-avg");
-      if (label) label.textContent = `${dayLabel(ordered[idx].ts, ordered[idx].key)} · ${Number(vals[idx]) > 0 ? `${fmt(Number(vals[idx]))} kcal` : "–"}`;
-    }
-  };
-  const idxAt = (svg, clientX) => {
-    const r = svg.getBoundingClientRect();
-    return Math.max(0, Math.min(n - 1, Math.round(((clientX - r.left) / Math.max(1, r.width)) * (n - 1))));
-  };
-  for (const svg of sparks) {
-    let dragging = false;
-    let idx = null;
-    svg.addEventListener("pointerdown", (e) => {
-      dragging = true;
-      svg.setPointerCapture?.(e.pointerId);
-      idx = idxAt(svg, e.clientX);
-      moveTo(idx);
-    });
-    svg.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
-      const next = idxAt(svg, e.clientX);
-      if (next !== idx) { idx = next; moveTo(idx); }
-    });
-    const end = () => {
-      if (!dragging) return;
-      dragging = false;
-      if (idx !== null) { selectedDay = ordered[idx].key; redrawChart(people, days); }
-    };
-    svg.addEventListener("pointerup", end);
-    svg.addEventListener("pointercancel", end);
-  }
-}
-
 /** In the app, your own row comes straight from this phone: the same numbers as your Home,
  *  with nothing waiting on a sync. */
 function withMyOwnNumbers(people) {
@@ -758,10 +524,8 @@ function render() {
   // one per person; colours repeat past twelve, and every row carries the person's name.
   if (people.length > 25) people.length = 25;
   const days = dayList(range);
-  // Two people still get the mirror chart — it reads beautifully head to head. Three or more
-  // get sparklines, which stay legible however many rows there are.
-  if (selectedDay && !days.some((d) => d.key === selectedDay)) selectedDay = null; // range shrank
-  const chart = chartHtml(people, days);
+  // one chart for everyone: % of goal, calories or protein, with people picked out (js/ui/us-together.js)
+  const chart = `<section class="tg-section" id="us-chart"></section>`;
   body.innerHTML = groupBarHtml() + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + todayHtml(people) + chart + summaryHtml(people, days) +
     (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: data.group?.name ?? "" })}</p>` : "");
   body.querySelectorAll("[data-group]").forEach((b) => b.addEventListener("click", () => {
@@ -771,7 +535,10 @@ function render() {
     start();
   }));
   wireAvatar();
-  wireChart(people, days);
+  mountTogether(body.querySelector("#us-chart"), {
+    people, days, me: data.me, todayKey: localDateString(Date.now()), selectedDay: null,
+    dayDetail: (key, mark) => dayDetailHtml(people, key, mark),
+  });
   if (body.id === "us-tab-body") renderPushCard(body.querySelector("#us-push")); // in the app only, not us.html
   renderRecap(body.querySelector("#us-recap"), { lang: currentLanguage() === "es" ? "es" : "en" });
   // the coach's own account: who shares their log, one tap away (js/ui/coach.js)

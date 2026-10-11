@@ -506,3 +506,12 @@
 :root[data-theme="mono"] .addto-opt { --c: var(--mn-ink) !important; }
 :root[data-theme="mono"] .meal-item-pending.is-error b { color: var(--mn-ink); }
 :root[data-theme="mono"] .meal-item-stated .icon { color: var(--mn-ink); }
+
+/* Us › Day by day: ink, hairlines and the three picked-person markers (contrast-checked; css/us.css) */
+:root[data-theme="mono"] .tc, :root[data-theme="mono"] .tc-day { --tc-ink: var(--mn-ink); --tc-sec: var(--mn-sec); --tc-line: var(--mn-line); --tc-grid: var(--mn-grid); --tc-card: var(--mn-card); }
+:root[data-theme="mono"] .tc-kpi b { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
+:root[data-theme="mono"][data-mode="dark"] .tc, :root[data-theme="mono"][data-mode="dark"] .tc-day { --tc-ctx: rgba(255,255,255,.2); --tc-s1: #3987e5; --tc-s2: #d95926; --tc-s3: #199e70; }
+:root[data-theme="mono"][data-mode="dark"] .us-dd-diff.is-near { color: #6fd98d; }
+:root[data-theme="mono"][data-mode="dark"] .us-dd-diff.is-over { color: #ffb460; }
+:root[data-theme="mono"][data-mode="dark"] .us-dd-diff.is-under { color: #8fb8ff; }
+:root[data-theme="mono"][data-markers="off"] .tc, :root[data-theme="mono"][data-markers="off"] .tc-day { --tc-s1: var(--mn-ink); --tc-s2: var(--mn-ink); --tc-s3: var(--mn-ink); }
