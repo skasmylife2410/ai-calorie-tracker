@@ -495,6 +495,40 @@ export async function usdaLookupBarcode(barcode, { apiKey = usdaApiKey(), timeou
 // protein, carbs and fat add up to; a product that doesn't add up is marked `suspect` and the
 // Add Food sheet says to check the label.
 
+/** Check digit of a UPC-A / EAN-13 body (all digits but the last). */
+function gtinCheck(body) {
+  let sum = 0;
+  for (let i = 0; i < body.length; i++) sum += Number(body[body.length - 1 - i]) * (i % 2 === 0 ? 3 : 1);
+  return (10 - (sum % 10)) % 10;
+}
+
+/**
+ * An 8-digit UPC-E (small US packages) written out as its 12-digit UPC-A, or null if it isn't one.
+ * shortcut: an EAN-8 starting with 0 or 1 that also passes the UPC-E check is read as UPC-E; those
+ * EAN-8 ranges are for in-store use, so revisit only if a real product comes up wrong.
+ */
+export function upcEToUpcA(code) {
+  if (!/^[01]\d{7}$/.test(code)) return null;
+  const n = code[0], m = code.slice(1, 7), last = m[5];
+  const body = last <= "2" ? n + m[0] + m[1] + last + "0000" + m.slice(2, 5)
+    : last === "3" ? n + m.slice(0, 3) + "00000" + m.slice(3, 5)
+    : last === "4" ? n + m.slice(0, 4) + "00000" + m[4]
+    : n + m.slice(0, 5) + "0000" + last;
+  return gtinCheck(body) === Number(code[7]) ? body + code[7] : null;
+}
+
+/**
+ * The one spelling of a scanned code that both databases file it under: a UPC-E or a US code read
+ * as 13/14 digits becomes its 12-digit UPC-A; other codes lose any padding zeros past 13 digits.
+ * Scanners read the same can as "04963406", "0049000634060" or "049000634060".
+ */
+export function canonicalBarcode(raw) {
+  const d = (String(raw ?? "").match(/\d/g) ?? []).join("");
+  if (d.length === 8) return upcEToUpcA(d) ?? d;
+  if (d.length > 12 && /^0+$/.test(d.slice(0, d.length - 12))) return d.slice(-12);
+  return d.length > 13 ? d.replace(/^0+(?=\d{13}$)/, "") : d;
+}
+
 /** UPC-A (12 digits) or an EAN-13 that is a UPC with a leading 0: sold in the US or Canada. */
 export function isNorthAmericanCode(barcode) {
   const d = (String(barcode ?? "").match(/\d/g) ?? []).join("");
@@ -539,11 +573,17 @@ export function pickBarcodeResult(barcode, off, usda) {
  * USDA is asked alongside OFF for North American codes, and afterwards for any other code only
  * when OFF has nothing usable, so European products don't spend USDA's rate limit.
  */
-export async function lookupBarcodeBoth(barcode, { usdaKey, timeoutMs } = {}) {
+export async function lookupBarcodeBoth(scanned, { usdaKey, timeoutMs } = {}) {
+  const barcode = canonicalBarcode(scanned);
   const opts = timeoutMs ? { timeoutMs } : {};
   const usdaOpts = { ...opts, ...(usdaKey ? { apiKey: usdaKey } : {}) };
   if (isNorthAmericanCode(barcode)) {
-    const [off, usda] = await Promise.all([offLookupBarcode(barcode, opts), usdaLookupBarcode(barcode, usdaOpts)]);
+    // Open Food Facts files US codes as 13 digits; USDA's search matches the code as written, and
+    // some brands are stored with the leading 0, so that spelling is tried when 12 digits miss
+    const [off, usda] = await Promise.all([
+      offLookupBarcode(`0${barcode}`, opts),
+      usdaLookupBarcode(barcode, usdaOpts).then((r) => (r.status === "notFound" ? usdaLookupBarcode(`0${barcode}`, usdaOpts) : r)),
+    ]);
     return pickBarcodeResult(barcode, off, usda);
   }
   const off = await offLookupBarcode(barcode, opts);

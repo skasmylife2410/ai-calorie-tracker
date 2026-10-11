@@ -333,7 +333,10 @@
     "titleAdd": "Añadir alimento",
     "fromUsda": "Datos de la etiqueta del fabricante (USDA)",
     "fromOff": "Datos de Open Food Facts, cargados por voluntarios — conviene mirar el envase",
-    "suspect": "Estos números no cuadran: las calorías no coinciden con la proteína, los carbohidratos y la grasa. Compáralos con el envase o saca una foto de la tabla nutricional."
+    "suspect": "Estos números no cuadran: las calorías no coinciden con la proteína, los carbohidratos y la grasa. Compáralos con el envase o saca una foto de la tabla nutricional.",
+    "fromGroup": "Lo escribió alguien en SnapCal con la etiqueta: vale la pena revisar el empaque",
+    "barcodeMiss": "El código {code} no está en las bases de datos. Escríbelo con la etiqueta: se guarda y el próximo escaneo lo encuentra.",
+    "barcodeDown": "No se pudo buscar el código {code} ({reason}). Escríbelo con la etiqueta: se guarda para la próxima vez."
   },
   "todayTab": {
     "title": "Hoy",

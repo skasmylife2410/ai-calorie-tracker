@@ -2,7 +2,12 @@
 //
 // GET /api/foods?q=chick  -> { ok, products, partial }
 // GET /api/foods?barcode=0123456789012  -> { ok, status: "found"|"notFound", product? }
-//   (the scanner's lookup: Open Food Facts + USDA Branded with the real key; see js/api.js §10)
+//   (the scanner's lookup: barcodes people typed in first, then Open Food Facts + USDA Branded
+//   with the real key; see js/api.js §10). Every lookup adds a row to snapcal_barcode_lookups
+//   (code, result, source, time; no account) so the scanner's hit rate can be measured.
+// POST /api/foods { barcode, product } -> { ok }
+//   A product typed in after a scan found nothing: kept in snapcal_barcodes, so the next scan of
+//   that code, by anyone, finds it.
 //
 // Why this runs on the server instead of the phone:
 //  - USDA's public DEMO_KEY allows about 10 searches an hour per phone, and search-as-you-type
@@ -15,7 +20,9 @@
 // Both sources run in parallel with a short budget; whichever answers in time is used.
 
 import { requireUser } from "./_auth.js";
-import { offProductToScannedProduct, usdaFoodToScannedProduct, lookupBarcodeBoth, usdaGroundingHit } from "../js/api.js";
+import { offProductToScannedProduct, usdaFoodToScannedProduct, lookupBarcodeBoth, usdaGroundingHit, canonicalBarcode } from "../js/api.js";
+import { cleanMicros } from "../js/nutrition.js";
+import { select, insert, restBase, restHeaders, parseBody } from "./_rest.js";
 import { rankProducts, normalize } from "../js/foods-local.js";
 import { cleanGif } from "../js/gif.js";
 
@@ -36,11 +43,12 @@ export default async function handler(req, res) {
 
   const me = await requireUser(req, res);
   if (!me) return;
+  if (req.method === "POST") return rememberBarcode(parseBody(req), me, res);
   if (req.method !== "GET") return res.status(405).json({ ok: false, errorType: "other", message: "Method not allowed" });
 
   const url = new URL(req.url, "http://localhost");
   const barcode = String(url.searchParams.get("barcode") ?? req.query?.barcode ?? "").replace(/\D/g, "").slice(0, 14);
-  if (barcode) return lookupBarcode(barcode, res);
+  if (barcode) return lookupBarcode(canonicalBarcode(barcode), res);
   const ground = String(url.searchParams.get("ground") ?? "").trim().replace(/\s+/g, " ").slice(0, MAX_QUERY);
   if (ground.length >= 2) return groundingHits(ground, res);
   const q = String(url.searchParams.get("q") ?? req.query?.q ?? "").trim().replace(/\s+/g, " ").slice(0, MAX_QUERY);
@@ -67,15 +75,26 @@ export default async function handler(req, res) {
 }
 
 async function lookupBarcode(barcode, res) {
+  const t0 = Date.now();
   const key = `barcode:${barcode}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    logLookup(barcode, hit.products, t0);
     setCacheHeaders(res);
     return res.status(200).json({ ok: true, ...hit.products });
+  }
+  // typed in by someone after an earlier miss
+  const mine = await select("snapcal_barcodes", { code: `eq.${barcode}`, select: "product", limit: "1" }).catch(() => []);
+  if (mine[0]?.product) {
+    const out = { status: "found", product: { ...mine[0].product, barcode, source: "group", suspect: false } };
+    remember(key, out);
+    logLookup(barcode, out, t0);
+    return res.status(200).json({ ok: true, ...out });
   }
   const usdaKey = (process.env.USDA_API_KEY || "").trim() || undefined;
   // 4 s per source: with OFF then USDA for a non-US code that stays inside the function's 10 s
   const out = await lookupBarcodeBoth(barcode, { usdaKey, timeoutMs: 4000 });
+  logLookup(barcode, out, t0);
   if (out.status === "failed") return res.status(502).json({ ok: false, errorType: "unavailable", message: out.message });
   // only hits are remembered: a product missing today may be added, or a source was just down
   if (out.status === "found") {
@@ -83,6 +102,44 @@ async function lookupBarcode(barcode, res) {
     setCacheHeaders(res);
   }
   return res.status(200).json({ ok: true, ...out });
+}
+
+/** One row per lookup, for the hit rate. Never holds up or fails the answer. */
+function logLookup(code, out, t0) {
+  insert("snapcal_barcode_lookups", { code, status: out.status, source: out.product?.source ?? null, ms: Date.now() - t0 }).catch(() => {});
+}
+
+const num = (v, max) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 10) / 10 : null;
+};
+const text = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+
+/** Keeps a product typed in after a miss, under the code's one spelling. Last one in wins. */
+async function rememberBarcode(body, me, res) {
+  const code = canonicalBarcode(body?.barcode);
+  const p = body?.product ?? {};
+  const product = {
+    name: text(p.name, 90),
+    brand: text(p.brand, 60) || null,
+    servingDescription: text(p.servingDescription, 60) || "1 serving",
+    calories: num(p.calories, 5000),
+    proteinG: num(p.proteinG, 1000),
+    carbsG: num(p.carbsG, 1000),
+    fatG: num(p.fatG, 1000),
+    micros: cleanMicros(p.micros),
+  };
+  if (!/^\d{8,14}$/.test(code) || !product.name || [product.calories, product.proteinG, product.carbsG, product.fatG].includes(null)) {
+    return res.status(400).json({ ok: false, errorType: "other", message: "That product is missing its name or numbers." });
+  }
+  const saved = await fetch(`${restBase()}/rest/v1/snapcal_barcodes?on_conflict=code`, {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify([{ code, product, owner: me, updated_at: new Date().toISOString() }]),
+  }).catch(() => null);
+  if (!saved?.ok) return res.status(502).json({ ok: false, errorType: "unavailable", message: "Couldn't save it for next time." });
+  cache.delete(`barcode:${code}`);
+  return res.status(200).json({ ok: true });
 }
 
 /**

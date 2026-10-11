@@ -8,6 +8,7 @@ import { t } from "../i18n.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { cleanMicros, scaleMicros } from "../nutrition.js";
 import { microInputsHtml, wireMicroInputs, refreshMicroInputs } from "./micros.js";
+import { apiFetch } from "../net.js";
 
 const MACRO_FIELDS = [
   { key: "calories", get label() { return t("ui.calories"); }, unit: "kcal", decimal: false },
@@ -43,10 +44,11 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
     footnote = `${prefill.servingDescription} — adjust to what you actually ate`;
     if (prefill.source === "usda") footnote += `. ${t("edit.fromUsda")}`;
     else if (prefill.source === "off") footnote += `. ${t("edit.fromOff")}`;
+    else if (prefill.source === "group") footnote += `. ${t("edit.fromGroup")}`;
   } else if (prefillBarcode && failureReason) {
-    footnote = `Barcode ${prefillBarcode} not found — ${failureReason}. Enter manually`;
+    footnote = t("edit.barcodeDown", { code: prefillBarcode, reason: failureReason });
   } else if (prefillBarcode) {
-    footnote = `Barcode ${prefillBarcode} not found — enter manually`;
+    footnote = t("edit.barcodeMiss", { code: prefillBarcode });
   }
 
   openSheet({
@@ -257,6 +259,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         onTrailing: () => {
           const trimmedName = draft.name.trim();
           if (trimmedName === "") return;
+          if (prefillBarcode) rememberBarcode(prefillBarcode, { ...draft, name: trimmedName });
           if (onPick) {
             onPick(itemFromDraft({ ...draft, name: trimmedName }, gramsOf));
             close();
@@ -299,6 +302,17 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
       });
     },
   });
+}
+
+/**
+ * A product the barcode databases didn't have, as typed from the label: kept on the server so the
+ * next scan of this code, by anyone, finds it (api/foods.js). Best-effort: logging never waits on it.
+ */
+function rememberBarcode(barcode, draft) {
+  const amount = Number(draft.amount) > 0 ? Number(draft.amount) : null;
+  const servingDescription = amount && draft.amountUnit !== "serving" ? `1 serving (${amount} ${draft.amountUnit})` : "1 serving";
+  const product = { name: draft.name, servingDescription, calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG, micros: draft.micros };
+  apiFetch("/api/foods", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ barcode, product }) }).catch(() => {});
 }
 
 /**
