@@ -9,6 +9,9 @@ import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { cleanMicros, scaleMicros } from "../nutrition.js";
 import { microInputsHtml, wireMicroInputs, refreshMicroInputs } from "./micros.js";
 import { apiFetch } from "../net.js";
+import { analyzeMeal } from "../api.js";
+import { resizeImage, scanPreset } from "../resize.js";
+import { icon } from "./icons.js";
 
 const MACRO_FIELDS = [
   { key: "calories", get label() { return t("ui.calories"); }, unit: "kcal", decimal: false },
@@ -61,6 +64,13 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         })}
         <div class="sheet-panel-body">
           <div class="ios-form">
+            ${prefillBarcode && !isEditing ? `
+            <div class="ios-section">
+              <label class="add-to-meal-btn label-snap" id="label-snap">${icon("cameraFill", { size: 16 })} ${t("edit.labelSnap")}
+                <input type="file" accept="image/*" capture="environment" id="label-file" hidden>
+              </label>
+              <div class="ios-section-footer" id="label-note" role="status">${t("edit.labelHint")}</div>
+            </div>` : ""}
             <div class="ios-section">
               <div class="ios-section-header">${t("edit.food")}</div>
               <div class="ios-section-body">
@@ -246,6 +256,35 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         onChange: (k, v) => { draft.micros = cleanMicros({ ...(draft.micros ?? {}), [k]: v }); },
       });
 
+      // a scan that found nothing: read the numbers off a photo of the nutrition label (the AI's
+      // label mode), then Save keeps the product for the next scan (rememberBarcode)
+      const labelFile = panel.querySelector("#label-file");
+      const labelNote = panel.querySelector("#label-note");
+      labelFile?.addEventListener("change", async () => {
+        const f = labelFile.files?.[0];
+        labelFile.value = "";
+        if (!f) return;
+        labelNote.textContent = t("edit.labelWorking");
+        try {
+          const { dataUrl } = await resizeImage(f, scanPreset(store.getProfile().scanQuality));
+          const out = await analyzeMeal({ mode: "label", imageDataUrl: dataUrl });
+          if (!out.success || !out.items?.[0]) throw new Error(out.reason || "");
+          Object.assign(draft, fillFromLabel(draft, out.items[0]));
+        } catch {
+          labelNote.textContent = t("edit.labelFailed");
+          return;
+        }
+        snap = null;
+        nameInput.value = draft.name;
+        saveBtn.disabled = draft.name.trim() === "";
+        amountInput.value = formatNumeric(draft.amount, { decimal: true });
+        panel.querySelectorAll("[data-unit]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.unit === draft.amountUnit)));
+        amountHint.textContent = t("edit.amountHint");
+        refreshMacros();
+        refreshMicroInputs(panel, draft.micros);
+        labelNote.textContent = t("edit.labelDone");
+      });
+
       panel.querySelector("#share-food")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
         btn.disabled = true;
@@ -302,6 +341,22 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
       });
     },
   });
+}
+
+/** The form after a nutrition label was read: one serving as printed; a name typed already stays. */
+export function fillFromLabel(draft, item) {
+  const grams = Number(item?.gramsEstimate) > 0 ? Math.round(Number(item.gramsEstimate)) : null;
+  const r1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
+  return {
+    name: draft.name.trim() || String(item?.name ?? "").trim(),
+    calories: Math.round(Number(item?.calories) || 0),
+    proteinG: r1(item?.proteinG),
+    carbsG: r1(item?.carbsG),
+    fatG: r1(item?.fatG),
+    micros: cleanMicros(item?.micros),
+    amount: grams ?? draft.amount,
+    amountUnit: grams ? "g" : draft.amountUnit,
+  };
 }
 
 /**

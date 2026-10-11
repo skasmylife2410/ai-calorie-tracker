@@ -86,3 +86,14 @@ test("a product without its numbers isn't kept", async () => {
   await handler({ method: "POST", url: "/api/foods", headers: {}, body: { barcode: "04252614", product: { name: "Trail mix", calories: 190 } } }, res);
   assert.equal(res.code, 400);
 });
+
+test("a label photo fills the form with one serving as printed; a typed name stays", async () => {
+  const { fillFromLabel } = await import("../js/ui/addfood.js");
+  const item = { name: "Granola Bar", gramsEstimate: 40, calories: 189.6, proteinG: 4.04, carbsG: 26.96, fatG: 7.5, micros: { sugarG: 11 } };
+  const blank = fillFromLabel({ name: "", amount: null, amountUnit: "g" }, item);
+  assert.deepEqual([blank.name, blank.amount, blank.amountUnit, blank.calories, blank.proteinG, blank.carbsG, blank.fatG], ["Granola Bar", 40, "g", 190, 4, 27, 7.5]);
+  assert.equal(blank.micros.sugarG, 11);
+  assert.equal(fillFromLabel({ name: "Kids' granola", amount: null, amountUnit: "g" }, item).name, "Kids' granola");
+  const noWeight = fillFromLabel({ name: "", amount: 2, amountUnit: "serving" }, { ...item, gramsEstimate: 0 });
+  assert.deepEqual([noWeight.amount, noWeight.amountUnit], [2, "serving"], "no serving weight printed: keep what was there");
+});

@@ -336,7 +336,12 @@
     "suspect": "These numbers don't add up: the calories don't match the protein, carbs and fat. Check them against the package, or take a photo of the Nutrition Facts label instead.",
     "fromGroup": "Typed in from the label by someone using SnapCal — worth a glance at the package",
     "barcodeMiss": "Barcode {code} isn't in the food databases. Type it in from the label — it's saved, so the next scan finds it.",
-    "barcodeDown": "Barcode {code} couldn't be looked up ({reason}). Type it in from the label — it's saved for next time."
+    "barcodeDown": "Barcode {code} couldn't be looked up ({reason}). Type it in from the label — it's saved for next time.",
+    "labelSnap": "Photograph the nutrition label",
+    "labelHint": "The numbers fill in from the photo, and Save keeps the product for the next scan.",
+    "labelWorking": "Reading the label…",
+    "labelDone": "Filled in from the label. Check it against the package, then Save.",
+    "labelFailed": "Couldn't read that label. Try again closer and straight on, or type it in."
   },
   "todayTab": {
     "title": "Today",

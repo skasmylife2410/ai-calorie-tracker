@@ -2862,3 +2862,6 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .meal-item-stated .icon { width: 12px; height: 12px; color: #1E7A4C; }
 .results-desc-quote.is-with-photo { padding-bottom: 10px; }
 .left-kept { font-size: 13px !important; }
+
+/* Add Food after a barcode miss: read the nutrition label from a photo */
+.label-snap { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
