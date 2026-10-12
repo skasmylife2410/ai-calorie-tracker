@@ -12,6 +12,7 @@ import { apiFetch } from "../net.js";
 import { analyzeMeal } from "../api.js";
 import { resizeImage, scanPreset } from "../resize.js";
 import { icon } from "./icons.js";
+import { baseOf } from "../meal-builder.js";
 
 const MACRO_FIELDS = [
   { key: "calories", get label() { return t("ui.calories"); }, unit: "kcal", decimal: false },
@@ -27,6 +28,8 @@ const MACRO_FIELDS = [
  */
 export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode = null, failureReason = null, timestamp = null, onSaved, onPick = null } = {}) {
   const isEditing = entry != null;
+  // what a found product's numbers are for: 100 g, one serving of 28 g, or a serving of unknown weight
+  const prefillBase = prefill ? baseOf(prefill) : null;
   const draft = {
     name: entry?.name ?? prefill?.name ?? "",
     calories: entry?.calories ?? prefill?.calories ?? 0,
@@ -34,10 +37,11 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
     carbsG: entry?.carbsG ?? prefill?.carbsG ?? 0,
     fatG: entry?.fatG ?? prefill?.fatG ?? 0,
     micros: cleanMicros(entry ? entry.micros : prefill?.micros),
-    // How much was eaten. Known for search results ("per 100 g" -> 100 g); for manual entries it
-    // starts unknown, and the first number typed becomes the baseline rather than rescaling.
-    amount: entry?.amount ?? prefillAmount(prefill),
-    amountUnit: entry?.amountUnit ?? (prefill?.servingDescription?.includes("ml") ? "ml" : "g"),
+    // How much was eaten. Known for found products ("per 100 g" -> 100 g, "per serving (28 g)" ->
+    // 28 g, else 1 serving); for manual entries it starts unknown, and the first number typed
+    // becomes the baseline rather than rescaling.
+    amount: entry?.amount ?? prefillBase?.amount ?? null,
+    amountUnit: entry?.amountUnit ?? prefillBase?.unit ?? "g",
     servingGrams: entry?.servingGrams ?? null, // grams in one serving, once known
   };
   const source = entry?.source ?? (prefill || prefillBarcode ? "barcode" : "manual");
@@ -402,12 +406,3 @@ function escapeAttr(str) {
 }
 
 
-/** "per 100 g" -> 100, "per serving (30 g)" -> 30, anything else -> null (unknown). */
-function prefillAmount(prefill) {
-  const desc = String(prefill?.servingDescription ?? "");
-  const hundred = desc.match(/per\s+100\s*(g|ml)/i);
-  if (hundred) return 100;
-  const inner = desc.match(/\((\d+(?:[.,]\d+)?)\s*(g|ml)\)/i);
-  if (inner) return Number(inner[1].replace(",", "."));
-  return null;
-}

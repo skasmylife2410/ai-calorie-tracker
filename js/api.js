@@ -95,15 +95,25 @@ export function parseBasis(nutriments, servingSize, servingQuantity) {
   const fatServing = lenientNumber(n["fat_serving"]);
   const allServingPresent = [kcalServing, proteinServing, carbsServing, fatServing].every((v) => v !== undefined);
 
+  // the label's words, with the weight added when they don't give it ("1 bar" -> "1 bar, 40 g")
+  const grams = servingPresent ? servingGrams(servingSize, servingQuantity) : null;
+  const label = servingPresent && grams && !/\d\s*(g|ml)\b/i.test(servingSize) ? `${servingSize.trim()}, ${grams} g` : String(servingSize ?? "").trim();
+
   if (servingPresent && allServingPresent) {
     return {
-      servingDescription: `per serving (${servingSize.trim()})`,
+      servingDescription: `per serving (${label})`,
       calories: kcalServing,
       proteinG: proteinServing,
       carbsG: carbsServing,
       fatG: fatServing,
       micros: servingMicros(n, servingSize, servingQuantity),
     };
+  }
+
+  // only per 100 g on the label, but the serving's weight is known: one serving, worked out
+  if (grams) {
+    const f = grams / 100;
+    return { servingDescription: `per serving (${label})`, calories: kcal100g * f, proteinG: protein100g * f, carbsG: carbs100g * f, fatG: fat100g * f, micros: scaleMicros(offMicros(n, "_100g"), f) };
   }
 
   return { servingDescription: "per 100 g", calories: kcal100g, proteinG: protein100g, carbsG: carbs100g, fatG: fat100g, micros: offMicros(n, "_100g") };
@@ -370,7 +380,11 @@ export function usdaFoodToScannedProduct(barcode, food) {
 
   const label = usdaLabelNutrients(food);
   if (label) {
-    return { barcode, name, brand, servingDescription: "per serving (label)", ...label };
+    // the label's numbers are for one serving; say what it weighs so the form starts there
+    const size = lenientNumber(food.servingSize);
+    const weighed = size !== undefined && size > 0 && isGramLikeUnit(food.servingSizeUnit);
+    const servingDescription = weighed ? `per serving (${formatServingSize(size)} ${formatServingUnit(food.servingSizeUnit)})` : "per serving (label)";
+    return { barcode, name, brand, servingDescription, ...label };
   }
 
   const per100 = usdaPer100g(food.foodNutrients);

@@ -165,7 +165,7 @@ test("parseBasis — missing any of the 4 core per-100g macros -> null (incomple
   assert.equal(basis, null);
 });
 
-test("parseBasis — partial per-serving data falls back to per-100g", () => {
+test("parseBasis — partial per-serving data: one serving, worked out from per 100 g", () => {
   const basis = parseBasis(
     {
       "energy-kcal_100g": 250,
@@ -176,8 +176,11 @@ test("parseBasis — partial per-serving data falls back to per-100g", () => {
     },
     "50 g"
   );
-  assert.equal(basis.servingDescription, "per 100 g");
-  assert.equal(basis.calories, 250);
+  assert.equal(basis.servingDescription, "per serving (50 g)");
+  assert.equal(basis.calories, 125);
+  assert.equal(basis.proteinG, 5);
+  // no serving weight to go on: the label's 100 g stays
+  assert.equal(parseBasis({ "energy-kcal_100g": 250, proteins_100g: 10, carbohydrates_100g: 20, fat_100g: 5 }, "1 bar").servingDescription, "per 100 g");
 });
 
 test("parseBasis — complete per-serving data wins over per-100g", () => {

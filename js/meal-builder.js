@@ -9,13 +9,20 @@ import { cleanMicros, scaleMicros, sumMicros } from "./nutrition.js";
 
 const r1 = (v) => Math.round(v * 10) / 10;
 
-/** "per 100 g" -> {amount:100, unit:"g"}, "per serving (30 g)" -> {30, "g"}, unknown -> 1 serving. */
+/**
+ * What a product's numbers are for: "per 100 g" -> {amount:100, unit:"g"}; a serving's weight or
+ * volume wherever its label puts it, "(30 g)", "28g (about 15 chips)", "1 cup (240 ml)", "1 oz"
+ * -> grams or ml; unknown -> 1 serving.
+ */
 export function baseOf(product) {
   const desc = String(product?.servingDescription ?? "");
   const hundred = desc.match(/per\s+100\s*(g|ml)/i);
   if (hundred) return { amount: 100, unit: hundred[1].toLowerCase() };
-  const inner = desc.match(/\((\d+(?:[.,]\d+)?)\s*(g|ml)\)/i);
-  if (inner) return { amount: Number(inner[1].replace(",", ".")), unit: inner[2].toLowerCase() };
+  const num = (s) => Number(s.replace(",", "."));
+  const metric = desc.match(/(\d+(?:[.,]\d+)?)\s*(g|gr|grams?|ml)\b/i);
+  if (metric && num(metric[1]) > 0) return { amount: num(metric[1]), unit: /^ml$/i.test(metric[2]) ? "ml" : "g" };
+  const oz = desc.match(/(\d+(?:[.,]\d+)?)\s*(fl\.?\s*)?oz\b/i);
+  if (oz && num(oz[1]) > 0) return oz[2] ? { amount: Math.round(num(oz[1]) * 29.57), unit: "ml" } : { amount: Math.round(num(oz[1]) * 28.35), unit: "g" };
   return { amount: 1, unit: "serving" };
 }
 

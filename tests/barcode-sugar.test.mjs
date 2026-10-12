@@ -19,7 +19,8 @@ i18n.setBundles({
   es: JSON.parse(readFileSync(new URL("../i18n/es.json", import.meta.url), "utf8")),
 });
 await i18n.setLanguage("en");
-const { parseBasis, servingGrams, macrosConsistent, isNorthAmericanCode, pickBarcodeResult } = await import("../js/api.js");
+const { parseBasis, servingGrams, macrosConsistent, isNorthAmericanCode, pickBarcodeResult, usdaFoodToScannedProduct } = await import("../js/api.js");
+const { baseOf } = await import("../js/meal-builder.js");
 const { nutrientsStripHtml } = await import("../js/ui/micros.js");
 const { microTargets } = await import("../js/nutrition.js");
 const { microsComplete } = await import("../js/store.js");
@@ -105,4 +106,35 @@ test("a meal with a food that has no nutrient data counts as missing", () => {
   assert.equal(microsComplete({ micros: { sugarG: 0.2 }, analysisItems: [egg, water] }), true);
   assert.equal(microsComplete({ micros: null }), false);
   assert.equal(microsComplete({ micros: { fiberG: 1 } }), true);
+});
+
+test("a scanned product starts at its serving in grams, not a blank amount", () => {
+  const at = (servingDescription) => baseOf({ servingDescription });
+  assert.deepEqual(at("per 100 g"), { amount: 100, unit: "g" });
+  assert.deepEqual(at("per serving (30 g)"), { amount: 30, unit: "g" });
+  assert.deepEqual(at("per serving (28g (about 15 chips))"), { amount: 28, unit: "g" });
+  assert.deepEqual(at("per serving (2 cookies, 40 g)"), { amount: 40, unit: "g" });
+  assert.deepEqual(at("per serving (1 cup (240 ml))"), { amount: 240, unit: "ml" });
+  assert.deepEqual(at("per serving (1 oz)"), { amount: 28, unit: "g" });
+  assert.deepEqual(at("per serving (8 fl oz)"), { amount: 237, unit: "ml" });
+  assert.deepEqual(at("1 serving (30 g)"), { amount: 30, unit: "g" }, "a product someone typed in");
+  assert.deepEqual(at("per serving (label)"), { amount: 1, unit: "serving" }, "weight unknown: one serving");
+});
+
+test("only per 100 g on the label, but a serving weight: the numbers are for one serving", () => {
+  const n = { "energy-kcal_100g": 500, proteins_100g: 6, carbohydrates_100g: 60, fat_100g: 25, sugars_100g: 30 };
+  const b = parseBasis(n, "2 cookies", 40);
+  assert.equal(b.servingDescription, "per serving (2 cookies, 40 g)");
+  assert.equal(b.calories, 200);
+  assert.equal(b.micros.sugarG, 12);
+  assert.deepEqual(baseOf(b), { amount: 40, unit: "g" });
+});
+
+test("a USDA label serving says what it weighs", () => {
+  const food = { description: "Chips", servingSize: 28, servingSizeUnit: "GRM",
+    labelNutrients: { calories: { value: 150 }, protein: { value: 2 }, carbohydrates: { value: 15 }, fat: { value: 10 } } };
+  const p = usdaFoodToScannedProduct("012345678905", food);
+  assert.equal(p.servingDescription, "per serving (28 g)");
+  assert.equal(p.calories, 150);
+  assert.deepEqual(baseOf(p), { amount: 28, unit: "g" });
 });
