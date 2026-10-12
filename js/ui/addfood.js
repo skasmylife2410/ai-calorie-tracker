@@ -358,8 +358,9 @@ export function fillFromLabel(draft, item) {
     carbsG: r1(item?.carbsG),
     fatG: r1(item?.fatG),
     micros: cleanMicros(item?.micros),
-    amount: grams ?? draft.amount,
-    amountUnit: grams ? "g" : draft.amountUnit,
+    // no weight printed: whatever amount was there stays; a blank one is the label's one serving
+    amount: grams ?? draft.amount ?? 1,
+    amountUnit: grams ? "g" : draft.amount ? draft.amountUnit : "serving",
   };
 }
 

@@ -96,4 +96,6 @@ test("a label photo fills the form with one serving as printed; a typed name sta
   assert.equal(fillFromLabel({ name: "Kids' granola", amount: null, amountUnit: "g" }, item).name, "Kids' granola");
   const noWeight = fillFromLabel({ name: "", amount: 2, amountUnit: "serving" }, { ...item, gramsEstimate: 0 });
   assert.deepEqual([noWeight.amount, noWeight.amountUnit], [2, "serving"], "no serving weight printed: keep what was there");
+  const blankNoWeight = fillFromLabel({ name: "", amount: null, amountUnit: "g" }, { ...item, gramsEstimate: 0 });
+  assert.deepEqual([blankNoWeight.amount, blankNoWeight.amountUnit], [1, "serving"], "nothing there: the label's one serving, not a blank box");
 });
