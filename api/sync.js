@@ -98,6 +98,26 @@ async function finishedOnServer(ids, owner) {
   }
 }
 
+/**
+ * A phone short of space drops old meals' photos from its own copy (js/store.js trimOldPhotos);
+ * the photo here stays. When such a meal comes back edited, without its photo, it gets it back.
+ */
+async function keepTrimmedPhotos(rows, owner) {
+  const trimmed = rows.filter((r) => !r.deleted && r.data?.photoTrimmed === true && !r.data?.photoDataUrl && typeof r.id === "string" && /^[0-9a-zA-Z-]{1,64}$/.test(r.id));
+  if (trimmed.length === 0) return;
+  try {
+    const params = new URLSearchParams({ select: "id,photo:data->>photoDataUrl", id: `in.(${trimmed.map((r) => r.id).join(",")})`, owner: `eq.${owner}` });
+    const res = await fetch(`${restBase()}/rest/v1/snapcal_food_entries?${params.toString()}`, { headers: restHeaders() });
+    if (!res.ok) return;
+    const photos = new Map((await res.json()).filter((x) => x.photo).map((x) => [x.id, x.photo]));
+    for (const r of trimmed) {
+      if (photos.has(r.id)) r.data = { ...r.data, photoDataUrl: photos.get(r.id), photoTrimmed: false };
+    }
+  } catch {
+    // best effort: the meal itself still saves
+  }
+}
+
 /** Returns the subset of `ids` that exist in `table` under a different owner. */
 async function foreignIds(ids, owner, table = "snapcal_food_entries") {
   const valid = ids.filter((id) => typeof id === "string" && /^[0-9a-zA-Z-]{1,64}$/.test(id));
@@ -212,6 +232,7 @@ export default async function handler(req, res) {
     // Home Screen app) must never replace the finished meal: it would turn real numbers into 0.
     const unfinished = await finishedOnServer(entryRows.filter((r) => !r.deleted && (r.data?.isPending === true || r.data?.analysisFailed === true)).map((r) => r.id), owner);
     const safeEntryRows = mineOnly(entryRows, guards[0]).filter((r) => !unfinished.has(r.id));
+    await keepTrimmedPhotos(safeEntryRows, owner);
 
     const [entriesResult, waterResult, exerciseResult, weightResult, favoritesResult, profileResult] = await Promise.all([
       upsert("snapcal_food_entries", safeEntryRows, "id"),

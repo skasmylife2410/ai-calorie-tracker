@@ -136,9 +136,38 @@ function allFoodEntriesRaw() {
   return readJSON(STORAGE_KEYS.foodEntries, []);
 }
 
+// The app's storage on a phone is about 5 MB, and Safari counts every character twice: a few
+// weeks of meal photos fill it, and then a new meal (with its photo) can't be saved at all. The
+// server keeps every photo, so when the meals don't fit, the oldest let go of their copy here
+// (photoTrimmed; api/sync.js keeps the server's) until they do. The newest keep theirs, and so
+// does a meal still being analysed.
+const KEEP_PHOTOS = 8;
+
 function saveFoodEntries(entries) {
-  writeJSON(STORAGE_KEYS.foodEntries, entries);
+  for (;;) {
+    try {
+      writeJSON(STORAGE_KEYS.foodEntries, entries);
+      break;
+    } catch (err) {
+      if (!trimOldPhotos(entries)) throw err;
+    }
+  }
   notify();
+}
+
+/** Drops the local photo of the older half of the meals that can spare one; false if none can. */
+export function trimOldPhotos(entries) {
+  const withPhoto = entries
+    .filter((e) => typeof e.photoDataUrl === "string" && e.photoDataUrl.length > 0 && e.isPending !== true && e.analysisFailed !== true)
+    .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  const spare = withPhoto.slice(0, Math.max(0, withPhoto.length - KEEP_PHOTOS));
+  if (spare.length === 0) return false;
+  // updatedAt stays: nothing to send, the server's meal is unchanged
+  for (const e of spare.slice(0, Math.ceil(spare.length / 2))) {
+    e.photoDataUrl = null;
+    e.photoTrimmed = true;
+  }
+  return true;
 }
 
 /** Default field values, mirrors FoodEntry init defaults in Models.swift. */
@@ -153,6 +182,8 @@ export function makeFoodEntry(fields) {
     fatG: fields.fatG ?? 0,
     timestamp: fields.timestamp ?? now,
     photoDataUrl: fields.photoDataUrl ?? null,
+    // its photo was let go here to make room; the server still has it (trimOldPhotos)
+    ...(fields.photoTrimmed === true && !fields.photoDataUrl ? { photoTrimmed: true } : {}),
     source: normalizeEntrySource(fields.source ?? "manual"),
     isPending: fields.isPending ?? null,
     analysisFailed: fields.analysisFailed ?? null,
