@@ -40,6 +40,8 @@
     "daysMeals": "Meals this day",
     "streakLine": "{n}-day streak|{n}-day streak",
     "budget": "Budget",
+    "weekAvg": "7-day avg",
+    "weekAvgTitle": "Average of the last 7 days, when every one was logged",
     "exerciseAdded": "{burned} burned · +{credit} added",
     "exerciseBurned": "{burned} burned · not added",
     "macroGoal": "of {n}g"

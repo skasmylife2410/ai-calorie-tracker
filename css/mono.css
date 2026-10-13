@@ -488,6 +488,10 @@
 :root[data-theme="mono"] .home-chip.chip-ideas.has-gif::after { box-shadow: inset 0 0 0 1px var(--mn-line); }
 :root[data-theme="mono"] .macro-goal, :root[data-theme="mono"] .calorie-budget { color: var(--mn-sec); }
 :root[data-theme="mono"] .calorie-budget b { color: var(--mn-ink); font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
+:root[data-theme="mono"] .calorie-budget .calorie-avg.is-over b { color: var(--avg-over); }
+:root[data-theme="mono"] .calorie-budget .calorie-avg.is-under b { color: var(--avg-under); }
+:root[data-theme="mono"][data-mode="dark"] .calorie-avg { --avg-over: #FF453A; --avg-under: #34C759; }
+:root[data-theme="mono"][data-markers="off"] .calorie-avg { --avg-over: var(--mn-ink); --avg-under: var(--mn-ink); }
 :root[data-theme="mono"] .calorie-card .calorie-exercise { color: var(--mn-ink); }
 :root[data-theme="mono"] .ask-q { background: var(--mn-card); box-shadow: 0 0 0 1px var(--mn-line); }
 :root[data-theme="mono"] :is(.ask-opt, .ask-other) { background: var(--mn-control); color: var(--mn-ink); }

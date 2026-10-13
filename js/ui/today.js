@@ -6,7 +6,7 @@ import { sfx } from "../sounds.js";
 import * as store from "../store.js";
 import { t, weekdayLabels, formatDate } from "../i18n.js";
 import * as queue from "../queue.js";
-import { roundDisplay, startOfDay, addDays } from "../nutrition.js";
+import { roundDisplay, startOfDay, addDays, weekAverage } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { ringGauge } from "./ring.js";
 import { openActionSheet } from "./action-sheet.js";
@@ -100,6 +100,7 @@ export function render(container) {
   const overBudget = remaining < 0;
 
   const microsDay = store.microsForDay(date);
+  const weekAvg = viewingToday ? homeWeekAverage(goals.targetCalories) : null;
   container.innerHTML = `
     <div class="today-content">
       ${weekStripHtml(week)}
@@ -111,7 +112,7 @@ export function render(container) {
 
       <div data-own-swipe class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
-          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay)}</div>
+          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay, weekAvg)}</div>
           <div class="swiper-page">${nutrientsPageHtml(microsDay)}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
         </div>
@@ -150,6 +151,7 @@ export function render(container) {
   wireWaterButtons(container);
   wireMealsTab(container, date);
   container.querySelector("#streak-open")?.addEventListener("click", () => import("./streak.js").then((m) => m.openStreakSheet()));
+  if (weekAvg) countWeekAverage(container, weekAvg);
   countNumbers(container, `${startOfDay(date)}`, [
     remaining,
     ...MACRO_DEFS.map((m) => (goals[m.targetKey] ?? 0) - (totals[m.key] ?? 0)),
@@ -220,6 +222,60 @@ function countValueAt(anim, now) {
 }
 const startCount = (dayKey, from, to, t0) => ({ dayKey, from, to, t0, ...(crossesZero(from.nums[0], to.nums[0]) ? { ms: CROSS_MS } : {}) });
 const sameNumbers = (a, b) => a.length === b.length && a.every((n, i) => Math.round(n) === Math.round(b[i]));
+
+/**
+ * The 7 days before today, averaged, when every one of them was logged (nutrition.weekAverage);
+ * { v, goal } or null. It changes once a day, as the week moves on.
+ */
+function homeWeekAverage(goal) {
+  const today = startOfDay(new Date());
+  const days = [];
+  for (let i = 1; i <= 7; i += 1) {
+    const entries = store.entriesForDay(new Date(addDays(today, -i))).filter((e) => e.isPending !== true && e.analysisFailed !== true);
+    days.push({ meals: entries.length, calories: entries.reduce((a, e) => a + (Number(e.calories) || 0), 0) });
+  }
+  const v = weekAverage(days, goal);
+  return v === null ? null : { v, goal };
+}
+
+// The average counts from the last one seen to today's, once each time it changes (the first
+// time, up from the budget), after the intro has gone so it's actually seen. Red over the
+// budget, green under: the colour turns as the count crosses it.
+const WEEK_AVG_SEEN = "snapcal.weekAvgSeen";
+const WEEK_AVG_MS = 1400;
+let weekAvgAnim = null; // { from, to, t0 }
+function countWeekAverage(container, { v, goal }) {
+  const el = container.querySelector(".calorie-avg-num");
+  const wrap = container.querySelector(".calorie-avg");
+  if (!el || !wrap) return;
+  let seen = null;
+  try { seen = JSON.parse(localStorage.getItem(WEEK_AVG_SEEN) || "null"); } catch { /* private mode */ }
+  if (!weekAvgAnim || weekAvgAnim.to !== v) {
+    const from = Number.isFinite(seen?.v) ? seen.v : goal;
+    try { localStorage.setItem(WEEK_AVG_SEEN, JSON.stringify({ v })); } catch { /* storage full: it just counts again */ }
+    if (from === v || globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { weekAvgAnim = null; return; }
+    weekAvgAnim = { from, to: v, t0: null };
+  }
+  const anim = weekAvgAnim;
+  const show = (n) => {
+    el.textContent = roundDisplay(n);
+    wrap.classList.toggle("is-over", n > goal);
+    wrap.classList.toggle("is-under", n <= goal);
+  };
+  const paint = (now) => {
+    if (anim !== weekAvgAnim || !el.isConnected) return; // redrawn: the new element carries on
+    if (anim.t0 === null) {
+      show(anim.from);
+      const intro = document.getElementById("intro");
+      if (intro && !intro.classList.contains("intro-leaving")) { requestAnimationFrame(paint); return; } // not seen yet
+      anim.t0 = now + 250;
+    }
+    const p = Math.max(0, Math.min(1, (now - anim.t0) / WEEK_AVG_MS));
+    show(Math.round(anim.from + (anim.to - anim.from) * easeOut(p)));
+    if (p < 1) requestAnimationFrame(paint);
+  };
+  paint(performance.now());
+}
 
 function countNumbers(container, dayKey, nums) {
   const els = [container.querySelector(".calorie-remaining"), ...container.querySelectorAll(".macro-value"), container.querySelector(".calorie-budget-num")];
@@ -331,7 +387,7 @@ function weekStripHtml(week) {
   `;
 }
 
-function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount = 0, microsDay = null) {
+function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount = 0, microsDay = null, weekAvg = null) {
   const ringProgress = energy.adjustedTarget > 0 ? totals.calories / energy.adjustedTarget : 0;
   const ring = ringGauge({
     size: 78,
@@ -382,7 +438,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
           <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>
           <button type="button" class="calorie-meals" id="see-meals">${t("us.mealsCount", { n: mealCount })} · ${t("day.tapToSee")} ›</button>
           ${streakCount > 0 ? `<button type="button" class="calorie-streak" id="streak-open">${icon("flameFill", { size: 13, color: "var(--sc-streak-flame)" })}<span>${t("home.streakLine", { n: streakCount })}</span>${(store.getProfile().streak?.freezes ?? 0) > 0 ? `<span class="calorie-freeze" title="${t("streak.freezes")}">${icon("freeze", { size: 12 })}${store.getProfile().streak.freezes}</span>` : ""}<span class="calorie-streak-more">›</span></button>` : ""}
-          <div class="calorie-budget">${t("home.budget")} <b class="calorie-budget-num" data-suffix="">${roundDisplay(energy.adjustedTarget)}</b></div>
+          <div class="calorie-budget"><span class="calorie-budget-main">${t("home.budget")} <b class="calorie-budget-num" data-suffix="">${roundDisplay(energy.adjustedTarget)}</b></span>${weekAvg ? `<span class="calorie-avg ${weekAvg.v > weekAvg.goal ? "is-over" : "is-under"}" title="${t("home.weekAvgTitle")}"><i aria-hidden="true">·</i>${t("home.weekAvg")} <b class="calorie-avg-num">${roundDisplay(weekAvg.v)}</b></span>` : ""}</div>
           ${energy.burned > 0 ? `<button type="button" class="calorie-exercise" id="calorie-exercise">${icon("boltFill", { size: 12 })}<span>${energy.credit > 0
             ? t("home.exerciseAdded", { burned: roundDisplay(energy.burned), credit: roundDisplay(energy.credit) })
             : t("home.exerciseBurned", { burned: roundDisplay(energy.burned) })}</span></button>` : ""}

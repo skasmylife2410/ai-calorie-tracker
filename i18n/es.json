@@ -40,6 +40,8 @@
     "daysMeals": "Comidas de este día",
     "streakLine": "Racha de {n} día|Racha de {n} días",
     "budget": "Presupuesto",
+    "weekAvg": "Prom. 7d",
+    "weekAvgTitle": "Promedio de los últimos 7 días, cuando se registraron todos",
     "exerciseAdded": "{burned} quemadas · +{credit} sumadas",
     "exerciseBurned": "{burned} quemadas · sin sumar",
     "macroGoal": "de {n}g"

@@ -814,6 +814,16 @@ export function countsForAverage(day, { goal = 0, isToday = false } = {}) {
   return !(goal > 0 && day.calories < goal * PARTIAL_DAY_SHARE);
 }
 
+/**
+ * Home's 7-day average: what was eaten a day over the seven days before today, only when every
+ * one of them counts (logged, and not left half-logged). A patchy week gives null: its average
+ * would mislead, so nothing is shown. `days` are the seven days, { meals, calories } each.
+ */
+export function weekAverage(days, goal = 0) {
+  if (!Array.isArray(days) || days.length !== 7 || !days.every((d) => countsForAverage(d, { goal }))) return null;
+  return Math.round(days.reduce((a, d) => a + (Number(d.calories) || 0), 0) / 7);
+}
+
 /** The days to average: the full ones, or every logged day when there are no full ones yet. */
 export function daysForAverage(days, { goal = 0, todayKey = null } = {}) {
   const logged = days.filter((d) => d && d.meals > 0);
