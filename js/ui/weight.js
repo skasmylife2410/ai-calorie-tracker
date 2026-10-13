@@ -227,7 +227,7 @@ function tilesHtml(p) {
 const TL = { W: 340, L: 62, R: 8, top: 14, chartH: 96, lane: 11, laneGap: 5 };
 const LANES = ["calories", "protein", "workout", "water"];
 const CAL_COLORS = { on: "var(--mk-on, #2AA66B)", over: "var(--mk-over, #F08A24)", under: "var(--mk-under, #8FB8F0)" };
-const WIN_COLORS = { streak: "var(--mk-violet, #6E5BD6)", meals: "var(--mk-over, #F08A24)", workouts: "var(--mk-green, #1F9E75)", proteinWeek: "var(--sc-protein, #E85D5D)", weightStep: "var(--sc-accent-weight)", halfway: "var(--sc-accent-weight)", goal: "var(--mk-on, #2AA66B)" };
+const WIN_COLORS = { streak: "var(--mk-violet, #6E5BD6)", meals: "var(--mk-over, #F08A24)", workouts: "var(--mk-green, #1F9E75)", proteinWeek: "var(--mk-on, #2AA66B)", weightStep: "var(--sc-accent-weight)", halfway: "var(--sc-accent-weight)", goal: "var(--mk-on, #2AA66B)" };
 
 function timelineHtml(p) {
   const { days, goalKg, wins } = p;
@@ -263,7 +263,8 @@ function timelineHtml(p) {
     const cells = days.map((d, i) => {
       let fill = null, op = 1;
       if (name === "calories" && d.calStatus) fill = CAL_COLORS[d.calStatus];
-      if (name === "protein" && d.proteinHit) fill = "var(--sc-protein)";
+      // protein reached is a target met, like calories on target: never red, which reads as "over"
+      if (name === "protein" && d.proteinHit) fill = CAL_COLORS.on;
       if (name === "workout" && d.workouts) fill = "var(--mk-green, #1F9E75)";
       if (name === "water" && d.water) { fill = "var(--sc-water)"; op = d.waterHit ? 1 : 0.35; }
       const gap = cw > 4 ? 1 : 0;
