@@ -992,14 +992,15 @@ async function geminiRequest(payload) {
   return { ok: true, items: body.items };
 }
 
-/** Is the AI under repair right now (api/gemini.js ?op=status)? False when it can't tell. */
+/** Is the AI under repair right now (api/gemini.js ?op=status)? Null when it can't tell. */
 export async function aiPaused() {
   try {
     const res = await apiFetch("/api/gemini?op=status");
-    if (!res.ok) return false;
-    return (await res.json())?.paused === true;
+    if (!res.ok) return null;
+    const paused = (await res.json())?.paused;
+    return typeof paused === "boolean" ? paused : null;
   } catch {
-    return false;
+    return null;
   }
 }
 

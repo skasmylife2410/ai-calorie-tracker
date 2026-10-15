@@ -14,10 +14,13 @@ globalThis.localStorage = new MemoryStorage();
 
 let repaired = false;
 let calls = 0;
+let refuseOnce = false;
 globalThis.fetch = async (url) => {
   if (String(url).includes("/api/gemini")) {
     calls += 1;
-    return repaired
+    const ok = repaired && !refuseOnce;
+    refuseOnce = false;
+    return ok
       ? { ok: true, status: 200, json: async () => ({ items: [{ name: "eggs", calories: 280, proteinG: 24, carbsG: 2, fatG: 20, confidence: 0.8 }] }) }
       : { ok: true, status: 200, json: async () => ({ errorType: "paused", message: "AI analysis is under repair. Try again a little later, or add the meal manually." }) };
   }
@@ -41,10 +44,11 @@ test("a meal logged during the repair waits, and goes through once the AI is bac
   assert.equal(store.getFoodEntry(first.id).photoDataUrl, "data:image/jpeg;base64,AAAA", "the photo is kept");
   assert.equal(queue.waitingEntries().length, 2);
 
-  // still under repair: one try, then it stops until the next time
+  // still under repair: the oldest is tried (with its one quiet second try), then it stops until
+  // the next time
   calls = 0;
   await queue.retryWaiting();
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.equal(queue.waitingEntries().length, 2);
 
   repaired = true;
@@ -76,4 +80,41 @@ test("meals that failed on the payment refusal before the app knew to keep them 
   const done = store.getFoodEntry(old.id);
   assert.equal(done.analysisFailed, false);
   assert.equal(done.calories, 280);
+});
+
+test("a single refusal is tried again quietly, and the meal is analysed instead of saved", async () => {
+  localStorage.clear();
+  repaired = true;
+  refuseOnce = true;
+  calls = 0;
+  const entry = queue.enqueueText("4 eggs");
+  const done = await settle(entry.id);
+  assert.equal(done.success, true);
+  assert.equal(calls, 2);
+  const saved = store.getFoodEntry(entry.id);
+  assert.equal(saved.analysisFailed, false);
+  assert.equal(saved.analysisWaiting ?? null, null);
+  assert.equal(queue.waitingEntries().length, 0);
+});
+
+test("once the oldest goes through, every other saved meal is analysed together", async () => {
+  localStorage.clear();
+  repaired = true;
+  const saved = (d, at) => store.addFoodEntry({
+    name: "Analysis failed — tap to retry", calories: 0, proteinG: 0, carbsG: 0, fatG: 0, source: "text", timestamp: at,
+    isPending: false, analysisFailed: true, analysisWaiting: true, analysisMode: "text", analysisDescription: d,
+    analysisFailureReason: "AI analysis is under repair. Try again a little later, or add the meal manually.",
+  });
+  const now = Date.now();
+  const ids = [saved("4 eggs", now - 5000), saved("a banana", now - 4000), saved("rice", now - 3000), saved("beans", now - 2000)].map((e) => e.id);
+  let inFlight = 0, most = 0;
+  const off = store.subscribe(() => {
+    inFlight = ids.filter((id) => store.getFoodEntry(id)?.isPending === true).length;
+    most = Math.max(most, inFlight);
+  });
+  await queue.retryWaiting();
+  off?.();
+  assert.equal(queue.waitingEntries().length, 0);
+  for (const id of ids) assert.equal(store.getFoodEntry(id).calories, 280);
+  assert.equal(most, 3, "the three after the oldest ran at the same time");
 });

@@ -231,16 +231,16 @@ function countValueAt(anim, now) {
 const startCount = (dayKey, from, to, t0) => ({ dayKey, from, to, t0, ...(crossesZero(from.nums[0], to.nums[0]) ? { ms: CROSS_MS } : {}) });
 const sameNumbers = (a, b) => a.length === b.length && a.every((n, i) => Math.round(n) === Math.round(b[i]));
 
-// While the AI is under repair: a note at the top of Home, so nobody stops logging. Shown when
-// the server says it's paused or this phone has meals waiting; the server is asked at most every
-// five minutes. The note goes by itself once the first waiting meal goes through.
+// While the AI is under repair: a note at the top of Home, so nobody stops logging. Shown only
+// while the server says Google is refusing it (asked at most every five minutes); once it says
+// the AI answers, meals this phone saved meanwhile are analysed straight away.
 let aiRepair = { paused: false, at: 0 };
 function paintRepairNote(container) {
   const host = container.querySelector("#ai-repair");
   if (!host) return;
   const draw = () => {
     const n = queue.waitingEntries().length;
-    host.innerHTML = aiRepair.paused || n > 0 ? `
+    host.innerHTML = aiRepair.paused ? `
       <div class="repair-note card" role="status">
         <span class="repair-ic" aria-hidden="true">${icon("boltSlashFill", { size: 18 })}</span>
         <div class="repair-body">
@@ -259,7 +259,8 @@ function paintRepairNote(container) {
   if (Date.now() - aiRepair.at > 5 * 60 * 1000) {
     aiRepair.at = Date.now();
     import("../api.js").then((m) => m.aiPaused()).then((paused) => {
-      aiRepair = { paused, at: Date.now() };
+      aiRepair = { paused: paused === true, at: Date.now() };
+      if (paused === false && queue.waitingEntries().length > 0) queue.retryWaiting().catch(() => {});
       if (host.isConnected) draw();
     }).catch(() => {});
   }

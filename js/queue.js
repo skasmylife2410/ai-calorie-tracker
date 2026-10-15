@@ -141,20 +141,23 @@ export function waitingEntries() {
 }
 
 /**
- * Analyses the meals saved while the AI was under repair, oldest first, one at a time; stops at
- * the first that's still refused (it's tried again on the next open or in ten minutes).
+ * Analyses the meals saved while the AI was under repair: the oldest first, to see whether it's
+ * back (if it's still refused, it's tried again on the next open or in ten minutes); then all
+ * the rest together, a few at a time.
  */
 let retryingWaiting = false;
+const WAITING_AT_ONCE = 4;
 export async function retryWaiting() {
   if (retryingWaiting) return;
-  const waiting = waitingEntries().sort((a, b) => a.timestamp - b.timestamp);
+  const waiting = waitingEntries().filter(canRetry).sort((a, b) => a.timestamp - b.timestamp);
   if (waiting.length === 0) return;
   retryingWaiting = true;
   try {
-    for (const e of waiting) {
-      if (!store.getFoodEntry(e.id)) continue;
-      await startRetry(e.id).done;
-      if (isWaitingForAi(store.getFoodEntry(e.id))) break; // still under repair
+    const [first, ...rest] = waiting;
+    await startRetry(first.id).done;
+    if (isWaitingForAi(store.getFoodEntry(first.id))) return; // still under repair
+    for (let i = 0; i < rest.length; i += WAITING_AT_ONCE) {
+      await Promise.all(rest.slice(i, i + WAITING_AT_ONCE).map((e) => startRetry(e.id).done));
     }
   } finally {
     retryingWaiting = false;
@@ -403,6 +406,7 @@ function isDocumentForeground() {
 
 const NETWORK_RETRIES = 3;
 const RETRY_DELAYS_MS = [2000, 6000, 15000];
+const PAUSED_RETRY_MS = 3000;
 
 /** Resolves when the app is on screen (at once if it already is). */
 function whenVisible() {
@@ -431,6 +435,13 @@ async function runAnalysis(entryId, { imageDataUrl, imageDataUrl2, description, 
   for (let attempt = 0; attempt < NETWORK_RETRIES && isNetworkFailure(outcome); attempt += 1) {
     await whenVisible();
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt] ?? 15000));
+    if (!store.getFoodEntry(entryId)) return; // deleted while waiting
+    outcome = await analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text: description });
+  }
+  // Google can refuse one request and take the next (it did right after the AI account was
+  // topped up): one quiet second try before the meal is saved for later
+  if (outcome.errorType === "paused") {
+    await new Promise((resolve) => setTimeout(resolve, PAUSED_RETRY_MS));
     if (!store.getFoodEntry(entryId)) return; // deleted while waiting
     outcome = await analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text: description });
   }
