@@ -2922,3 +2922,5 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .entry-fail-icon-box.is-waiting .icon { color: var(--sc-primary-text); }
 .entry-fail-icon-box.has-photo { overflow: hidden; }
 .entry-fail-icon-box.has-photo img { width: 100%; height: 100%; object-fit: cover; }
+.repair-try { align-self: flex-start; margin-top: 8px; font: inherit; font-size: 14px; font-weight: 700; padding: 8px 16px; border: 0; border-radius: 12px; background: var(--sc-primary-text); color: var(--sc-card-bg); cursor: pointer; }
+.repair-try:disabled { opacity: .6; }

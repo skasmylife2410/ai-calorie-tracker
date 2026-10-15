@@ -8,6 +8,8 @@ import { mountEntryRow } from "./entry-row.js";
 import { wireMealDrag, groupWithToast, rowIsGroupable } from "./meal-drag.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { openResultsSheet } from "./results.js";
+import { openFailedMealSheet } from "./failed-meal.js";
+import * as queue from "../queue.js";
 import { icon } from "./icons.js";
 import { deleteWithUndo } from "./undo-delete.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
@@ -126,6 +128,9 @@ export function renderMealList(list, date, onChange) {
         select: sel ? { on: true, selected: sel.has(entry.id), onToggle: (e) => { sel.has(e.id) ? sel.delete(e.id) : sel.add(e.id); redraw(); } } : null,
         onTap: (e) => {
           const fresh = store.getFoodEntry(e.id);
+          const state = queue.entryState(fresh ?? e);
+          if (state === "pending") return; // still being analysed
+          if (state === "failed") { openFailedMealSheet(fresh, { onChange }); return; }
           // Photo meals open the item-by-item editor (grams per item); everything else opens
           // the single-food editor, which now edits grams/ml too.
           if (Array.isArray(fresh?.analysisItems) && fresh.analysisItems.length > 0) {

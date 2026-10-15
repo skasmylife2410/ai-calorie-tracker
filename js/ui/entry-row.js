@@ -2,7 +2,7 @@
 // Three states (pending / failed / completed), swipeable to delete, tap-routed per §5.4.4.
 
 import { safeSrc } from "../safe-src.js";
-import { entryState } from "../queue.js";
+import { entryState, isWaitingForAi } from "../queue.js";
 import { isGroupedEntry } from "../store.js";
 import { ANALYSIS_MODES } from "../api.js";
 import { icon } from "./icons.js";
@@ -65,7 +65,7 @@ function pendingRowHtml(entry) {
 
 function failedRowHtml(entry) {
   // saved while the AI was under repair: nothing went wrong on their side, it's waiting its turn
-  if (entry.analysisWaiting === true) {
+  if (isWaitingForAi(entry)) {
     return `
     <div class="entry-fail-icon-box is-waiting${entry.photoDataUrl ? " has-photo" : ""}">${entry.photoDataUrl ? `<img src="${safeSrc(entry.photoDataUrl)}" alt="" />` : icon("boltSlashFill", { size: 18 })}</div>
     <div class="entry-fail-body">

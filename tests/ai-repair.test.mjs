@@ -55,3 +55,25 @@ test("a meal logged during the repair waits, and goes through once the AI is bac
   assert.equal(done.calories, 280);
   assert.equal(done.analysisWaiting ?? null, null);
 });
+
+test("meals that failed on the payment refusal before the app knew to keep them count as waiting too", async () => {
+  const { isWaitingForAi } = queue;
+  const failed = (reason, extra = {}) => ({ analysisFailed: true, analysisFailureReason: reason, ...extra });
+  assert.equal(isWaitingForAi(failed("Gemini HTTP 402")), true, "an older 402");
+  assert.equal(isWaitingForAi(failed("AI analysis is under repair. Try again a little later.")), true);
+  assert.equal(isWaitingForAi(failed("x", { analysisWaiting: true })), true);
+  assert.equal(isWaitingForAi(failed("Couldn't find any food in that description — try adding more detail.")), false, "a real mistake is not waiting");
+  assert.equal(isWaitingForAi({ analysisFailed: false, analysisFailureReason: "Gemini HTTP 402" }), false, "a meal that was since analysed");
+
+  localStorage.clear();
+  repaired = true;
+  const old = store.addFoodEntry({
+    name: "Analysis failed — tap to retry", calories: 0, proteinG: 0, carbsG: 0, fatG: 0, source: "text",
+    isPending: false, analysisFailed: true, analysisMode: "text", analysisDescription: "4 eggs", analysisFailureReason: "Gemini HTTP 402",
+  });
+  assert.equal(queue.waitingEntries().length, 1);
+  await queue.retryWaiting();
+  const done = store.getFoodEntry(old.id);
+  assert.equal(done.analysisFailed, false);
+  assert.equal(done.calories, 280);
+});

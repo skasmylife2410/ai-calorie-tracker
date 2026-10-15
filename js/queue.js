@@ -126,9 +126,18 @@ function startRetry(entryId) {
   return { entry: updated, done };
 }
 
-/** Meals saved while the AI was under repair (analysisWaiting). */
+/**
+ * A meal the AI couldn't take because it was under repair: saved for later (analysisWaiting), or
+ * failed on Google's payment refusal before the app knew to keep it. Not a mistake of the person's.
+ */
+export function isWaitingForAi(entry) {
+  if (entry?.analysisFailed !== true) return false;
+  return entry.analysisWaiting === true || /\bHTTP 402\b|under repair/i.test(String(entry.analysisFailureReason ?? ""));
+}
+
+/** Meals waiting for the AI to be repaired. */
 export function waitingEntries() {
-  return store.allFoodEntries().filter((e) => e.analysisWaiting === true && e.analysisFailed === true);
+  return store.allFoodEntries().filter(isWaitingForAi);
 }
 
 /**
@@ -145,7 +154,7 @@ export async function retryWaiting() {
     for (const e of waiting) {
       if (!store.getFoodEntry(e.id)) continue;
       await startRetry(e.id).done;
-      if (store.getFoodEntry(e.id)?.analysisWaiting === true) break; // still under repair
+      if (isWaitingForAi(store.getFoodEntry(e.id))) break; // still under repair
     }
   } finally {
     retryingWaiting = false;

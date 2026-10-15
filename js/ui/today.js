@@ -9,7 +9,6 @@ import * as queue from "../queue.js";
 import { roundDisplay, startOfDay, addDays, weekAverage } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { ringGauge } from "./ring.js";
-import { openActionSheet } from "./action-sheet.js";
 import { openResultsSheet } from "./results.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
@@ -21,7 +20,6 @@ import { mythForDay } from "../myths.js";
 import { inbox, noteToShow, markNoteSeen } from "../social.js";
 import { gifImgHtml } from "../gif.js";
 import { homeGifImgHtml, wireHomeGifChip } from "./home-gif.js";
-import { deleteWithUndo } from "./undo-delete.js";
 import { currentLanguage } from "../i18n.js";
 import { doodleSvg, doodleState, daysSinceLastLog } from "./doodle.js";
 import { doodleMessage } from "./doodle-messages.js";
@@ -29,6 +27,7 @@ import { homeCard } from "./home-card.js";
 import { cachedFaceDoodle, makeFaceDoodle } from "./photo-doodle.js";
 import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 import { renderMealList } from "./today-meals.js";
+import { openFailedMealSheet } from "./failed-meal.js";
 
 const MACRO_DEFS = [
   { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", met: true, color: "var(--sc-protein)", track: "var(--sc-protein-track, rgba(232,93,93,0.18))", icon: "fishFill" },
@@ -247,9 +246,14 @@ function paintRepairNote(container) {
         <div class="repair-body">
           <b>${t("repair.title")}</b>
           <span>${t("repair.body")}</span>
-          ${n > 0 ? `<span class="repair-count">${t("repair.waiting", { n })}</span>` : ""}
+          ${n > 0 ? `<span class="repair-count">${t("repair.waiting", { n })}</span><button type="button" class="repair-try" data-repair-try>${t("repair.tryNow")}</button>` : ""}
         </div>
       </div>` : "";
+    host.querySelector("[data-repair-try]")?.addEventListener("click", (e) => {
+      e.currentTarget.disabled = true;
+      e.currentTarget.textContent = t("repair.trying");
+      queue.retryWaiting().catch(() => {}).finally(() => { aiRepair.at = 0; if (host.isConnected) paintRepairNote(container); });
+    });
   };
   draw();
   if (Date.now() - aiRepair.at > 5 * 60 * 1000) {
@@ -621,23 +625,7 @@ export function handleRowTap(entry, container) {
   const state = queue.entryState(entry);
   if (state === "pending") return;
   if (state === "failed") {
-    const waiting = entry.analysisWaiting === true;
-    openActionSheet({
-      title: waiting ? t("repair.rowTitle") : t("ui.analysisFailed"),
-      message: waiting ? t("repair.rowBody") : entry.analysisFailureReason || t("ui.analysisFailedBody"),
-      actions: [
-        { label: t("app.retry"), onSelect: () => queue.retry(entry.id) },
-        {
-          label: t("ui.editManually"),
-          onSelect: () => {
-            store.updateFoodEntry(entry.id, { analysisFailed: false });
-            openAddFoodSheet({ entry: store.getFoodEntry(entry.id) });
-          },
-        },
-        { label: t("app.delete"), destructive: true, onSelect: () => deleteWithUndo(entry) },
-        { label: t("app.cancel"), cancel: true },
-      ],
-    });
+    openFailedMealSheet(entry, { onChange: () => container && render(container) });
     return;
   }
   if (entry.analysisItems != null) {

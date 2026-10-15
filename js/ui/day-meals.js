@@ -9,6 +9,8 @@ import { mountEntryRow } from "./entry-row.js";
 import { wireMealDrag, groupWithToast, rowIsGroupable } from "./meal-drag.js";
 import { openAddFoodSheet } from "./addfood.js";
 import { openResultsSheet } from "./results.js";
+import { openFailedMealSheet } from "./failed-meal.js";
+import * as queue from "../queue.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { icon } from "./icons.js";
 import { t, formatDate } from "../i18n.js";
@@ -44,6 +46,9 @@ export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
               mountEntryRow(list, entry, {
                 onTap: (e) => {
                   const fresh = store.getFoodEntry(e.id);
+                  const state = queue.entryState(fresh ?? e);
+                  if (state === "pending") return; // still being analysed
+                  if (state === "failed") { openFailedMealSheet(fresh, { onChange: () => { draw(); onChange?.(); } }); return; }
                   // Meals analysed from a photo, text or voice keep each ingredient: edit them one by one.
                   if (Array.isArray(fresh?.analysisItems) && fresh.analysisItems.length > 0) openResultsSheet(fresh);
                   else openAddFoodSheet({ entry: fresh, onSaved: () => { draw(); onChange?.(); } });
