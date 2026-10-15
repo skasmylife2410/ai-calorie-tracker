@@ -2871,3 +2871,41 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 
 /* Add Food after a barcode miss: read the nutrition label from a photo */
 .label-snap { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+
+/* The 30-day check-in, full screen (js/ui/checkin-reveal.js) */
+.ci { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; box-sizing: border-box;
+  padding: calc(env(safe-area-inset-top, 0px) + 56px) 24px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  background: var(--sc-background); color: var(--sc-primary-text); overflow-y: auto; opacity: 0; transition: opacity .25s ease; }
+.ci.is-in { opacity: 1; }
+.ci-k { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--sc-secondary); text-align: center; }
+.ci-stage { width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; }
+.ci-num { font-family: var(--sc-font-rounded); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.ci-ring { position: relative; margin: 28px 0 10px; display: grid; place-items: center; }
+.ci-ring-in { position: absolute; text-align: center; }
+.ci-days { font-size: 80px; line-height: .9; }
+.ci-dot { fill: var(--sc-primary-text); opacity: .16; transform-box: fill-box; transform-origin: center; transform: scale(.66); transition: opacity .18s ease, transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.ci-dot.is-on { opacity: 1; transform: scale(1); }
+.ci-unit { font-size: 14px; font-weight: 600; color: var(--sc-secondary); margin-top: 6px; text-align: center; }
+.ci-lead { font-size: 18px; font-weight: 700; text-align: center; line-height: 1.3; margin: 14px 0 0; max-width: 320px; }
+.ci-sub { font-size: 14px; color: var(--sc-secondary); text-align: center; line-height: 1.45; margin: 8px 0 0; max-width: 320px; }
+.ci-from { font-size: 15px; color: var(--sc-secondary); margin-top: 26px; font-variant-numeric: tabular-nums; }
+.ci-from s { text-decoration-thickness: 1.5px; }
+.ci-budget { font-size: 92px; line-height: .95; margin: 6px 0 2px; }
+.ci-rows { width: 100%; margin-top: 24px; border-top: 1px solid var(--sc-black-6); }
+.ci-row { display: flex; gap: 12px; padding: 13px 2px; border-bottom: 1px solid var(--sc-black-6); text-align: left; }
+.ci-row i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-top: 7px; }
+.ci-row b { display: block; font-size: 15px; line-height: 1.3; }
+.ci-row span { display: block; font-size: 13px; color: var(--sc-secondary); margin-top: 3px; line-height: 1.4; }
+.ci-pips { display: flex; gap: 10px; margin: 22px 0 4px; }
+.ci-pips i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid currentColor; box-sizing: border-box; }
+.ci-pips i.is-on { background: currentColor; }
+.ci-next { font-size: 12px; color: var(--sc-secondary); margin: 14px 0 0; text-align: center; }
+.ci-actions { margin-top: auto; padding-top: 24px; width: 100%; max-width: 360px; display: flex; gap: 10px; }
+.ci-btn { flex: 1; font: inherit; font-size: 16px; font-weight: 700; padding: 15px; border-radius: 16px; border: 0; background: var(--sc-secondary-15); color: var(--sc-primary-text); cursor: pointer; }
+.ci-btn.is-primary { flex: 2; background: var(--sc-primary-text); color: var(--sc-card-bg); }
+@media (max-height: 700px) { .ci { padding-top: calc(env(safe-area-inset-top, 0px) + 28px); } .ci-ring { margin-top: 16px; } .ci-ring-svg { width: 180px; height: 180px; } .ci-days { font-size: 64px; } .ci-budget { font-size: 76px; } }
+@media (prefers-reduced-motion: reduce) { .ci, .ci-dot { transition: none; } }
+.calorie-weigh b { color: var(--sc-primary-text); font-weight: 700; }
+.calorie-weigh .icon { flex: none; }
+.weigh-why .weigh-why-k { text-align: left; margin-bottom: 2px; }
+.weigh-why .ci-rows { margin-top: 14px; }

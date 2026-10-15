@@ -519,3 +519,7 @@
 :root[data-theme="mono"][data-mode="dark"] .us-dd-diff.is-over { color: #ffb460; }
 :root[data-theme="mono"][data-mode="dark"] .us-dd-diff.is-under { color: #8fb8ff; }
 :root[data-theme="mono"][data-markers="off"] .tc, :root[data-theme="mono"][data-markers="off"] .tc-day { --tc-s1: var(--mn-ink); --tc-s2: var(--mn-ink); --tc-s3: var(--mn-ink); }
+
+/* the check-in's numbers in dot-matrix, like the other numbers people come to read */
+:root[data-theme="mono"] .ci-num { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
+:root[data-theme="mono"] .ci-btn:not(.is-primary) { background: var(--mn-card); box-shadow: inset 0 0 0 1px var(--mn-line); }

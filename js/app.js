@@ -279,6 +279,7 @@ function openFromUrl(href) {
   const whatsNew = url.searchParams.get("whatsnew") === "1";
   const goals = url.searchParams.get("goals") === "1";
   const coach = url.searchParams.get("coach") === "1";
+  const weighin = url.searchParams.get("weighin") === "1";
   if (url.search) history.replaceState(null, "", "/");
   if (!hasProfile) return false;
   // the old Today tab now lives on Home as the "Today's meals" mini tab
@@ -298,7 +299,9 @@ function openFromUrl(href) {
   if (goals) { try { store.syncLearnedTdeeFlag(); } catch { /* never block the app */ } maybeShowGoalsUpdate({ force: true }); }
   // the "X is sharing their meals with you" notification opens the coach list
   if (coach) setTimeout(() => import("./ui/coach.js").then((m) => m.isCoach() && m.openCoachSheet()).catch(() => {}), 600);
-  return Boolean(tab || whatsNew || goals || coach);
+  // "why your weight matters" opens the explainer
+  if (weighin) setTimeout(() => import("./ui/weigh-why.js").then((m) => m.openWeighWhySheet({ onSaved: () => renderShell() })).catch(() => {}), 600);
+  return Boolean(tab || whatsNew || goals || coach || weighin);
 }
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,8 @@
 //
 // GET  (Vercel cron, daily)   Authorization: Bearer $CRON_SECRET
 //      Every day: deletes feed posts older than 7 days (their comments go with them), and nudges
-//      anyone who hasn't logged a meal in 24 hours (see nudgeDue for how often).
+//      anyone who hasn't logged a meal in 24 hours (see nudgeDue for how often), and the 30-day
+//      check-in and weigh-in reminders (see morningPushFor).
 //      On Fridays (America/Chicago): writes a recommendation for every account from its last 7 days.
 //      ?force=1 writes the recommendations today regardless of weekday (still needs the secret).
 // POST { op: "mine", lang } -> { ok, recap|null }  your own latest recommendation, text in `lang`
@@ -66,6 +67,94 @@ export function goalsNotice(lang) {
   return lang === "es"
     ? { title: "Actualizamos tus metas", body: "Mejoramos cómo calculamos tus calorías y macros. Toca para ver tus números nuevos y por qué cambiaron.", url: "/?goals=1", tag: "goals" }
     : { title: "Your targets were updated", body: "We improved how your calories and macros are worked out. Tap to see your new numbers and why they changed.", url: "/?goals=1", tag: "goals" };
+}
+
+// One-time "why your weight matters", sent by the morning job on this day only (to everyone with
+// notifications on); it opens the explainer in the app (js/ui/weigh-why.js).
+export const WEIGH_NOTICE_DAY = "2026-10-16";
+const CHECKIN_DAYS = 30; // nutrition.REVIEW_EVERY_DAYS
+const dayDiff = (a, b) => Math.round((Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86400000);
+
+/**
+ * The morning's check-in or weigh-in push for one person, or null. One a morning at most, so
+ * this picks the one that matters most:
+ *   checkin    the 30-day check-in is due today, or still unopened two days later
+ *   eve        it's tomorrow: weigh in before opening the app
+ *   notice     the one-time "why your weight matters" (WEIGH_NOTICE_DAY)
+ *   countdown  the week before a check-in, not weighed in yet today
+ *   gap        no weigh-in for 3+ days: every third day, for three weeks, then it stops
+ *   first      never weighed in: Monday mornings, once they've logged a meal
+ * Days are local "YYYY-MM-DD"; weighDays the days with a reading; dueDay null before any;
+ * firstLogDay their first meal of the last three weeks (null: not logging).
+ */
+export function morningPushFor({ today, dueDay = null, weighDays = [], firstLogDay = null, noticeDay = WEIGH_NOTICE_DAY }) {
+  const toDue = dueDay ? dayDiff(dueDay, today) : null;
+  if (toDue === 0 || toDue === -2) return { kind: "checkin" };
+  if (toDue === 1) return { kind: "eve" };
+  if (today === noticeDay) return { kind: "notice" };
+  const days = [...weighDays].filter(Boolean).sort();
+  if (days.includes(today)) return null;
+  if (toDue !== null && toDue >= 2 && toDue <= 7) return { kind: "countdown", days: toDue };
+  const last = days[days.length - 1] ?? null;
+  if (!last) return firstLogDay && new Date(`${today}T12:00:00Z`).getUTCDay() === 1 ? { kind: "gap", never: true } : null;
+  const since = dayDiff(today, last);
+  if (since >= 3 && since <= 21 && since % 3 === 0) return { kind: "gap", days: since, never: false };
+  return null;
+}
+
+/** The notification for a morningPushFor result, in the person's language. */
+export function morningMessage(p, { name = "", lang = "en" } = {}) {
+  const es = lang === "es";
+  if (p.kind === "checkin") return { title: es ? "Tu revisión de 30 días llegó" : "Your 30-day check-in is here", body: es ? "Ya tenemos un mes de tus datos. Abre SnapCal para ver tu nuevo presupuesto diario." : "A month of your data is in. Open SnapCal to see your new daily budget.", url: "/", tag: "checkin" };
+  if (p.kind === "eve") return { title: es ? "Tu revisión es mañana" : "Your check-in is tomorrow", body: es ? "Pésate mañana temprano, antes de abrir la app: entra en tu nuevo presupuesto." : "Weigh in tomorrow morning, before you open the app: it goes into your new budget.", url: "/?weighin=1", tag: "checkin" };
+  if (p.kind === "notice") return { title: es ? "Por qué importa tu peso" : "Why your weight matters", body: es ? "Tu presupuesto es una estimación hasta que la báscula diga lo contrario. Toca para ver por qué importa pesarte cada mañana." : "Your budget is a guess until the scale says otherwise. Tap to see why a morning weigh-in matters.", url: "/?weighin=1", tag: "weighin" };
+  if (p.kind === "countdown") return { title: es ? `Faltan ${p.days} días para tu revisión` : `${p.days} days to your check-in`, body: es ? "Súbete a la báscula esta mañana: cada pesaje hace tu nuevo presupuesto más preciso." : "Step on the scale this morning: every reading makes your new budget more accurate.", url: "/?weighin=1", tag: "weighin" };
+  const who = String(name ?? "").trim();
+  const title = p.never
+    ? (es ? `${who ? `${who}, tu` : "Tu"} primer pesaje te espera` : `${who ? `${who}, your` : "Your"} first weigh-in is waiting`)
+    : (es ? `${who ? `${who}, ` : ""}${p.days} días sin pesarte` : `${who ? `${who}, ` : ""}${p.days} days without weighing in`);
+  return { title, body: es ? "Tu presupuesto es tan bueno como la tendencia de tu peso. Diez segundos en la báscula esta mañana." : "Your budget is only as good as your weight trend. Ten seconds on the scale this morning.", url: "/?weighin=1", tag: "weighin" };
+}
+
+/** When someone's check-in is due (ms), the way the app works it out (store.reviewDueAt). */
+export function checkinDueAt({ nextReviewAt, lastReviewAt, firstWeighAt }) {
+  if (Number(nextReviewAt) > 0) return Number(nextReviewAt);
+  if (Number(lastReviewAt) > 0) return Number(lastReviewAt) + CHECKIN_DAYS * 86400000;
+  return Number(firstWeighAt) > 0 ? Number(firstWeighAt) + CHECKIN_DAYS * 86400000 : null;
+}
+
+/** The morning's check-in and weigh-in pushes, skipping anyone already nudged this morning. */
+export async function morningPushes(now = Date.now(), { skip = new Set() } = {}) {
+  const today = localDay(new Date(now));
+  const [users, profiles, weights, meals] = await Promise.all([
+    select("snapcal_users", { select: "username" }),
+    select("snapcal_profile", { select: "owner,name:data->>displayName,last:data->>lastReviewAt,next:data->>nextReviewAt" }),
+    select("snapcal_weight", { select: "owner,day,ts:data->>timestamp", limit: "50000" }),
+    select("snapcal_food_entries", { select: "owner,day", deleted: "is.false", day: `gte.${addDays(today, -22)}`, order: "day.asc", limit: "20000" }),
+  ]);
+  const byOwner = new Map();
+  for (const w of weights) {
+    const o = byOwner.get(w.owner) ?? { days: [], first: Infinity };
+    o.days.push(w.day);
+    o.first = Math.min(o.first, Number(w.ts) || Infinity);
+    byOwner.set(w.owner, o);
+  }
+  const firstLog = new Map();
+  for (const m of meals) if (!firstLog.has(m.owner)) firstLog.set(m.owner, m.day);
+  const kinds = {};
+  let sent = 0;
+  for (const { username: u } of users) {
+    if (skip.has(u)) continue;
+    const prof = profiles.find((p) => p.owner === u) ?? {};
+    const w = byOwner.get(u) ?? { days: [], first: Infinity };
+    const due = checkinDueAt({ nextReviewAt: prof.next, lastReviewAt: prof.last, firstWeighAt: Number.isFinite(w.first) ? w.first : null });
+    const push = morningPushFor({ today, dueDay: due ? localDay(new Date(due)) : null, weighDays: w.days, firstLogDay: firstLog.get(u) ?? null });
+    if (!push) continue;
+    kinds[push.kind] = (kinds[push.kind] ?? 0) + 1;
+    const out = await notify([u], (lang) => morningMessage(push, { name: prof.name, lang }));
+    sent += out?.sent ?? 0;
+  }
+  return { kinds, sent };
 }
 
 /** Builds and stores one person's recommendation for the week that ended yesterday. */
@@ -193,7 +282,7 @@ export async function nudgeInactive(now = Date.now()) {
     }));
     sent += out?.sent ?? 0;
   }
-  return { due: due.length, sent };
+  return { due: due.length, sent, owners: due };
 }
 
 export async function purgeOldPosts(now = Date.now()) {
@@ -218,6 +307,8 @@ export default async function handler(req, res) {
     }
     const out = { ok: true, purgedBefore: await purgeOldPosts(now.getTime()), recaps: [] };
     out.nudges = await nudgeInactive(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) }));
+    // check-ins and weigh-ins: one push a morning at most, and "log a meal" goes first
+    out.morning = await morningPushes(now.getTime(), { skip: new Set(out.nudges?.owners ?? []) }).catch((err) => ({ error: String(err?.message ?? err) }));
     if (now.toISOString().slice(0, 10) === GOALS_NOTICE_DAY) {
       const everyone = await select("snapcal_users", { select: "username" }).catch(() => []);
       out.goalsNotice = await notify(everyone.map((u) => u.username), goalsNotice);

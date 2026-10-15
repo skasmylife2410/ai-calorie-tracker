@@ -7,6 +7,7 @@ import * as store from "../store.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 import { openSheet } from "./sheet.js";
 import { REVIEW_EVERY_DAYS, REVIEW_NEAR_GOAL_KG } from "../nutrition.js";
+import { revealCheckin, revealNeedWeighIns } from "./checkin-reveal.js";
 
 const lb = () => store.weightUnit() === "lb";
 const kg = (n) => {
@@ -32,8 +33,8 @@ function tableHtml(r) {
     </table>`;
 }
 
-/** What changed and why, one item each. */
-function changesHtml(r) {
+/** What changed and why, as [title, body] pairs. */
+function changeItems(r) {
   const items = [];
   if (r.prev && Number(r.prev.weightKg) > 0 && Math.abs(r.prev.weightKg - r.endKg) >= 0.1) {
     items.push([t("review.weightTitle", { kg: kg(r.endKg) }), t("review.weightBody", { kg: kg(r.prev.weightKg) })]);
@@ -55,7 +56,12 @@ function changesHtml(r) {
     items.push([t("review.learnedTitle"), t("review.learnedBody")]);
   }
   if (items.length === 0) items.push([t("review.keepTitle"), t("review.keepBody")]);
-  return items.map(([title, body]) => `
+  return items;
+}
+
+/** What changed and why, one item each. */
+function changesHtml(r) {
+  return changeItems(r).map(([title, body]) => `
     <div class="whatsnew-item">
       <div class="whatsnew-item-title">${title}</div>
       <p class="whatsnew-item-body">${body}</p>
@@ -82,22 +88,6 @@ export function reviewHtml(r, { canUndo = true } = {}) {
     </div>`;
 }
 
-function needHtml(n) {
-  return `
-    <div class="whatsnew review">
-      <h2 class="whatsnew-title">${t("review.title")}</h2>
-      <p class="gu-lead">${t("review.needLead", { n })}</p>
-      <div class="whatsnew-item">
-        <div class="whatsnew-item-title">${t("review.needTitle")}</div>
-        <p class="whatsnew-item-body">${t("review.needBody")}</p>
-      </div>
-      <div class="push-actions">
-        <button type="button" class="acct-btn" data-rv="later">${t("review.later")}</button>
-        <button type="button" class="acct-btn is-primary" data-rv="weigh">${t("review.weighNow")}</button>
-      </div>
-    </div>`;
-}
-
 function showRecord(record, { onChange } = {}) {
   openSheet({
     render(panel, close) {
@@ -120,17 +110,15 @@ function showRecord(record, { onChange } = {}) {
 export function maybeRunMonthlyReview({ onChange } = {}) {
   if (!store.reviewIsDue()) return false;
   const review = store.monthlyReviewNow();
+  // a month of logging is a moment: shown full screen (checkin-reveal.js), not as a plain sheet
   if (review.status === "needWeighIns") {
     store.snoozeMonthlyReview();
-    openSheet({
-      render(panel, close) {
-        panel.innerHTML = needHtml(review.weighIns);
-        panel.querySelector('[data-rv="later"]').addEventListener("click", close);
-        panel.querySelector('[data-rv="weigh"]').addEventListener("click", async () => {
-          close();
-          const { openWeightSheet } = await import("./weight.js");
-          openWeightSheet({ onSaved: onChange });
-        });
+    revealNeedWeighIns({
+      weighIns: review.weighIns,
+      spanDays: review.spanDays,
+      onWeigh: async () => {
+        const { openWeightSheet } = await import("./weight.js");
+        openWeightSheet({ onSaved: onChange });
       },
     });
     return true;
@@ -139,7 +127,7 @@ export function maybeRunMonthlyReview({ onChange } = {}) {
   if (!record) return false;
   try { store.syncLearnedTdeeFlag(); } catch { /* never block */ }
   onChange?.();
-  showRecord(record, { onChange });
+  revealCheckin({ record, onChange });
   return true;
 }
 

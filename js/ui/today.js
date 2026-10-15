@@ -101,6 +101,7 @@ export function render(container) {
 
   const microsDay = store.microsForDay(date);
   const weekAvg = viewingToday ? homeWeekAverage(goals.targetCalories) : null;
+  const weighPrompt = viewingToday ? store.weighInPrompt() : null;
   container.innerHTML = `
     <div class="today-content">
       ${weekStripHtml(week)}
@@ -112,7 +113,7 @@ export function render(container) {
 
       <div data-own-swipe class="swiper">
         <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
-          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay, weekAvg)}</div>
+          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay, weekAvg, weighPrompt)}</div>
           <div class="swiper-page">${nutrientsPageHtml(microsDay)}</div>
           <div class="swiper-page">${waterPageHtml(water)}</div>
         </div>
@@ -151,6 +152,12 @@ export function render(container) {
   wireWaterButtons(container);
   wireMealsTab(container, date);
   container.querySelector("#streak-open")?.addEventListener("click", () => import("./streak.js").then((m) => m.openStreakSheet()));
+  // the first time it explains why the scale matters; after that it goes straight to the scale
+  container.querySelector("#weigh-open")?.addEventListener("click", () => import("./weigh-why.js").then(async (m) => {
+    if (!m.weighWhySeen()) { m.openWeighWhySheet({ onSaved: () => render(container) }); return; }
+    const { openWeightSheet } = await import("./weight.js");
+    openWeightSheet({ onSaved: () => render(container) });
+  }));
   if (weekAvg) countWeekAverage(container, weekAvg);
   countNumbers(container, `${startOfDay(date)}`, [
     remaining,
@@ -222,6 +229,13 @@ function countValueAt(anim, now) {
 }
 const startCount = (dayKey, from, to, t0) => ({ dayKey, from, to, t0, ...(crossesZero(from.nums[0], to.nums[0]) ? { ms: CROSS_MS } : {}) });
 const sameNumbers = (a, b) => a.length === b.length && a.every((n, i) => Math.round(n) === Math.round(b[i]));
+
+/** The weigh-in line's second half: how close the check-in is, or how long since the scale. */
+function weighLineText(p) {
+  if (p.kind === "checkin") return p.days === 0 ? t("home.weighCheckinToday") : p.days === 1 ? t("home.weighCheckinTomorrow") : t("home.weighCheckinIn", { n: p.days });
+  if (p.kind === "gap") return t("home.weighGap", { n: p.days });
+  return t("home.weighWhy");
+}
 
 /**
  * The 7 days before today, averaged, when every one of them was logged (nutrition.weekAverage);
@@ -387,7 +401,7 @@ function weekStripHtml(week) {
   `;
 }
 
-function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount = 0, microsDay = null, weekAvg = null) {
+function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount = 0, microsDay = null, weekAvg = null, weighPrompt = null) {
   const ringProgress = energy.adjustedTarget > 0 ? totals.calories / energy.adjustedTarget : 0;
   const ring = ringGauge({
     size: 78,
@@ -438,6 +452,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
           <div class="calorie-caption">${overBudget ? t("home.caloriesOver") : t("home.caloriesLeft")}</div>
           <button type="button" class="calorie-meals" id="see-meals">${t("us.mealsCount", { n: mealCount })} · ${t("day.tapToSee")} ›</button>
           ${streakCount > 0 ? `<button type="button" class="calorie-streak" id="streak-open">${icon("flameFill", { size: 13, color: "var(--sc-streak-flame)" })}<span>${t("home.streakLine", { n: streakCount })}</span>${(store.getProfile().streak?.freezes ?? 0) > 0 ? `<span class="calorie-freeze" title="${t("streak.freezes")}">${icon("freeze", { size: 12 })}${store.getProfile().streak.freezes}</span>` : ""}<span class="calorie-streak-more">›</span></button>` : ""}
+          ${weighPrompt ? `<button type="button" class="calorie-streak calorie-weigh" id="weigh-open">${icon("scale", { size: 13 })}<span>${t("home.weighIn")} · <b>${weighLineText(weighPrompt)}</b></span><span class="calorie-streak-more">›</span></button>` : ""}
           <div class="calorie-budget"><span class="calorie-budget-main">${t("home.budget")} <b class="calorie-budget-num" data-suffix="">${roundDisplay(energy.adjustedTarget)}</b></span>${weekAvg ? `<span class="calorie-avg ${weekAvg.v > weekAvg.goal ? "is-over" : "is-under"}" title="${t("home.weekAvgTitle")}"><i aria-hidden="true">·</i>${t("home.weekAvg")} <b class="calorie-avg-num">${roundDisplay(weekAvg.v)}</b></span>` : ""}</div>
           ${energy.burned > 0 ? `<button type="button" class="calorie-exercise" id="calorie-exercise">${icon("boltFill", { size: 12 })}<span>${energy.credit > 0
             ? t("home.exerciseAdded", { burned: roundDisplay(energy.burned), credit: roundDisplay(energy.credit) })

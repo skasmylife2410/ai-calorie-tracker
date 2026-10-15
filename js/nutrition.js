@@ -410,7 +410,7 @@ export const REVIEW_NEAR_GOAL_KG = 2;
 export function monthlyReview({ profile = {}, weights = [], now = Date.now(), learnedOn = false }) {
   const sorted = [...weights].filter((w) => Number(w?.kg) > 0).sort((a, b) => a.t - b.t);
   const spanDays = sorted.length ? (sorted[sorted.length - 1].t - sorted[0].t) / 86400000 : 0;
-  if (sorted.length < 4 || spanDays < 14) return { status: "needWeighIns", weighIns: sorted.length };
+  if (sorted.length < 4 || spanDays < 14) return { status: "needWeighIns", weighIns: sorted.length, spanDays: Math.round(spanDays) };
 
   // least-squares line through the readings: one salty dinner doesn't decide the month
   const t0 = sorted[0].t;

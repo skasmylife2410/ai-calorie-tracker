@@ -1052,6 +1052,35 @@ export function undoMonthlyReview() {
   return true;
 }
 
+/**
+ * What the next check-in has to work with: the readings it will count (from 30 days before it,
+ * after the first week of water weight), and how many days away it is. Null before any weigh-in.
+ */
+export function checkinWeighIns(now = Date.now()) {
+  const due = reviewDueAt();
+  if (!due) return null;
+  const from = Math.max(due - REVIEW_EVERY_DAYS * DAY_MS, waterWeekEnd());
+  const have = allWeightRaw().filter((w) => w.timestamp >= from && w.timestamp <= Math.max(now, from)).length;
+  return { have, due, days: Math.max(0, Math.round((startOfDay(due) - startOfDay(now)) / DAY_MS)) };
+}
+
+/**
+ * Home's weigh-in line, or null when there's nothing to say: weighed in today already, or it's
+ * been under three days and no check-in is near. Kinds: "checkin" (one is within a week),
+ * "gap" (3+ days since the last reading) and "never".
+ */
+export function weighInPrompt(now = Date.now()) {
+  const weights = allWeightRaw();
+  const today = startOfDay(now);
+  if (weights.some((w) => w.timestamp >= today)) return null;
+  const next = checkinWeighIns(now);
+  if (next && next.days <= 7) return { kind: "checkin", days: next.days };
+  const last = weights.reduce((max, w) => Math.max(max, Number(w.timestamp) || 0), 0);
+  if (!last) return { kind: "never" };
+  const days = Math.round((today - startOfDay(last)) / DAY_MS);
+  return days >= 3 ? { kind: "gap", days } : null;
+}
+
 /** Not enough weigh-ins yet: look again in a week. */
 export function snoozeMonthlyReview({ now = Date.now(), days = 7 } = {}) {
   setProfile({ nextReviewAt: now + days * DAY_MS });
