@@ -992,6 +992,17 @@ async function geminiRequest(payload) {
   return { ok: true, items: body.items };
 }
 
+/** Is the AI under repair right now (api/gemini.js ?op=status)? False when it can't tell. */
+export async function aiPaused() {
+  try {
+    const res = await apiFetch("/api/gemini?op=status");
+    if (!res.ok) return false;
+    return (await res.json())?.paused === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function analyzeMeal({ mode, imageDataUrl, imageDataUrl2, text }) {
   const modeInfo = ANALYSIS_MODES[mode] ?? ANALYSIS_MODES.meal;
 

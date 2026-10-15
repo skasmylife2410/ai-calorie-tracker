@@ -198,6 +198,13 @@ async function boot() {
     try { store.syncLearnedTdeeFlag(); } catch { /* never block the app */ }
   });
 
+  // meals saved while the AI was under repair: analysed once it's back, on opening the app,
+  // coming back to it, and every ten minutes while it's open
+  const retryWaiting = () => { if (document.visibilityState === "visible") queue.retryWaiting().catch(() => {}); };
+  whenFirstSynced(8000).then(() => setTimeout(retryWaiting, 4000));
+  document.addEventListener("visibilitychange", retryWaiting);
+  setInterval(retryWaiting, 10 * 60 * 1000);
+
   store.subscribe(() => {
     // The account's profile arrived after setup was already showing (slow network): step out
     // of setup into the app instead of letting it overwrite the real profile.

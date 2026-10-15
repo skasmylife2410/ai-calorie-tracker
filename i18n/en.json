@@ -1462,5 +1462,12 @@
     "firstTitle": "Your first check-in",
     "firstBody": "It comes 30 days after your first weigh-in. Start this morning.",
     "later": "Not now"
+  },
+  "repair": {
+    "title": "AI analysis is under repair",
+    "body": "Keep taking photos of your meals: they're saved and will be analysed automatically once it's fixed.",
+    "waiting": "{n} meal saved, waiting|{n} meals saved, waiting",
+    "rowTitle": "Saved · waiting for the AI",
+    "rowBody": "It'll be analysed automatically once the repair is done."
   }
 }

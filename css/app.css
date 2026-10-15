@@ -2909,3 +2909,16 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .calorie-weigh .icon { flex: none; }
 .weigh-why .weigh-why-k { text-align: left; margin-bottom: 2px; }
 .weigh-why .ci-rows { margin-top: 14px; }
+
+/* The AI under repair: the note on Home, and meals saved meanwhile (js/ui/today.js, entry-row.js) */
+#ai-repair:empty { display: none; }
+.repair-note { display: flex; gap: 12px; align-items: flex-start; padding: 14px 15px; margin: 6px 0 4px; }
+.repair-ic { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.repair-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.repair-body b { font-size: 15px; color: var(--sc-primary-text); }
+.repair-body span { font-size: 13px; color: var(--sc-secondary); line-height: 1.4; }
+.repair-body .repair-count { color: var(--sc-primary-text); font-weight: 700; margin-top: 2px; }
+.entry-fail-icon-box.is-waiting { background: var(--sc-secondary-15); }
+.entry-fail-icon-box.is-waiting .icon { color: var(--sc-primary-text); }
+.entry-fail-icon-box.has-photo { overflow: hidden; }
+.entry-fail-icon-box.has-photo img { width: 100%; height: 100%; object-fit: cover; }

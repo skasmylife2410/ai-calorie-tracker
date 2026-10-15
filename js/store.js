@@ -202,6 +202,8 @@ export function makeFoodEntry(fields) {
     // fiber, sugars, sat fat, sodium, potassium for the whole entry; null = not known
     micros: cleanMicros(fields.micros),
     // how sure the analysis was, its open questions and cooking fat (see queue.metaFields)
+    // saved while the AI was under repair, to be analysed once it's back (queue.retryWaiting)
+    ...(fields.analysisWaiting === true ? { analysisWaiting: true } : {}),
     ...(fields.analysisConfidence !== undefined ? { analysisConfidence: fields.analysisConfidence } : {}),
     ...(fields.analysisQuestions !== undefined ? { analysisQuestions: fields.analysisQuestions } : {}),
     ...(fields.questionsAnswered !== undefined ? { questionsAnswered: fields.questionsAnswered } : {}),

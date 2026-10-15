@@ -103,11 +103,15 @@ export function canRetry(entry) {
 
 /** Re-runs analysis with the entry's STORED inputs/mode — retry always repeats the original pipeline. */
 export function retry(entryId) {
+  return startRetry(entryId).entry;
+}
+
+function startRetry(entryId) {
   const entry = store.getFoodEntry(entryId);
-  if (!entry) return null;
+  if (!entry) return { entry: null, done: Promise.resolve() };
 
   if (!canRetry(entry)) {
-    return store.updateFoodEntry(entryId, { isPending: false, analysisFailed: true });
+    return { entry: store.updateFoodEntry(entryId, { isPending: false, analysisFailed: true }), done: Promise.resolve() };
   }
 
   const mode = entry.analysisMode ?? "meal";
@@ -118,8 +122,34 @@ export function retry(entryId) {
     analysisFailureReason: null,
   });
 
-  runAnalysis(entryId, { imageDataUrl: entry.photoDataUrl, description: entry.analysisDescription, mode });
-  return updated;
+  const done = runAnalysis(entryId, { imageDataUrl: entry.photoDataUrl, description: entry.analysisDescription, mode });
+  return { entry: updated, done };
+}
+
+/** Meals saved while the AI was under repair (analysisWaiting). */
+export function waitingEntries() {
+  return store.allFoodEntries().filter((e) => e.analysisWaiting === true && e.analysisFailed === true);
+}
+
+/**
+ * Analyses the meals saved while the AI was under repair, oldest first, one at a time; stops at
+ * the first that's still refused (it's tried again on the next open or in ten minutes).
+ */
+let retryingWaiting = false;
+export async function retryWaiting() {
+  if (retryingWaiting) return;
+  const waiting = waitingEntries().sort((a, b) => a.timestamp - b.timestamp);
+  if (waiting.length === 0) return;
+  retryingWaiting = true;
+  try {
+    for (const e of waiting) {
+      if (!store.getFoodEntry(e.id)) continue;
+      await startRetry(e.id).done;
+      if (store.getFoodEntry(e.id)?.analysisWaiting === true) break; // still under repair
+    }
+  } finally {
+    retryingWaiting = false;
+  }
 }
 
 /**
@@ -446,6 +476,7 @@ function handleOutcome(entryId, mode, outcome) {
       isPending: false,
       analysisFailed: false,
       analysisFailureReason: null,
+      analysisWaiting: null,
       ...metaFields(entry, outcome.meta, items),
       // fresh foods replace any leftovers taken off before (it can be done again from the meal)
       leftovers: outcome.leftovers ?? null,
@@ -469,6 +500,9 @@ function handleOutcome(entryId, mode, outcome) {
     analysisFailed: true,
     name: "Analysis failed — tap to retry",
     analysisFailureReason: outcome.reason,
+    // the AI is under repair (api/gemini.js answers "paused"): the meal is kept, photo and all,
+    // and analysed by retryWaiting once it's back
+    analysisWaiting: outcome.errorType === "paused" ? true : null,
   });
   emitComplete({ entryId, success: false, reason: outcome.reason });
 }

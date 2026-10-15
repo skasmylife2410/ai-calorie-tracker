@@ -1462,5 +1462,12 @@
     "firstTitle": "Tu primera revisión",
     "firstBody": "Llega 30 días después de tu primer pesaje. Empieza esta mañana.",
     "later": "Ahora no"
+  },
+  "repair": {
+    "title": "El análisis con IA está en reparación",
+    "body": "Sigue tomando fotos de tus comidas: se guardan y se analizarán solas en cuanto quede arreglado.",
+    "waiting": "{n} comida guardada, en espera|{n} comidas guardadas, en espera",
+    "rowTitle": "Guardada · esperando a la IA",
+    "rowBody": "Se analizará sola en cuanto termine la reparación."
   }
 }

@@ -10,7 +10,16 @@
 // encoding, so bodies stay well under Vercel's ~4.5MB request-body limit for Node functions.
 
 import { requireUser } from "./_auth.js";
-import { useAllowance, AI_PER_HOUR, overAllowance } from "./_limits.js";
+import { useAllowance, AI_PER_HOUR, overAllowance, isLocked, recordFailure } from "./_limits.js";
+import { remove } from "./_rest.js";
+
+// While Google refuses the AI account (HTTP 402), each refusal is noted under this key and any
+// success clears it; the app asks (GET ?op=status) to show its "under repair" note and to know
+// when to analyse the meals it saved meanwhile. Notes older than 6 hours don't count.
+const AI_PAUSED_KEY = "ai-paused";
+const BILLING_MESSAGE = "AI analysis is under repair. Try again a little later, or add the meal manually.";
+const notePaused = () => recordFailure([AI_PAUSED_KEY]).catch(() => {});
+const clearPaused = () => remove("snapcal_auth_failures", { key: `eq.${AI_PAUSED_KEY}` }).catch(() => {});
 
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
@@ -387,7 +396,7 @@ async function callGemini(apiKey, { image, image2, audio, promptText, schema = R
   // app can fix; the backup key (another account) is tried, and the meal can be retried later.
   if (res.status === 402) {
     console.error("gemini: HTTP 402 Payment Required — check the Gemini API billing");
-    return { kind: "billing", message: "AI analysis is paused right now. Add the meal manually, or retry it later." };
+    return { kind: "billing", message: BILLING_MESSAGE };
   }
   if (!res.ok) {
     return { kind: "other", message: `Gemini HTTP ${res.status}` };
@@ -435,7 +444,8 @@ export function mealMeta(parsed) {
 
 function outcomeToErrorPayload(outcome) {
   let errorType = "other";
-  if (outcome.kind === "rateLimited" || outcome.kind === "billing") errorType = "quota";
+  if (outcome.kind === "rateLimited") errorType = "quota";
+  else if (outcome.kind === "billing") errorType = "paused"; // the app saves the meal and analyses it later
   else if (outcome.kind === "badKey") errorType = "badKey";
   else if (/timed out|network error|no HTTP response/.test(outcome.message)) errorType = "network";
   else if (/decode error|empty response|malformed JSON/.test(outcome.message)) errorType = "parse";
@@ -457,6 +467,13 @@ function parseRequestBody(req) {
 export default async function handler(req, res) {
   const me = await requireUser(req, res);
   if (!me) return;
+  if (req.method === "GET") {
+    const op = String(req.query?.op ?? new URL(req.url ?? "/", "http://x").searchParams.get("op") ?? "");
+    if (op === "status") {
+      res.status(200).json({ ok: true, paused: await isLocked([AI_PAUSED_KEY], 1, 360).catch(() => false) });
+      return;
+    }
+  }
   // a cap per person, so a lost phone or a script can't run up the AI bill
   if (req.method === "POST" && !(await useAllowance(`ai:${me}`, AI_PER_HOUR, 60))) return overAllowance(res);
 
@@ -543,6 +560,7 @@ export default async function handler(req, res) {
   const primaryOutcome = await callGemini(primaryKey, { image: normalizedImage, image2: image2 || undefined, audio, promptText, schema });
 
   if (primaryOutcome.kind === "success") {
+    clearPaused();
     res.status(200).json({ items: primaryOutcome.items, ...(primaryOutcome.meta ? { meta: primaryOutcome.meta } : {}) });
     return;
   }
@@ -554,6 +572,7 @@ export default async function handler(req, res) {
     backupKey !== primaryKey;
 
   if (!shouldRetryWithBackup) {
+    if (primaryOutcome.kind === "billing") notePaused();
     res.status(200).json(outcomeToErrorPayload(primaryOutcome));
     return;
   }
@@ -569,9 +588,15 @@ export default async function handler(req, res) {
   }
 
   if (backupOutcome.kind === "success") {
+    clearPaused();
     res.status(200).json({ items: backupOutcome.items, ...(backupOutcome.meta ? { meta: backupOutcome.meta } : {}) });
     return;
   }
 
+  if (backupOutcome.kind === "billing" || (primaryOutcome.kind === "billing" && backupOutcome.kind !== "success")) {
+    notePaused();
+    res.status(200).json(outcomeToErrorPayload({ kind: "billing", message: BILLING_MESSAGE }));
+    return;
+  }
   res.status(200).json(outcomeToErrorPayload(backupOutcome));
 }

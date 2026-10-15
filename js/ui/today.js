@@ -105,6 +105,7 @@ export function render(container) {
   container.innerHTML = `
     <div class="today-content">
       ${weekStripHtml(week)}
+      <div id="ai-repair"></div>
       ${viewingToday ? "" : `
         <div class="viewing-day">
           <span>${t("home.viewingDay", { day: formatViewedDay(date) })}</span>
@@ -148,6 +149,7 @@ export function render(container) {
     </div>
   `;
 
+  paintRepairNote(container);
   wireSwiper(container);
   wireWaterButtons(container);
   wireMealsTab(container, date);
@@ -229,6 +231,35 @@ function countValueAt(anim, now) {
 }
 const startCount = (dayKey, from, to, t0) => ({ dayKey, from, to, t0, ...(crossesZero(from.nums[0], to.nums[0]) ? { ms: CROSS_MS } : {}) });
 const sameNumbers = (a, b) => a.length === b.length && a.every((n, i) => Math.round(n) === Math.round(b[i]));
+
+// While the AI is under repair: a note at the top of Home, so nobody stops logging. Shown when
+// the server says it's paused or this phone has meals waiting; the server is asked at most every
+// five minutes. The note goes by itself once the first waiting meal goes through.
+let aiRepair = { paused: false, at: 0 };
+function paintRepairNote(container) {
+  const host = container.querySelector("#ai-repair");
+  if (!host) return;
+  const draw = () => {
+    const n = queue.waitingEntries().length;
+    host.innerHTML = aiRepair.paused || n > 0 ? `
+      <div class="repair-note card" role="status">
+        <span class="repair-ic" aria-hidden="true">${icon("boltSlashFill", { size: 18 })}</span>
+        <div class="repair-body">
+          <b>${t("repair.title")}</b>
+          <span>${t("repair.body")}</span>
+          ${n > 0 ? `<span class="repair-count">${t("repair.waiting", { n })}</span>` : ""}
+        </div>
+      </div>` : "";
+  };
+  draw();
+  if (Date.now() - aiRepair.at > 5 * 60 * 1000) {
+    aiRepair.at = Date.now();
+    import("../api.js").then((m) => m.aiPaused()).then((paused) => {
+      aiRepair = { paused, at: Date.now() };
+      if (host.isConnected) draw();
+    }).catch(() => {});
+  }
+}
 
 /** The weigh-in line's second half: how close the check-in is, or how long since the scale. */
 function weighLineText(p) {
@@ -590,9 +621,10 @@ export function handleRowTap(entry, container) {
   const state = queue.entryState(entry);
   if (state === "pending") return;
   if (state === "failed") {
+    const waiting = entry.analysisWaiting === true;
     openActionSheet({
-      title: t("ui.analysisFailed"),
-      message: entry.analysisFailureReason || t("ui.analysisFailedBody"),
+      title: waiting ? t("repair.rowTitle") : t("ui.analysisFailed"),
+      message: waiting ? t("repair.rowBody") : entry.analysisFailureReason || t("ui.analysisFailedBody"),
       actions: [
         { label: t("app.retry"), onSelect: () => queue.retry(entry.id) },
         {
