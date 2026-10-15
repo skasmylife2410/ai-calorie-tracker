@@ -249,12 +249,22 @@ test("the AI account out of credit (HTTP 402): the backup key is tried, else the
     assert.equal(r1.body.items?.length, 1, "the backup key answered");
 
     process.env.GEMINI_API_KEY_BACKUP = "";
-    globalThis.fetch = async (url) => (String(url).includes("generativelanguage") ? { status: 402, ok: false, json: async () => ({}) } : { status: 201, ok: true, json: async () => [] });
+    process.env.GEMINI_API_KEY = "sk-test-123";
+    const notes = [];
+    globalThis.fetch = async (url, init) => {
+      if (String(url).includes("generativelanguage")) return { status: 402, ok: false, json: async () => ({ error: { code: 402, message: "Your prepayment credits are depleted." } }) };
+      if (String(url).includes("snapcal_client_errors")) notes.push(JSON.parse(init.body)[0]);
+      return { status: 201, ok: true, json: async () => [] };
+    };
     const r2 = res();
     await gemini({ method: "POST", headers: {}, body: { mode: "text", text: "rice" } }, r2);
     assert.equal(r2.body.errorType, "paused", "the app saves the meal for later");
     assert.match(r2.body.message, /under repair/);
     assert.doesNotMatch(r2.body.message, /402/);
+    // Google's own reason is kept for Admin diagnostics, never the key
+    assert.equal(notes.length, 1);
+    assert.match(notes[0].message, /primary 402 Your prepayment credits are depleted\./);
+    assert.doesNotMatch(notes[0].message, /sk-test-123/);
   } finally {
     globalThis.fetch = saved;
     delete process.env.GEMINI_API_KEY_BACKUP;

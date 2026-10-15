@@ -11,7 +11,7 @@
 
 import { requireUser } from "./_auth.js";
 import { useAllowance, AI_PER_HOUR, overAllowance, isLocked, recordFailure } from "./_limits.js";
-import { remove } from "./_rest.js";
+import { remove, insert } from "./_rest.js";
 
 // While Google refuses the AI account (HTTP 402), each refusal is noted under this key and any
 // success clears it; the app asks (GET ?op=status) to show its "under repair" note and to know
@@ -20,6 +20,22 @@ const AI_PAUSED_KEY = "ai-paused";
 const BILLING_MESSAGE = "AI analysis is under repair. Try again a little later, or add the meal manually.";
 const notePaused = () => recordFailure([AI_PAUSED_KEY]).catch(() => {});
 const clearPaused = () => remove("snapcal_auth_failures", { key: `eq.${AI_PAUSED_KEY}` }).catch(() => {});
+// What Google said when it refused, which key, kept with the phones' error reports (Profile ›
+// Admin diagnostics) so the reason can be read without the server logs. Never the key itself.
+const refusalNote = (o) => `${o.status ?? "?"}${o.detail ? ` ${o.detail}` : ""}`;
+const noteRefusal = (me, primary, backup) => insert("snapcal_client_errors", {
+  owner: me,
+  message: `gemini refused · primary ${refusalNote(primary)}${backup ? ` · backup ${refusalNote(backup)}` : " · backup not tried"}`.slice(0, 2000),
+  ua: "server",
+}).catch(() => {});
+/** Google's own words for an error response ({error: {message}}), short. */
+async function googleSays(res) {
+  try {
+    return String((await res.json())?.error?.message ?? "").replace(/\s+/g, " ").slice(0, 300);
+  } catch {
+    return "";
+  }
+}
 
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
@@ -387,19 +403,19 @@ async function callGemini(apiKey, { image, image2, audio, promptText, schema = R
   if (!res) return { kind: "other", message: "Gemini: no HTTP response" };
 
   if (res.status === 429) {
-    return { kind: "rateLimited", message: "Daily free AI limit reached — resets ~5pm, or add the meal manually." };
+    return { kind: "rateLimited", message: "Daily free AI limit reached — resets ~5pm, or add the meal manually.", status: 429, detail: await googleSays(res) };
   }
   if (res.status === 400 || res.status === 403) {
-    return { kind: "badKey", message: "AI analysis is unavailable right now — add the meal manually." };
+    return { kind: "badKey", message: "AI analysis is unavailable right now — add the meal manually.", status: res.status, detail: await googleSays(res) };
   }
   // the AI account itself: its prepaid credit ran out or a payment failed. Nothing anyone in the
   // app can fix; the backup key (another account) is tried, and the meal can be retried later.
   if (res.status === 402) {
     console.error("gemini: HTTP 402 Payment Required — check the Gemini API billing");
-    return { kind: "billing", message: BILLING_MESSAGE };
+    return { kind: "billing", message: BILLING_MESSAGE, status: 402, detail: await googleSays(res) };
   }
   if (!res.ok) {
-    return { kind: "other", message: `Gemini HTTP ${res.status}` };
+    return { kind: "other", message: `Gemini HTTP ${res.status}`, status: res.status, detail: await googleSays(res) };
   }
 
   let json;
@@ -572,7 +588,7 @@ export default async function handler(req, res) {
     backupKey !== primaryKey;
 
   if (!shouldRetryWithBackup) {
-    if (primaryOutcome.kind === "billing") notePaused();
+    if (primaryOutcome.kind === "billing") await Promise.all([notePaused(), noteRefusal(me, primaryOutcome, null)]);
     res.status(200).json(outcomeToErrorPayload(primaryOutcome));
     return;
   }
@@ -594,7 +610,7 @@ export default async function handler(req, res) {
   }
 
   if (backupOutcome.kind === "billing" || (primaryOutcome.kind === "billing" && backupOutcome.kind !== "success")) {
-    notePaused();
+    await Promise.all([notePaused(), noteRefusal(me, primaryOutcome, backupOutcome)]);
     res.status(200).json(outcomeToErrorPayload({ kind: "billing", message: BILLING_MESSAGE }));
     return;
   }
