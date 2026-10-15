@@ -383,6 +383,12 @@ async function callGemini(apiKey, { image, image2, audio, promptText, schema = R
   if (res.status === 400 || res.status === 403) {
     return { kind: "badKey", message: "AI analysis is unavailable right now — add the meal manually." };
   }
+  // the AI account itself: its prepaid credit ran out or a payment failed. Nothing anyone in the
+  // app can fix; the backup key (another account) is tried, and the meal can be retried later.
+  if (res.status === 402) {
+    console.error("gemini: HTTP 402 Payment Required — check the Gemini API billing");
+    return { kind: "billing", message: "AI analysis is paused right now. Add the meal manually, or retry it later." };
+  }
   if (!res.ok) {
     return { kind: "other", message: `Gemini HTTP ${res.status}` };
   }
@@ -429,7 +435,7 @@ export function mealMeta(parsed) {
 
 function outcomeToErrorPayload(outcome) {
   let errorType = "other";
-  if (outcome.kind === "rateLimited") errorType = "quota";
+  if (outcome.kind === "rateLimited" || outcome.kind === "billing") errorType = "quota";
   else if (outcome.kind === "badKey") errorType = "badKey";
   else if (/timed out|network error|no HTTP response/.test(outcome.message)) errorType = "network";
   else if (/decode error|empty response|malformed JSON/.test(outcome.message)) errorType = "parse";
@@ -541,9 +547,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Retry with backup ONLY on rateLimited/badKey, only if a distinct backup key exists.
+  // Retry with backup ONLY on rateLimited/badKey/billing, only if a distinct backup key exists.
   const shouldRetryWithBackup =
-    (primaryOutcome.kind === "rateLimited" || primaryOutcome.kind === "badKey") &&
+    (primaryOutcome.kind === "rateLimited" || primaryOutcome.kind === "badKey" || primaryOutcome.kind === "billing") &&
     backupKey !== "" &&
     backupKey !== primaryKey;
 

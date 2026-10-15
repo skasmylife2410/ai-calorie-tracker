@@ -227,3 +227,35 @@ test("a note typed with the photo is sent to the model, and re-analysing keeps i
   assert.match(prompts[0], /only ate half/);
   assert.match(prompts[0], /\[image\]/, "and the photo is still attached");
 });
+
+test("the AI account out of credit (HTTP 402): the backup key is tried, else a plain message", async () => {
+  const { default: gemini } = await import("../api/gemini.js");
+  const saved = globalThis.fetch;
+  const res = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
+  const ok = { status: 200, ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ items: [{ name: "rice", calories: 200, protein_g: 4, carbs_g: 44, fat_g: 1, grams_estimate: 150 }], confidence: 0.8 }) }] } }] }) };
+  const keys = [];
+  try {
+    process.env.GEMINI_API_KEY = "primary";
+    process.env.GEMINI_API_KEY_BACKUP = "backup";
+    globalThis.fetch = async (_url, init) => {
+      const key = init?.headers?.["x-goog-api-key"] ?? String(_url).match(/key=([^&]+)/)?.[1];
+      keys.push(key);
+      return key === "primary" ? { status: 402, ok: false, json: async () => ({}) } : ok;
+    };
+    const r1 = res();
+    await gemini({ method: "POST", headers: {}, body: { mode: "text", text: "rice" } }, r1);
+    assert.deepEqual(keys, ["primary", "backup"]);
+    assert.equal(r1.body.items?.length, 1, "the backup key answered");
+
+    process.env.GEMINI_API_KEY_BACKUP = "";
+    globalThis.fetch = async () => ({ status: 402, ok: false, json: async () => ({}) });
+    const r2 = res();
+    await gemini({ method: "POST", headers: {}, body: { mode: "text", text: "rice" } }, r2);
+    assert.equal(r2.body.errorType, "quota");
+    assert.match(r2.body.message, /paused/);
+    assert.doesNotMatch(r2.body.message, /402/);
+  } finally {
+    globalThis.fetch = saved;
+    delete process.env.GEMINI_API_KEY_BACKUP;
+  }
+});
