@@ -1413,6 +1413,7 @@
     "nIn": "{n} cuentan",
     "logged": "registró",
     "rule": "El promedio cuenta a quienes registraron al menos la mitad de sus días. Los días registrados por debajo de la mitad de la meta no cuentan, por incompletos.",
+    "ruleProtein": "El promedio cuenta a quienes registraron al menos la mitad de sus días. La proteína cuenta todos los días registrados, también los cortos.",
     "hint": "Toca personas para comparar (hasta 3). Desliza por el gráfico para leer un día; suelta para abrirlo."
   },
   "reveal": {

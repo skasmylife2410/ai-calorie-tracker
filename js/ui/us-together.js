@@ -251,7 +251,7 @@ export function togetherInner({ people, days, me, todayKey, selectedDay = null, 
       ${seg("view", st.view, [["everyone", t("together.everyone")], ["me", t("together.me")], ["avg", t("together.average")]])}
       ${kpis}
       <div class="tc-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("together.title"))}">${g}</svg>${tip}</div>
-      <p class="tc-rule">${esc(t("together.rule"))}</p>
+      <p class="tc-rule">${esc(t(m === "protein" ? "together.ruleProtein" : "together.rule"))}</p>
       <div class="tc-list"><div class="tc-lh">${esc(atLabel)}</div>${avgRow}${rows}</div>
     </div>
     ${selectedDay && keys.includes(selectedDay) ? `<div class="tc-day">${dayDetail(selectedDay, markOf)}</div>` : ""}

@@ -1413,6 +1413,7 @@
     "nIn": "{n} in",
     "logged": "logged",
     "rule": "The average counts people who logged at least half their days. Days logged under half a goal are left out as unfinished.",
+    "ruleProtein": "The average counts people who logged at least half their days. Protein counts every logged day, short ones too.",
     "hint": "Tap people to compare (up to 3). Drag across the chart to read a day; let go to open it."
   },
   "reveal": {
