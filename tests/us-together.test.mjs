@@ -27,30 +27,28 @@ const person = (owner, goal, kcals) => ({ owner, name: owner, goals: { calories:
 
 const steady = person("ana", 2000, [2000, 1900, 2100, 2000, 1800, 2200, 600]);
 const rare = person("bo", 1500, [null, 3000, null, null, null, 3000, null]); // two big days a week
-const forgot = person("cy", 1800, [1800, 300, 1700, 1900, 1750, 1850, null]); // one unfinished day
+const forgot = person("cy", 1800, [1800, 300, 1700, 1900, 1750, 1850, null]); // one short day
 
-test("an unfinished day is a gap; today counts as soon as anything is logged", () => {
-  assert.equal(dayValue(forgot, "2026-10-05", "kcal", TODAY), null, "300 of 1,800: not a fast, a forgotten log");
-  assert.equal(dayValue(forgot, "2026-10-04", "pct", TODAY), 100);
-  assert.equal(dayValue(steady, TODAY, "kcal", TODAY), 600, "today: so far");
-  assert.equal(dayValue(rare, "2026-10-04", "kcal", TODAY), null, "nothing logged");
-});
-
-test("protein counts on every logged day, a short one too", () => {
-  assert.equal(dayValue(forgot, "2026-10-05", "protein", TODAY), 100, "300 kcal, but its 100 g of protein were eaten");
-  assert.equal(dayValue(rare, "2026-10-04", "protein", TODAY), null, "nothing logged is still nothing");
+test("every logged day counts, a short one too; a day with nothing logged is a gap", () => {
+  assert.equal(dayValue(forgot, "2026-10-05", "kcal"), 300, "300 of 1,800 still counts");
+  assert.equal(Math.round(dayValue(forgot, "2026-10-05", "pct")), 17);
+  assert.equal(dayValue(forgot, "2026-10-05", "protein"), 100);
+  assert.equal(dayValue(forgot, "2026-10-04", "pct"), 100);
+  assert.equal(dayValue(steady, TODAY, "kcal"), 600, "today: so far");
+  assert.equal(dayValue(rare, "2026-10-04", "kcal"), null, "nothing logged");
+  assert.equal(dayValue(rare, "2026-10-04", "protein"), null);
 });
 
 test("someone who logs two days a week isn't in the average, and doesn't move it", () => {
   const reg = regulars([steady, rare, forgot], KEYS, TODAY);
   assert.deepEqual([...reg].sort(), ["ana", "cy"]);
   const avg = groupAverage([steady, rare, forgot], reg, "2026-10-05", "kcal", TODAY);
-  assert.deepEqual(avg, { v: 1900, n: 1 }, "bo's 3,000 and cy's unfinished day are both left out");
+  assert.deepEqual(avg, { v: 1100, n: 2 }, "bo's 3,000 is left out; cy's short day counts");
 });
 
 test("a new member is judged on the days since they started", () => {
   const newbie = person("di", 1600, [null, null, null, null, 1600, 1500, 400]);
-  assert.ok(regulars([newbie], KEYS, TODAY).has("di"), "2 full days of the 2 since joining");
+  assert.ok(regulars([newbie], KEYS, TODAY).has("di"), "2 logged days of the 2 since joining");
   const once = person("ed", 1600, [null, null, null, null, null, 1500, null]);
   assert.ok(!regulars([once], KEYS, TODAY).has("ed"), "one day isn't a habit yet");
 });

@@ -5,13 +5,11 @@
 // colour is never the only cue. Dragging across the chart reads any day; letting go opens that
 // day's details (js/us.js dayDetailHtml).
 //
-// People who don't log don't skew it: a day logged at under half a goal is an unfinished day
-// (a gap, never a crash in the line), and the group average only counts people who logged a full
-// day on at least half the days since they started. Everyone else stays visible, marked.
-// Protein is the exception: every logged day counts, a short one too.
+// Every logged day counts, a short one too; a day with nothing logged is a gap. People who rarely
+// log don't skew it: the group average only counts people who logged on at least half the days
+// since they started. Everyone else stays visible, marked.
 
 import { t, formatDate } from "../i18n.js";
-import { PARTIAL_DAY_SHARE } from "../nutrition.js";
 
 const SHAPES = ["circle", "square", "diamond"];
 const MAX_PICKED = 3;
@@ -27,24 +25,22 @@ const firstName = (p) => {
 };
 
 /**
- * A person's number for a day, or null: nothing logged, or (before today) under half their goal,
- * a day they didn't finish logging. Today counts as soon as anything is logged: it's "so far".
- * Protein counts on every logged day.
+ * A person's number for a day, or null when nothing was logged. Every logged day counts, a short
+ * one too; today counts as soon as anything is logged: it's "so far".
  */
-export function dayValue(p, key, metric, todayKey) {
+export function dayValue(p, key, metric) {
   const d = p?.days?.[key];
   if (!d || !(d.meals > 0)) return null;
   if (metric === "protein") return Number(d.proteinG) || 0;
   const goal = Number(p.goals?.calories) || 0;
-  if (key !== todayKey && goal > 0 && d.calories < goal * PARTIAL_DAY_SHARE) return null;
   if (metric === "pct") return goal > 0 ? (d.calories / goal) * 100 : null;
   return Number(d.calories) || 0;
 }
 
 /**
- * Who the group average counts: people with a full day on at least half the days since they
- * started (within these days, today aside) and at least two. One big day a week would otherwise
- * swing the average whenever it happens.
+ * Who the group average counts: people who logged on at least half the days since they started
+ * (within these days, today aside) and at least two. One big day a week would otherwise swing
+ * the average whenever it happens.
  */
 export function regulars(people, keys, todayKey) {
   const done = keys.filter((k) => k !== todayKey);
@@ -52,8 +48,8 @@ export function regulars(people, keys, todayKey) {
     const first = Object.keys(p.days ?? {}).filter((k) => p.days[k]?.meals > 0).sort()[0];
     if (!first) return false;
     const avail = done.filter((k) => k >= first);
-    const full = avail.filter((k) => dayValue(p, k, "kcal", todayKey) !== null).length;
-    return avail.length > 0 && full >= Math.max(2, Math.ceil(avail.length / 2));
+    const logged = avail.filter((k) => dayValue(p, k, "kcal") !== null).length;
+    return avail.length > 0 && logged >= Math.max(2, Math.ceil(avail.length / 2));
   }).map((p) => p.owner));
 }
 
@@ -251,7 +247,7 @@ export function togetherInner({ people, days, me, todayKey, selectedDay = null, 
       ${seg("view", st.view, [["everyone", t("together.everyone")], ["me", t("together.me")], ["avg", t("together.average")]])}
       ${kpis}
       <div class="tc-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("together.title"))}">${g}</svg>${tip}</div>
-      <p class="tc-rule">${esc(t(m === "protein" ? "together.ruleProtein" : "together.rule"))}</p>
+      <p class="tc-rule">${esc(t("together.rule"))}</p>
       <div class="tc-list"><div class="tc-lh">${esc(atLabel)}</div>${avgRow}${rows}</div>
     </div>
     ${selectedDay && keys.includes(selectedDay) ? `<div class="tc-day">${dayDetail(selectedDay, markOf)}</div>` : ""}
