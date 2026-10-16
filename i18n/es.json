@@ -1472,5 +1472,11 @@
     "rowBody": "Se analizará sola en cuanto termine la reparación.",
     "tryNow": "Intentar ahora",
     "trying": "Intentando…"
+  },
+  "quiet": {
+    "title": "{n} persona sigue sin registrar|{n} personas siguen sin registrar",
+    "body": "Recibieron un aviso tras 3 días sin comidas, y nada desde entonces. Si se quedan lo decides tú.",
+    "last": "última comida {date}",
+    "open": "Personas en Perfil"
   }
 }

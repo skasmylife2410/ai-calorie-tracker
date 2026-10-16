@@ -514,6 +514,22 @@ export function addDayKey(key, n) {
 }
 
 /**
+ * Someone who stopped logging: three full days without a meal bring a warning, and two days
+ * after it, with still nothing, the owner is told (removing anyone stays the owner's call, in
+ * Profile). People already quiet when the rule began get their warning on its first morning.
+ * `lastDay` is the last day with a meal; returns the two days, or null if they never logged.
+ */
+export const QUIET_RULE_START = "2026-10-17";
+export const QUIET_WARN_DAYS = 3;
+export const QUIET_TELL_DAYS = 2;
+export function quietDays(lastDay, start = QUIET_RULE_START) {
+  if (!lastDay) return null;
+  const after = addDayKey(lastDay, QUIET_WARN_DAYS + 1);
+  const warnDay = after > start ? after : start;
+  return { warnDay, tellDay: addDayKey(warnDay, QUIET_TELL_DAYS) };
+}
+
+/**
  * Days in a row, counting back from today (or from yesterday while today has nothing logged
  * yet, so the streak doesn't look lost in the morning). Frozen days count as kept.
  * @param {Set<string>|string[]} logged  day keys with a meal

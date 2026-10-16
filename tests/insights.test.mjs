@@ -1,4 +1,4 @@
-// insights.test.mjs — food kind glyphs, the Us kcal bar and week chart, and the Home nutrients card.
+// insights.test.mjs — food kind glyphs, the Us kcal bar and board order, and the Home nutrients card.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -19,7 +19,7 @@ i18n.setBundles({
 });
 await i18n.setLanguage("en");
 const { FOOD_CATEGORIES, categoryOfName, foodCategory, foodIconSvg } = await import("../js/ui/food-icons.js");
-const { kcalBarHtml, weekChartHtml } = await import("../js/us.js");
+const { kcalBarHtml, byStreak, quietPeople } = await import("../js/us.js");
 const { nutrientsStripHtml } = await import("../js/ui/micros.js");
 const { localDateString, addDays, startOfDay, microTargets } = await import("../js/nutrition.js");
 
@@ -72,20 +72,6 @@ test("kcal bar: over the goal adds a red segment past the line and says by how m
   assert.ok(w <= 20);
 });
 
-test("week chart: missing days are empty slots, over days stack red, near-goal days get a ring", () => {
-  const today = startOfDay(Date.now());
-  const days = Array.from({ length: 7 }, (_, i) => addDays(today, -i)).map((ts) => ({ ts, key: localDateString(ts) }));
-  const p = {
-    owner: "sam", name: "Sam", goals: { calories: 2000 },
-    days: { [days[0].key]: day(2050), [days[1].key]: day(2600), [days[2].key]: day(1200) },
-  };
-  const html = weekChartHtml(p, 0, days);
-  assert.equal((html.match(/us-wcol is-missing/g) || []).length, 4);
-  assert.equal((html.match(/class="us-wover"/g) || []).length, 2); // 2,600 and 2,050 (near, but still a little over)
-  assert.equal((html.match(/us-wcol is-near/g) || []).length, 1);
-  assert.match(html, /us-wgoal/);
-});
-
 test("nutrients card: limits show a tick and turn over when passed; goals just fill", () => {
   const targets = microTargets({ targetCalories: 2000 });
   const html = nutrientsStripHtml({ totals: { sodiumMg: 2900, addedSugarG: 10, satFatG: null, fiberG: 14, potassiumMg: 1000 }, targets, meals: 2, missing: 0 });
@@ -93,4 +79,29 @@ test("nutrients card: limits show a tick and turn over when passed; goals just f
   assert.equal((html.match(/is-over/g) || []).length, 1); // sodium only
   assert.equal((html.match(/ns-tick/g) || []).length, 3); // sodium, sugar, sat fat
   assert.match(html, /<b>—<\/b>/); // unknown stays unknown
+});
+
+test("Us board: the longest streak first; a tie goes to more days logged, then the name", () => {
+  const today = startOfDay(Date.now());
+  const run = (n, skip = 0) => Object.fromEntries(Array.from({ length: n }, (_, i) => [localDateString(addDays(today, -(i + skip))), { meals: 2, calories: 1500 }]));
+  const people = [
+    { owner: "ana", name: "Ana", days: run(3) },
+    { owner: "bo", name: "Bo", days: run(12) },
+    { owner: "cy", name: "Cy", days: { ...run(3), ...run(5, 10) } }, // same 3-day streak, more days logged
+    { owner: "di", name: "Di", days: {} },
+    { owner: "al", name: "Al", days: run(3) },
+  ];
+  assert.deepEqual(byStreak(people, "nobody").map((p) => p.owner), ["bo", "cy", "al", "ana", "di"]);
+});
+
+test("Us, for the owner: who was warned and still isn't logging, from the tell day on", () => {
+  const days = (...keys) => Object.fromEntries(keys.map((k) => [k, { meals: 2, calories: 1400 }]));
+  const people = [
+    { owner: "aelson", days: {} }, // the owner themselves: never listed
+    { owner: "ana", days: days("2026-10-14", "2026-10-15") }, // warned the 19th, owner told the 21st
+    { owner: "bo", days: days("2026-10-15", "2026-10-20") }, // logged again
+    { owner: "cy", days: {} }, // nothing in the month: not this rule
+  ];
+  assert.deepEqual(quietPeople(people, "aelson", "2026-10-20"), [], "the 20th: ana is warned but not yet due");
+  assert.deepEqual(quietPeople(people, "aelson", "2026-10-21").map((x) => [x.p.owner, x.last]), [["ana", "2026-10-15"]]);
 });

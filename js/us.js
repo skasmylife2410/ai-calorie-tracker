@@ -9,13 +9,14 @@ import { doodleSvg } from "./ui/doodle.js";
 import { openNoteSheet } from "./ui/us-social.js";
 import { renderRecap } from "./ui/us-recap.js";
 import { renderPushCard } from "./ui/push-ui.js";
-import { localDateString, addDays, startOfDay, daysForAverage, proteinAverage, streakFromDays } from "./nutrition.js";
+import { localDateString, addDays, startOfDay, streakFromDays, quietDays } from "./nutrition.js";
 import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
 import { searchGifs } from "./social.js";
 import { sfx } from "./sounds.js";
 import { mountTogether } from "./ui/us-together.js";
 import * as store from "./store.js";
+import { COACH } from "./ui/coach.js";
 
 // The element the dashboard draws into: #tg-body on the standalone us.html page, or the tab's
 // container when mounted inside the app.
@@ -345,87 +346,6 @@ export function proteinThread(proteinG, proteinGoal, goalAt) {
   return { at: Math.min(100, (proteinG / proteinGoal) * goalAt), met: proteinG >= proteinGoal };
 }
 
-/**
- * Last N days as one small bar chart per person (it was a table of averages). Each day is a thin
- * ink bar up to the goal, with anything over the goal stacked on top in red; a day within 10% of
- * the goal gets a ring, a day with nothing logged is a dashed empty slot (so a gap never looks
- * like a light day), and the dashed line is the goal. The averages sit on one line underneath.
- */
-const WEEK_H = 64;
-export function weekChartHtml(p, i, days) {
-  const c = COLORS[i % COLORS.length];
-  const ordered = [...days].reverse(); // oldest -> newest, left to right
-  const goal = p.goals?.calories || 0;
-  const logged = days.map((d) => p.days[d.key]).filter((d) => d && d.meals > 0);
-  // calorie averages use full days only: today isn't over, and a day with just breakfast logged
-  // would make it look like they barely ate (see nutrition.daysForAverage); protein counts every
-  // logged day
-  const withKeys = days.map((d) => (p.days[d.key] ? { key: d.key, ...p.days[d.key] } : null));
-  const forAvg = daysForAverage(withKeys, { goal, todayKey: localDateString(Date.now()) });
-  const avgProtein = Math.round(proteinAverage(withKeys, { todayKey: localDateString(Date.now()) }));
-  const avg = (k) => (forAvg.days.length ? forAvg.days.reduce((s, d) => s + (d[k] || 0), 0) / forAvg.days.length : 0);
-  const near = goal ? logged.filter((d) => Math.abs(d.calories - goal) <= goal * 0.1).length : null;
-  const water = days.reduce((s, d) => s + (p.days[d.key]?.water || 0), 0) / days.length;
-  const sessions = days.reduce((n, d) => n + (p.days[d.key]?.sessions || 0), 0);
-  const top = Math.max(goal * 1.25, ...logged.map((d) => d.calories), 1);
-  const h = (v) => (v / top) * WEEK_H;
-  const many = ordered.length > 14;
-  const todayKey = localDateString(Date.now());
-
-  const cols = ordered.map(({ ts, key }, idx) => {
-    const d = p.days[key];
-    const tick = many ? ((ordered.length - 1 - idx) % 7 === 0 ? `${new Date(ts).getMonth() + 1}/${new Date(ts).getDate()}` : "") : formatDate(ts, { weekday: "narrow" });
-    const label = `<small>${escHtml(tick)}</small>`;
-    const when = escHtml(dayLabel(ts, key));
-    if (!d || !(d.meals > 0)) {
-      return `<div class="us-wcol is-missing${key === todayKey ? " is-today" : ""}" title="${when}: ${escHtml(t("us.keyMissing"))}"><div class="us-wbar"><span class="us-wmiss"></span></div>${label}</div>`;
-    }
-    const within = goal ? Math.min(d.calories, goal) : d.calories;
-    const over = goal ? Math.max(0, d.calories - goal) : 0;
-    const status = goal && Math.abs(d.calories - goal) <= goal * 0.1 ? " is-near" : over > 0 ? " is-over" : "";
-    const overH = Math.min(h(over), WEEK_H - h(within));
-    return `<div class="us-wcol${status}${key === todayKey ? " is-today" : ""}" title="${when}: ${fmt(d.calories)} kcal"><div class="us-wbar">${over > 0 ? `<span class="us-wover" style="height:${overH.toFixed(1)}px"></span>` : ""}<span class="us-weat" style="height:${Math.max(2, h(within)).toFixed(1)}px"></span></div>${label}</div>`;
-  }).join("");
-
-  const stat = (text, value) => `<span>${text.replace(value, `<b>${value}</b>`)}</span>`;
-  const loggedTxt = `${logged.length}/${days.length}`;
-  const stats = [
-    stat(t("us.statLogged", { n: loggedTxt }), loggedTxt),
-    near !== null ? stat(t("us.statNear", { n: near }), formatNumber(near)) : "",
-    logged.length ? stat(t("us.statProtein", { n: avgProtein }), formatNumber(avgProtein)) : "",
-    stat(t("us.statWater", { n: water.toFixed(1) }), water.toFixed(1)),
-    sessions ? stat(t("us.statWorkouts", { n: sessions }), formatNumber(sessions)) : "",
-  ].join("");
-  const name = escHtml(p.name || titleCase(p.owner));
-  const avgKcal = logged.length ? fmt(avg("calories")) : "–";
-
-  return `
-    <div class="us-week${many ? " is-many" : ""}" style="--pc:${c.solid}">
-      <div class="us-week-head">
-        <span class="us-week-dot" style="background:${c.solid}"></span><b>${name}</b>
-        <span class="us-spacer"></span><span class="us-week-avg">${avgKcal}</span><small>${forAvg.full ? t("us.avgKcalDays", { n: forAvg.full }) : t("us.avgKcal")}</small>
-      </div>
-      <div class="us-wchart" role="img" aria-label="${escHtml(t("us.weekChart", { name: p.name || titleCase(p.owner), avg: avgKcal, d: days.length }))}">
-        ${goal ? `<i class="us-wgoal" style="bottom:${(h(goal) + 17).toFixed(1)}px"><em>${t("us.goalShort")}</em></i>` : ""}
-        ${cols}
-      </div>
-      <div class="us-wstats">${stats}</div>
-    </div>`;
-}
-
-function summaryHtml(people, days) {
-  return `<section class="tg-section">
-    <h2 class="tg-h2">${t("us.lastNDays", { n: days.length })}</h2>
-    <div class="us-card us-weeks">${people.map((p, i) => weekChartHtml(p, i, days)).join("")}</div>
-    <div class="us-legend">
-      <span><i class="k-eaten"></i>${t("us.keyEatenShort")}</span>
-      <span><i class="k-over"></i>${t("us.keyOver")}</span>
-      <span><i class="k-near"></i>${t("us.keyNear")}</span>
-      <span><i class="k-miss"></i>${t("us.keyMissing")}</span>
-    </div>
-  </section>`;
-}
-
 function doodleFor(person, i) {
   // Same rules as the app: over the goal today = well fed, nothing logged = idle, else strong.
   const key = localDateString(Date.now());
@@ -485,6 +405,35 @@ function squareThumb(file, size) {
   });
 }
 
+/**
+ * For the owner only: people who got the three-days warning and still logged nothing two days
+ * later (api/weekly.js quietWarnings sends both). Removing them is the owner's call, in Profile.
+ */
+export function quietPeople(people, me, today = localDateString(Date.now())) {
+  return people.filter((p) => p.owner !== me).map((p) => {
+    const last = Object.keys(p.days ?? {}).filter((k) => k <= today && (p.days[k]?.meals ?? 0) > 0).sort().pop() ?? null;
+    const q = quietDays(last);
+    return q && today >= q.tellDay ? { p, last } : null;
+  }).filter(Boolean);
+}
+
+function quietHtml(people) {
+  if (data.me !== COACH || body?.id !== "us-tab-body") return "";
+  const quiet = quietPeople(people, data.me);
+  if (!quiet.length) return "";
+  const day = (k) => formatDate(new Date(`${k}T12:00:00`).getTime(), { month: "short", day: "numeric" });
+  return `
+    <div class="repair-note quiet-note card" role="status">
+      <span class="repair-ic" aria-hidden="true">${icon("bell", { size: 17 })}</span>
+      <div class="repair-body">
+        <b>${t("quiet.title", { n: quiet.length })}</b>
+        <span>${t("quiet.body")}</span>
+        ${quiet.map(({ p, last }) => `<span class="repair-count">${escHtml(p.name || titleCase(p.owner))} · ${t("quiet.last", { date: day(last) })}</span>`).join("")}
+        <button type="button" class="repair-try" data-quiet-profile>${t("quiet.open")}</button>
+      </div>
+    </div>`;
+}
+
 function groupBarHtml() {
   const groups = data.groups ?? [];
   if (groups.length < 2) return "";
@@ -517,8 +466,19 @@ function withMyOwnNumbers(people) {
   });
 }
 
+/**
+ * The board's order: the longest streak first. A tie goes to whoever logged more of the last 30
+ * days, then by name, so the order doesn't shuffle between visits.
+ */
+export function byStreak(people, me) {
+  const loggedDays = (p) => Object.values(p.days ?? {}).filter((d) => (d?.meals ?? 0) > 0 || (d?.calories ?? 0) > 0).length;
+  const keyed = people.map((p) => ({ p, s: personStreak(p, me).n, d: loggedDays(p), name: String(p.name || p.owner) }));
+  keyed.sort((a, b) => b.s - a.s || b.d - a.d || a.name.localeCompare(b.name));
+  return keyed.map((k) => k.p);
+}
+
 function render() {
-  const people = withMyOwnNumbers(data.people || []);
+  const people = byStreak(withMyOwnNumbers(data.people || []), data.me);
   if (people.length === 0) {
     body.innerHTML = `<p class="tg-note">No one is set up yet. Add people to APP_USERS in Vercel.</p>`;
     return;
@@ -529,7 +489,7 @@ function render() {
   const days = dayList(range);
   // one chart for everyone: % of goal, calories or protein, with people picked out (js/ui/us-together.js)
   const chart = `<section class="tg-section" id="us-chart"></section>`;
-  body.innerHTML = groupBarHtml() + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + todayHtml(people) + chart + summaryHtml(people, days) +
+  body.innerHTML = groupBarHtml() + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + quietHtml(people) + todayHtml(people) + chart +
     (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: data.group?.name ?? "" })}</p>` : "");
   body.querySelectorAll("[data-group]").forEach((b) => b.addEventListener("click", () => {
     if (b.dataset.group === (data.group?.id ?? null)) return;
@@ -538,6 +498,7 @@ function render() {
     start();
   }));
   wireAvatar();
+  body.querySelector("[data-quiet-profile]")?.addEventListener("click", () => globalThis.snapcalGoTo?.("profile"));
   mountTogether(body.querySelector("#us-chart"), {
     people, days, me: data.me, todayKey: localDateString(Date.now()), selectedDay: null,
     dayDetail: (key, mark) => dayDetailHtml(people, key, mark),

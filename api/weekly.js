@@ -16,7 +16,8 @@
 import { requireUser } from "./_auth.js";
 import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
-import { boardGoals, GOALS_VERSION, streakFromDays } from "../js/nutrition.js";
+import { boardGoals, GOALS_VERSION, streakFromDays, quietDays } from "../js/nutrition.js";
+import { ADMIN } from "./_members.js";
 import { weekWindow, localWeekday, summarizeWeek, candidateMeals, buildPrompt, cleanRecap, RECAP_SCHEMA, TRANSLATE_SCHEMA, translatePrompt, textIn, localDay } from "./_week.js";
 
 const MODEL_ID = "gemini-3.5-flash";
@@ -250,8 +251,68 @@ export function nudgeDue(hoursSince) {
   return days <= 3 || days % 3 === 0;
 }
 
+/**
+ * The last day each person logged a meal: the server's copy of their meals, or their phone's own
+ * day totals when meals haven't reached the server (a phone whose upload is stuck still logs).
+ */
+async function lastLoggedDays(today) {
+  const [rows, profiles] = await Promise.all([
+    select("snapcal_food_entries", { select: "owner,day", deleted: "is.false", day: `gte.${addDays(today, -60)}`, order: "day.desc", limit: "20000" }),
+    select("snapcal_profile", { select: "owner,days:data->daySummaries" }).catch(() => []),
+  ]);
+  const last = new Map();
+  const keep = (owner, day) => { if (day <= today && day > (last.get(owner) ?? "")) last.set(owner, day); };
+  for (const r of rows) keep(r.owner, r.day);
+  for (const p of profiles) {
+    for (const [day, s] of Object.entries(p.days && typeof p.days === "object" ? p.days : {})) if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number(s?.meals) > 0) keep(p.owner, day);
+  }
+  return last;
+}
+
+/** The warning after three days without logging (see nutrition.quietDays). */
+export function quietWarning({ name = "", days, lang = "en" }) {
+  const who = String(name ?? "").trim();
+  return lang === "es"
+    ? { title: `${who ? `${who}, ` : ""}${days} días sin registrar`, body: "Registra una comida en los próximos 2 días para mantener tu lugar en el grupo.", url: "/", tag: "quiet" }
+    : { title: `${who ? `${who}, ` : ""}${days} days without logging`, body: "Log a meal in the next 2 days to keep your spot in the group.", url: "/", tag: "quiet" };
+}
+
+/** For the owner: who was warned two days ago and still logged nothing. */
+export function quietOwnerNote(names, lang = "en") {
+  const list = names.join(", ");
+  return lang === "es"
+    ? { title: names.length === 1 ? `${list} sigue sin registrar` : `${names.length} personas siguen sin registrar`, body: `${list}: avisados hace 2 días y nada desde entonces. Decide en Nosotros si los sacas.`, url: "/?tab=us", tag: "quiet-owner" }
+    : { title: names.length === 1 ? `${list} still isn't logging` : `${names.length} people still aren't logging`, body: `${list}: warned 2 days ago, nothing since. Decide on the Us tab whether to remove them.`, url: "/?tab=us", tag: "quiet-owner" };
+}
+
+/** The morning's warnings to people gone quiet, and the note to the owner two days later. */
+export async function quietWarnings(now = Date.now()) {
+  const today = localDay(new Date(now));
+  const [users, profiles, last] = await Promise.all([
+    select("snapcal_users", { select: "username" }),
+    select("snapcal_profile", { select: "owner,name:data->>displayName" }).catch(() => []),
+    lastLoggedDays(today),
+  ]);
+  const nameOf = (u) => String(profiles.find((p) => p.owner === u)?.name ?? "").trim() || u;
+  const warned = [], told = [];
+  let sent = 0;
+  for (const { username: u } of users) {
+    if (u === ADMIN) continue;
+    const q = quietDays(last.get(u));
+    if (!q) continue;
+    if (today === q.warnDay) {
+      const days = dayDiff(today, last.get(u)) - 1;
+      const out = await notify([u], (lang) => quietWarning({ name: nameOf(u), days, lang }));
+      warned.push(u);
+      sent += out?.sent ?? 0;
+    } else if (today === q.tellDay) told.push(u);
+  }
+  if (told.length) sent += (await notify([ADMIN], (lang) => quietOwnerNote(told.map(nameOf), lang)))?.sent ?? 0;
+  return { warned, told, sent };
+}
+
 /** Reminds people with no meal logged in the last 24 hours (only phones with notifications on). */
-export async function nudgeInactive(now = Date.now()) {
+export async function nudgeInactive(now = Date.now(), { skip = new Set() } = {}) {
   const since = new Date(now - 15 * 86400000).toISOString();
   const [users, rows, profiles] = await Promise.all([
     select("snapcal_users", { select: "username" }),
@@ -263,7 +324,7 @@ export async function nudgeInactive(now = Date.now()) {
     const t = Date.parse(r.logged_at);
     if (Number.isFinite(t) && t <= now && t > (last.get(r.owner) ?? 0)) last.set(r.owner, t);
   }
-  const due = users.map((u) => u.username).filter((u) => last.has(u) && nudgeDue((now - last.get(u)) / 3600000));
+  const due = users.map((u) => u.username).filter((u) => !skip.has(u) && last.has(u) && nudgeDue((now - last.get(u)) / 3600000));
   const nameOf = (u) => {
     const n = String(profiles.find((p) => p.owner === u)?.name ?? "").trim();
     return n || u.replace(/[-_]\d*$/, "").replace(/\d+$/, "").replace(/^./, (c) => c.toUpperCase());
@@ -306,9 +367,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, streaks: await streakReminders(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) })) });
     }
     const out = { ok: true, purgedBefore: await purgeOldPosts(now.getTime()), recaps: [] };
-    out.nudges = await nudgeInactive(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) }));
+    // three days without a meal: the warning replaces that morning's nudge
+    out.quiet = await quietWarnings(now.getTime()).catch((err) => ({ error: String(err?.message ?? err) }));
+    const warned = new Set(out.quiet?.warned ?? []);
+    out.nudges = await nudgeInactive(now.getTime(), { skip: warned }).catch((err) => ({ error: String(err?.message ?? err) }));
     // check-ins and weigh-ins: one push a morning at most, and "log a meal" goes first
-    out.morning = await morningPushes(now.getTime(), { skip: new Set(out.nudges?.owners ?? []) }).catch((err) => ({ error: String(err?.message ?? err) }));
+    out.morning = await morningPushes(now.getTime(), { skip: new Set([...warned, ...(out.nudges?.owners ?? [])]) }).catch((err) => ({ error: String(err?.message ?? err) }));
     if (now.toISOString().slice(0, 10) === GOALS_NOTICE_DAY) {
       const everyone = await select("snapcal_users", { select: "username" }).catch(() => []);
       out.goalsNotice = await notify(everyone.map((u) => u.username), goalsNotice);

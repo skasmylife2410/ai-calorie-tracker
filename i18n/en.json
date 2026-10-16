@@ -1472,5 +1472,11 @@
     "rowBody": "It'll be analysed automatically once the repair is done.",
     "tryNow": "Try now",
     "trying": "Trying…"
+  },
+  "quiet": {
+    "title": "{n} person still isn't logging|{n} people still aren't logging",
+    "body": "Warned after 3 days without a meal, and nothing since. Whether they stay is up to you.",
+    "last": "last meal {date}",
+    "open": "People in Profile"
   }
 }
