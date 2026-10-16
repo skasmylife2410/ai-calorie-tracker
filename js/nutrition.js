@@ -824,6 +824,17 @@ export function weekAverage(days, goal = 0) {
   return Math.round(days.reduce((a, d) => a + (Number(d.calories) || 0), 0) / 7);
 }
 
+/**
+ * Average protein a day: every logged day counts, a short one too (the protein in it was still
+ * eaten); only today is left out while it isn't over, unless it's the only day logged.
+ */
+export function proteinAverage(days, { todayKey = null } = {}) {
+  const logged = days.filter((d) => d && d.meals > 0);
+  const past = logged.filter((d) => d.key !== todayKey);
+  const use = past.length ? past : logged;
+  return use.length ? use.reduce((s, d) => s + (Number(d.proteinG) || 0), 0) / use.length : 0;
+}
+
 /** The days to average: the full ones, or every logged day when there are no full ones yet. */
 export function daysForAverage(days, { goal = 0, todayKey = null } = {}) {
   const logged = days.filter((d) => d && d.meals > 0);

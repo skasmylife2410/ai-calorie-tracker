@@ -15,3 +15,17 @@ test("a day with nothing logged, or only half logged, hides it", () => {
   assert.equal(weekAverage([...week.slice(0, 6), day(600, 1)], 2263), null, "breakfast only: under half the budget");
   assert.equal(weekAverage(week.slice(0, 6), 2263), null, "fewer than seven days");
 });
+
+test("protein average: every logged day counts, today only when it's the only one", async () => {
+  const { proteinAverage } = await import("../js/nutrition.js");
+  const days = [
+    { key: "2026-10-11", meals: 2, calories: 494, proteinG: 25 }, // a short day still counts
+    { key: "2026-10-12", meals: 3, calories: 1500, proteinG: 115 },
+    null,
+    { key: "2026-10-13", meals: 0, calories: 0, proteinG: 0 }, // nothing logged
+    { key: "2026-10-14", meals: 1, calories: 300, proteinG: 10 }, // today, not over
+  ];
+  assert.equal(proteinAverage(days, { todayKey: "2026-10-14" }), 70);
+  assert.equal(proteinAverage([days[4]], { todayKey: "2026-10-14" }), 10);
+  assert.equal(proteinAverage([], {}), 0);
+});

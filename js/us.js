@@ -9,7 +9,7 @@ import { doodleSvg } from "./ui/doodle.js";
 import { openNoteSheet } from "./ui/us-social.js";
 import { renderRecap } from "./ui/us-recap.js";
 import { renderPushCard } from "./ui/push-ui.js";
-import { localDateString, addDays, startOfDay, daysForAverage, streakFromDays } from "./nutrition.js";
+import { localDateString, addDays, startOfDay, daysForAverage, proteinAverage, streakFromDays } from "./nutrition.js";
 import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
 import { searchGifs } from "./social.js";
@@ -357,9 +357,12 @@ export function weekChartHtml(p, i, days) {
   const ordered = [...days].reverse(); // oldest -> newest, left to right
   const goal = p.goals?.calories || 0;
   const logged = days.map((d) => p.days[d.key]).filter((d) => d && d.meals > 0);
-  // averages use full days only: today isn't over, and a day with just breakfast logged
-  // would make it look like they barely ate (see nutrition.daysForAverage)
-  const forAvg = daysForAverage(days.map((d) => (p.days[d.key] ? { key: d.key, ...p.days[d.key] } : null)), { goal, todayKey: localDateString(Date.now()) });
+  // calorie averages use full days only: today isn't over, and a day with just breakfast logged
+  // would make it look like they barely ate (see nutrition.daysForAverage); protein counts every
+  // logged day
+  const withKeys = days.map((d) => (p.days[d.key] ? { key: d.key, ...p.days[d.key] } : null));
+  const forAvg = daysForAverage(withKeys, { goal, todayKey: localDateString(Date.now()) });
+  const avgProtein = Math.round(proteinAverage(withKeys, { todayKey: localDateString(Date.now()) }));
   const avg = (k) => (forAvg.days.length ? forAvg.days.reduce((s, d) => s + (d[k] || 0), 0) / forAvg.days.length : 0);
   const near = goal ? logged.filter((d) => Math.abs(d.calories - goal) <= goal * 0.1).length : null;
   const water = days.reduce((s, d) => s + (p.days[d.key]?.water || 0), 0) / days.length;
@@ -389,7 +392,7 @@ export function weekChartHtml(p, i, days) {
   const stats = [
     stat(t("us.statLogged", { n: loggedTxt }), loggedTxt),
     near !== null ? stat(t("us.statNear", { n: near }), formatNumber(near)) : "",
-    logged.length ? stat(t("us.statProtein", { n: Math.round(avg("proteinG")) }), formatNumber(Math.round(avg("proteinG")))) : "",
+    logged.length ? stat(t("us.statProtein", { n: avgProtein }), formatNumber(avgProtein)) : "",
     stat(t("us.statWater", { n: water.toFixed(1) }), water.toFixed(1)),
     sessions ? stat(t("us.statWorkouts", { n: sessions }), formatNumber(sessions)) : "",
   ].join("");

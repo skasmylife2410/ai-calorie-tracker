@@ -36,6 +36,11 @@ test("an unfinished day is a gap; today counts as soon as anything is logged", (
   assert.equal(dayValue(rare, "2026-10-04", "kcal", TODAY), null, "nothing logged");
 });
 
+test("protein counts on every logged day, a short one too", () => {
+  assert.equal(dayValue(forgot, "2026-10-05", "protein", TODAY), 100, "300 kcal, but its 100 g of protein were eaten");
+  assert.equal(dayValue(rare, "2026-10-04", "protein", TODAY), null, "nothing logged is still nothing");
+});
+
 test("someone who logs two days a week isn't in the average, and doesn't move it", () => {
   const reg = regulars([steady, rare, forgot], KEYS, TODAY);
   assert.deepEqual([...reg].sort(), ["ana", "cy"]);

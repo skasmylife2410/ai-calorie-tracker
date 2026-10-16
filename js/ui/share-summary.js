@@ -7,7 +7,7 @@
 
 import * as store from "../store.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
-import { startOfDay, addDays, localDateString, daysForAverage } from "../nutrition.js";
+import { startOfDay, addDays, localDateString, daysForAverage, proteinAverage } from "../nutrition.js";
 import { foodCategory, foodIconSvg } from "./food-icons.js";
 import { iconSvg } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
@@ -101,7 +101,8 @@ export function weekSummary(date = new Date()) {
     };
   });
   const logged = days.filter((d) => d.logged);
-  // averages over full days only (today and half-logged days would drag them down)
+  // calorie averages over full days only (today and half-logged days would drag them down);
+  // protein counts every logged day
   const forAvg = daysForAverage(days, { goal: days[days.length - 1].goal, todayKey: localDateString(Date.now()) });
   const avg = (k) => (forAvg.days.length ? forAvg.days.reduce((s, d) => s + d[k], 0) / forAvg.days.length : 0);
   const proteinGoal = Math.round(store.computeGoals().proteinTargetG || 0);
@@ -117,7 +118,7 @@ export function weekSummary(date = new Date()) {
     goal: Math.round(days[days.length - 1].goal),
     loggedDays: logged.length,
     nearGoal: near,
-    avgProteinG: Math.round(avg("proteinG")),
+    avgProteinG: Math.round(proteinAverage(days, { todayKey: localDateString(Date.now()) })),
     workouts: days.reduce((s, d) => s + d.workouts, 0),
     workoutMinutes: days.reduce((s, d) => s + d.minutes, 0),
     workoutKcal: Math.round(days.reduce((s, d) => s + d.burned, 0)),

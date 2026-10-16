@@ -8,6 +8,7 @@
 // People who don't log don't skew it: a day logged at under half a goal is an unfinished day
 // (a gap, never a crash in the line), and the group average only counts people who logged a full
 // day on at least half the days since they started. Everyone else stays visible, marked.
+// Protein is the exception: every logged day counts, a short one too.
 
 import { t, formatDate } from "../i18n.js";
 import { PARTIAL_DAY_SHARE } from "../nutrition.js";
@@ -28,14 +29,16 @@ const firstName = (p) => {
 /**
  * A person's number for a day, or null: nothing logged, or (before today) under half their goal,
  * a day they didn't finish logging. Today counts as soon as anything is logged: it's "so far".
+ * Protein counts on every logged day.
  */
 export function dayValue(p, key, metric, todayKey) {
   const d = p?.days?.[key];
   if (!d || !(d.meals > 0)) return null;
+  if (metric === "protein") return Number(d.proteinG) || 0;
   const goal = Number(p.goals?.calories) || 0;
   if (key !== todayKey && goal > 0 && d.calories < goal * PARTIAL_DAY_SHARE) return null;
   if (metric === "pct") return goal > 0 ? (d.calories / goal) * 100 : null;
-  return metric === "protein" ? Number(d.proteinG) || 0 : Number(d.calories) || 0;
+  return Number(d.calories) || 0;
 }
 
 /**
