@@ -95,6 +95,40 @@ function readPhoto(file) {
 
 const COMMENTS_SHOWN = 2; // the latest few sit under each post; "View all" opens the rest in place
 
+// "I ate this too": posts already copied into this phone's log, so the button stays done
+const ATE_TOO_KEY = "snapcal.ateToo";
+const ateToo = () => { try { return new Set(JSON.parse(localStorage.getItem(ATE_TOO_KEY) || "[]")); } catch { return new Set(); } };
+function markAteToo(id) {
+  try { localStorage.setItem(ATE_TOO_KEY, JSON.stringify([...ateToo(), id].slice(-60))); } catch { /* private mode */ }
+}
+
+/** Can someone else log this post as their own meal: a shared meal, or a post with a photo. */
+export function canEatToo(s, me) {
+  return Boolean(s && s.owner !== me && (s.kind === "meal" || (s.kind === "post" && s.data?.photo)));
+}
+
+/**
+ * Logs someone's post as a meal you ate with them, at the time they posted it. A shared meal
+ * comes with its numbers; a photo post is analysed like your own photo (its caption helps).
+ */
+export async function logAteToo(s, now = Date.now()) {
+  const d = s.data ?? {};
+  const at = Date.parse(s.created_at);
+  const timestamp = Number.isFinite(at) && at <= now ? at : now;
+  if (s.kind === "post") {
+    const queue = await import("../queue.js");
+    return queue.enqueuePhoto(d.photo, "meal", { description: String(d.text ?? "").trim() || null, timestamp });
+  }
+  const store = await import("../store.js");
+  return store.addFoodEntry({
+    name: d.name, calories: d.calories, proteinG: d.proteinG, carbsG: d.carbsG, fatG: d.fatG,
+    micros: d.micros ?? null,
+    source: "manual", photoDataUrl: d.photo ?? null,
+    analysisItems: Array.isArray(d.items) && d.items.length ? d.items : null,
+    timestamp,
+  });
+}
+
 /**
  * Renders the Shared feed into `host`. Each post reads as a post: who and when, the photo at full
  * width, the meal or caption, then its conversation. The latest comments are part of the post
@@ -154,6 +188,7 @@ export async function renderFeed(host, { me, people, colors, group = null, group
   };
 
   const cardHtml = (s) => {
+    const copied = ateToo();
     const d = s.data ?? {};
     const mine = s.owner === me;
     const comments = s.comments ?? [];
@@ -183,7 +218,9 @@ export async function renderFeed(host, { me, people, colors, group = null, group
             ${d.note ? `<p class="feed-note">${esc(d.note)}</p>` : ""}`}
           <div class="feed-actions">
             <span class="feed-count">${icon("textBubbleFill", { size: 15 })}${comments.length ? t("social.commentsCount", { n: comments.length }) : t("social.comment")}</span>
-            ${isPost ? "" : `<button type="button" class="feed-btn feed-log" data-log="${esc(s.id)}">${icon("plus", { size: 12 })} ${t("social.logThis")}</button>`}
+            ${!canEatToo(s, me) ? "" : copied.has(s.id)
+              ? `<button type="button" class="feed-btn feed-log" disabled>✓ ${t("social.logged")}</button>`
+              : `<button type="button" class="feed-btn feed-log" data-log="${esc(s.id)}">${icon("plus", { size: 12 })} ${t("social.logThis")}</button>`}
           </div>
           ${hiddenCount > 0 ? `<button type="button" class="fc-all" data-all="${esc(s.id)}">${t("social.viewAll", { n: comments.length })}</button>` : ""}
           ${all && comments.length > COMMENTS_SHOWN ? `<button type="button" class="fc-all" data-all="${esc(s.id)}">${t("social.showLess")}</button>` : ""}
@@ -296,17 +333,11 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     list.querySelectorAll("[data-log]").forEach((b) => b.addEventListener("click", async () => {
       const s = out.shares.find((x) => x.id === b.dataset.log);
       if (!s) return;
-      const store = await import("../store.js");
-      const d = s.data ?? {};
-      store.addFoodEntry({
-        name: d.name, calories: d.calories, proteinG: d.proteinG, carbsG: d.carbsG, fatG: d.fatG,
-        micros: d.micros ?? null,
-        source: "manual", photoDataUrl: d.photo ?? null,
-        analysisItems: Array.isArray(d.items) && d.items.length ? d.items : null,
-        timestamp: Date.now(),
-      });
-      b.textContent = `✓ ${t("social.logged")}`;
       b.disabled = true;
+      await logAteToo(s);
+      markAteToo(s.id);
+      b.textContent = `✓ ${t("social.logged")}`;
+      toast(t(s.kind === "post" ? "social.ateTooPhoto" : "social.ateTooMeal"));
     }));
     list.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;

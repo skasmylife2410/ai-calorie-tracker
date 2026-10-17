@@ -437,7 +437,9 @@
     "share": "Compartir en Nosotros",
     "shareIdea": "Compartir",
     "shareDone": "Compartido",
-    "logThis": "Registrar",
+    "logThis": "Yo también comí esto",
+    "ateTooMeal": "Agregada a tu registro a la hora en que la compartieron",
+    "ateTooPhoto": "Analizándola para tu registro, a la hora en que la compartieron",
     "logged": "Registrado",
     "remove": "Quitar",
     "ago": {

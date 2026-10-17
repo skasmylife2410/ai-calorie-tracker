@@ -437,7 +437,9 @@
     "share": "Share with Us",
     "shareIdea": "Share",
     "shareDone": "Shared",
-    "logThis": "Log this",
+    "logThis": "I ate this too",
+    "ateTooMeal": "Added to your log at the time they shared it",
+    "ateTooPhoto": "Analysing it for your log, at the time they shared it",
     "logged": "Logged",
     "remove": "Remove",
     "ago": {

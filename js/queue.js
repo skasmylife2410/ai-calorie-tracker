@@ -35,9 +35,10 @@ export function buildJoinedName(items) {
  * @param {{description?:string}} [opts]
  * @returns {object} the pending FoodEntry
  */
-export function enqueuePhoto(imageDataUrl, mode, { description = null } = {}) {
+export function enqueuePhoto(imageDataUrl, mode, { description = null, timestamp } = {}) {
   const info = modeInfo(mode);
   const entry = store.addFoodEntry({
+    ...(Number.isFinite(timestamp) ? { timestamp } : {}),
     name: info.pendingTitle,
     calories: 0,
     proteinG: 0,
