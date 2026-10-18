@@ -115,11 +115,21 @@ function ago(ts) {
 
 // --- The Coach card at the top of Us (the coach's account only) ---------------------------------
 
+// who shares with the coach, kept for a minute so redrawing Us doesn't ask the server each time
+let coachCache = null;
+function coachList() {
+  if (coachCache && Date.now() - coachCache.at < 60000) return coachCache.answer;
+  const answer = post({ op: "coach", today: localDateString(Date.now()) });
+  coachCache = { at: Date.now(), answer };
+  answer.catch(() => { coachCache = null; });
+  return answer;
+}
+
 /** Fills `host` with "N of M share with you" and their faces; tap to open the list. */
 export async function renderCoachCard(host) {
   if (!host || !isCoach()) { host?.remove(); return; }
   let out;
-  try { out = await post({ op: "coach", today: localDateString(Date.now()) }); } catch { host.remove(); return; }
+  try { out = await coachList(); } catch { host.remove(); return; }
   const list = out.people ?? [];
   const today = localDateString(Date.now());
   const loggedToday = list.filter((p) => (p.days?.[today]?.meals ?? 0) > 0).length;

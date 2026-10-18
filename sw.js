@@ -2,9 +2,11 @@
 // worker that downloads the whole APP_SHELL (every file the app can load) into a fresh cache, then
 // takes over at once. The app's files are served from that cache first: opening the app no longer
 // waits on the network for ~100 files, and all files always come from the same deploy.
-// The page itself (index.html) is still network-first, so it's always current.
+// The app's page (/ and /index.html) comes from that same cache too, so opening the app never
+// waits on the network and the page always matches its files; a new deploy arrives with the new
+// worker (js/updater.js reloads onto it). Other pages (privacy, us.html) are network-first.
 
-const CACHE_VERSION = "snapcal-v94";
+const CACHE_VERSION = "snapcal-v95";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -163,7 +165,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Pages: network-first, cache-fallback. A connection that stalls instead of failing (weak
+  // The app itself: straight from this deploy's cache (the network only if it isn't there yet)
+  const path = new URL(request.url).pathname;
+  if (path === "/" || path === "/index.html") {
+    event.respondWith(
+      caches.open(CACHE_VERSION).then((cache) => cache.match("/index.html")).then((cached) => cached || fetch(request))
+    );
+    return;
+  }
+
+  // Other pages: network-first, cache-fallback. A connection that stalls instead of failing (weak
   // signal, a captive Wi-Fi page) used to hold the app on a blank screen for as long as it
   // stalled, so after STALL_MS the cached page is served instead.
   const network = fetch(request).then((response) => {

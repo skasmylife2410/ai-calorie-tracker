@@ -1829,7 +1829,8 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .week-row .week-strip { flex: 1; padding: 0 !important; margin: 0 !important; }
 .week-day-label { font-size: 10px !important; margin-bottom: 3px !important; }
 /* the days scroll sideways, seven in view, settling on a day; today sits at the right end */
-.week-strip.is-scroll { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.week-strip.is-scroll { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; direction: rtl; }
+.week-strip.is-scroll > * { direction: ltr; }
 .week-strip.is-scroll::-webkit-scrollbar { display: none; }
 .week-strip.is-scroll .week-day-col { flex: 0 0 calc(100% / 7); scroll-snap-align: start; }
 /* a day over budget: red, like Home's big number (white on #D71921 is 5.3:1) */

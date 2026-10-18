@@ -6,8 +6,9 @@ import * as store from "../store.js";
 import * as queue from "../queue.js";
 import { t } from "../i18n.js";
 import { openActionSheet } from "./action-sheet.js";
-import { openAddFoodSheet } from "./addfood.js";
 import { deleteWithUndo } from "./undo-delete.js";
+// opened on a tap, so loaded then
+const openAddFoodSheet = (...args) => import("./addfood.js").then((m) => m.openAddFoodSheet(...args));
 
 /** `onChange` redraws the list the meal is in: when the retry starts (it shows as analysing) and when it ends. */
 export function openFailedMealSheet(entry, { onChange } = {}) {

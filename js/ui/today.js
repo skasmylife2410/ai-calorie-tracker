@@ -9,8 +9,6 @@ import * as queue from "../queue.js";
 import { roundDisplay, startOfDay, addDays, weekAverage } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { ringGauge } from "./ring.js";
-import { openResultsSheet } from "./results.js";
-import { openAddFoodSheet } from "./addfood.js";
 import { exerciseRowsHtml, openExerciseSheet } from "./exercise.js";
 import { nutrientsPageHtml, nutrientsStripHtml } from "./micros.js";
 import { openRecipesSheet } from "./recipes.js";
@@ -28,6 +26,9 @@ import { cachedFaceDoodle, makeFaceDoodle } from "./photo-doodle.js";
 import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 import { renderMealList } from "./today-meals.js";
 import { openFailedMealSheet } from "./failed-meal.js";
+// opened on a tap, so loaded then (app.js warms them up once the app is idle)
+const openResultsSheet = (...args) => import("./results.js").then((m) => m.openResultsSheet(...args));
+const openAddFoodSheet = (...args) => import("./addfood.js").then((m) => m.openAddFoodSheet(...args));
 
 const MACRO_DEFS = [
   { key: "proteinG", targetKey: "proteinTargetG", nameKey: "protein", met: true, color: "var(--sc-protein)", track: "var(--sc-protein-track, rgba(232,93,93,0.18))", icon: "fishFill" },
@@ -389,10 +390,12 @@ function countNumbers(container, dayKey, nums) {
  */
 function weekStripHtml(week) {
   const todayStart = startOfDay(new Date());
+  const labels = weekdayLabels();
+  // newest first in a right-to-left row: it opens on today with nothing to measure or scroll
   return `
     <div class="week-row">
     <div class="week-strip is-scroll" role="list">
-      ${week
+      ${[...week].reverse()
         .map((day) => {
           const isToday = day.dayStart === todayStart;
           const isFuture = day.dayStart > todayStart;
@@ -413,7 +416,7 @@ function weekStripHtml(week) {
           else if (isPastNoLog) colClasses.push("past-nolog");
           return `
             <div class="${colClasses.join(" ")}" data-day-start="${day.dayStart}" role="listitem"${day.over ? ` aria-label="${formatDate(day.dayStart, { weekday: "long", month: "short", day: "numeric" })} · ${t("home.caloriesOver")}"` : ""}>
-              <div class="week-day-label">${weekdayLabels()[(new Date(day.dayStart).getDay() + 6) % 7]}</div>
+              <div class="week-day-label">${labels[(new Date(day.dayStart).getDay() + 6) % 7]}</div>
               <div class="week-day-badge-wrap">
                 ${isToday ? '<div class="week-day-today-backdrop"></div>' : ""}
                 <div class="${circleClasses.join(" ")}">
@@ -615,17 +618,17 @@ function wireExercise(container, date = new Date()) {
 function wireDaySelection(container) {
   const strip = container.querySelector(".week-strip.is-scroll");
   if (strip) {
-    strip.scrollLeft = stripScroll ?? strip.scrollWidth;
+    // back where it was after a redraw; set in the next frame, once the page is laid out anyway
+    if (stripScroll) requestAnimationFrame(() => { strip.scrollLeft = stripScroll; });
     strip.addEventListener("scroll", () => { stripScroll = strip.scrollLeft; }, { passive: true });
-  }
-  container.querySelectorAll("[data-day-start]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const dayStart = Number(el.dataset.dayStart);
+    strip.addEventListener("click", (e) => {
+      const el = e.target.closest("[data-day-start]");
+      const dayStart = Number(el?.dataset.dayStart);
       if (!Number.isFinite(dayStart) || dayStart > startOfDay(new Date())) return;
       selectedDayStart = dayStart === startOfDay(new Date()) ? null : dayStart;
       render(container);
     });
-  });
+  }
   container.querySelector("#back-to-today")?.addEventListener("click", () => {
     selectedDayStart = null;
     stripScroll = null;

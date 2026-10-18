@@ -122,19 +122,33 @@ function lookup(lang, key) {
 
 // --- formatting --------------------------------------------------------------
 
+// Building an Intl formatter is far slower than using one, and a screen formats hundreds of
+// numbers and dates: each language + options pair is built once and kept.
+const formatters = new Map();
+function formatter(Kind, opts) {
+  const key = `${Kind.name}|${current}|${JSON.stringify(opts)}`;
+  let f = formatters.get(key);
+  if (!f) { f = new Kind(current, opts); formatters.set(key, f); }
+  return f;
+}
+
 export function formatNumber(n, opts = {}) {
-  return new Intl.NumberFormat(current, opts).format(Number(n) || 0);
+  return formatter(Intl.NumberFormat, opts).format(Number(n) || 0);
 }
 
 export function formatDate(date, opts = { weekday: "long", month: "short", day: "numeric" }) {
-  return new Intl.DateTimeFormat(current, opts).format(date instanceof Date ? date : new Date(date));
+  return formatter(Intl.DateTimeFormat, opts).format(date instanceof Date ? date : new Date(date));
 }
 
 /** Short weekday names starting Monday, for the week strip. */
+const weekdayCache = new Map();
 export function weekdayLabels() {
-  // Read in UTC: the dates below are UTC midnights, which in Chicago are still the evening
-  // before, so without this every label showed the previous day (Friday under "Thu").
-  const fmt = new Intl.DateTimeFormat(current, { weekday: "short", timeZone: "UTC" });
-  // 2024-01-01 was a Monday
-  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2024, 0, 1 + i))));
+  if (!weekdayCache.has(current)) {
+    // Read in UTC: the dates below are UTC midnights, which in Chicago are still the evening
+    // before, so without this every label showed the previous day (Friday under "Thu").
+    const fmt = formatter(Intl.DateTimeFormat, { weekday: "short", timeZone: "UTC" });
+    // 2024-01-01 was a Monday
+    weekdayCache.set(current, Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2024, 0, 1 + i)))));
+  }
+  return weekdayCache.get(current);
 }

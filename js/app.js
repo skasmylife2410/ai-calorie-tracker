@@ -12,11 +12,10 @@ import { getStoredToken } from "./net.js";
 import { foodLookup } from "./api.js";
 import { icon } from "./ui/icons.js";
 import { render as renderToday } from "./ui/today.js";
-import { render as renderOnboarding } from "./ui/onboarding.js";
 import { startAutoUpdate, applyIfPending } from "./updater.js";
 import "./install.js"; // catches Android Chrome's install offer as early as possible
 import { viewedTimestamp } from "./ui/today.js";
-import { renderLogin, hasValidSession, consentNeeded, renderConsent } from "./ui/login.js";
+import { renderLogin, hasValidSession, consentNeeded, renderConsent, resetLinkToken } from "./ui/login.js";
 
 import { mountSky } from "./ui/sky.js";
 import { applyTheme, watchSystemTheme } from "./theme.js";
@@ -47,7 +46,14 @@ let preloaded = false;
 function preloadLater() {
   if (preloaded) return;
   preloaded = true;
-  const run = () => laterLoads.forEach((load) => load().catch(() => {}));
+  const run = () => {
+    laterLoads.forEach((load) => load().catch(() => {}));
+    // and the server's side of Us and Shared, so the first visit to either opens at once
+    if (hasProfile && navigator.onLine !== false) {
+      import("./us.js").then((m) => m.prefetchUs()).catch(() => {});
+      import("./ui/shared-tab.js").then((m) => m.prefetchShared()).catch(() => {});
+    }
+  };
   if (typeof globalThis.requestIdleCallback === "function") globalThis.requestIdleCallback(run, { timeout: 4000 });
   else setTimeout(run, 2500);
 }
@@ -63,6 +69,9 @@ const renderWeight = laterTab(() => import("./ui/weight.js"), "render");
 const renderUsTab = laterTab(() => import("./us.js"), "renderUsTab");
 const openRecipesSheet = later(() => import("./ui/recipes.js"), "openRecipesSheet");
 const openAddFoodSheet = later(() => import("./ui/addfood.js"), "openAddFoodSheet");
+// first-time setup, only on a phone with no profile yet; the meal sheet is warmed up for the first tap
+const renderOnboarding = later(() => import("./ui/onboarding.js"), "render");
+later(() => import("./ui/results.js"), "openResultsSheet");
 
 const TABS = [
   { id: "home", labelKey: "tabs.home", icon: "houseFill" },
@@ -169,13 +178,26 @@ async function boot() {
   // Accounts: no valid session -> the login screen owns the app until they sign in.
   // Anything that throws in here must NOT leave a blank page, so the whole thing is guarded:
   // a broken login is still better than an app that won't start.
+  // Signed in on this phone already: the app opens at once from what's on it, and the server's
+  // check comes in behind. The server checks the session on every request anyway, so nothing
+  // is let through early; if it turns out to be gone (or a newer privacy policy needs agreeing
+  // to), the sign-in or consent screen takes over then. Waiting for that answer first was the
+  // slowest part of opening the app.
+  const checkBehind = Boolean(getStoredToken()) && !resetLinkToken() && profileExists();
   try {
-    if (!(await hasValidSession())) {
-      await renderLogin(appRoot);
+    if (checkBehind) {
+      hasValidSession().then(async (ok) => {
+        if (!ok) { await renderLogin(appRoot); location.reload(); return; }
+        if (await consentNeeded()) { await renderConsent(appRoot); renderShell(); }
+      }).catch((err) => console.error("app.js: session check failed", err));
+    } else {
+      if (!(await hasValidSession())) {
+        await renderLogin(appRoot);
+      }
+      // Health data needs the person's agreement to the current privacy policy before the app
+      // collects anything; accounts made before the policy existed are asked once here.
+      if (await consentNeeded()) await renderConsent(appRoot);
     }
-    // Health data needs the person's agreement to the current privacy policy before the app
-    // collects anything; accounts made before the policy existed are asked once here.
-    if (await consentNeeded()) await renderConsent(appRoot);
   } catch (err) {
     console.error("app.js: login failed, continuing unauthenticated", err);
   }
@@ -215,7 +237,7 @@ async function boot() {
     }
     applyTheme(store.getProfile()); // a theme picked here or synced from another phone
     setSoundsEnabled(store.getProfile().soundsOn);
-    renderCurrentTab();
+    scheduleRender();
   });
 
   if (!TABS.some((x) => x.id === selectedTab)) selectedTab = "home";
@@ -493,10 +515,26 @@ function refreshMood() {
   }
 }
 
+// A change in the store redraws the tab once, after the code making it is done: a sync that
+// brings in fifty meals, or a redraw that tidies the day totals, is one redraw, not fifty.
+// Shared shows only what's on the server, so a change on this phone doesn't redraw it (and
+// never wipes a comment being typed).
+let renderQueued = false;
+let rendering = false;
+function scheduleRender() {
+  if (renderQueued || rendering || selectedTab === "shared") return;
+  renderQueued = true;
+  queueMicrotask(() => {
+    renderQueued = false;
+    renderCurrentTab();
+  });
+}
+
 function renderCurrentTab() {
   const content = document.getElementById("tab-content");
   if (!content) return;
-  refreshMood();
+  rendering = true;
+  try { refreshMood(); } finally { rendering = false; } // its own saves don't need another redraw
   if (selectedTab === "home") renderToday(content);
   else if (selectedTab === "us") renderUsTab(content);
   else if (selectedTab === "shared") renderSharedTab(content);

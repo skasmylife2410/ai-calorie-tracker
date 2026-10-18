@@ -18,6 +18,65 @@
   <link rel="stylesheet" href="/css/us.css" />
   <link rel="stylesheet" href="/css/app.css" />
   <link rel="stylesheet" href="/css/mono.css" />
+  <!-- Everything the first screen needs, asked for at once rather than one import at a time
+       (tests/preload.test.mjs keeps this list in step with what js/app.js imports) -->
+  <link rel="preload" href="/i18n/en.json" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/i18n/es.json" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/vendor/fonts/doto/doto-latin-900-normal.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+  <link rel="modulepreload" href="/js/api.js" />
+  <link rel="modulepreload" href="/js/build.js" />
+  <link rel="modulepreload" href="/js/diets.js" />
+  <link rel="modulepreload" href="/js/gif.js" />
+  <link rel="modulepreload" href="/js/goals-v1.js" />
+  <link rel="modulepreload" href="/js/i18n.js" />
+  <link rel="modulepreload" href="/js/install.js" />
+  <link rel="modulepreload" href="/js/leftovers.js" />
+  <link rel="modulepreload" href="/js/meal-builder.js" />
+  <link rel="modulepreload" href="/js/mood.js" />
+  <link rel="modulepreload" href="/js/myths.js" />
+  <link rel="modulepreload" href="/js/net.js" />
+  <link rel="modulepreload" href="/js/nutrition.js" />
+  <link rel="modulepreload" href="/js/push.js" />
+  <link rel="modulepreload" href="/js/queue.js" />
+  <link rel="modulepreload" href="/js/safe-src.js" />
+  <link rel="modulepreload" href="/js/social.js" />
+  <link rel="modulepreload" href="/js/sounds.js" />
+  <link rel="modulepreload" href="/js/stated.js" />
+  <link rel="modulepreload" href="/js/store.js" />
+  <link rel="modulepreload" href="/js/sync.js" />
+  <link rel="modulepreload" href="/js/theme.js" />
+  <link rel="modulepreload" href="/js/tips.js" />
+  <link rel="modulepreload" href="/js/ui/action-sheet.js" />
+  <link rel="modulepreload" href="/js/ui/day-meals.js" />
+  <link rel="modulepreload" href="/js/ui/doodle-messages.js" />
+  <link rel="modulepreload" href="/js/ui/doodle.js" />
+  <link rel="modulepreload" href="/js/ui/entry-row.js" />
+  <link rel="modulepreload" href="/js/ui/exercise.js" />
+  <link rel="modulepreload" href="/js/ui/failed-meal.js" />
+  <link rel="modulepreload" href="/js/ui/food-icons.js" />
+  <link rel="modulepreload" href="/js/ui/gif-picker.js" />
+  <link rel="modulepreload" href="/js/ui/goals-update.js" />
+  <link rel="modulepreload" href="/js/ui/home-card.js" />
+  <link rel="modulepreload" href="/js/ui/home-gif.js" />
+  <link rel="modulepreload" href="/js/ui/icons.js" />
+  <link rel="modulepreload" href="/js/ui/install-guide.js" />
+  <link rel="modulepreload" href="/js/ui/login.js" />
+  <link rel="modulepreload" href="/js/ui/meal-drag.js" />
+  <link rel="modulepreload" href="/js/ui/micros.js" />
+  <link rel="modulepreload" href="/js/ui/missed-you.js" />
+  <link rel="modulepreload" href="/js/ui/nano-doodle.js" />
+  <link rel="modulepreload" href="/js/ui/photo-doodle.js" />
+  <link rel="modulepreload" href="/js/ui/portion-plate.js" />
+  <link rel="modulepreload" href="/js/ui/push-ui.js" />
+  <link rel="modulepreload" href="/js/ui/questions.js" />
+  <link rel="modulepreload" href="/js/ui/recipes.js" />
+  <link rel="modulepreload" href="/js/ui/ring.js" />
+  <link rel="modulepreload" href="/js/ui/sheet.js" />
+  <link rel="modulepreload" href="/js/ui/sky.js" />
+  <link rel="modulepreload" href="/js/ui/today-meals.js" />
+  <link rel="modulepreload" href="/js/ui/today.js" />
+  <link rel="modulepreload" href="/js/ui/undo-delete.js" />
+  <link rel="modulepreload" href="/js/updater.js" />
   <style>
     /* The opening (js/intro.js). Inline so it's on screen before anything else loads:
        the liquid chrome flow and the SnapCal flame, nothing else. */

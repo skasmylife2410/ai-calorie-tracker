@@ -49,7 +49,19 @@ export const searchGifs = (q = "", lang = "en") => post("/api/shares", { op: "gi
 export const deleteComment = (id) => post("/api/shares", { op: "uncomment", id });
 
 /** Your own Friday recommendation (private — the server only ever returns the signed-in person's). */
-export const myRecap = (lang = "en") => post("/api/weekly", { op: "mine", lang });
+// the Friday check-in changes once a week: one answer is kept for a few minutes, so redrawing
+// the Us tab doesn't ask again each time
+const recapCache = new Map();
+export function myRecap(lang = "en") {
+  const hit = recapCache.get(lang);
+  if (hit && Date.now() - hit.at < 5 * 60000) return hit.answer;
+  const answer = post("/api/weekly", { op: "mine", lang }).then((out) => {
+    if (!out?.ok) recapCache.delete(lang); // never keep a failure
+    return out;
+  });
+  recapCache.set(lang, { at: Date.now(), answer });
+  return answer;
+}
 
 export const SHARE_EDGE = 720;   // posts fill the card width, so they need to be sharp on a 3x screen
 export const COMMENT_EDGE = 480; // photo replies show smaller, inside the thread

@@ -7,6 +7,7 @@
 import { getStoredToken } from "../net.js";
 import { t } from "../i18n.js";
 import { renderFeed } from "./us-social.js";
+import { listShares } from "../social.js";
 import { localDateString } from "../nutrition.js";
 import { COLORS } from "../us.js";
 
@@ -29,6 +30,27 @@ async function loadPeople() {
   }
 }
 
+// The last feed shown, by group, while the app is open: coming back to Shared draws it at once,
+// the names and the posts are asked for together, and the fresh answer replaces it if it changed
+// (unless you're typing, which is never wiped).
+const cache = new Map();
+const keyOf = () => groupId ?? "";
+
+function fetchBoth() {
+  const key = keyOf();
+  return Promise.all([loadPeople(), listShares(groupId)]).then(([data, shares]) => {
+    if (!data.error && shares?.ok) cache.set(key, { data, shares });
+    return { data, shares };
+  });
+}
+
+/** Warms the feed in the background (app.js, once the app is open), so the first visit is instant. */
+export function prefetchShared() {
+  if (!cache.has(keyOf()) && getStoredToken()) fetchBoth().catch(() => {});
+}
+
+const busy = (feed) => feed.contains(document.activeElement) || [...feed.querySelectorAll("textarea, input")].some((el) => el.value);
+
 export async function render(container) {
   container.innerHTML = `
     <div class="us-tab shared-tab">
@@ -37,10 +59,19 @@ export async function render(container) {
       <section class="tg-section us-feed" id="shared-feed"><p class="tg-note">…</p></section>
       <div class="bottom-safe-spacer"></div>
     </div>`;
-  const data = await loadPeople();
   const feed = container.querySelector("#shared-feed");
-  if (!feed) return; // the tab was left while loading
-  if (data.error) { feed.innerHTML = `<p class="tg-note">${esc(data.error)}</p>`; return; }
+  const hit = cache.get(keyOf());
+  if (hit) draw(container, hit.data, hit.shares);
+  const fresh = fetchBoth();
+  const { data, shares } = await fresh;
+  if (!feed.isConnected) return; // the tab was left while loading
+  if (data.error) { if (!hit) feed.innerHTML = `<p class="tg-note">${esc(data.error)}</p>`; return; }
+  if (hit && (!shares?.ok || busy(feed) || JSON.stringify({ data, shares }) === JSON.stringify(hit))) return;
+  draw(container, data, shares);
+}
+
+function draw(container, data, shares) {
+  const feed = container.querySelector("#shared-feed");
 
   const groups = data.groups ?? [];
   if (groups.length > 1) {
@@ -54,5 +85,5 @@ export async function render(container) {
       render(container);
     }));
   }
-  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid), group: data.group?.id ?? null, groupName: data.group?.name ?? "" });
+  renderFeed(feed, { me: data.me, people: data.people || [], colors: COLORS.map((c) => c.solid), group: data.group?.id ?? null, groupName: data.group?.name ?? "", shares });
 }

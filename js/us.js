@@ -513,22 +513,54 @@ function render() {
   // the shared feed has its own tab now (js/ui/shared-tab.js)
 }
 
+// What the board last showed, kept while the app is open: coming back to Us draws it at once and
+// asks the server again only when it's more than half a minute old (then redraws if it changed).
+const FRESH_MS = 30000;
+let loadedAt = 0;
+let loadedFor;
+let loading = null;
+let loadingFor;
+
+/** Asks the server for the board (one request per group at a time) and keeps the answer. */
+async function fetchBoard() {
+  if (!loading || loadingFor !== groupId) {
+    const want = groupId;
+    loadingFor = want;
+    const req = load().then((result) => {
+      if (!result.unauthorized && !result.error && groupId === want) { data = result; loadedAt = Date.now(); loadedFor = want; }
+      return result;
+    }).finally(() => { if (loading === req) loading = null; });
+    loading = req;
+  }
+  return loading;
+}
+
+/** Warms the board in the background (app.js, once the app is open), so the first visit is instant. */
+export function prefetchUs() {
+  if (!data && getStoredToken()) fetchBoard().catch(() => {});
+}
+
 async function start(afterPin = false) {
-  body.innerHTML = `<p class="tg-note">Loading…</p>`;
+  const have = data && loadedFor === groupId;
+  if (have) render();
+  else body.innerHTML = `<p class="tg-note">Loading…</p>`;
+  if (have && !afterPin && Date.now() - loadedAt < FRESH_MS) return;
+  const before = have ? JSON.stringify(data) : null;
+  const target = body;
   let result;
   try {
-    result = await load();
+    result = await fetchBoard();
   } catch {
-    body.innerHTML = `<p class="tg-note">No connection. Check your internet and reload the page.</p>`;
+    if (!have) body.innerHTML = `<p class="tg-note">No connection. Check your internet and reload the page.</p>`;
     return;
   }
   if (result.unauthorized) return showPin(afterPin);
   if (result.error) {
-    body.innerHTML = `<p class="tg-note">${escHtml(result.error)}</p>`;
+    if (!have) body.innerHTML = `<p class="tg-note">${escHtml(result.error)}</p>`;
     return;
   }
-  data = result;
-  render();
+  // redraw only if the tab is still open, on the same group, and something changed
+  if (body === target && body.isConnected && data && loadedFor === groupId && JSON.stringify(data) !== before) render();
 }
 
 function wireRange(root) {

@@ -7,14 +7,15 @@
 import * as store from "../store.js";
 import { mountEntryRow } from "./entry-row.js";
 import { wireMealDrag, groupWithToast, rowIsGroupable } from "./meal-drag.js";
-import { openAddFoodSheet } from "./addfood.js";
-import { openResultsSheet } from "./results.js";
 import { openFailedMealSheet } from "./failed-meal.js";
 import * as queue from "../queue.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { icon } from "./icons.js";
 import { t, formatDate } from "../i18n.js";
 import { deleteWithUndo } from "./undo-delete.js";
+// opened on a tap, so loaded then (app.js warms them up once the app is idle)
+const openResultsSheet = (...args) => import("./results.js").then((m) => m.openResultsSheet(...args));
+const openAddFoodSheet = (...args) => import("./addfood.js").then((m) => m.openAddFoodSheet(...args));
 
 export function openDayMealsSheet({ date = new Date(), onChange } = {}) {
   openSheet({

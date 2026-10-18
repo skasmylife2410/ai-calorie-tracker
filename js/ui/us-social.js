@@ -135,12 +135,12 @@ export async function logAteToo(s, now = Date.now()) {
  * (no hidden panel), every post has its own "Add a comment" line, and a comment can carry a photo.
  * @param {{me:string, people:Array<{owner:string, avatar?:string}>, colors:string[], group?:string|null, groupName?:string}} ctx
  */
-export async function renderFeed(host, { me, people, colors, group = null, groupName = "" }) {
+export async function renderFeed(host, { me, people, colors, group = null, groupName = "", shares = null }) {
   const nameOf = (owner) => people.find((p) => p.owner === owner)?.name || title(owner);
   host.innerHTML = `<div class="post-compose" id="post-compose"></div><p class="feed-rule">${t("social.feedRule")}</p><div class="feed-list"><p class="tg-note">…</p></div>`;
   const list = host.querySelector(".feed-list");
   const composer = host.querySelector("#post-compose");
-  const out = await listShares(group);
+  const out = shares ?? await listShares(group);
   if (!out.ok) { list.innerHTML = `<p class="tg-note">${esc(out.message || t("errors.generic"))}</p>`; return; }
   const FEED_SHOWN = 5; // a small block: the newest few, the rest behind "Show more"
   let showAll = false;
