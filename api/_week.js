@@ -114,6 +114,8 @@ Daily totals: ${daily}
 Their biggest meals this week (ref | day | name | kcal | protein):
 ${lines || "(none)"}
 
+Each line is one meal as they logged it. Talk about a meal only with the foods in its own line, and never move a food from one meal to another or join two meals into one. You don't know what time of day a meal was eaten (people often log later): never call a meal breakfast, lunch, dinner or a snack unless its name says so — say the weekday and the food.
+
 Give exactly 3 recommendations that would most help them reach their goal next week. Each must be specific to what they actually ate: name the food and the weekday, and say exactly what to change (swap, portion, timing, add protein), with rough numbers. If they did well, one recommendation can be to keep doing a specific thing. No medical advice, no shaming, no generic tips like "drink water". Keep each recommendation to 2 short sentences.
 
 Put the refs of the meals each recommendation is about ONLY in mealRefs. Never write a ref (m1, m4…) or a date like 2026-01-31 in the text: say the weekday ("on Saturday") and the food's everyday name ("the whisky", not the full product name).
