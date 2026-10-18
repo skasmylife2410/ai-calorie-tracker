@@ -724,6 +724,24 @@ export function weekStrip(referenceDate = new Date()) {
   });
 }
 
+/**
+ * Home's day strip: every day from the first meal (at most `max` days back, at least a week) to
+ * today, oldest first, each with whether something was logged and whether it went over budget
+ * (Home's own count, the same that turns its big number red).
+ */
+export function dayStrip(max = 90, today = new Date()) {
+  const end = startOfDay(today);
+  const logged = loggedDaySet();
+  const first = logged.size ? Math.min(...logged) : end;
+  const start = Math.min(Math.max(first, addDays(end, -(max - 1))), addDays(end, -6));
+  const days = [];
+  for (let d = start; d <= end; d = addDays(d, 1)) {
+    const hasLog = logged.has(d);
+    days.push({ dayStart: d, hasLog, over: hasLog && dayEnergy(new Date(d)).remaining < 0 });
+  }
+  return days;
+}
+
 // ---------------------------------------------------------------------------
 // WaterEntry — one row per calendar day, created lazily on first "+" tap
 // ---------------------------------------------------------------------------

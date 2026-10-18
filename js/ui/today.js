@@ -55,7 +55,9 @@ const COUNT_MS = 900;
 let selectedDayStart = null;
 // Which week the strip is showing: 0 = this week, -1 = last week, and so on. Without this the
 // strip could only ever reach back to Monday, so "edit a prior day" stopped at the week boundary.
-let weekOffset = 0;
+// where the day strip was scrolled to, so a redraw (tapping a day, a meal arriving) keeps it there;
+// null puts today at the right edge
+let stripScroll = null;
 // The meal list gets long fast, so it shows a few and hides the rest behind "Show all".
 
 function viewedDate() {
@@ -80,7 +82,7 @@ export function render(container) {
   const viewingToday = isViewingToday();
   const totals = store.totalsForDay(date);
   const goals = store.computeGoals();
-  const week = store.weekStrip(new Date(addDays(startOfDay(new Date()), weekOffset * 7))); // DST-safe
+  const week = store.dayStrip();
   const streakCount = store.streak();
   // the streak going up while the app is open gets its little chime
   if (lastStreak !== null && streakCount > lastStreak) sfx("streak");
@@ -390,15 +392,17 @@ function countNumbers(container, dayKey, nums) {
   requestAnimationFrame(step);
 }
 
+/**
+ * The days as one row you scroll sideways (today at the right end), seven at a time; a day that
+ * went over budget is red, the way Home's big number turns red.
+ */
 function weekStripHtml(week) {
   const todayStart = startOfDay(new Date());
-  const canGoForward = week.some((d) => d.dayStart < addDays(todayStart, -6)) || weekOffset < 0;
   return `
     <div class="week-row">
-      <button type="button" class="week-arrow" id="week-prev" aria-label="${t("day.prevWeek")} (${weekRangeLabel(week)})">‹</button>
-    <div class="week-strip">
+    <div class="week-strip is-scroll" role="list">
       ${week
-        .map((day, i) => {
+        .map((day) => {
           const isToday = day.dayStart === todayStart;
           const isFuture = day.dayStart > todayStart;
           const isPastNoLog = !isToday && !isFuture && !day.hasLog;
@@ -407,6 +411,7 @@ function weekStripHtml(week) {
           if (isToday) circleClasses.push("today");
           else if (day.hasLog) circleClasses.push("logged");
           else circleClasses.push("nolog");
+          if (day.over) circleClasses.push("over");
           const numClasses = ["week-day-number"];
           if (isToday) numClasses.push("bold");
           if (isFuture) numClasses.push("future");
@@ -416,8 +421,8 @@ function weekStripHtml(week) {
           if (isFuture) colClasses.push("future");
           else if (isPastNoLog) colClasses.push("past-nolog");
           return `
-            <div class="${colClasses.join(" ")}" data-day-start="${day.dayStart}">
-              <div class="week-day-label">${weekdayLabels()[i]}</div>
+            <div class="${colClasses.join(" ")}" data-day-start="${day.dayStart}" role="listitem"${day.over ? ` aria-label="${formatDate(day.dayStart, { weekday: "long", month: "short", day: "numeric" })} · ${t("home.caloriesOver")}"` : ""}>
+              <div class="week-day-label">${weekdayLabels()[(new Date(day.dayStart).getDay() + 6) % 7]}</div>
               <div class="week-day-badge-wrap">
                 ${isToday ? '<div class="week-day-today-backdrop"></div>' : ""}
                 <div class="${circleClasses.join(" ")}">
@@ -429,7 +434,6 @@ function weekStripHtml(week) {
         })
         .join("")}
     </div>
-      <button type="button" class="week-arrow${canGoForward ? "" : " is-hidden"}" id="week-next" aria-label="${t("day.nextWeek")}">›</button>
       <button type="button" class="home-avatar" id="home-avatar" aria-label="${t("tabs.profile")}">
         ${store.getProfile().avatar ? `<img src="${safeSrc(store.getProfile().avatar)}" alt="" />` : icon("personFill", { size: 16 })}
       </button>
@@ -664,6 +668,11 @@ function wireExercise(container, date = new Date()) {
 
 /** Tapping a day in the week strip opens it; future days are ignored. */
 function wireDaySelection(container) {
+  const strip = container.querySelector(".week-strip.is-scroll");
+  if (strip) {
+    strip.scrollLeft = stripScroll ?? strip.scrollWidth;
+    strip.addEventListener("scroll", () => { stripScroll = strip.scrollLeft; }, { passive: true });
+  }
   container.querySelectorAll("[data-day-start]").forEach((el) => {
     el.addEventListener("click", () => {
       const dayStart = Number(el.dataset.dayStart);
@@ -674,15 +683,7 @@ function wireDaySelection(container) {
   });
   container.querySelector("#back-to-today")?.addEventListener("click", () => {
     selectedDayStart = null;
-    weekOffset = 0;
-    render(container);
-  });
-  container.querySelector("#week-prev")?.addEventListener("click", () => {
-    weekOffset -= 1;
-    render(container);
-  });
-  container.querySelector("#week-next")?.addEventListener("click", () => {
-    if (weekOffset < 0) weekOffset += 1;
+    stripScroll = null;
     render(container);
   });
 }
@@ -773,15 +774,6 @@ function doodleCardHtml() {
         ${card.answer && cardRevealed ? `<div class="card-answer"><span class="myth-verdict">${t("myth.verdict")}</span><p>${card.answer}</p></div>` : ""}
       </div>
     </div>`;
-}
-
-
-function weekRangeLabel(week) {
-  const first = new Date(week[0].dayStart);
-  const last = new Date(week[week.length - 1].dayStart);
-  const sameMonth = first.getMonth() === last.getMonth();
-  const f = (d, withMonth) => formatDate(d, withMonth ? { month: "short", day: "numeric" } : { day: "numeric" });
-  return `${f(first, true)} – ${f(last, !sameMonth)}`;
 }
 
 

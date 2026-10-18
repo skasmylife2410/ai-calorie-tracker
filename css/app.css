@@ -1828,6 +1828,15 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .week-row .week-arrow { width: 26px; height: 40px; font-size: 20px; flex: none; }
 .week-row .week-strip { flex: 1; padding: 0 !important; margin: 0 !important; }
 .week-day-label { font-size: 10px !important; margin-bottom: 3px !important; }
+/* the days scroll sideways, seven in view, settling on a day; today sits at the right end */
+.week-strip.is-scroll { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.week-strip.is-scroll::-webkit-scrollbar { display: none; }
+.week-strip.is-scroll .week-day-col { flex: 0 0 calc(100% / 7); scroll-snap-align: start; }
+/* a day over budget: red, like Home's big number (white on #D71921 is 5.3:1) */
+.week-day-circle.over { background: #D71921; border-color: #D71921; }
+.week-day-circle.over .week-day-number { color: #fff !important; }
+.week-day-circle.today.over { background: transparent; }
+.week-day-circle.today.over .week-day-number { color: #D71921 !important; }
 .week-day-circle { width: 30px !important; height: 30px !important; }
 .week-day-num { font-size: 13px !important; }
 .week-day-today-backdrop { width: 38px !important; height: 44px !important; }

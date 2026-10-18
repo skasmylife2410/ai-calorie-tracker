@@ -44,6 +44,7 @@
   --mn-water: #2F80D9;
   --mn-flame: #C9661A;
   --mn-over: #D71921;
+  --mn-on-over: #FFFFFF;
   --mn-good: #1F9A45;
   --mn-violet: #6E5BD6;
   --mn-under: #4F74D6;
@@ -73,6 +74,7 @@
   --mn-water: #4F9DF1;
   --mn-flame: #FF952D;
   --mn-over: #FF453A;
+  --mn-on-over: #0A0A0A;
   --mn-good: #34C759;
   --mn-violet: #9B8CFF;
   --mn-under: #6B8DE3;
@@ -87,6 +89,7 @@
   --mn-water: var(--mn-ink);
   --mn-flame: var(--mn-ink);
   --mn-over: var(--mn-ink);
+  --mn-on-over: var(--mn-on-ink);
   --mn-good: var(--mn-ink);
   --mn-violet: var(--mn-ink);
   --mn-under: var(--mn-sec);
@@ -240,6 +243,10 @@
 :root[data-theme="mono"] .week-day-circle { border: 1px dashed var(--mn-off); background: transparent; }
 :root[data-theme="mono"] .week-day-circle.logged { background: var(--mn-ink); border: 0; }
 :root[data-theme="mono"] .week-day-circle.logged .week-day-number { color: var(--mn-on-ink) !important; }
+:root[data-theme="mono"] .week-day-circle.logged.over { background: var(--mn-over); }
+:root[data-theme="mono"] .week-day-circle.logged.over .week-day-number { color: var(--mn-on-over) !important; }
+:root[data-theme="mono"] .week-day-circle.today.over { border-color: var(--mn-over); }
+:root[data-theme="mono"] .week-day-circle.today.over .week-day-number { color: var(--mn-over) !important; }
 :root[data-theme="mono"] .week-day-circle.today { border: 1.5px solid var(--mn-ink); background: transparent; }
 :root[data-theme="mono"] .week-day-col.selected .week-day-circle { border: 2px solid var(--mn-ink); }
 :root[data-theme="mono"] .week-day-label { text-transform: uppercase; letter-spacing: 0.06em; }
