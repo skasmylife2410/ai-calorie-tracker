@@ -34,7 +34,7 @@ export function microsSummary(micros) {
 }
 
 /**
- * The Today swipe page. `day` is store.microsForDay(): {totals, meals, missing, targets}.
+ * The full nutrients list (Home opens it in a sheet). `day` is store.microsForDay(): {totals, meals, missing, targets}.
  */
 export function nutrientsPageHtml(day) {
   const totals = day?.totals ?? null;
@@ -84,7 +84,7 @@ export function nutrientsPageHtml(day) {
  * (a tick marks the limit; past it the bar turns red and says "over"); fiber and potassium are
  * goals that fill up. Sugar shows the TOTAL (fruit and milk sugar too, so a day is never "0"),
  * while its bar and "over" follow the added part, which is what the limit is for.
- * Tapping it opens the full nutrients page.
+ * Tapping it opens the full nutrients list in a sheet.
  */
 const STRIP = ["sodiumMg", "sugarG", "satFatG", "fiberG", "potassiumMg"];
 const TRACKS = { sugarG: "addedSugarG" }; // shown value -> the value the bar measures

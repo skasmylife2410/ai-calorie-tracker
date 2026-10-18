@@ -781,6 +781,19 @@ export function incrementWater(date = new Date()) {
   return getWaterEntryForDay(day);
 }
 
+/** Sets the glasses for `date` to `glasses` (0 or more), creating the row if needed. */
+export function setWater(date = new Date(), glasses = 0) {
+  const day = startOfDay(date);
+  const n = Math.max(0, Math.round(Number(glasses) || 0));
+  const entries = allWaterEntriesRaw();
+  const idx = entries.findIndex((w) => w.date === day);
+  if (idx === -1 && n === 0) return { date: day, glasses: 0 };
+  if (idx === -1) entries.push({ date: day, glasses: n, updatedAt: Date.now() });
+  else entries[idx] = { ...entries[idx], glasses: n, updatedAt: Date.now() };
+  saveWaterEntries(entries);
+  return getWaterEntryForDay(day);
+}
+
 /** Decrements glasses for `date`, clamped >=0. No-op (never creates a row) if none exists yet. */
 export function decrementWater(date = new Date()) {
   const day = startOfDay(date);

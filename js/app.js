@@ -80,7 +80,7 @@ const POPUP_TILES = [
   { id: "describe", icon: "textBubbleFill", labelKey: "menu.describe", color: "#7B5AD9" },
   { id: "scan", icon: "cameraViewfinder", labelKey: "menu.scan", color: "#F0562D", primary: true },
   { id: "voice", icon: "mic", labelKey: "voice.tile", color: "#3BA7DB" },
-  { id: "exercise", icon: "boltFill", labelKey: "menu.exercise", color: "#2AA66B" },
+  { id: "exercise", icon: "dumbbell", labelKey: "menu.exercise", color: "#2AA66B" },
   { id: "leftovers", icon: "plateHalf", labelKey: "menu.leftovers", color: "#A5672A" }, // takes off what wasn't eaten
   // "What should I eat?" lives on Home only (it answers "what fits in what's left today")
 ];

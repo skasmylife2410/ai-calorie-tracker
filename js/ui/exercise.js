@@ -257,7 +257,7 @@ export function exerciseRowsHtml(date = new Date()) {
       const label = ACTIVITIES.find((a) => a.key === e.activity)?.emoji ?? "✨";
       return `
         <div class="ex-row card" data-exercise-id="${e.id}">
-          <div class="ex-row-icon"><span class="ex-emoji">${label}</span><span class="ex-glyph">${icon("boltFill", { size: 18 })}</span></div>
+          <div class="ex-row-icon"><span class="ex-emoji">${label}</span><span class="ex-glyph">${icon("dumbbell", { size: 18 })}</span></div>
           <div class="ex-row-text">
             <div class="ex-row-name">${escapeHtml(e.name || activityLabel(e.activity))}</div>
             <div class="ex-row-sub">${t(e.minutes > 0 ? "exercise.rowSub" : "exercise.rowSubKcal", { minutes: e.minutes, burned: e.caloriesBurned || 0, credit: exerciseCredit(e.caloriesBurned || 0, store.exerciseCreditRatio()) })}</div>

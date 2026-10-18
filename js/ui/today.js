@@ -37,9 +37,7 @@ const MACRO_DEFS = [
 
 // Week strip labels follow the active language (Mon/lun…).
 
-let swiperPage = 0;
-// calories, nutrients, water
-const PAGE_COUNT = 3;
+const WATER_GOAL = 8; // glasses, as on Progress
 let rowCleanups = [];
 
 // "Today's meals" mini tab on Home: closed unless the person opened it last time
@@ -113,16 +111,8 @@ export function render(container) {
           <button type="button" id="back-to-today">${t("home.backToToday")}</button>
         </div>`}
 
-      <div data-own-swipe class="swiper">
-        <div class="swiper-track" id="swiper-track" style="transform:translateX(${-swiperPage * 100}%)">
-          <div class="swiper-page">${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay, weekAvg, weighPrompt)}</div>
-          <div class="swiper-page">${nutrientsPageHtml(microsDay)}</div>
-          <div class="swiper-page">${waterPageHtml(water)}</div>
-        </div>
-      </div>
-      <div class="swiper-dots">
-        ${Array.from({ length: PAGE_COUNT }, (_, i) => `<span class="swiper-dot${swiperPage === i ? " active" : ""}" data-dot="${i}"></span>`).join("")}
-      </div>
+      ${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay, weekAvg, weighPrompt)}
+      ${waterRowHtml(water)}
 
       ${viewingToday ? missedYouHtml() : ""}
       ${viewingToday && shouldOfferInstall() ? installCardHtml() : ""}
@@ -141,7 +131,7 @@ export function render(container) {
 
       <div class="home-chips">
         <button type="button" class="home-chip chip-ex" id="chip-exercise">
-          ${icon("boltFill", { size: 16 })}<span>${exerciseMinutes(date) > 0 ? t("homeChips.exerciseMin", { n: exerciseMinutes(date) }) : t("homeChips.exercise")}</span>
+          ${icon("dumbbell", { size: 17 })}<span>${exerciseMinutes(date) > 0 ? t("homeChips.exerciseMin", { n: exerciseMinutes(date) }) : t("homeChips.exercise")}</span>
         </button>
         ${viewingToday ? `<button type="button" class="home-chip chip-ideas has-gif" id="chip-ideas" aria-label="${t("homeChips.ideas")}"><span class="chip-ideas-words" aria-hidden="true">${icon("wandAndStars", { size: 16 })}<span>${t("homeChips.ideas")}</span></span>${homeGifImgHtml()}</button>` : ""}
         ${viewingToday ? `<button type="button" class="home-chip chip-myth is-round" id="chip-myth" aria-label="${t("homeChips.mythLabel")}"><b>?</b></button>` : ""}
@@ -151,7 +141,8 @@ export function render(container) {
   `;
 
   paintRepairNote(container);
-  wireSwiper(container);
+  // the nutrients card opens the full list
+  container.querySelector("#nutr-strip")?.addEventListener("click", () => openNutrientsSheet(date));
   wireWaterButtons(container);
   wireMealsTab(container, date);
   container.querySelector("#streak-open")?.addEventListener("click", () => import("./streak.js").then((m) => m.openStreakSheet()));
@@ -494,7 +485,7 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
           ${streakCount > 0 ? `<button type="button" class="calorie-streak" id="streak-open">${icon("flameFill", { size: 13, color: "var(--sc-streak-flame)" })}<span>${t("home.streakLine", { n: streakCount })}</span>${(store.getProfile().streak?.freezes ?? 0) > 0 ? `<span class="calorie-freeze" title="${t("streak.freezes")}">${icon("freeze", { size: 12 })}${store.getProfile().streak.freezes}</span>` : ""}<span class="calorie-streak-more">›</span></button>` : ""}
           ${weighPrompt ? `<button type="button" class="calorie-streak calorie-weigh" id="weigh-open">${icon("scale", { size: 13 })}<span>${t("home.weighIn")} · <b>${weighLineText(weighPrompt)}</b></span><span class="calorie-streak-more">›</span></button>` : ""}
           <div class="calorie-budget"><span class="calorie-budget-main">${t("home.budget")} <b class="calorie-budget-num" data-suffix="">${roundDisplay(energy.adjustedTarget)}</b></span>${weekAvg ? `<span class="calorie-avg ${weekAvg.v > weekAvg.goal ? "is-over" : "is-under"}" title="${t("home.weekAvgTitle")}"><i aria-hidden="true">·</i>${t("home.weekAvg")} <b class="calorie-avg-num">${roundDisplay(weekAvg.v)}</b></span>` : ""}</div>
-          ${energy.burned > 0 ? `<button type="button" class="calorie-exercise" id="calorie-exercise">${icon("boltFill", { size: 12 })}<span>${energy.credit > 0
+          ${energy.burned > 0 ? `<button type="button" class="calorie-exercise" id="calorie-exercise">${icon("dumbbell", { size: 13 })}<span>${energy.credit > 0
             ? t("home.exerciseAdded", { burned: roundDisplay(energy.burned), credit: roundDisplay(energy.credit) })
             : t("home.exerciseBurned", { burned: roundDisplay(energy.burned) })}</span></button>` : ""}
         </div>
@@ -506,32 +497,37 @@ function caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCoun
   `;
 }
 
-function waterPageHtml(water) {
-  const glasses = water.glasses ?? 0;
-  const progress = Math.min(glasses / 8, 1);
-  const ring = ringGauge({
-    size: 130,
-    strokeWidth: 14,
-    progress,
-    color: "var(--sc-water)",
-    trackColor: "var(--sc-water-track, rgba(79,157,241,0.15))",
-    centerHtml: icon("dropFill", { size: 30, color: "var(--sc-water)" }),
-  });
+/**
+ * Water on Home, one tap away: how many glasses, a pip per glass of the day's 8 (tap one to set
+ * the count there; tap the last full one to take it back), and − / +.
+ */
+function waterRowHtml(water) {
+  const n = water.glasses ?? 0;
+  const pips = Array.from({ length: WATER_GOAL }, (_, i) =>
+    `<button type="button" class="water-pip${i < n ? " is-on" : ""}" data-water-set="${i + 1}" aria-label="${t("water.setTo", { n: i + 1 })}"></button>`).join("");
   return `
-    <div class="water-page">
-      <div class="water-card card">
-        ${ring}
-        <div>
-          <div class="water-glasses-label">${glasses} glasses</div>
-          <div class="water-sub-label">(250 ml each)</div>
-        </div>
-        <div class="water-buttons">
-          <button class="water-round-btn" data-water="minus">${icon("minus", { size: 22, color: "#fff" })}</button>
-          <button class="water-round-btn" data-water="plus">${icon("plus", { size: 22, color: "#fff" })}</button>
-        </div>
+    <div class="water-row card" role="group" aria-label="${t("water.label", { n, goal: WATER_GOAL })}">
+      <span class="water-ic" aria-hidden="true">${icon("dropFill", { size: 18 })}</span>
+      <div class="water-main">
+        <div class="water-line"><b>${n}</b><span>${t("water.of", { goal: WATER_GOAL })}</span><small>${(n * 250).toLocaleString()} ml</small></div>
+        <div class="water-pips">${pips}</div>
       </div>
-    </div>
-  `;
+      <button type="button" class="water-btn" data-water="minus" aria-label="${t("water.less")}"${n === 0 ? " disabled" : ""}>${icon("minus", { size: 16 })}</button>
+      <button type="button" class="water-btn is-plus" data-water="plus" aria-label="${t("water.more")}">${icon("plus", { size: 18 })}</button>
+    </div>`;
+}
+
+/** The day's nutrients, all of them, in a sheet (it used to be the swipe page next to calories). */
+async function openNutrientsSheet(date) {
+  const { openSheet, navBar, wireNavBar } = await import("./sheet.js");
+  openSheet({
+    render(panel, close) {
+      panel.innerHTML = `
+        ${navBar({ title: t("nutrients.title"), leading: { label: t("app.close") } })}
+        <div class="sheet-panel-body">${nutrientsPageHtml(store.microsForDay(date))}</div>`;
+      wireNavBar(panel, { onLeading: close });
+    },
+  });
 }
 
 function notifyBannerHtml() {
@@ -547,68 +543,17 @@ function notifyBannerHtml() {
   `;
 }
 
-function wireSwiper(container) {
-  const track = container.querySelector("#swiper-track");
-  const dots = container.querySelectorAll(".swiper-dot");
-  const fitHeight = () => {
-    const page = track?.children[swiperPage];
-    if (page && track.parentElement) track.parentElement.style.height = `${page.offsetHeight}px`;
-  };
-  requestAnimationFrame(fitHeight);
-  track?.addEventListener("transitionend", fitHeight);
-  // the nutrients card on the first page opens the full nutrients page
-  container.querySelector("#nutr-strip")?.addEventListener("click", () => container.querySelector('.swiper-dot[data-dot="1"]')?.click());
-  dots.forEach((dot) => {
-    dot.addEventListener("click", () => {
-      swiperPage = Number(dot.dataset.dot);
-      track.style.transform = `translateX(${-swiperPage * 100}%)`;
-      fitHeight();
-      dots.forEach((d) => d.classList.toggle("active", Number(d.dataset.dot) === swiperPage));
-    });
-  });
-
-  let startX = null;
-  let dx = 0;
-  let dragging = false;
-  const wrapper = track.parentElement;
-
-  const start = (e) => {
-    startX = (e.touches ? e.touches[0] : e).clientX;
-    dragging = true;
-    track.style.transition = "none";
-  };
-  const move = (e) => {
-    if (!dragging) return;
-    dx = (e.touches ? e.touches[0] : e).clientX - startX;
-    const pct = (dx / wrapper.offsetWidth) * 100;
-    track.style.transform = `translateX(${-swiperPage * 100 + pct}%)`;
-  };
-  const end = () => {
-    if (!dragging) return;
-    dragging = false;
-    track.style.transition = "";
-    const pct = (dx / wrapper.offsetWidth) * 100;
-    if (pct < -20 && swiperPage < PAGE_COUNT - 1) swiperPage += 1;
-    else if (pct > 20 && swiperPage > 0) swiperPage -= 1;
-    track.style.transform = `translateX(${-swiperPage * 100}%)`;
-    fitHeight();
-    dots.forEach((d) => d.classList.toggle("active", Number(d.dataset.dot) === swiperPage));
-    dx = 0;
-  };
-
-  wrapper.addEventListener("touchstart", start, { passive: true });
-  wrapper.addEventListener("touchmove", move, { passive: true });
-  wrapper.addEventListener("touchend", end);
-  wrapper.addEventListener("mousedown", start);
-  window.addEventListener("mousemove", (e) => dragging && move(e));
-  window.addEventListener("mouseup", () => dragging && end());
-}
-
 function wireWaterButtons(container) {
   const minus = container.querySelector('[data-water="minus"]');
   const plus = container.querySelector('[data-water="plus"]');
   if (minus) minus.addEventListener("click", () => store.decrementWater(viewedDate()));
-  if (plus) plus.addEventListener("click", () => store.incrementWater(viewedDate()));
+  if (plus) plus.addEventListener("click", () => { store.incrementWater(viewedDate()); sfx("tick"); });
+  container.querySelectorAll("[data-water-set]").forEach((pip) => pip.addEventListener("click", () => {
+    const n = Number(pip.dataset.waterSet);
+    const have = store.getWaterEntryForDay(viewedDate()).glasses ?? 0;
+    store.setWater(viewedDate(), have === n ? n - 1 : n); // the last full one taps off
+    sfx("tick");
+  }));
 }
 
 function wireNotifyBanner(container) {

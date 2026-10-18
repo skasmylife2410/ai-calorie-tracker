@@ -972,7 +972,7 @@
     "tWeight": "Weight",
     "tWeightSub": "7-day average",
     "tTarget": "Calories on target",
-    "tTargetSub": "of the days you logged",
+    "tTargetSub": "within ±10% of budget · not counting today",
     "tProtein": "Protein goal",
     "days": " days",
     "tProteinSub": "avg {g} g a day",
@@ -1002,7 +1002,7 @@
       "water": "Water"
     },
     "leg": {
-      "on": "on target",
+      "on": "on target ±10%",
       "over": "over",
       "under": "under",
       "win": "win"
@@ -1479,5 +1479,12 @@
     "body": "Warned after 3 days without a meal, and nothing since. Whether they stay is up to you.",
     "last": "last meal {date}",
     "open": "People in Profile"
+  },
+  "water": {
+    "label": "Water: {n} of {goal} glasses",
+    "of": "of {goal} glasses",
+    "setTo": "{n} glasses",
+    "more": "One more glass",
+    "less": "One glass less"
   }
 }

@@ -972,7 +972,7 @@
     "tWeight": "Peso",
     "tWeightSub": "media de 7 días",
     "tTarget": "Calorías en meta",
-    "tTargetSub": "de los días registrados",
+    "tTargetSub": "a ±10 % del presupuesto · sin contar hoy",
     "tProtein": "Meta de proteína",
     "days": " días",
     "tProteinSub": "media {g} g al día",
@@ -1002,7 +1002,7 @@
       "water": "Agua"
     },
     "leg": {
-      "on": "en meta",
+      "on": "en meta ±10 %",
       "over": "por encima",
       "under": "por debajo",
       "win": "logro"
@@ -1479,5 +1479,12 @@
     "body": "Recibieron un aviso tras 3 días sin comidas, y nada desde entonces. Si se quedan lo decides tú.",
     "last": "última comida {date}",
     "open": "Personas en Perfil"
+  },
+  "water": {
+    "label": "Agua: {n} de {goal} vasos",
+    "of": "de {goal} vasos",
+    "setTo": "{n} vasos",
+    "more": "Un vaso más",
+    "less": "Un vaso menos"
   }
 }

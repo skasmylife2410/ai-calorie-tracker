@@ -2933,3 +2933,23 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .entry-fail-icon-box.has-photo img { width: 100%; height: 100%; object-fit: cover; }
 .repair-try { align-self: flex-start; margin-top: 8px; font: inherit; font-size: 14px; font-weight: 700; padding: 8px 16px; border: 0; border-radius: 12px; background: var(--sc-primary-text); color: var(--sc-card-bg); cursor: pointer; }
 .repair-try:disabled { opacity: .6; }
+
+/* --- Water on Home: one row under the calorie card, a pip per glass, − and + --- */
+.water-row { display: flex; align-items: center; gap: 10px; margin: 10px 14px 0; padding: 10px 12px 10px 14px; }
+.water-ic { flex: none; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--sc-water-track, rgba(79,157,241,.15)); color: var(--sc-water); }
+.water-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.water-line { display: flex; align-items: baseline; gap: 5px; font-size: 13px; color: var(--sc-secondary); white-space: nowrap; overflow: hidden; }
+.water-line b { font-family: var(--sc-font-rounded); font-size: 18px; font-weight: 800; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
+.water-line small { margin-left: auto; font-size: 12px; }
+.water-pips { display: flex; gap: 4px; }
+.water-pip { flex: 1; min-width: 0; height: 10px; padding: 0; border: 0; border-radius: 5px; background: var(--sc-water-track, rgba(79,157,241,.15)); cursor: pointer; }
+.water-pip.is-on { background: var(--sc-water); }
+/* the pips are small; the tap area isn't */
+.water-pip { position: relative; }
+.water-pip::after { content: ""; position: absolute; inset: -12px -2px; }
+.water-btn { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.water-btn.is-plus { width: 44px; height: 44px; background: var(--sc-water); color: #fff; }
+.water-btn:disabled { opacity: .4; }
+.water-btn:active, .water-pip:active { transform: scale(.94); }
+/* in its sheet the nutrients list has the sheet's title already */
+.sheet-panel .nutr-title { display: none; }

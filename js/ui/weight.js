@@ -189,7 +189,7 @@ function tilesHtml(p) {
     }),
     tile({
       key: "target", color: "var(--sc-accent-calories, #F08A24)", label: t("prog.tTarget"),
-      value: `${cur.onTarget}<small>/${cur.daysLogged}</small>`,
+      value: `${cur.onTarget}<small>/${cur.targetDays}</small>`,
       sub: t("prog.tTargetSub"),
       chip: had ? deltaChip(cur.onTarget - prev.onTarget) : deltaChip(null),
     }),

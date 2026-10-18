@@ -10,7 +10,7 @@ const NOW = new Date(2026, 8, 27, 18).getTime(); // Sunday evening, local time
 const day = (n, h = 12) => addDays(startOfDay(NOW), -n) + h * 3600e3; // n days ago, at noon
 const meal = (n, calories, proteinG = 0) => ({ timestamp: day(n), calories, proteinG });
 
-test("each day knows if calories were on target (up to 10% under), over or under, and if protein was hit", () => {
+test("each day knows if calories were on target (within 10% either way), over or under, and if protein was hit", () => {
   const foods = [meal(0, 2000, 150), meal(1, 2400, 90), meal(2, 1500, 160), meal(2, 0, 0)];
   const days = P.buildDays({ days: 4, now: NOW, foods, calorieTarget: 2000, proteinTarget: 150 });
   assert.deepEqual(days.map((d) => d.calStatus), [null, "under", "over", "on"], "oldest first; day 3 had nothing logged");
@@ -19,15 +19,15 @@ test("each day knows if calories were on target (up to 10% under), over or under
   assert.equal(days.filter((d) => d.weekend).length, 2, "Saturday and Sunday are marked");
 });
 
-test("a little over the target is over, the same as Home says", () => {
-  const days = P.buildDays({ days: 3, now: NOW, foods: [meal(0, 2050), meal(1, 2000), meal(2, 1850)], calorieTarget: 2000 });
-  assert.deepEqual(days.map((d) => d.calStatus), ["on", "on", "over"]);
+test("a few calories over the budget is still on target; more than 10% over is over", () => {
+  const days = P.buildDays({ days: 4, now: NOW, foods: [meal(0, 2250), meal(1, 2004), meal(2, 2200), meal(3, 1850)], calorieTarget: 2000 });
+  assert.deepEqual(days.map((d) => d.calStatus), ["on", "on", "on", "over"], "4 kcal over and exactly 10% over are on target");
 });
 
 test("with eatenOn, a day's calories are exactly Home's, even when a meal is mid re-analysis", () => {
   const foods = [meal(0, 900), { ...meal(0, 1300), analysisFailed: true }];
-  const [d] = P.buildDays({ days: 1, now: NOW, foods, calorieTarget: 2000, eatenOn: () => 2200 });
-  assert.equal(d.calories, 2200);
+  const [d] = P.buildDays({ days: 1, now: NOW, foods, calorieTarget: 2000, eatenOn: () => 2300 });
+  assert.equal(d.calories, 2300);
   assert.equal(d.calStatus, "over");
 });
 
@@ -42,9 +42,15 @@ test("summaries count on-target days, workouts and the weight change on the 7-da
   const foods = [meal(0, 2000, 150), meal(1, 2000, 150), meal(2, 3000, 40)];
   const exercise = [{ timestamp: day(1), minutes: 30, caloriesBurned: 250 }, { timestamp: day(2), minutes: 45, caloriesBurned: 400 }];
   const weights = [0, 1, 2, 3].map((n) => ({ timestamp: day(n, 8), kg: 80 + n })); // 83 → 80 kg
-  const s = P.summarize(P.buildDays({ days: 5, now: NOW, foods, exercise, weights, calorieTarget: 2000, proteinTarget: 150 }));
+  const days = P.buildDays({ days: 5, now: NOW, foods, exercise, weights, calorieTarget: 2000, proteinTarget: 150 });
+  const s = P.summarize(days, "2000-01-01");
   assert.equal(s.daysLogged, 3);
   assert.equal(s.onTarget, 2);
+  assert.equal(s.targetDays, 3);
+  const today = P.summarize(days, days[days.length - 1].key);
+  assert.equal(today.onTarget, 1, "today isn't finished: not judged yet");
+  assert.equal(today.targetDays, 2);
+  assert.equal(today.daysLogged, 3, "but it's logged");
   assert.equal(s.proteinHit, 2);
   assert.equal(s.workouts, 2);
   assert.equal(s.minutes, 75);

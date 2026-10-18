@@ -9,7 +9,7 @@
 
 import { localDateString, startOfDay, addDays } from "./nutrition.js";
 
-export const ON_TARGET = 0.1;       // up to 10% under the day's calorie target counts as on target; any amount over is over (as on Home)
+export const ON_TARGET = 0.1;       // within 10% of the day's calorie budget, either way, is on target (as on the Us chart)
 export const WATER_GOAL = 8;        // glasses, same as the Home water ring
 export const STREAK_MARKS = [7, 14, 30, 60, 100, 180, 365];
 export const MEAL_MARKS = [50, 100, 250, 500, 1000, 2500];
@@ -71,8 +71,8 @@ export function buildDays({ days, now = Date.now(), foods = [], exercise = [], w
     const logged = b.meals > 0 || b.calories > 0;
     let calStatus = null;
     if (logged && target > 0) {
-      // Home calls a day over the moment it passes the target, so Progress does too
-      calStatus = Math.round(b.calories) > Math.round(target) ? "over" : b.calories < target * (1 - ON_TARGET) ? "under" : "on";
+      // a few calories either side of the budget is still the budget: over and under start at 10%
+      calStatus = b.calories > target * (1 + ON_TARGET) ? "over" : b.calories < target * (1 - ON_TARGET) ? "under" : "on";
     }
     const w = weighIns.get(key);
     out.push({
@@ -89,16 +89,21 @@ export function buildDays({ days, now = Date.now(), foods = [], exercise = [], w
   return out;
 }
 
-/** The numbers behind the marker tiles, for one stretch of days. */
-export function summarize(days) {
+/**
+ * The numbers behind the marker tiles, for one stretch of days. Calories on target only judges
+ * finished days: today is still being logged.
+ */
+export function summarize(days, today = localDateString(Date.now())) {
   const logged = days.filter((d) => d.logged);
+  const finished = logged.filter((d) => d.key !== today);
   const weighed = days.filter((d) => d.weightAvg !== null);
   const avg = (arr, k) => (arr.length ? arr.reduce((s, d) => s + d[k], 0) / arr.length : null);
   const waterDays = days.filter((d) => d.water > 0);
   return {
     total: days.length,
     daysLogged: logged.length,
-    onTarget: logged.filter((d) => d.calStatus === "on").length,
+    onTarget: finished.filter((d) => d.calStatus === "on").length,
+    targetDays: finished.length,
     avgCalories: avg(logged, "calories"),
     proteinHit: logged.filter((d) => d.proteinHit).length,
     avgProtein: avg(logged, "proteinG"),
