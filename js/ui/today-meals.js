@@ -11,7 +11,8 @@ import * as queue from "../queue.js";
 import { icon } from "./icons.js";
 import { deleteWithUndo } from "./undo-delete.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
-import { localDateString } from "../nutrition.js";
+import { localDateString, MEAL_TYPES, mealTypeOf } from "../nutrition.js";
+import { shareToFeed, canShare } from "./share-meal.js";
 // opened on a tap, so loaded then (app.js warms them up once the app is idle)
 const openResultsSheet = (...args) => import("./results.js").then((m) => m.openResultsSheet(...args));
 const openAddFoodSheet = (...args) => import("./addfood.js").then((m) => m.openAddFoodSheet(...args));
@@ -82,14 +83,17 @@ function closeSelectBar() {
 }
 
 /**
- * One day's meals as rows: tap to edit, ♥ to favourite, bin to remove, hold and drop one on another
- * to stack them. "Select" ticks several at once to Stack, Favourite or (an earlier day) log Today.
+ * One day's meals under Breakfast, Lunch, Dinner and Snacks: tap to edit, ♥ to favourite, bin to
+ * remove, the mealtime label to file it elsewhere, hold and drop one on another to stack them.
+ * "Select" ticks several at once to Stack, Favourite or (an earlier day) log Today.
  * Used by Home's "Today's meals" mini tab and the day sheet.
  * @returns {() => void} cleanup
  */
 export function renderMealList(list, date, onChange) {
   const own = [];
-  const meals = store.entriesForDay(date).sort((a, b) => b.timestamp - a.timestamp);
+  // by mealtime, then by the clock within each
+  const meals = store.entriesForDay(date).sort((a, b) =>
+    MEAL_TYPES.indexOf(mealTypeOf(a)) - MEAL_TYPES.indexOf(mealTypeOf(b)) || a.timestamp - b.timestamp);
   const dayKey = localDateString(date);
   const isToday = dayKey === localDateString(Date.now());
   if (selecting && selecting.day !== dayKey) selecting = null;
@@ -116,14 +120,18 @@ export function renderMealList(list, date, onChange) {
   list.querySelector("#ml-select")?.addEventListener("click", () => { selecting = { day: dayKey, ids: new Set() }; redraw(); });
   list.querySelector("#ml-cancel")?.addEventListener("click", () => { selecting = null; closeSelectBar(); redraw(); });
 
+  let section = null;
   for (const entry of meals) {
+    const type = mealTypeOf(entry);
+    if (type !== section) {
+      section = type;
+      const kcal = meals.filter((m) => mealTypeOf(m) === type).reduce((a, m) => a + (Number(m.calories) || 0), 0);
+      list.insertAdjacentHTML("beforeend", `<div class="ml-section"><span>${t(`mealType.plural.${type}`)}</span><span class="ml-section-kcal">${formatNumber(Math.round(kcal))} kcal</span></div>`);
+    }
     own.push(
       mountEntryRow(list, entry, {
-        onShare: !entry.photoDataUrl ? null : async (e) => {
-          const { shareMeal } = await import("../social.js");
-          const out = await shareMeal(store.getFoodEntry(e.id) ?? e);
-          return out.ok === true;
-        },
+        onShare: canShare(entry) ? (e) => shareToFeed(store.getFoodEntry(e.id) ?? e) : null,
+        onMealType: (e, mealType) => { store.setMealType(e.id, mealType); onChange(); },
         onFavorite: (e) => store.toggleFavorite(e.id),
         onCopyToday: isToday ? null : (e) => { store.copyEntryTo(e.id, Date.now()); toast(t("stack.copiedOne")); },
         select: sel ? { on: true, selected: sel.has(entry.id), onToggle: (e) => { sel.has(e.id) ? sel.delete(e.id) : sel.add(e.id); redraw(); } } : null,

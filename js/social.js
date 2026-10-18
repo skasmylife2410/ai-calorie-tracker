@@ -125,6 +125,31 @@ export async function shareMeal(entry, note = "", group = null) {
       photo,
       items: entry.analysisItems ?? [],
       note,
+      entryId: entry.entryId ?? entry.id ?? null, // sharing the same meal again doesn't post it twice
     },
   });
+}
+
+// --- groups -----------------------------------------------------------------------
+// The groups you're in, kept for a minute: "Share" asks which one when there's more than one.
+let groupsCache = { at: 0, out: null };
+
+/** /api/groups: your groups with members, asks waiting for you, and names. Kept for a minute. */
+export async function myGroupsInfo({ fresh = false } = {}) {
+  if (!fresh && groupsCache.out && Date.now() - groupsCache.at < 60000) return groupsCache.out;
+  const out = await post("/api/groups", {});
+  if (out.ok) groupsCache = { at: Date.now(), out };
+  return out;
+}
+
+/** Changes your groups (create, leave, add, accept, decline); answers with the new state. */
+export async function changeGroups(body) {
+  const out = await post("/api/groups", body);
+  if (out.ok) groupsCache = { at: Date.now(), out };
+  return out;
+}
+
+export async function sharingGroups() {
+  const out = await myGroupsInfo();
+  return out.ok ? out.groups.map((g) => ({ id: g.id, name: g.name })) : [];
 }

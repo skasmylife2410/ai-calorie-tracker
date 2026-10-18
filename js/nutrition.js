@@ -881,3 +881,27 @@ export function boardGoals(profileData) {
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Mealtimes
+// ---------------------------------------------------------------------------
+
+/** The day's meals, in the order Home lists them. */
+export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
+
+/**
+ * A first guess from the clock: before 11 breakfast, before 4 pm lunch, 6–11 pm dinner, and
+ * anything in between or in the night a snack. One tap changes it (js/ui/meal-type.js).
+ */
+export function guessMealType(timestamp) {
+  const h = new Date(timestamp).getHours();
+  if (h >= 4 && h < 11) return "breakfast";
+  if (h >= 11 && h < 16) return "lunch";
+  if (h >= 18 && h < 23) return "dinner";
+  return "snack";
+}
+
+/** The mealtime a meal was filed under, or the clock's guess for one that never was. */
+export function mealTypeOf(entry) {
+  return MEAL_TYPES.includes(entry?.mealType) ? entry.mealType : guessMealType(entry?.timestamp ?? Date.now());
+}

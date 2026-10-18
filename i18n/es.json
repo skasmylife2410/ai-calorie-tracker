@@ -452,7 +452,7 @@
     "hideRecipe": "Ocultar receta",
     "idea": "Idea",
     "meal": "Comida",
-    "feedRule": "Una publicación al día cada uno. Comentarios de hasta 100 caracteres. Todo se borra solo a los 7 días.",
+    "feedRule": "Una publicación al día cada uno, más las comidas que compartas. Comentarios de hasta 100 caracteres. Todo se borra solo a los 7 días.",
     "noComments": "Aún no hay comentarios.",
     "commentPlaceholder": "Escribe un comentario…",
     "deleteComment": "Borrar comentario",
@@ -530,13 +530,42 @@
       "expired": "Este enlace venció: pide uno nuevo.",
       "revoked": "Este enlace fue cancelado.",
       "unknown": "Este enlace no es válido."
-    }
+    },
+    "titleFriends": "Invitar amigos",
+    "hintFriends": "Cada enlace deja que una persona cree su cuenta y entre a tu grupo. Deja de funcionar a los 7 días; si lo cancelas, recuperas la invitación.",
+    "noneLeft": "Ya usaste tus {max} invitaciones. Cancela una abierta para crear otra.",
+    "notMember": "No estás en ese grupo."
   },
   "groups": {
     "switch": "Grupo",
     "inviteTo": "¿A qué grupo invitas?",
     "cancel": "Cancelar",
-    "onlyYou": "Por ahora solo estás tú en {name}: invita a alguien desde Perfil."
+    "onlyYou": "Por ahora solo estás tú en {name}. Agrega personas desde Grupos.",
+    "manage": "Grupos",
+    "title": "Tus grupos",
+    "members": "{n} persona|{n} personas",
+    "add": "Agregar personas",
+    "inviteNew": "Invitar con enlace",
+    "leave": "Salir",
+    "leaveConfirm": "¿Salir de {name}? Dejarán de ver sus comidas y progreso ahí.",
+    "lastGroup": "Es tu único grupo. Crea o únete a otro primero.",
+    "create": "Crear un grupo",
+    "namePlaceholder": "Nombre, ej. Gimnasio",
+    "createBtn": "Crear",
+    "ask": "Invitar",
+    "asked": "Invitado",
+    "addLead": "De tus otros grupos. Entran cuando acepten.",
+    "nobodyToAdd": "Todos los de tus otros grupos ya están aquí. Mejor invita a alguien nuevo.",
+    "pendingTitle": "{name} te invitó a {group}",
+    "pendingBody": "Todos en el grupo verán tus comidas y progreso, y tú los de ellos.",
+    "join": "Unirme",
+    "decline": "Ahora no",
+    "hint": "En un grupo todos ven las comidas y el progreso de los demás. Las personas que agregues solo entran si aceptan.",
+    "tooMany": "Puedes estar en hasta {n} grupos.",
+    "noName": "Ponle un nombre al grupo.",
+    "you": "tú",
+    "invitesLeft": "Te quedan {n} de {max} invitaciones",
+    "noInvites": "No te quedan invitaciones"
   },
   "onb": {
     "langTitle": "Bienvenido a SnapCal",
@@ -1486,5 +1515,33 @@
     "setTo": "{n} vasos",
     "more": "Un vaso más",
     "less": "Un vaso menos"
+  },
+  "mealType": {
+    "breakfast": "Desayuno",
+    "lunch": "Almuerzo",
+    "dinner": "Cena",
+    "snack": "Merienda",
+    "plural": {
+      "breakfast": "Desayuno",
+      "lunch": "Almuerzo",
+      "dinner": "Cena",
+      "snack": "Meriendas"
+    },
+    "loggedAs": "Registrada como",
+    "change": "Cambiar qué comida del día fue"
+  },
+  "feedShare": {
+    "short": "Compartir",
+    "label": "Compartir con tu grupo",
+    "long": "Compartir con tu grupo",
+    "shared": "Compartida",
+    "sharedLabel": "Compartida con tu grupo · abrir Compartido",
+    "sharedLong": "Compartida · verla en Compartido",
+    "which": "¿Con qué grupo la compartes?",
+    "done": "Compartida con {group}",
+    "see": "Ver",
+    "photoOnly": "Solo se pueden compartir comidas con foto.",
+    "mealLimit": "Ya compartiste 8 comidas hoy. Mañana puedes compartir más.",
+    "noGroup": "Aún no estás en un grupo."
   }
 }

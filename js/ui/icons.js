@@ -26,6 +26,10 @@ const RAW = {
   houseFill: `<path d="M12 2.6 2.5 10.8c-.4.35-.15 1 .35 1h1.65v8.6c0 .55.45 1 1 1H9v-6.4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6.4h3.5c.55 0 1-.45 1-1v-8.6h1.65c.5 0 .75-.65.35-1L12 2.6Z"/>`,
   chartBarFill: `<rect x="4" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="16" y="3" width="4" height="18" rx="1"/>`,
   personFill: `<circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1Z"/>`,
+  // the Shared tab's bubble with an arrow up: "put this in the feed"
+  feedShare: `<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 12.6V6.6M9.2 9.3 12 6.5l2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`,
+  // two people: a group
+  peopleFill: `<circle cx="9" cy="7.5" r="3.5"/><path d="M2 19.5c0-3.9 3.1-6.2 7-6.2s7 2.3 7 6.2c0 .5-.4.9-.9.9H2.9c-.5 0-.9-.4-.9-.9Z"/><circle cx="17" cy="8.5" r="2.8"/><path d="M17.6 13.4c2.6.3 4.4 2.1 4.4 5 0 .5-.4.9-.9.9h-3.3c.1-2.4-.6-4.4-2.1-5.6.6-.2 1.2-.3 1.9-.3Z"/>`,
   textBubbleFill: `<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z"/>`,
   exclamationTriangleFill: `<path d="M12 3.2 22 20.5H2L12 3.2Z"/><rect x="11.1" y="9.5" width="1.8" height="5.5" rx="0.9" fill="white"/><circle cx="12" cy="17.2" r="1.05" fill="white"/>`,
   wandAndStars: `<path d="M15.5 3.5 17 5l-9 9-1.5-1.5 9-9Z"/><path d="M4 20l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5Z"/><path d="M4.5 8.5l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4Z"/><path d="M20.5 14.5l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4Z"/>`,

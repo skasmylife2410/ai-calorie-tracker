@@ -17,3 +17,9 @@ export function isAdmin(username) {
 }
 
 export const INVITE_DAYS = 7;
+
+/** Invite links each person (other than the owner) may hand out: open ones and used ones count. */
+export const REFERRALS = 3;
+
+/** Groups one person can be in at once (their own and others'). */
+export const MAX_GROUPS = 6;

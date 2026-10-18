@@ -73,8 +73,10 @@ export function openResultsSheet(entry, { template = null } = {}) {
               <button type="button" data-serv="1" aria-label="More servings">+</button>
             </div>
             <button type="button" class="servings-heart" id="fav-toggle" aria-label="Favourite">♡</button>
-            ${entry.photoDataUrl ? `<button type="button" class="servings-share" id="share-meal" aria-label="${t("social.share")}">↗︎</button>` : ""}
-          </div>`}
+          </div>
+          ${entry.photoDataUrl && entry.isPending !== true && entry.analysisFailed !== true ? (Number(entry.sharedAt) > 0
+            ? `<button type="button" class="share-row is-shared" id="share-meal">${icon("checkmark", { size: 14 })} ${t("feedShare.sharedLong")}</button>`
+            : `<button type="button" class="share-row" id="share-meal">${icon("feedShare", { size: 18 })} ${t("feedShare.long")}</button>`) : ""}`}
           ${!template && (entry.cookingFat === "assumed" || entry.cookingFatChoice) ? `<div class="fat-card" id="fat-card"></div>` : ""}
           <div class="results-items-section-header" id="items-header">${t("meal.items")}</div>
           <div class="ios-section" style="margin-bottom:0;">
@@ -130,13 +132,14 @@ export function openResultsSheet(entry, { template = null } = {}) {
       });
       panel.querySelector("#share-meal")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
+        if (btn.classList.contains("is-shared")) { close(); globalThis.snapcalGoTo?.("shared"); return; }
         btn.disabled = true;
-        const { shareMeal } = await import("../social.js");
+        const { shareToFeed } = await import("./share-meal.js");
         // share what's on screen now, including unsaved portion edits
         const current = store.getFoodEntry(entry.id) ?? entry;
-        const out = await shareMeal({ ...current, analysisItems: items, ...store.fieldsFromItems(items, servings) });
-        btn.textContent = out.ok ? "✓" : "!";
-        btn.title = out.ok ? t("social.shareDone") : (out.message || "");
+        const done = await shareToFeed(current, { analysisItems: items, ...store.fieldsFromItems(items, servings) });
+        btn.disabled = false;
+        if (done) { btn.classList.add("is-shared"); btn.innerHTML = `${icon("checkmark", { size: 14 })} ${t("feedShare.sharedLong")}`; }
       });
 
       favBtn?.addEventListener("click", () => {

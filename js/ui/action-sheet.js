@@ -34,6 +34,7 @@ export function openActionSheet({ title, message, actions }) {
   backdrop.addEventListener("click", (e) => {
     if (e.target === backdrop) {
       close();
+      cancelAction?.onSelect?.(); // tapping outside is the same as Cancel
       return;
     }
     const btn = e.target.closest("[data-idx]");

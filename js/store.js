@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, streakFromDays, nextStreakState, REVIEW_EVERY_DAYS, REVIEW_MAX_MAINT_STEP_KCAL, WATER_WEEK_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS } from "./nutrition.js";
+import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, streakFromDays, nextStreakState, REVIEW_EVERY_DAYS, REVIEW_MAX_MAINT_STEP_KCAL, WATER_WEEK_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS, MEAL_TYPES } from "./nutrition.js";
 import { mealName } from "./meal-builder.js";
 import { goalsV1 } from "./goals-v1.js";
 
@@ -210,6 +210,10 @@ export function makeFoodEntry(fields) {
     ...(fields.cookingFat !== undefined ? { cookingFat: fields.cookingFat } : {}),
     ...(fields.cookingFatChoice !== undefined ? { cookingFatChoice: fields.cookingFatChoice } : {}),
     ...(fields.autoRetries !== undefined ? { autoRetries: fields.autoRetries } : {}),
+    // breakfast, lunch, dinner or snack, once it's been picked (nutrition.mealTypeOf guesses otherwise)
+    ...(MEAL_TYPES.includes(fields.mealType) ? { mealType: fields.mealType } : {}),
+    // when it was shared to the feed, so the list can show it's there
+    ...(Number(fields.sharedAt) > 0 ? { sharedAt: Number(fields.sharedAt) } : {}),
     base: fields.base ?? {
       calories: fields.calories ?? 0,
       proteinG: fields.proteinG ?? 0,
@@ -307,13 +311,35 @@ export function getFoodEntry(id) {
   return allFoodEntriesRaw().find((e) => e.id === id) ?? null;
 }
 
+const loggedListeners = new Set();
+
+/**
+ * Called with each meal logged on this phone (js/ui/meal-type.js asks which meal it was).
+ * Meals arriving from sync and meals put back by an undo don't count.
+ */
+export function onMealLogged(fn) {
+  loggedListeners.add(fn);
+  return () => loggedListeners.delete(fn);
+}
+
 /** Insert a fully-formed entry (or field subset — defaults are applied). Returns the stored entry. */
-export function addFoodEntry(fields) {
+export function addFoodEntry(fields, { quiet = false } = {}) {
   const entry = makeFoodEntry(fields);
   const entries = allFoodEntriesRaw();
   entries.push(entry);
   saveFoodEntries(entries);
+  if (!quiet) {
+    for (const fn of loggedListeners) {
+      try { fn(entry); } catch (err) { console.error("store.js: onMealLogged listener threw", err); }
+    }
+  }
   return entry;
+}
+
+/** Files a meal under breakfast, lunch, dinner or snack. */
+export function setMealType(id, mealType) {
+  if (!MEAL_TYPES.includes(mealType)) return null;
+  return updateFoodEntry(id, { mealType });
 }
 
 /** Shallow-merge patch into an existing entry by id. Returns the updated entry, or null if not found. */
@@ -457,7 +483,7 @@ export function groupEntries(sourceId, targetId) {
     if (getFoodEntry(targetId)) updateFoodEntry(targetId, { ...restTarget, grouped: beforeTarget.grouped === true });
     // the source's id now has a deletion recorded for sync, so it comes back under a new id
     const { id: _sid, updatedAt: _su, ...restSource } = beforeSource;
-    addFoodEntry(restSource);
+    addFoodEntry(restSource, { quiet: true });
   };
   return { entry, undo };
 }
@@ -489,7 +515,8 @@ export function groupMany(ids) {
 export function copyEntryTo(entryId, timestamp = Date.now()) {
   const e = getFoodEntry(entryId);
   if (!e || e.isPending === true || e.analysisFailed === true) return null;
-  const { id, updatedAt, timestamp: _t, analysisQuestions, questionsAnswered, analysisSizeCheck, sizeChecked, leftovers, leftoversFailed, ...rest } = JSON.parse(JSON.stringify(e));
+  // a new meal at a new time: its mealtime is asked again, and it isn't shared yet
+  const { id, updatedAt, timestamp: _t, analysisQuestions, questionsAnswered, analysisSizeCheck, sizeChecked, leftovers, leftoversFailed, mealType, sharedAt, ...rest } = JSON.parse(JSON.stringify(e));
   return addFoodEntry({ ...rest, timestamp, analysisItems: rest.analysisItems ?? null });
 }
 

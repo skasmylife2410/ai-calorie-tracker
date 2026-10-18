@@ -12,7 +12,7 @@ import { renderPushCard } from "./ui/push-ui.js";
 import { localDateString, addDays, startOfDay, streakFromDays, quietDays } from "./nutrition.js";
 import { icon } from "./ui/icons.js";
 import { cleanGif, gifImgHtml } from "./gif.js";
-import { searchGifs } from "./social.js";
+import { searchGifs, changeGroups } from "./social.js";
 import { sfx } from "./sounds.js";
 import { mountTogether } from "./ui/us-together.js";
 import * as store from "./store.js";
@@ -64,7 +64,7 @@ async function load() {
   }
   const json = await res.json();
   if (json.errorType === "unconfigured") return { error: t("us.unconfigured") };
-  if (json.errorType) return { error: json.message || t("us.loadFailed") };
+  if (json.errorType) return { error: json.message || t("us.loadFailed"), errorType: json.errorType };
   return json;
 }
 
@@ -434,15 +434,57 @@ function quietHtml(people) {
     </div>`;
 }
 
+/** Which group the board shows (when there's more than one), and in the app "Groups" to manage them. */
 function groupBarHtml() {
   const groups = data.groups ?? [];
-  if (groups.length < 2) return "";
-  const current = data.group?.id ?? groups[0].id;
-  return `
+  const current = data.group?.id ?? groups[0]?.id;
+  const switcher = groups.length < 2 ? "" : `
     <div class="us-groups" role="group" aria-label="${t("groups.switch")}">
       ${groups.map((g) => `<button type="button" data-group="${escHtml(g.id)}" aria-pressed="${g.id === current}">${escHtml(g.name)}</button>`).join("")}
     </div>`;
+  const manage = body?.id !== "us-tab-body" ? "" : `
+    <button type="button" class="us-groups-manage" id="us-groups-manage">${icon("peopleFill", { size: 16 })}<span>${t("groups.manage")}</span>${(data.invitedTo ?? []).length ? `<i class="us-groups-dot" aria-hidden="true"></i>` : ""}</button>`;
+  return switcher || manage ? `<div class="us-groups-row">${switcher}${manage}</div>` : "";
 }
+
+/** Someone asked this person to join a group: yes or not now, right on the board. */
+function invitedHtml(people) {
+  if (body?.id !== "us-tab-body") return "";
+  const nameFor = (u) => people.find((p) => p.owner === u)?.name || titleCase(u);
+  return (data.invitedTo ?? []).map((p) => `
+    <div class="repair-note grp-invite card" role="status">
+      <span class="repair-ic" aria-hidden="true">${icon("peopleFill", { size: 17 })}</span>
+      <div class="repair-body">
+        <b>${t("groups.pendingTitle", { name: escHtml(nameFor(p.by)), group: escHtml(p.name) })}</b>
+        <span>${t("groups.pendingBody")}</span>
+        <div class="grp-actions">
+          <button type="button" class="acct-btn" data-us-decline="${escHtml(p.group)}">${t("groups.decline")}</button>
+          <button type="button" class="acct-btn is-primary" data-us-accept="${escHtml(p.group)}">${t("groups.join")}</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+function wireGroups() {
+  body.querySelector("#us-groups-manage")?.addEventListener("click", () => import("./ui/groups.js").then((m) => m.openGroupsSheet()));
+  body.querySelectorAll("[data-us-accept], [data-us-decline]").forEach((b) => b.addEventListener("click", async () => {
+    const accept = Boolean(b.dataset.usAccept);
+    const group = b.dataset.usAccept || b.dataset.usDecline;
+    body.querySelectorAll(".grp-invite button").forEach((x) => { x.disabled = true; });
+    const out = await changeGroups({ op: accept ? "accept" : "decline", group });
+    if (!out.ok) { alert(out.message || t("errors.generic")); render(); return; }
+    globalThis.dispatchEvent(new CustomEvent("snapcal:groups-changed", { detail: { show: accept ? group : null } }));
+  }));
+}
+
+// Groups changed (made, joined, left; js/ui/groups.js): forget the board and draw it again,
+// on the group just joined or made when there is one
+globalThis.addEventListener?.("snapcal:groups-changed", (e) => {
+  data = null;
+  loadedFor = undefined;
+  groupId = e.detail?.show ?? null;
+  if (body?.isConnected && body.id === "us-tab-body") start();
+});
 
 /** In the app, your own row comes straight from this phone: the same numbers as your Home,
  *  with nothing waiting on a sync. */
@@ -489,8 +531,8 @@ function render() {
   const days = dayList(range);
   // one chart for everyone: % of goal, calories or protein, with people picked out (js/ui/us-together.js)
   const chart = `<section class="tg-section" id="us-chart"></section>`;
-  body.innerHTML = groupBarHtml() + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + quietHtml(people) + todayHtml(people) + chart +
-    (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: data.group?.name ?? "" })}</p>` : "");
+  body.innerHTML = groupBarHtml() + invitedHtml(people) + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + quietHtml(people) + todayHtml(people) + chart +
+    (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: escHtml(data.group?.name ?? "") })}</p>` : "");
   body.querySelectorAll("[data-group]").forEach((b) => b.addEventListener("click", () => {
     if (b.dataset.group === (data.group?.id ?? null)) return;
     groupId = b.dataset.group;
@@ -498,6 +540,7 @@ function render() {
     start();
   }));
   wireAvatar();
+  wireGroups();
   body.querySelector("[data-quiet-profile]")?.addEventListener("click", () => globalThis.snapcalGoTo?.("profile"));
   mountTogether(body.querySelector("#us-chart"), {
     people, days, me: data.me, todayKey: localDateString(Date.now()), selectedDay: null,
@@ -555,6 +598,8 @@ async function start(afterPin = false) {
     return;
   }
   if (result.unauthorized) return showPin(afterPin);
+  // the group shown was left (here or on another phone): back to their first group
+  if (result.errorType === "notMember" && groupId) { groupId = null; data = null; return start(); }
   if (result.error) {
     if (!have) body.innerHTML = `<p class="tg-note">${escHtml(result.error)}</p>`;
     return;

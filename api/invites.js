@@ -1,18 +1,20 @@
 // api/invites.js — single-use invite links.
 //
-// POST { op: "create" }       -> { ok, code, expiresAt }   admins only
-// POST { op: "list" }         -> { ok, invites, members, max, isAdmin }
-// POST { op: "revoke", code } -> { ok }                     admins only
+// POST { op: "create", group } -> { ok, code, expiresAt }  anyone, for a group they're in
+// POST { op: "list" }         -> { ok, invites, members, max, isAdmin, left, referrals }
+// POST { op: "revoke", code } -> { ok }                     your own links (the owner: any)
 // POST { op: "check", code }  -> { ok, valid, reason? }     public — lets the sign-up screen
 //                                                           say "this link has expired" up front
 //
-// A link can't overbook the group: open invites + existing accounts may never exceed the cap,
+// Everyone can bring in REFERRALS people (api/_members.js): a link counts while it's open and
+// once it's used; a cancelled or expired one gives the place back. The owner has no such limit.
+// A link can't overbook the app: open invites + existing accounts may never exceed the cap,
 // so five open links when there are five free places means no sixth can be made.
 
 import crypto from "node:crypto";
 import { requireUser } from "./_auth.js";
 import { select, insert, patch, parseBody, restBase } from "./_rest.js";
-import { maxUsers, isAdmin, INVITE_DAYS } from "./_members.js";
+import { maxUsers, isAdmin, INVITE_DAYS, REFERRALS } from "./_members.js";
 import { myGroups, membersOf, isMember } from "./_groups.js";
 
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
@@ -22,9 +24,15 @@ export function newInviteCode() {
   return crypto.randomBytes(16).toString("base64url");
 }
 
-export async function openInvites() {
+export async function openInvites(by = null) {
   const now = new Date().toISOString();
-  return select("snapcal_invites", { select: "code,created_by,created_at,expires_at,group_id", used_by: "is.null", revoked: "eq.false", expires_at: `gt.${now}`, order: "created_at.desc", limit: "50" });
+  return select("snapcal_invites", { select: "code,created_by,created_at,expires_at,group_id", used_by: "is.null", revoked: "eq.false", expires_at: `gt.${now}`, ...(by ? { created_by: `eq.${by}` } : {}), order: "created_at.desc", limit: "50" });
+}
+
+/** How many of their REFERRALS someone has spent: links still open, plus links someone used. */
+export async function referralsUsed(username) {
+  const rows = await select("snapcal_invites", { select: "used_by,expires_at", created_by: `eq.${username}`, revoked: "eq.false", limit: "100" });
+  return rows.filter((r) => r.used_by || Date.parse(r.expires_at) > Date.now()).length;
 }
 
 /** The group a valid invite is for, or null. Used by sign-up to place the new person. */
@@ -64,19 +72,22 @@ export default async function handler(req, res) {
     const members = await select("snapcal_users", { select: "username", limit: "100" });
 
     if (op === "list") {
-      const invites = admin ? await openInvites() : [];
+      // the owner sees every open link; everyone else only their own
+      const invites = await openInvites(admin ? null : me);
       const groups = await myGroups(me);
       const withMembers = await Promise.all(groups.map(async (g) => ({ ...g, members: (await membersOf(g.id)).length })));
-      return res.status(200).json({ ok: true, invites, members: members.length, max: maxUsers(), isAdmin: admin, groups: withMembers });
+      const left = admin ? null : Math.max(0, REFERRALS - (await referralsUsed(me)));
+      return res.status(200).json({ ok: true, invites, members: members.length, max: maxUsers(), isAdmin: admin, groups: withMembers, left, referrals: REFERRALS });
     }
-
-    if (!admin) return fail(res, "forbidden", "Only the app's owner can manage invites.");
 
     if (op === "create") {
       // Every link is for one group, and only for a group you're in yourself.
       const groupId = String(body.group ?? "").trim();
       if (!groupId) return fail(res, "noGroup", "Choose which group this invite is for.");
       if (!(await isMember(me, groupId))) return fail(res, "notMember", "You're not in that group.");
+      if (!admin && (await referralsUsed(me)) >= REFERRALS) {
+        return fail(res, "referrals", `You've used your ${REFERRALS} invites. Cancel an open one to make another.`);
+      }
 
       const open = await openInvites();
       if (members.length + open.length >= maxUsers()) {
@@ -89,7 +100,8 @@ export default async function handler(req, res) {
     }
 
     if (op === "revoke") {
-      await patch("snapcal_invites", { code: `eq.${String(body.code ?? "")}`, used_by: "is.null" }, { revoked: true });
+      // your own links only (the owner can cancel anyone's)
+      await patch("snapcal_invites", { code: `eq.${String(body.code ?? "")}`, used_by: "is.null", ...(admin ? {} : { created_by: `eq.${me}` }) }, { revoked: true });
       return res.status(200).json({ ok: true });
     }
 

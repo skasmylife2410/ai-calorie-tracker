@@ -11,6 +11,8 @@ import { ringGauge } from "./ring.js";
 import { t } from "../i18n.js";
 import { sureBadgeHtml } from "./questions.js";
 import { isFavorited } from "../store.js";
+import { mealTypeOf } from "../nutrition.js";
+import { mealTypeChoicesHtml } from "./meal-type.js";
 
 const MACRO_META = [
   { key: "proteinG", label: "P", icon: "fishFill", color: "var(--sc-protein)" },
@@ -142,21 +144,31 @@ function escapeHtml(str) {
  * @param {HTMLElement} container
  * @param {object} entry
  * @param {{onTap:(entry)=>void, onDelete:(entry)=>void, onShare?:Function, onFavorite?:Function,
- *   onCopyToday?:Function, select?:{on:boolean, selected:boolean, onToggle:(entry)=>void}}} handlers
+ *   onCopyToday?:Function, onMealType?:(entry, type)=>void,
+ *   select?:{on:boolean, selected:boolean, onToggle:(entry)=>void}}} handlers
  *   select: the list is in Select mode: the row shows a check and a tap selects it instead of opening
+ *   onMealType: the row gets a footer with its mealtime (tap to change) and the buttons, so the
+ *   name has the whole width and Share can say what it does
  */
-export function mountEntryRow(container, entry, { onTap, onDelete, onShare = null, onFavorite = null, onCopyToday = null, select = null }) {
+export function mountEntryRow(container, entry, { onTap, onDelete, onShare = null, onFavorite = null, onCopyToday = null, onMealType = null, select = null }) {
   const state = entryState(entry);
   const wrap = document.createElement("div");
   const selecting = Boolean(select?.on) && state !== "pending";
-  wrap.className = `entry-row${selecting ? " is-selecting" : ""}${selecting && select.selected ? " is-selected" : ""}`;
+  const foot = Boolean(onMealType) && !selecting;
+  wrap.className = `entry-row${foot ? " has-foot" : ""}${selecting ? " is-selecting" : ""}${selecting && select.selected ? " is-selected" : ""}`;
   wrap.dataset.entryId = entry.id;
   wrap.dataset.state = state;
   const fav = onFavorite && state !== "pending" && state !== "failed" ? isFavorited(entry) : false;
+  // Share says where it goes; once the meal is in the feed it says so, and opens the feed
+  const sharedInner = `${icon("checkmark", { size: 13 })}<span>${t("feedShare.shared")}</span>`;
+  const shareBtn = !onShare ? ""
+    : Number(entry.sharedAt) > 0
+      ? `<button type="button" class="entry-row-share is-shared" aria-label="${t("feedShare.sharedLabel")}">${sharedInner}</button>`
+      : `<button type="button" class="entry-row-share" aria-label="${t("feedShare.label")}">${icon("feedShare", { size: 17 })}<span>${t("feedShare.short")}</span></button>`;
   // a meal from an earlier day offers "+ Today" where today's meals offer Share
   const acts = selecting || state === "pending" ? [] : [
     onCopyToday && state !== "failed" ? `<button type="button" class="entry-row-today" aria-label="${t("stack.toToday")}">${icon("plus", { size: 14 })}<span>${t("stack.todayShort")}</span></button>`
-      : onShare ? `<button type="button" class="entry-row-share" aria-label="Share">↗︎</button>` : "",
+      : shareBtn,
     onFavorite && !onCopyToday && state !== "failed" ? `<button type="button" class="entry-row-fav${fav ? " is-on" : ""}" aria-pressed="${fav}" aria-label="${t("stack.favourite")}">${fav ? "♥" : "♡"}</button>` : "",
     `<button type="button" class="entry-row-bin" aria-label="Remove">${icon("trashFill", { size: 17 })}</button>`,
   ].filter(Boolean);
@@ -165,18 +177,21 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
   wrap.style.setProperty("--acts-w", `${actsWidth}px`);
   // No swipe gestures on rows any more: sideways swipes now move between tabs, and a visible
   // bin is quicker than any gesture anyway. Tap the row to edit, tap the bin to remove.
+  const actsHtml = acts.length ? `<div class="entry-row-actions">${acts.join("")}</div>` : "";
+  const mealChip = `<button type="button" class="entry-meal-type" aria-label="${t("mealType.change")}"><span>${t(`mealType.${mealTypeOf(entry)}`)}</span>${icon("chevronDown", { size: 11 })}</button>`;
   wrap.innerHTML = `
     <div class="entry-row-fg${state === "failed" ? " failed" : ""}">
       ${state === "pending" ? pendingRowHtml(entry) : state === "failed" ? failedRowHtml(entry) : completedRowHtml(entry)}
+      ${foot ? `<div class="entry-foot">${mealChip}${actsHtml}</div>` : ""}
     </div>
-    ${acts.length ? `<div class="entry-row-actions">${acts.join("")}</div>` : ""}
+    ${foot ? "" : actsHtml}
     ${selecting ? `<span class="entry-row-check" aria-hidden="true">${select.selected ? icon("checkmark", { size: 14 }) : ""}</span>` : ""}
   `;
   if (selecting) { wrap.setAttribute("role", "checkbox"); wrap.setAttribute("aria-checked", String(Boolean(select.selected))); }
   container.appendChild(wrap);
 
   wrap.addEventListener("click", (e) => {
-    if (e.target.closest(".entry-row-actions")) return;
+    if (e.target.closest(".entry-row-actions, .entry-foot")) return;
     if (selecting) { select.onToggle(entry); return; }
     // an unsure analysis with questions waiting: ask them first
     if (state !== "pending" && Array.isArray(entry.analysisQuestions) && entry.analysisQuestions.length > 0) {
@@ -193,10 +208,25 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
   wrap.querySelector(".entry-row-share")?.addEventListener("click", async (e) => {
     e.stopPropagation();
     const btn = e.currentTarget;
+    if (btn.classList.contains("is-shared")) { globalThis.snapcalGoTo?.("shared"); return; }
     btn.disabled = true;
     const done = await onShare(entry);
-    btn.textContent = done ? "✓" : "↗︎";
-    btn.disabled = !done;
+    btn.disabled = false;
+    if (!done) return;
+    btn.classList.add("is-shared");
+    btn.setAttribute("aria-label", t("feedShare.sharedLabel"));
+    btn.innerHTML = sharedInner;
+  });
+  // the mealtime: tap it, and the four choices take the footer's place; one tap files the meal
+  wrap.querySelector(".entry-meal-type")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const box = wrap.querySelector(".entry-foot");
+    box.classList.add("is-picking");
+    box.innerHTML = `<div class="mt-choices">${mealTypeChoicesHtml(mealTypeOf(entry))}</div>`;
+    box.querySelectorAll("[data-meal-type]").forEach((b) => b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      onMealType(entry, b.dataset.mealType);
+    }));
   });
   wrap.querySelector(".entry-row-fav")?.addEventListener("click", (e) => {
     e.stopPropagation();

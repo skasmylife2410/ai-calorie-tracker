@@ -23,7 +23,7 @@ async function loadPeople() {
       body: JSON.stringify({ from: localDateString(Date.now()), ...(groupId ? { group: groupId } : {}) }),
     });
     const json = await res.json();
-    if (!res.ok || json.errorType) return { error: json.message || t("errors.generic") };
+    if (!res.ok || json.errorType) return { error: json.message || t("errors.generic"), errorType: json.errorType };
     return json;
   } catch {
     return { error: t("errors.offline") };
@@ -49,6 +49,12 @@ export function prefetchShared() {
   if (!cache.has(keyOf()) && getStoredToken()) fetchBoth().catch(() => {});
 }
 
+// groups changed (js/ui/groups.js): every kept feed may be for a group they've left
+globalThis.addEventListener?.("snapcal:groups-changed", (e) => {
+  cache.clear();
+  groupId = e.detail?.show ?? null;
+});
+
 const busy = (feed) => feed.contains(document.activeElement) || [...feed.querySelectorAll("textarea, input")].some((el) => el.value);
 
 export async function render(container) {
@@ -65,6 +71,8 @@ export async function render(container) {
   const fresh = fetchBoth();
   const { data, shares } = await fresh;
   if (!feed.isConnected) return; // the tab was left while loading
+  // the group shown was left (here or on another phone): back to their first group
+  if (data.errorType === "notMember" && groupId) { groupId = null; return render(container); }
   if (data.error) { if (!hit) feed.innerHTML = `<p class="tg-note">${esc(data.error)}</p>`; return; }
   if (hit && (!shares?.ok || busy(feed) || JSON.stringify({ data, shares }) === JSON.stringify(hit))) return;
   draw(container, data, shares);

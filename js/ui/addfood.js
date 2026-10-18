@@ -121,7 +121,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               </details>
               <div class="ios-section-footer">${t("nutrients.moreHint")}</div>
             </div>
-            ${isEditing && entry?.photoDataUrl ? `<button type="button" class="share-row" id="share-food">↗︎ ${t("social.share")}</button>` : ""}
+            ${isEditing && entry?.photoDataUrl ? `<button type="button" class="share-row${Number(entry.sharedAt) > 0 ? " is-shared" : ""}" id="share-food">${Number(entry.sharedAt) > 0 ? `${icon("checkmark", { size: 14 })} ${t("feedShare.sharedLong")}` : `${icon("feedShare", { size: 18 })} ${t("feedShare.long")}`}</button>` : ""}
           </div>
         </div>
       `;
@@ -291,10 +291,12 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
 
       panel.querySelector("#share-food")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
+        if (btn.classList.contains("is-shared")) { close(); globalThis.snapcalGoTo?.("shared"); return; }
         btn.disabled = true;
-        const { shareMeal } = await import("../social.js");
-        const out = await shareMeal({ ...entry, name: draft.name, calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG, micros: draft.micros });
-        btn.textContent = out.ok ? `✓ ${t("social.shareDone")}` : (out.message || t("errors.generic"));
+        const { shareToFeed } = await import("./share-meal.js");
+        const done = await shareToFeed(store.getFoodEntry(entry.id) ?? entry, { name: draft.name, calories: draft.calories, proteinG: draft.proteinG, carbsG: draft.carbsG, fatG: draft.fatG, micros: draft.micros });
+        btn.disabled = false;
+        if (done) { btn.classList.add("is-shared"); btn.innerHTML = `${icon("checkmark", { size: 14 })} ${t("feedShare.sharedLong")}`; }
       });
 
       wireNavBar(panel, {

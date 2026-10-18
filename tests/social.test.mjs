@@ -40,7 +40,11 @@ const matches = (row, params) => [...params.entries()].every(([k, v]) => {
 const installDb = () => { globalThis.fetch = async (url, opts = {}) => {
   const u = new URL(url); const table = u.pathname.split("/").pop(); const method = opts.method ?? "GET";
   const rows = DB[table];
-  if (method === "GET") return { ok: true, json: async () => rows.filter((r) => matches(r, u.searchParams)) };
+  if (method === "GET") {
+    // "alias:data->>field" in select reads a field out of the row's data
+    const aliases = (u.searchParams.get("select") ?? "").split(",").map((x) => /^(\w+):data->>(\w+)$/.exec(x)).filter(Boolean);
+    return { ok: true, json: async () => rows.filter((r) => matches(r, u.searchParams)).map((r) => (aliases.length ? { ...r, ...Object.fromEntries(aliases.map(([, a, f]) => [a, r.data?.[f]])) } : r)) };
+  }
   if (method === "POST") { for (const r of JSON.parse(opts.body)) rows.push({ created_at: new Date().toISOString(), ...r }); return { ok: true, text: async () => "" }; }
   if (method === "PATCH") { const f = JSON.parse(opts.body); rows.forEach((r) => { if (matches(r, u.searchParams)) Object.assign(r, f); }); return { ok: true, text: async () => "" }; }
   if (method === "DELETE") { DB[table] = rows.filter((r) => !matches(r, u.searchParams)); return { ok: true, text: async () => "" }; }
@@ -293,7 +297,7 @@ test("people are shown by their chosen name, not their login username", async ()
 });
 
 
-test("one post a day: a meal with its photo, or a short post; kinds and sizes are checked", async () => {
+test("one post a day, and every meal of the day (with its photo); kinds and sizes are checked", async () => {
   reset();
   let res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "No photo" } }), res);
   assert.equal(res.body.errorType, "photoOnly");
@@ -307,9 +311,26 @@ test("one post a day: a meal with its photo, or a short post; kinds and sizes ar
   assert.equal(DB.snapcal_shares[0].data.text.length, 140, "captions are cut to 140 characters");
   assert.equal(DB.snapcal_shares[0].kind, "post");
 
-  res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "second", photo: PHOTO } }), res);
-  assert.equal(res.body.errorType, "limit", "one post a day, meal or post");
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "post", item: { text: "again" } }), res);
+  assert.equal(res.body.errorType, "limit", "one post a day");
   assert.equal(DB.snapcal_shares.length, 1);
+
+  // meals: breakfast, lunch and dinner all go up, even after today's post
+  for (const [i, name] of ["breakfast", "lunch", "dinner"].entries()) {
+    res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name, photo: PHOTO, entryId: `e${i}` } }), res);
+    assert.equal(res.body.ok, true, name);
+  }
+  // the same meal again is the same post, not a second one
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "lunch", photo: PHOTO, entryId: "e1" } }), res);
+  assert.deepEqual([res.body.ok, res.body.already], [true, true]);
+  assert.equal(DB.snapcal_shares.filter((x) => x.owner === "baby" && x.kind === "meal").length, 3);
+  for (let i = 3; i < 8; i++) {
+    res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: `m${i}`, photo: PHOTO, entryId: `e${i}` } }), res);
+    assert.equal(res.body.ok, true);
+  }
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "ninth", photo: PHOTO, entryId: "e9" } }), res);
+  assert.equal(res.body.errorType, "mealLimit", "eight meals a day at most");
+  DB.snapcal_shares = DB.snapcal_shares.filter((x) => x.kind === "post");
 
   res = mockRes(); await shares(as("thayra23", { op: "share", kind: "post", item: { text: "mine", photo: "data:image/png;base64,AA\" onerror=\"x" } }), res);
   assert.equal(res.body.ok, true, "someone else can still post today");

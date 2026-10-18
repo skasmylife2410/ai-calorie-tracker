@@ -94,13 +94,40 @@ test("expired, cancelled and made-up links are refused with a clear reason", asy
   assert.equal(res.body.errorType, "badInvite");
 });
 
-test("only the owner can create or cancel links", async () => {
+test("everyone can invite 3 people; a cancelled or expired link gives the place back", async () => {
   reset();
+  for (let i = 0; i < 3; i++) {
+    const r = mockRes(); await invites(as("baby", { op: "create", group: "family" }), r);
+    assert.equal(r.body.ok, true, `invite ${i + 1}`);
+  }
   let res = mockRes(); await invites(as("baby", { op: "create", group: "family" }), res);
-  assert.equal(res.body.errorType, "forbidden");
+  assert.equal(res.body.errorType, "referrals", "a fourth is refused");
   res = mockRes(); await invites(as("baby", { op: "list" }), res);
-  assert.equal(res.body.isAdmin, false);
-  assert.deepEqual(res.body.invites, [], "non-owners don't see the codes");
+  assert.deepEqual([res.body.isAdmin, res.body.left, res.body.invites.length], [false, 0, 3]);
+
+  // a used link still counts; a cancelled one doesn't
+  DB.snapcal_invites[0].used_by = "newfriend";
+  await invites(as("baby", { op: "revoke", code: DB.snapcal_invites[1].code }), mockRes());
+  res = mockRes(); await invites(as("baby", { op: "list" }), res);
+  assert.equal(res.body.left, 1);
+  // an expired one doesn't either
+  DB.snapcal_invites[2].expires_at = "2000-01-01T00:00:00Z";
+  res = mockRes(); await invites(as("baby", { op: "list" }), res);
+  assert.equal(res.body.left, 2);
+
+  // only your own links: baby sees and cancels hers, not the owner's
+  res = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), res);
+  const owners = res.body.code;
+  res = mockRes(); await invites(as("baby", { op: "list" }), res);
+  assert.ok(!res.body.invites.some((i) => i.code === owners), "baby doesn't see the owner's link");
+  await invites(as("baby", { op: "revoke", code: owners }), mockRes());
+  assert.equal(DB.snapcal_invites.find((i) => i.code === owners).revoked, false, "and can't cancel it");
+
+  // the owner has no such limit
+  for (let i = 0; i < 4; i++) {
+    const r = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), r);
+    assert.equal(r.body.ok, true);
+  }
   res = mockRes(); await invites(anon({ op: "create", group: "family" }), res);
   assert.equal(res.code, 401);
 });
@@ -138,12 +165,12 @@ test("an invite link puts the new person in the group it was made for, and nowhe
 test("a link can only be made for a group you're in, and must name one", async () => {
   reset();
   let res = mockRes(); await invites(as("baby", { op: "create", group: "work" }), res);
-  assert.equal(res.body.errorType, "forbidden", "not an admin at all");
+  assert.equal(res.body.errorType, "notMember", "baby isn't in Work");
 
   // the admin is fixed in code: a Vercel setting can't make anyone else one
   process.env.ADMIN_USERS = "aelson,baby";
-  res = mockRes(); await invites(as("baby", { op: "create", group: "family" }), res);
-  assert.equal(res.body.errorType, "forbidden", "ADMIN_USERS no longer grants anything");
+  res = mockRes(); await invites(as("baby", { op: "list" }), res);
+  assert.equal(res.body.isAdmin, false, "ADMIN_USERS no longer grants anything");
   delete process.env.ADMIN_USERS;
   res = mockRes(); await invites(as("aelson", { op: "create", group: "family" }), res);
   assert.equal(res.body.ok, true, "aelson is in Family, so this is allowed");

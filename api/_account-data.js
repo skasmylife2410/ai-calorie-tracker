@@ -20,14 +20,21 @@ const OWNED = [
   ["snapcal_notes", "from_user"],
   ["snapcal_notes", "to_user"],
   ["snapcal_group_members", "username"],
+  ["snapcal_group_invites", "username"],
+  ["snapcal_group_invites", "invited_by"],
 ];
+// tables listed twice get one export key per side
+const KEYS = {
+  "snapcal_notes|from_user": "notes_sent", "snapcal_notes|to_user": "notes_received",
+  "snapcal_group_invites|username": "group_invites_received", "snapcal_group_invites|invited_by": "group_invites_sent",
+};
 
 /** Everything stored about `username`, minus secrets (password hash, salt, push keys). */
 export async function exportAccount(username) {
   const [user] = await select("snapcal_users", { select: "username,email,created_at,consent_version,consent_at", username: `eq.${username}`, limit: "1" });
   const out = { exportedAt: new Date().toISOString(), account: user ?? null };
   for (const [table, col] of OWNED) {
-    const key = table === "snapcal_notes" ? `notes_${col === "from_user" ? "sent" : "received"}` : table.replace("snapcal_", "");
+    const key = KEYS[`${table}|${col}`] ?? table.replace("snapcal_", "");
     out[key] = await select(table, { select: "*", [col]: `eq.${username}`, limit: "20000" });
   }
   out.push_devices = await select("snapcal_push_subs", { select: "lang,created_at,last_ok_at", owner: `eq.${username}` });

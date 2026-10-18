@@ -517,7 +517,7 @@ async function wireMembers(container, me) {
   draw();
 }
 
-/** Invite people (only shown to the owner): places used, a button to make a link, open links. */
+/** Invite people: everyone has REFERRALS links (api/invites.js); the owner sees places used instead. */
 function inviteSectionHtml() {
   return `<div class="ios-section" id="invite-section"></div>`;
 }
@@ -534,18 +534,20 @@ async function wireInvites(container) {
   };
   const draw = async (msg = "") => {
     const info = await call({ op: "list" });
-    if (!info.ok || !info.isAdmin) { host.remove(); return; }
-    const full = info.members + info.invites.length >= info.max;
+    if (!info.ok) { host.remove(); return; }
+    const admin = info.isAdmin;
+    const full = admin ? info.members + info.invites.length >= info.max : info.left === 0;
+    const footer = admin ? (full ? t("invite.full") : t("invite.hint")) : (full ? t("invite.noneLeft", { max: info.referrals }) : t("invite.hintFriends"));
     host.innerHTML = `
-      <div class="ios-section-header">${t("invite.title")}</div>
+      <div class="ios-section-header">${admin ? t("invite.title") : t("invite.titleFriends")}</div>
       <div class="ios-section-body">
-        <div class="ios-row"><div class="ios-row-label">${t("invite.places", { used: info.members, max: info.max })}</div></div>
+        <div class="ios-row"><div class="ios-row-label">${admin ? t("invite.places", { used: info.members, max: info.max }) : t("groups.invitesLeft", { n: info.left, max: info.referrals })}</div></div>
         <div class="acct-actions"><button type="button" class="acct-btn inv-create" id="inv-create" ${full ? "disabled" : ""}>＋ ${t("invite.create")}</button></div>
         ${info.invites.length ? `
           <div class="inv-head">${t("invite.open")}</div>
           ${info.invites.map((i) => `
             <div class="inv-row">
-              <span class="inv-group">${(info.groups ?? []).find((g) => g.id === i.group_id)?.name ?? ""}</span>
+              <span class="inv-group">${escapeHtml((info.groups ?? []).find((g) => g.id === i.group_id)?.name ?? "")}</span>
               <span class="inv-code">…${i.code.slice(-6)}</span>
               <span class="inv-exp">${t("invite.expires", { date: new Date(i.expires_at).toLocaleDateString() })}</span>
               <button type="button" class="inv-copy" data-copy="${i.code}">⧉</button>
@@ -553,7 +555,7 @@ async function wireInvites(container) {
             </div>`).join("")}` : ""}
         ${msg ? `<div class="acct-msg">${msg}</div>` : ""}
       </div>
-      <div class="ios-section-footer">${full ? t("invite.full") : t("invite.hint")}</div>`;
+      <div class="ios-section-footer">${footer}</div>`;
 
     const linkFor = (code) => `${location.origin}/?invite=${code}`;
     const hand = async (code) => {
@@ -571,7 +573,8 @@ async function wireInvites(container) {
       const chosen = groups.length > 1 ? await askGroup(host, groups) : groups[0]?.id ?? null;
       if (!chosen) return draw();
       const made = await call({ op: "create", group: chosen });
-      if (!made.ok) return draw(made.message || t("errors.generic"));
+      const why = { referrals: t("invite.noneLeft", { max: info.referrals ?? 3 }), full: t("invite.full"), notMember: t("invite.notMember") }[made.errorType];
+      if (!made.ok) return draw(why || made.message || t("errors.generic"));
       draw(await hand(made.code));
     });
     host.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => draw(await hand(b.dataset.copy))));
@@ -588,7 +591,7 @@ function askGroup(host, groups) {
     box.className = "inv-pick";
     box.innerHTML = `<div class="inv-pick-title">${t("groups.inviteTo")}</div>
       <div class="inv-pick-row">
-        ${groups.map((g) => `<button type="button" class="lang-btn" data-pick="${g.id}">${g.name}</button>`).join("")}
+        ${groups.map((g) => `<button type="button" class="lang-btn" data-pick="${escapeHtml(g.id)}">${escapeHtml(g.name)}</button>`).join("")}
       </div>
       <button type="button" class="inv-pick-cancel" data-pick="">${t("groups.cancel")}</button>`;
     host.querySelector(".ios-section-body")?.appendChild(box);

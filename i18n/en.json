@@ -452,7 +452,7 @@
     "hideRecipe": "Hide recipe",
     "idea": "Idea",
     "meal": "Meal",
-    "feedRule": "One post a day each. Comments up to 100 characters. Posts and comments delete themselves after 7 days.",
+    "feedRule": "One post a day each, plus any meals you share. Comments up to 100 characters. Posts and comments delete themselves after 7 days.",
     "noComments": "No comments yet.",
     "commentPlaceholder": "Add a comment…",
     "deleteComment": "Delete comment",
@@ -530,13 +530,42 @@
       "expired": "This invite link has expired — ask for a new one.",
       "revoked": "This invite link was cancelled.",
       "unknown": "This invite link isn't valid."
-    }
+    },
+    "titleFriends": "Invite friends",
+    "hintFriends": "Each link lets one person make an account and join your group. It stops working after 7 days; cancelling it gives the invite back.",
+    "noneLeft": "You've used your {max} invites. Cancel an open one to make another.",
+    "notMember": "You're not in that group."
   },
   "groups": {
     "switch": "Group",
     "inviteTo": "Invite to which group?",
     "cancel": "Cancel",
-    "onlyYou": "Only you are in {name} so far — invite someone from Profile."
+    "onlyYou": "Only you are in {name} so far. Add people from Groups.",
+    "manage": "Groups",
+    "title": "Your groups",
+    "members": "{n} person|{n} people",
+    "add": "Add people",
+    "inviteNew": "Invite by link",
+    "leave": "Leave",
+    "leaveConfirm": "Leave {name}? You'll stop seeing each other's meals and progress there.",
+    "lastGroup": "It's your only group. Make or join another one first.",
+    "create": "Make a group",
+    "namePlaceholder": "Name, e.g. Gym",
+    "createBtn": "Make it",
+    "ask": "Ask",
+    "asked": "Asked",
+    "addLead": "From your other groups. They join once they say yes.",
+    "nobodyToAdd": "Everyone from your other groups is already here. Invite someone new instead.",
+    "pendingTitle": "{name} invited you to {group}",
+    "pendingBody": "Everyone in it will see your meals and progress, and you'll see theirs.",
+    "join": "Join",
+    "decline": "Not now",
+    "hint": "Everyone in a group sees each other's meals and progress. People you add only join once they say yes.",
+    "tooMany": "You can be in up to {n} groups.",
+    "noName": "Give the group a name.",
+    "you": "you",
+    "invitesLeft": "{n} of {max} invites left",
+    "noInvites": "No invites left"
   },
   "onb": {
     "langTitle": "Welcome to SnapCal",
@@ -1486,5 +1515,33 @@
     "setTo": "{n} glasses",
     "more": "One more glass",
     "less": "One glass less"
+  },
+  "mealType": {
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "snack": "Snack",
+    "plural": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snack": "Snacks"
+    },
+    "loggedAs": "Logged as",
+    "change": "Change which meal this was"
+  },
+  "feedShare": {
+    "short": "Share",
+    "label": "Share with your group",
+    "long": "Share with your group",
+    "shared": "Shared",
+    "sharedLabel": "Shared with your group · open Shared",
+    "sharedLong": "Shared · see it in Shared",
+    "which": "Share with which group?",
+    "done": "Shared with {group}",
+    "see": "See it",
+    "photoOnly": "Only meals with a photo can be shared.",
+    "mealLimit": "That's 8 meals shared today. You can share more tomorrow.",
+    "noGroup": "You're not in a group yet."
   }
 }

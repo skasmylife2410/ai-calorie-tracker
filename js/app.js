@@ -12,6 +12,7 @@ import { getStoredToken } from "./net.js";
 import { foodLookup } from "./api.js";
 import { icon } from "./ui/icons.js";
 import { render as renderToday } from "./ui/today.js";
+import { showLoggedBar } from "./ui/meal-type.js";
 import { startAutoUpdate, applyIfPending } from "./updater.js";
 import "./install.js"; // catches Android Chrome's install offer as early as possible
 import { viewedTimestamp } from "./ui/today.js";
@@ -226,6 +227,9 @@ async function boot() {
   whenFirstSynced(8000).then(() => setTimeout(retryWaiting, 4000));
   document.addEventListener("visibilitychange", retryWaiting);
   setInterval(retryWaiting, 10 * 60 * 1000);
+
+  // every meal logged on this phone: "Logged as Lunch", the other mealtimes a tap away
+  store.onMealLogged((entry) => showLoggedBar(entry.id));
 
   store.subscribe(() => {
     // The account's profile arrived after setup was already showing (slow network): step out

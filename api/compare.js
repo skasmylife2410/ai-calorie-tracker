@@ -223,7 +223,19 @@ function partOfDay(timestamp) {
     for (const [day, s] of Object.entries(reported)) p.days[day] = { ...dayOf(p, day), ...s };
   }
 
-  res.status(200).json({ me, people, group, groups });
+  res.status(200).json({ me, people, group, groups, invitedTo: await invitedTo(me) });
+}
+
+/** Asks to join a group still waiting for this person's yes or no (api/groups.js). */
+async function invitedTo(me) {
+  try {
+    const rows = await select("snapcal_group_invites", { select: "group_id,invited_by", username: `eq.${me}`, limit: "10" });
+    if (rows.length === 0) return [];
+    const names = await select("snapcal_groups", { select: "id,name", id: `in.(${rows.map((r) => `"${r.group_id}"`).join(",")})`, limit: "10" });
+    return rows.map((r) => ({ group: r.group_id, name: names.find((g) => g.id === r.group_id)?.name, by: r.invited_by })).filter((r) => r.name);
+  } catch {
+    return []; // never in the way of the board
+  }
 }
 
 // --- Coach view ---------------------------------------------------------------------------------

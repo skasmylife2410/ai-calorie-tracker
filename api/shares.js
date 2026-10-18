@@ -2,9 +2,10 @@
 //
 // POST { op: "list" }                   -> { ok, shares }  your group's, newest first, last 7 days,
 //                                                            each with its comments
-// POST { op: "share", kind, item }      -> { ok, id }      kind "meal" (a logged meal with its photo)
-//                                                            or "post" (a short caption, photo optional)
-//                                                            — one of either per person per day
+// POST { op: "share", kind, item }      -> { ok, id }      kind "meal" (a logged meal with its photo,
+//                                                            up to MEALS_PER_DAY; the same meal twice
+//                                                            in one group is one post) or "post" (a
+//                                                            short caption, photo optional; one a day)
 // POST { op: "delete", id }             -> { ok }          only your own
 // POST { op: "comment", shareId, body, photo? } -> { ok, comment } anyone in the post's group;
 //                                                            a comment is words, a photo, or both
@@ -32,7 +33,8 @@ const MAX_COMMENT_PHOTO = 90_000; // ~480px, ~20–60 KB
 // Photos travel inline in the feed answer, and Vercel caps a response at 4.5 MB. Past this many
 // photo bytes, the oldest photos in the answer are left out (the post or comment still shows).
 const FEED_PHOTO_BUDGET = 3_200_000;
-const PER_DAY = 1;           // posts per person per day (meal or post), by the app's local day
+const PER_DAY = 1;           // posts per person per day, by the app's local day
+const MEALS_PER_DAY = 8;     // shared meals per person per day: every meal of a day, not a flood
 const POST_MAX = 140;        // caption length for a "post"
 const FEED_SIZE = 20;        // newest posts shown
 const FEED_DAYS = 7;
@@ -93,7 +95,9 @@ export function cleanItem(kind, item = {}) {
     const items = Array.isArray(item.items)
       ? item.items.slice(0, 12).map((i) => ({ name: str(i.name, 60), gramsEstimate: num(i.gramsEstimate), calories: num(i.calories), proteinG: num(i.proteinG), carbsG: num(i.carbsG), fatG: num(i.fatG), micros: boundedMicros(i.micros) }))
       : [];
-    return { ...base, micros: boundedMicros(item.micros), photo, items };
+    // which meal in their log it is, so sharing it again doesn't post it twice
+    const entryId = /^[0-9a-zA-Z-]{1,64}$/.test(String(item.entryId ?? "")) ? String(item.entryId) : null;
+    return { ...base, micros: boundedMicros(item.micros), photo, items, ...(entryId ? { entryId } : {}) };
   }
   return {
     ...base,
@@ -125,7 +129,9 @@ export default async function handler(req, res) {
         group_id: `eq.${group.id}`, kind: "in.(meal,post)",
         created_at: `gte.${since}`, order: "created_at.desc", limit: String(FEED_SIZE),
       });
-      const shares = rows.filter((r) => (r.kind === "post" ? r.data?.text || r.data?.photo || r.data?.gif : r.data?.photo));
+      // only people still in the group: someone who left takes their posts with them
+      const members = new Set(await membersOf(group.id));
+      const shares = rows.filter((r) => members.has(r.owner) && (r.kind === "post" ? r.data?.text || r.data?.photo || r.data?.gif : r.data?.photo));
       const comments = shares.length
         ? await select("snapcal_comments", { select: "id,share_id,owner,body,photo,gif,created_at", share_id: `in.(${shares.map((r) => `"${r.id}"`).join(",")})`, order: "created_at.asc", limit: "500" })
         : [];
@@ -149,13 +155,17 @@ export default async function handler(req, res) {
       if (error === "notMember") return fail(res, "notMember", "You're not in that group.");
       if (!group) return fail(res, "noGroup", "You're not in a group yet.");
 
-      // one post a day, counted by the app's local day (not UTC, which would reset mid-evening)
+      // counted by the app's local day (not UTC, which would reset mid-evening)
       const since = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
-      const recent = await select("snapcal_shares", { select: "id,created_at", owner: `eq.${me}`, created_at: `gte.${since}`, limit: "10" });
-      const today = localDay(new Date());
-      if (recent.filter((r) => localDay(new Date(r.created_at)) === today).length >= PER_DAY) {
-        return fail(res, "limit", "You've already posted today. You can post again tomorrow.");
+      const recent = await select("snapcal_shares", { select: "id,kind,created_at,group_id,entry:data->>entryId", owner: `eq.${me}`, created_at: `gte.${since}`, limit: "40" });
+      if (kind === "meal" && data.entryId) {
+        const same = recent.find((r) => r.kind === "meal" && r.entry === data.entryId && r.group_id === group.id);
+        if (same) return res.status(200).json({ ok: true, id: same.id, group, already: true });
       }
+      const today = localDay(new Date());
+      const todays = recent.filter((r) => r.kind === kind && localDay(new Date(r.created_at)) === today).length;
+      if (kind === "post" && todays >= PER_DAY) return fail(res, "limit", "You've already posted today. You can post again tomorrow.");
+      if (kind === "meal" && todays >= MEALS_PER_DAY) return fail(res, "mealLimit", `That's ${MEALS_PER_DAY} meals shared today. You can share more tomorrow.`);
 
       const id = newId();
       await insert("snapcal_shares", { id, owner: me, kind, data, group_id: group.id });
