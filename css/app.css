@@ -3020,7 +3020,7 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .grp-people i { color: var(--sc-secondary); font-style: normal; }
 .grp-actions { display: flex; gap: 6px; margin-top: 4px; }
 .grp-actions .acct-btn { padding: 10px 6px; font-size: 13px; }
-.grp-leave { flex: none; font: inherit; font-size: 14px; font-weight: 700; border: 0; background: none; padding: 4px 2px; color: var(--sc-red); cursor: pointer; }
+.grp-leave { flex: none; font: inherit; font-size: 14px; font-weight: 700; border: 0; background: none; padding: 4px 2px; color: var(--sc-primary-text); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .grp-add { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--sc-secondary-14, rgba(0,0,0,.06)); }
 .grp-add-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; font-size: 15px; color: var(--sc-primary-text); }
 .grp-asked { font-size: 13px; font-weight: 700; color: var(--sc-secondary); }
