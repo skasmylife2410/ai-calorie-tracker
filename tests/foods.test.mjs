@@ -7,7 +7,7 @@ delete process.env.APP_USERS;
 delete process.env.APP_TOKEN;
 
 const { default: handler } = await import("../api/foods.js");
-const { rankProducts, scoreProduct } = await import("../js/foods-local.js");
+const { rankProducts, scoreProduct, englishQuery, searchLocalFoods } = await import("../js/foods-local.js");
 
 const mockRes = () => ({
   code: 200, body: null, headers: {},
@@ -120,4 +120,38 @@ test("ranking: whole words beat prefixes, missing a word sinks, repeats and unna
   assert.ok(!ranked.some((x) => x.name === "Unknown product"));
   assert.ok(scoreProduct(p("Pechuga de pollo"), "pech") > scoreProduct(p("Pollo asado"), "pech"));
   assert.ok(scoreProduct(p("Plátano maduro"), "platano") > 0, "accents ignored");
+});
+
+test("harina de avena finds oat flour, not almond flour, in Spanish or English names", () => {
+  const p = (name, extra = {}) => ({ name, brand: null, ...extra });
+  const ranked = rankProducts([
+    p("Harina de almendras"),
+    p("Almond flour"),
+    p("Oat flour", { source: "usda" }),
+    p("Harina de avena integral"),
+    p("Avena en hojuelas"),
+  ], "harina de avena");
+  assert.deepEqual(ranked.slice(0, 2).map((x) => x.name), ["Harina de avena integral", "Oat flour"]);
+  assert.ok(ranked.indexOf(ranked.find((x) => x.name === "Harina de almendras")) > 1, "almond flour sinks");
+  assert.equal(rankProducts([p("Harina de avena"), p("Harina de almendras")], "harina de almendras")[0].name, "Harina de almendras");
+  // plurals, and "de" alone is no match
+  assert.ok(scoreProduct(p("Scrambled eggs"), "huevos revueltos") > scoreProduct(p("Huevo de chocolate"), "huevos revueltos") - 1000);
+  assert.ok(scoreProduct(p("Oat flour"), "harina de avena") > scoreProduct(p("Harina de almendras"), "harina de avena"));
+});
+
+test("USDA is asked in English when the words are Spanish", () => {
+  assert.equal(englishQuery("harina de avena"), "flour oat");
+  assert.equal(englishQuery("Pechuga de pollo asada"), "breast chicken roasted");
+  assert.equal(englishQuery("almendras"), "almond");
+  assert.equal(englishQuery("oat flour"), null, "English stays as typed");
+  assert.equal(englishQuery("pan fried chicken"), null, "pan isn't translated: it's English too");
+  assert.equal(englishQuery("arepa"), null);
+});
+
+test("the built-in list has each flour on its own", () => {
+  assert.equal(searchLocalFoods("harina de avena", { lang: "es" })[0].name, "Harina de avena");
+  assert.equal(searchLocalFoods("harina de avena", { lang: "es" })[0].calories, 404);
+  assert.equal(searchLocalFoods("oat flour", { lang: "en" })[0].name, "Oat flour");
+  assert.ok(!searchLocalFoods("harina de avena", { lang: "es" }).some((f) => /almendra/i.test(f.name)));
+  assert.equal(searchLocalFoods("harina de almendras", { lang: "es" })[0].name, "Harina de almendras");
 });

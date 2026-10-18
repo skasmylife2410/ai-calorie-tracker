@@ -23,7 +23,7 @@ import { requireUser } from "./_auth.js";
 import { offProductToScannedProduct, usdaFoodToScannedProduct, lookupBarcodeBoth, usdaGroundingHit, canonicalBarcode } from "../js/api.js";
 import { cleanMicros } from "../js/nutrition.js";
 import { select, insert, restBase, restHeaders, parseBody } from "./_rest.js";
-import { rankProducts, normalize } from "../js/foods-local.js";
+import { rankProducts, normalize, englishQuery } from "../js/foods-local.js";
 import { cleanGif } from "../js/gif.js";
 
 const SOURCE_TIMEOUT_MS = 4_500;
@@ -181,9 +181,11 @@ function remember(key, products) {
 /**
  * USDA FoodData Central: generic foods (Foundation, SR Legacy) and everyday dishes as eaten
  * (FNDDS: "Chicken breast, baked"). The last word gets a wildcard so "chick" finds chicken.
+ * Spanish food words are sent in English (foods-local.js englishQuery).
  */
 async function searchUsda(q) {
-  const words = q.split(" ");
+  // USDA names foods in English: "harina de avena" is asked as "flour oat"
+  const words = (englishQuery(q) ?? q).split(" ");
   const last = words[words.length - 1];
   if (last.length >= 3 && /^[\p{L}\p{N}]+$/u.test(last)) words[words.length - 1] = `${last}*`;
   const key = encodeURIComponent((process.env.USDA_API_KEY || "").trim() || "DEMO_KEY");

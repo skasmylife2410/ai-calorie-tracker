@@ -45,6 +45,11 @@ export const LOCAL_FOODS = [
   { en: "Plantain, fried (patacón)", es: "Patacón frito", kcal: 309, p: 2, c: 52, f: 11, s: "patacon patacón platano plátano plantain" },
   { en: "Plantain, ripe fried (maduro)", es: "Plátano maduro frito", kcal: 275, p: 1.5, c: 50, f: 8, s: "maduro platano plátano tajada" },
   { en: "Oats, dry", es: "Avena cruda", kcal: 389, p: 17, c: 66, f: 7, s: "avena oats oatmeal" },
+  // flours: four very different foods that share one word, so each has its own entry
+  { en: "Oat flour", es: "Harina de avena", kcal: 404, p: 14.7, c: 65.7, f: 9.1, s: "harina avena oat flour" },
+  { en: "Almond flour", es: "Harina de almendras", kcal: 571, p: 21.4, c: 21.4, f: 50, s: "harina almendra almendras almond flour" },
+  { en: "Wheat flour, all-purpose", es: "Harina de trigo", kcal: 364, p: 10.3, c: 76.3, f: 1, s: "harina trigo wheat flour" },
+  { en: "Corn flour, precooked (Harina P.A.N.)", es: "Harina de maíz precocida (P.A.N.)", kcal: 365, p: 7, c: 79, f: 1.5, s: "harina maiz maíz pan corn flour arepa" },
   { en: "Quinoa, cooked", es: "Quinua cocida", kcal: 120, p: 4.4, c: 21, f: 1.9, s: "quinua quinoa" },
   { en: "Black beans, cooked", es: "Frijoles negros cocidos", kcal: 132, p: 8.9, c: 24, f: 0.5, s: "frijol frijoles beans negros" },
   { en: "Red beans, cooked", es: "Fríjoles rojos cocidos", kcal: 127, p: 8.7, c: 23, f: 0.5, s: "frijol frijoles rojos beans" },
@@ -148,6 +153,10 @@ const LOCAL_MICROS = {
   "Plantain, fried (patacón)": [3, 1, 0, 1.5, 150, 450],
   "Plantain, ripe fried (maduro)": [2.3, 14, 0, 1.3, 5, 450],
   "Oats, dry": [10, 1, 0, 1.2, 2, 430],
+  "Oat flour": [6.5, 0.8, 0, 1.6, 4, 371],
+  "Almond flour": [10.7, 3.6, 0, 3.6, 0, 700],
+  "Wheat flour, all-purpose": [2.7, 0.3, 0, 0.2, 2, 107],
+  "Corn flour, precooked (Harina P.A.N.)": [7.4, 0.6, 0, 0.2, 5, 140],
   "Quinoa, cooked": [2.8, 0.9, 0, 0.2, 7, 172],
   "Black beans, cooked": [8.7, 0.3, 0, 0.1, 1, 355],
   "Red beans, cooked": [7.4, 0.3, 0, 0.1, 2, 405],
@@ -270,21 +279,61 @@ export function searchLocalFoods(query, { lang = "en", limit = 8 } = {}) {
     }));
 }
 
+// Spanish food words and their English names. The databases name many products in English
+// ("Oat flour"), so "harina de avena" matched nothing of the right product and everything of a
+// wrong one ("Harina de almendras" shares "harina" and "de"); USDA only understands English.
+// Words that are also English ("pan" as in pan-fried) are left out.
+const ES_EN = {
+  harina: ["flour"], avena: ["oat", "oatmeal"], almendra: ["almond"], trigo: ["wheat"], maiz: ["corn", "maize"],
+  arroz: ["rice"], pollo: ["chicken"], pechuga: ["breast"], muslo: ["thigh"], carne: ["beef", "meat"], res: ["beef"],
+  cerdo: ["pork"], pescado: ["fish"], atun: ["tuna"], huevo: ["egg"], leche: ["milk"], queso: ["cheese"],
+  yogur: ["yogurt"], yogurt: ["yogurt"], mantequilla: ["butter"], aceite: ["oil"], papa: ["potato"],
+  patata: ["potato"], platano: ["plantain", "banana"], banano: ["banana"], guineo: ["banana"], manzana: ["apple"],
+  naranja: ["orange"], fresa: ["strawberry"], uva: ["grape"], pina: ["pineapple"], aguacate: ["avocado"],
+  tomate: ["tomato"], cebolla: ["onion"], frijol: ["bean"], caraota: ["bean"], lenteja: ["lentil"], garbanzo: ["chickpea"],
+  azucar: ["sugar"], miel: ["honey"], cafe: ["coffee"], jugo: ["juice"], zumo: ["juice"], galleta: ["cookie", "cracker"],
+  nuez: ["walnut"], nueces: ["walnut"], mani: ["peanut"], coco: ["coconut"], espinaca: ["spinach"], zanahoria: ["carrot"],
+  brocoli: ["broccoli"], semilla: ["seed"], linaza: ["flaxseed", "flax"], integral: ["whole"], crudo: ["raw"], cruda: ["raw"],
+  cocido: ["cooked"], cocida: ["cooked"], frito: ["fried"], frita: ["fried"], asado: ["roasted", "grilled"],
+  asada: ["roasted", "grilled"], blanco: ["white"], blanca: ["white"], entera: ["whole"], entero: ["whole"],
+  descremada: ["skim", "nonfat"], proteina: ["protein"],
+};
+// words that say nothing about the food ("harina DE avena" shouldn't match "harina DE almendras" on "de")
+const FILLER = new Set(["de", "del", "la", "el", "los", "las", "y", "con", "en", "a", "al", "of", "the", "with", "and", "in"]);
+
+/** English names for a Spanish word, plural or not ("almendras" → ["almond"]). */
+function english(term) {
+  return ES_EN[term] ?? (term.endsWith("s") ? ES_EN[term.slice(0, -1)] : null) ?? (term.endsWith("es") ? ES_EN[term.slice(0, -2)] : null) ?? [];
+}
+
+/**
+ * What to ask USDA for: the query in English when any of its words has a translation
+ * ("harina de avena" → "flour oat"), else null (ask as typed).
+ */
+export function englishQuery(query) {
+  const terms = normalize(query).split(/\s+/).filter((w) => w && !FILLER.has(w));
+  if (!terms.some((w) => english(w).length)) return null;
+  return terms.map((w) => english(w)[0] ?? w).join(" ");
+}
+
 /**
  * Scores a database product (USDA, Open Food Facts, your own foods) against what was typed.
  * Same idea as scoreFood(): whole-word hits beat prefix hits, a name that starts with the first
  * word leads, shorter names win ties. Unlike the built-in list, a product that misses a word is
  * kept (the databases also match on brand and category) but sinks below every full match.
+ * A Spanish word also matches its English name ("avena" finds "Oat flour").
  */
 export function scoreProduct(product, query) {
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  const typed = normalize(query).split(/\s+/).filter(Boolean);
+  const terms = typed.filter((w) => !FILLER.has(w)).length ? typed.filter((w) => !FILLER.has(w)) : typed;
   const name = normalize(product?.name);
   if (terms.length === 0 || name === "" || name === "unknown product") return 0;
   const words = normalize(`${product.name} ${product.brand ?? ""}`).split(/[^a-z0-9]+/).filter(Boolean);
+  const inEnglish = (term) => english(term).some((en) => words.some((w) => w === en || w === `${en}s` || w === `${en}es`));
   let score = 0;
   let missed = 0;
   for (const term of terms) {
-    if (words.includes(term)) score += 3;
+    if (words.includes(term) || inEnglish(term)) score += 3;
     else if (words.some((w) => w.startsWith(term))) score += 2;
     else missed += 1;
   }
