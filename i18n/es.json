@@ -1540,8 +1540,12 @@
     "which": "¿Con qué grupo la compartes?",
     "done": "Compartida con {group}",
     "see": "Ver",
-    "photoOnly": "Solo se pueden compartir comidas con foto.",
     "mealLimit": "Ya compartiste 8 comidas hoy. Mañana puedes compartir más.",
-    "noGroup": "Aún no estás en un grupo."
+    "noGroup": "Aún no estás en un grupo.",
+    "title": "Compartir",
+    "with": "Con",
+    "caption": "Texto",
+    "captionPlaceholder": "Escribe algo (opcional)",
+    "to": "Compartir con {group}"
   }
 }

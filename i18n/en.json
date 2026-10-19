@@ -1540,8 +1540,12 @@
     "which": "Share with which group?",
     "done": "Shared with {group}",
     "see": "See it",
-    "photoOnly": "Only meals with a photo can be shared.",
     "mealLimit": "That's 8 meals shared today. You can share more tomorrow.",
-    "noGroup": "You're not in a group yet."
+    "noGroup": "You're not in a group yet.",
+    "title": "Share",
+    "with": "With",
+    "caption": "Caption",
+    "captionPlaceholder": "Add a caption (optional)",
+    "to": "Share with {group}"
   }
 }

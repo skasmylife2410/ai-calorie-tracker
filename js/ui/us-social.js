@@ -209,13 +209,14 @@ export async function renderFeed(host, { me, people, colors, group = null, group
         ${!d.photo && d.gif ? gifImgHtml(d.gif, { cls: "feed-photo feed-gif", size: "large", alt: t("gif.by", { name: nameOf(s.owner) }) }) : ""}
         <div class="feed-main">
           ${isPost ? (d.text ? `<p class="feed-text">${esc(d.text)}</p>` : "") : `
+            ${d.note ? `<p class="feed-text feed-caption">${esc(d.note)}</p>` : ""}
             <div class="feed-title"><span class="feed-name">${esc(d.name)}</span><span class="feed-kcal">${formatNumber(d.calories)}</span><span class="feed-unit">kcal</span></div>
             <div class="feed-macros">
               <span><i style="background:var(--sc-protein)"></i>${formatNumber(d.proteinG)} g ${t("home.proteinShort").toLowerCase()}</span>
               <span><i style="background:var(--sc-carbs)"></i>${formatNumber(d.carbsG)} g ${t("home.carbsShort").toLowerCase()}</span>
               <span><i style="background:var(--sc-fat)"></i>${formatNumber(d.fatG)} g ${t("home.fatShort").toLowerCase()}</span>
             </div>
-            ${d.note ? `<p class="feed-note">${esc(d.note)}</p>` : ""}`}
+`}
           <div class="feed-actions">
             <span class="feed-count">${icon("textBubbleFill", { size: 15 })}${comments.length ? t("social.commentsCount", { n: comments.length }) : t("social.comment")}</span>
             ${!canEatToo(s, me) ? "" : copied.has(s.id)

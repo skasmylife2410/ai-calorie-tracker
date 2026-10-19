@@ -74,7 +74,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
             </div>
             <button type="button" class="servings-heart" id="fav-toggle" aria-label="Favourite">♡</button>
           </div>
-          ${entry.photoDataUrl && entry.isPending !== true && entry.analysisFailed !== true ? (Number(entry.sharedAt) > 0
+          ${entry.isPending !== true && entry.analysisFailed !== true ? (Number(entry.sharedAt) > 0
             ? `<button type="button" class="share-row is-shared" id="share-meal">${icon("checkmark", { size: 14 })} ${t("feedShare.sharedLong")}</button>`
             : `<button type="button" class="share-row" id="share-meal">${icon("feedShare", { size: 18 })} ${t("feedShare.long")}</button>`) : ""}`}
           ${!template && (entry.cookingFat === "assumed" || entry.cookingFatChoice) ? `<div class="fat-card" id="fat-card"></div>` : ""}

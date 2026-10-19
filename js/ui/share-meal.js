@@ -1,11 +1,14 @@
-// share-meal.js — "Share" on a meal: it goes to your group's feed (the group you pick, when
-// you're in more than one), the meal remembers it's there (its row then says "Shared"), and a
-// note says where it went, with a way to go and see it.
+// share-meal.js — "Share" on a meal: a short sheet shows the meal, which group it goes to (when
+// you're in more than one) and an optional caption; then it goes to that group's feed, the meal
+// remembers it's there (its row then says "Shared"), and a note says where it went, with a way
+// to go and see it. Any finished meal can be shared, with or without a photo.
 
 import * as store from "../store.js";
-import { t } from "../i18n.js";
-import { shareMeal, sharingGroups } from "../social.js";
-import { openActionSheet } from "./action-sheet.js";
+import { t, formatNumber } from "../i18n.js";
+import { shareMeal, sharingGroups, CAPTION_MAX } from "../social.js";
+import { openSheet, navBar, wireNavBar } from "./sheet.js";
+import { safeSrc } from "../safe-src.js";
+import { foodCategory, foodIconSvg } from "./food-icons.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 let timer = null;
@@ -26,35 +29,74 @@ function note(text, { see = false } = {}) {
 }
 
 const reason = (out) => ({
-  photoOnly: t("feedShare.photoOnly"),
   mealLimit: t("feedShare.mealLimit"),
   noGroup: t("feedShare.noGroup"),
   network: t("errors.offline"),
 }[out.errorType] ?? (out.message || t("errors.generic")));
 
-/** Whether a meal can go to the feed: done analysing, and with its photo on this phone. */
-export const canShare = (entry) => Boolean(entry?.photoDataUrl) && entry.isPending !== true && entry.analysisFailed !== true;
+/** Whether a meal can go to the feed: done analysing (a photo is optional). */
+export const canShare = (entry) => Boolean(entry) && entry.isPending !== true && entry.analysisFailed !== true;
 
 /**
- * Shares `entry` to the feed (`overrides`: edits on screen that aren't saved yet).
- * Resolves true once it's there.
+ * Opens the share sheet for `entry` (`overrides`: edits on screen that aren't saved yet).
+ * Resolves true once the meal is in the feed, false if it was cancelled or refused.
  */
 export async function shareToFeed(entry, overrides = {}) {
   const groups = await sharingGroups();
-  let group = groups[0] ?? null;
-  if (groups.length > 1) {
-    group = await new Promise((resolve) => openActionSheet({
-      title: t("feedShare.which"),
-      actions: [
-        ...groups.map((g) => ({ label: esc(g.name), onSelect: () => resolve(g) })),
-        { label: t("app.cancel"), cancel: true, onSelect: () => resolve(null) },
-      ],
-    }));
-    if (!group) return false;
-  }
-  const out = await shareMeal({ ...entry, ...overrides, entryId: entry.id }, "", group?.id ?? null);
-  if (!out.ok) { note(reason(out)); return false; }
-  if (store.getFoodEntry(entry.id)) store.updateFoodEntry(entry.id, { sharedAt: Date.now() });
-  note(t("feedShare.done", { group: out.group?.name ?? group?.name ?? t("social.tab") }), { see: true });
-  return true;
+  const meal = { ...entry, ...overrides };
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (v) => { if (!settled) { settled = true; resolve(v); } };
+    let group = groups[0] ?? null;
+    openSheet({
+      onClosed: () => settle(false),
+      render(panel, close) {
+        const thumb = meal.photoDataUrl
+          ? `<img class="shm-thumb" src="${safeSrc(meal.photoDataUrl)}" alt="">`
+          : `<span class="shm-thumb is-food" aria-hidden="true">${foodIconSvg(foodCategory(meal), { size: 24 })}</span>`;
+        panel.innerHTML = `
+          ${navBar({ title: t("feedShare.title"), leading: { label: t("app.cancel") } })}
+          <div class="sheet-panel-body shm-body">
+            <div class="shm-meal">${thumb}
+              <span class="shm-text"><b>${esc(meal.name)}</b><small>${formatNumber(Math.round(Number(meal.calories) || 0))} kcal</small></span>
+            </div>
+            ${groups.length > 1 ? `
+              <div class="shm-label">${t("feedShare.with")}</div>
+              <div class="us-groups shm-groups" role="group" aria-label="${t("feedShare.with")}">
+                ${groups.map((g) => `<button type="button" data-shm-group="${esc(g.id)}" aria-pressed="${g.id === group.id}">${esc(g.name)}</button>`).join("")}
+              </div>` : ""}
+            <textarea class="shm-caption" id="shm-caption" rows="3" maxlength="${CAPTION_MAX}" placeholder="${t("feedShare.captionPlaceholder")}" aria-label="${t("feedShare.caption")}"></textarea>
+            <div class="shm-count" id="shm-count">0/${CAPTION_MAX}</div>
+            <div class="acct-msg is-error" id="shm-err" role="status" hidden></div>
+            <button type="button" class="acct-btn is-primary shm-go" id="shm-go">${t("feedShare.to", { group: esc(group?.name ?? t("social.tab")) })}</button>
+          </div>`;
+        wireNavBar(panel, { onLeading: close });
+        const caption = panel.querySelector("#shm-caption");
+        const go = panel.querySelector("#shm-go");
+        caption.addEventListener("input", () => { panel.querySelector("#shm-count").textContent = `${caption.value.length}/${CAPTION_MAX}`; });
+        panel.querySelectorAll("[data-shm-group]").forEach((b) => b.addEventListener("click", () => {
+          group = groups.find((g) => g.id === b.dataset.shmGroup) ?? group;
+          panel.querySelectorAll("[data-shm-group]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          go.textContent = t("feedShare.to", { group: group.name });
+        }));
+        go.addEventListener("click", async () => {
+          go.disabled = true;
+          go.textContent = t("auth.working");
+          const out = await shareMeal({ ...meal, entryId: entry.id }, caption.value, group?.id ?? null);
+          if (!out.ok) {
+            const err = panel.querySelector("#shm-err");
+            err.hidden = false;
+            err.textContent = reason(out);
+            go.disabled = false;
+            go.textContent = t("feedShare.to", { group: group?.name ?? t("social.tab") });
+            return;
+          }
+          if (store.getFoodEntry(entry.id)) store.updateFoodEntry(entry.id, { sharedAt: Date.now() });
+          settle(true);
+          close();
+          note(t("feedShare.done", { group: out.group?.name ?? group?.name ?? t("social.tab") }), { see: true });
+        });
+      },
+    });
+  });
 }

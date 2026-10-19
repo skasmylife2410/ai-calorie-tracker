@@ -2,7 +2,8 @@
 //
 // POST { op: "list" }                   -> { ok, shares }  your group's, newest first, last 7 days,
 //                                                            each with its comments
-// POST { op: "share", kind, item }      -> { ok, id }      kind "meal" (a logged meal with its photo,
+// POST { op: "share", kind, item }      -> { ok, id }      kind "meal" (a logged meal, its photo if it
+//                                                            has one, an optional caption in `note`;
 //                                                            up to MEALS_PER_DAY; the same meal twice
 //                                                            in one group is one post) or "post" (a
 //                                                            short caption, photo optional; one a day)
@@ -83,7 +84,7 @@ export function cleanItem(kind, item = {}) {
     proteinG: num(item.proteinG),
     carbsG: num(item.carbsG),
     fatG: num(item.fatG),
-    note: str(item.note, 200),
+    note: str(item.note, 200), // a meal's caption
   };
   if (kind === "post") {
     const photo = isSafeDataImage(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
@@ -131,7 +132,7 @@ export default async function handler(req, res) {
       });
       // only people still in the group: someone who left takes their posts with them
       const members = new Set(await membersOf(group.id));
-      const shares = rows.filter((r) => members.has(r.owner) && (r.kind === "post" ? r.data?.text || r.data?.photo || r.data?.gif : r.data?.photo));
+      const shares = rows.filter((r) => members.has(r.owner) && (r.kind === "post" ? r.data?.text || r.data?.photo || r.data?.gif : r.data?.name));
       const comments = shares.length
         ? await select("snapcal_comments", { select: "id,share_id,owner,body,photo,gif,created_at", share_id: `in.(${shares.map((r) => `"${r.id}"`).join(",")})`, order: "created_at.asc", limit: "500" })
         : [];
@@ -146,7 +147,6 @@ export default async function handler(req, res) {
       const data = cleanItem(kind, body.item);
       if (kind === "meal") {
         if (!data.name) return fail(res, "empty", "It needs a name.");
-        if (!data.photo) return fail(res, "photoOnly", "Only meals with a photo can be shared.");
       } else if (!data.text && !data.photo && !data.gif) {
         return fail(res, "empty", "Write something or add a photo.");
       }
@@ -175,7 +175,7 @@ export default async function handler(req, res) {
         title: kind === "post"
           ? (lang === "es" ? `${who} publicó algo` : `${who} posted`)
           : (lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`),
-        body: kind === "post" ? (data.text || (data.gif ? "GIF" : lang === "es" ? "Una foto" : "A photo")) : `${data.name} · ${Math.round(data.calories)} kcal`,
+        body: kind === "post" ? (data.text || (data.gif ? "GIF" : lang === "es" ? "Una foto" : "A photo")) : data.note || `${data.name} · ${Math.round(data.calories)} kcal`,
         url: "/?tab=shared",
         tag: `post-${id}`,
       }));

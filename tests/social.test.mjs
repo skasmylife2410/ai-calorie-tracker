@@ -297,10 +297,10 @@ test("people are shown by their chosen name, not their login username", async ()
 });
 
 
-test("one post a day, and every meal of the day (with its photo); kinds and sizes are checked", async () => {
+test("one post a day, and every meal of the day; kinds and sizes are checked", async () => {
   reset();
-  let res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "No photo" } }), res);
-  assert.equal(res.body.errorType, "photoOnly");
+  let res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { calories: 300 } }), res);
+  assert.equal(res.body.errorType, "empty", "a meal needs its name");
   res = mockRes(); await shares(as("baby", { op: "share", kind: "idea", item: { name: "Sancocho" } }), res);
   assert.equal(res.body.errorType, "other", "ideas can't be posted any more");
   res = mockRes(); await shares(as("baby", { op: "share", kind: "post", item: { text: "   " } }), res);
@@ -421,4 +421,20 @@ test("the feed answer keeps photos within its size budget, newest first", () => 
   assert.ok(shares[0].comments[0].photo, "both comments fit");
   assert.equal(shares[1].data.photo, null, "past the budget, older photos are left out");
   assert.equal(shares[1].data.photoHidden, true, "and marked, so the app can say so");
+});
+
+test("a meal without a photo can be shared, with a caption, and shows in the feed", async () => {
+  reset();
+  let res = mockRes();
+  await shares(as("baby", { op: "share", kind: "meal", item: { name: "Arroz con pollo", calories: 650, proteinG: 35, note: "  Almuerzo con mi mamá  ", entryId: "e1" } }), res);
+  assert.equal(res.body.ok, true);
+  const row = DB.snapcal_shares.at(-1);
+  assert.deepEqual([row.data.photo, row.data.note], [null, "Almuerzo con mi mamá"]);
+  res = mockRes(); await shares(as("aelson", { op: "list" }), res);
+  const shown = res.body.shares.find((x) => x.id === row.id);
+  assert.ok(shown, "photo-less meals are in the feed");
+  assert.equal(shown.data.note, "Almuerzo con mi mamá");
+  // captions are capped
+  res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "Té", note: "x".repeat(400), entryId: "e2" } }), res);
+  assert.equal(DB.snapcal_shares.at(-1).data.note.length, 200);
 });

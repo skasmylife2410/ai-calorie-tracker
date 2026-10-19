@@ -121,7 +121,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
               </details>
               <div class="ios-section-footer">${t("nutrients.moreHint")}</div>
             </div>
-            ${isEditing && entry?.photoDataUrl ? `<button type="button" class="share-row${Number(entry.sharedAt) > 0 ? " is-shared" : ""}" id="share-food">${Number(entry.sharedAt) > 0 ? `${icon("checkmark", { size: 14 })} ${t("feedShare.sharedLong")}` : `${icon("feedShare", { size: 18 })} ${t("feedShare.long")}`}</button>` : ""}
+            ${isEditing && entry ? `<button type="button" class="share-row${Number(entry.sharedAt) > 0 ? " is-shared" : ""}" id="share-food">${Number(entry.sharedAt) > 0 ? `${icon("checkmark", { size: 14 })} ${t("feedShare.sharedLong")}` : `${icon("feedShare", { size: 18 })} ${t("feedShare.long")}`}</button>` : ""}
           </div>
         </div>
       `;
