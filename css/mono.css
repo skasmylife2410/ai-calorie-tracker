@@ -276,6 +276,7 @@
 :root[data-theme="mono"] .tab-btn { color: var(--mn-sec); position: relative; }
 :root[data-theme="mono"] .tab-btn.active { color: var(--mn-ink); }
 /* the button on an ink toast (Undo, See it) is paper-coloured, not blue */
+:root[data-theme="mono"] .ml-group-kcal b { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
 :root[data-theme="mono"] .undo-toast .undo-btn { color: var(--mn-on-ink) !important; text-decoration: underline; text-underline-offset: 3px; }
 :root[data-theme="mono"] .tab-btn.active .tab-icon-pill { background: transparent; }
 :root[data-theme="mono"] .tab-btn.active .tab-label { color: var(--mn-ink) !important; font-weight: 700; }

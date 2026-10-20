@@ -5,7 +5,7 @@
 
 import * as store from "../store.js";
 import { mountEntryRow } from "./entry-row.js";
-import { wireMealDrag, groupWithToast, rowIsGroupable } from "./meal-drag.js";
+import { wireMealDrag, groupWithToast, rowIsGroupable, isGroupableState } from "./meal-drag.js";
 import { openFailedMealSheet } from "./failed-meal.js";
 import * as queue from "../queue.js";
 import { icon } from "./icons.js";
@@ -83,8 +83,9 @@ function closeSelectBar() {
 }
 
 /**
- * One day's meals under Breakfast, Lunch, Dinner and Snacks: tap to edit, ♥ to favourite, bin to
- * remove, the mealtime label to file it elsewhere, hold and drop one on another to stack them.
+ * One day's meals, one card per meal of the day (Breakfast, Lunch, Dinner, Snacks): tap to edit,
+ * ♥ to favourite, bin to remove; hold one and move it to another meal of the day, or pause over
+ * another meal to stack them; "2 foods" on a stack opens its foods to detach one.
  * "Select" ticks several at once to Stack, Favourite or (an earlier day) log Today.
  * Used by Home's "Today's meals" mini tab and the day sheet.
  * @returns {() => void} cleanup
@@ -120,18 +121,32 @@ export function renderMealList(list, date, onChange) {
   list.querySelector("#ml-select")?.addEventListener("click", () => { selecting = { day: dayKey, ids: new Set() }; redraw(); });
   list.querySelector("#ml-cancel")?.addEventListener("click", () => { selecting = null; closeSelectBar(); redraw(); });
 
-  let section = null;
-  for (const entry of meals) {
-    const type = mealTypeOf(entry);
-    if (type !== section) {
-      section = type;
-      const kcal = meals.filter((m) => mealTypeOf(m) === type).reduce((a, m) => a + (Number(m.calories) || 0), 0);
-      list.insertAdjacentHTML("beforeend", `<div class="ml-section"><span>${t(`mealType.plural.${type}`)}</span><span class="ml-section-kcal">${formatNumber(Math.round(kcal))} kcal</span></div>`);
-    }
-    own.push(
-      mountEntryRow(list, entry, {
+  // a food taken back out of a stack becomes its own meal again; Undo puts it back
+  const detach = (e, index) => {
+    const out = store.detachItem(e.id, index);
+    if (!out) return;
+    onChange();
+    toast(t("stack.detached", { name: out.detached.name }), { undo: () => { out.undo(); onChange(); } });
+  };
+  // one card per meal of the day; the empty ones only show while a meal is held, as places to drop it
+  for (const type of MEAL_TYPES) {
+    const inIt = meals.filter((m) => mealTypeOf(m) === type);
+    const kcal = inIt.reduce((a, m) => a + (Number(m.calories) || 0), 0);
+    list.insertAdjacentHTML("beforeend", `
+      <section class="ml-group${inIt.length ? "" : " is-empty"}" data-meal-type="${type}">
+        <header class="ml-group-head">
+          <span class="ml-group-name">${t(`mealType.plural.${type}`)}</span>
+          ${inIt.length ? `<span class="ml-group-kcal"><b>${formatNumber(Math.round(kcal))}</b> kcal</span>` : `<span class="ml-group-drop">${t("stack.dropHere")}</span>`}
+        </header>
+        <div class="ml-group-rows"></div>
+      </section>`);
+    const rows = list.lastElementChild.querySelector(".ml-group-rows");
+    for (const entry of inIt) own.push(
+      mountEntryRow(rows, entry, {
+        footer: true,
+        grip: !sel && isGroupableState(queue.entryState(entry)),
+        onDetach: detach,
         onShare: canShare(entry) ? (e) => shareToFeed(store.getFoodEntry(e.id) ?? e) : null,
-        onMealType: (e, mealType) => { store.setMealType(e.id, mealType); onChange(); },
         onFavorite: (e) => store.toggleFavorite(e.id),
         onCopyToday: isToday ? null : (e) => { store.copyEntryTo(e.id, Date.now()); toast(t("stack.copiedOne")); },
         select: sel ? { on: true, selected: sel.has(entry.id), onToggle: (e) => { sel.has(e.id) ? sel.delete(e.id) : sel.add(e.id); redraw(); } } : null,
@@ -160,6 +175,7 @@ export function renderMealList(list, date, onChange) {
   own.push(wireMealDrag(list, {
     canDrag: (id) => !selecting && rowIsGroupable(list, id),
     onDrop: (src, dst) => groupWithToast(src, dst, () => onChange()),
+    onMove: (src, mealType) => { store.setMealType(src, mealType); onChange(); },
   }));
   return () => own.forEach((fn) => fn?.());
 }

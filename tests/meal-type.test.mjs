@@ -58,3 +58,30 @@ test("logging asks which meal it was; an undo or a copy's mealtime doesn't carry
   assert.equal(copy.sharedAt, undefined, "the copy isn't shared yet");
   off();
 });
+
+test("a food detached from a stack is its own meal again, same time and meal of the day; Undo puts it back", () => {
+  localStorage.clear();
+  const eggs = store.addFoodEntry({ name: "Fried eggs", calories: 180, proteinG: 12, carbsG: 1, fatG: 14, timestamp: at(7, 30) });
+  const toast = store.addFoodEntry({ name: "Toast", calories: 240, proteinG: 8, carbsG: 44, fatG: 3, timestamp: at(7, 40) });
+  store.setMealType(eggs.id, "breakfast");
+  const { entry: stack } = store.groupEntries(toast.id, eggs.id);
+  assert.equal(stack.calories, 420);
+  const before = JSON.parse(JSON.stringify(store.getFoodEntry(stack.id)));
+
+  const index = store.itemsOfEntry(stack).findIndex((i) => i.name === "Toast");
+  const out = store.detachItem(stack.id, index);
+  assert.equal(out.entry.calories, 180, "the stack keeps the rest");
+  assert.equal(out.entry.name, "Fried eggs");
+  assert.equal(out.entry.grouped, false, "one food left: not a stack any more");
+  assert.deepEqual([out.detached.name, out.detached.calories, out.detached.timestamp], ["Toast", 240, stack.timestamp]);
+  assert.equal(mealTypeOf(out.detached), "breakfast", "same meal of the day");
+  assert.equal(store.allFoodEntries().length, 2);
+
+  out.undo();
+  assert.equal(store.allFoodEntries().length, 1);
+  const back = store.getFoodEntry(stack.id);
+  assert.deepEqual([back.calories, back.analysisItems.length, back.grouped], [before.calories, 2, true]);
+
+  assert.equal(store.detachItem(out.detached.id, 0), null, "a single meal has nothing to detach");
+  assert.equal(store.detachItem(stack.id, 9), null);
+});

@@ -2,7 +2,7 @@
 // Mirrors the SwiftData persistence semantics described in SPEC-LOGIC.md §1, §13.
 // Uses `globalThis.localStorage` so it can be exercised under Node with a mock (see tests).
 
-import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, streakFromDays, nextStreakState, REVIEW_EVERY_DAYS, REVIEW_MAX_MAINT_STEP_KCAL, WATER_WEEK_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS, MEAL_TYPES } from "./nutrition.js";
+import { GOALS_VERSION, startOfDay, addDays, computeStreak, resolveUserGoals, normalizeEntrySource, normalizeSex, normalizeActivityLevel, localDateString, normalizeActivity, normalizeIntensity, estimateCaloriesBurned, exerciseCredit, learnedMaintenance, monthlyReview, streakFromDays, nextStreakState, REVIEW_EVERY_DAYS, REVIEW_MAX_MAINT_STEP_KCAL, WATER_WEEK_DAYS, EXERCISE_CREDIT_CHOICES, EXERCISE_CREDIT_RATIO, creditRatioFor, cleanMicros, scaleMicros, sumMicros, microTargets, MICRO_KEYS, MEAL_TYPES, mealTypeOf } from "./nutrition.js";
 import { mealName } from "./meal-builder.js";
 import { goalsV1 } from "./goals-v1.js";
 
@@ -486,6 +486,47 @@ export function groupEntries(sourceId, targetId) {
     addFoodEntry(restSource, { quiet: true });
   };
   return { entry, undo };
+}
+
+/**
+ * Takes one food back out of a stacked meal: it becomes its own meal again, at the same time and
+ * meal of the day; the stack keeps the rest (and its photo). For a stack made by mistake.
+ * `index` is the food's place in itemsOfEntry(entry). Returns { entry, detached, undo }, or null
+ * when there's nothing to take out.
+ */
+export function detachItem(entryId, index) {
+  const entry = getFoodEntry(entryId);
+  if (!entry || entry.isPending === true || entry.analysisFailed === true) return null;
+  const items = itemsOfEntry(entry); // `index` is the food's place in this list
+  const item = items[index];
+  if (!item || items.length < 2) return null;
+  const before = JSON.parse(JSON.stringify(entry));
+  const rest = items.filter((i) => i !== item);
+  const mealType = MEAL_TYPES.includes(entry.mealType) ? entry.mealType : mealTypeOf(entry);
+  const kept = updateFoodEntry(entryId, {
+    name: (rest.length === 1 ? String(rest[0].name ?? "") : mealName(rest)).slice(0, 90),
+    ...fieldsFromItems(rest, 1),
+    servings: 1,
+    analysisItems: rest,
+    grouped: rest.length > 1,
+    amount: null,
+    amountUnit: null,
+    mealType,
+  });
+  const detached = addFoodEntry({
+    name: String(item.name ?? "").slice(0, 90) || "Food",
+    ...fieldsFromItems([item], 1),
+    analysisItems: [item],
+    source: entry.source,
+    timestamp: entry.timestamp,
+    mealType,
+  }, { quiet: true });
+  const undo = () => {
+    const { id, updatedAt, ...restBefore } = before;
+    deleteFoodEntry(detached.id);
+    if (getFoodEntry(entryId)) updateFoodEntry(entryId, { ...restBefore, grouped: before.grouped === true });
+  };
+  return { entry: kept, detached, undo };
 }
 
 /**

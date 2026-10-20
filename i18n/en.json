@@ -796,7 +796,7 @@
   },
   "stack": {
     "select": "Select",
-    "tip": "Hold a meal and drop it on another to stack them.",
+    "tip": "Hold a meal to move it. Rest it on another meal to stack them.",
     "tipPast": "Tap Today to have it again today.",
     "selected": "{n} selected",
     "pick": "Tap meals to select them",
@@ -812,7 +812,13 @@
     "favTip": "Tick several to log them together.",
     "pickFood": "Select {name}",
     "asOne": "As one meal",
-    "logMany": "Log {n} · {kcal} kcal"
+    "logMany": "Log {n} · {kcal} kcal",
+    "foods": "{n} food|{n} foods",
+    "detach": "Detach",
+    "detachOne": "Detach {name}",
+    "detached": "{name} is its own meal again",
+    "dropHere": "Drop here",
+    "stackWith": "Stack with {name}"
   },
   "group": {
     "hint": "Tip: hold a meal and drop it on another to group them.",
@@ -1527,8 +1533,7 @@
       "dinner": "Dinner",
       "snack": "Snacks"
     },
-    "loggedAs": "Logged as",
-    "change": "Change which meal this was"
+    "loggedAs": "Logged as"
   },
   "feedShare": {
     "short": "Share",

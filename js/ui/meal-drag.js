@@ -1,4 +1,6 @@
-// meal-drag.js — hold a logged meal, drag it onto another, let go: they become one meal.
+// meal-drag.js — hold a logged meal and move it: let go over another meal of the day (Breakfast,
+// Lunch, Dinner, Snacks) and it moves there; pause over another meal first and they stack into
+// one, like making a folder on a phone's home screen. A label by the meal says which will happen.
 //
 // Hold ~0.35 s to pick a meal up (a quick touch is still a tap, and moving straight away is still
 // a scroll). While a meal is held, page scrolling, the sideways tab swipe and the sheet's
@@ -22,15 +24,19 @@ export function rowIsGroupable(list, id) {
 }
 
 const HOLD_MS = 350;
+const STACK_DWELL_MS = 600; // resting over another meal this long turns "move here" into "stack"
 const SLOP = 8; // px the finger may wander during the hold before it counts as a scroll
 const EDGE_SCROLL = 70; // px from the top/bottom of the screen that scroll the list while dragging
 
 /**
  * @param {HTMLElement} list  container whose direct children are .entry-row elements with data-entry-id
- * @param {{canDrag:(id:string)=>boolean, onDrop:(sourceId:string, targetId:string)=>void}} opts
+ * @param {{canDrag:(id:string)=>boolean, onDrop:(sourceId:string, targetId:string)=>void,
+ *   onMove?:(sourceId:string, mealType:string)=>void}} opts
+ *   onMove: the list has meal-of-the-day cards (.ml-group[data-meal-type]); a meal let go over
+ *   another one moves there
  * @returns {() => void} cleanup
  */
-export function wireMealDrag(list, { canDrag, onDrop }) {
+export function wireMealDrag(list, { canDrag, onDrop, onMove = null }) {
   let timer = null;
   let start = null;       // {x, y}
   let sourceRow = null;
@@ -42,14 +48,45 @@ export function wireMealDrag(list, { canDrag, onDrop }) {
   let scrollRaf = null;
   let last = { x: 0, y: 0 };
   let suppressClick = false;
+  let label = null;       // "→ Lunch" or "Stack with Arepa", by the held meal
+  let hoverRow = null;    // the meal under the finger, and whether it has rested there long enough
+  let dwelled = false;
+  let dwellTimer = null;
+  let hoverGroup = null;
 
-  const rowAt = (x, y) => {
+  const groupOf = (el) => (onMove ? el?.closest?.(".ml-group[data-meal-type]") : null);
+
+  const under = (x, y) => {
     if (ghost) ghost.style.visibility = "hidden";
+    if (label) label.style.visibility = "hidden";
     const el = document.elementFromPoint(x, y);
     if (ghost) ghost.style.visibility = "";
-    const row = el?.closest?.(".entry-row[data-entry-id]");
-    if (!row || row === sourceRow || !list.contains(row)) return null;
-    return canDrag(row.dataset.entryId) ? row : null;
+    if (label) label.style.visibility = "";
+    if (!el || !list.contains(el)) return { row: null, group: null };
+    const row = el.closest(".entry-row[data-entry-id]");
+    return { row: row && row !== sourceRow && canDrag(row.dataset.entryId) ? row : null, group: groupOf(el) };
+  };
+
+  /** What letting go now would do: stack onto a meal rested on, else move to the meal of the day under the finger. */
+  const decide = () => {
+    if (hoverRow && (dwelled || !onMove)) return { kind: "row", el: hoverRow };
+    const mine = groupOf(sourceRow)?.dataset.mealType;
+    if (hoverGroup && hoverGroup.dataset.mealType !== mine) return { kind: "group", el: hoverGroup };
+    return null;
+  };
+
+  const setTarget = (next) => {
+    if (next?.el === target?.el && next?.kind === target?.kind) return;
+    target?.el.classList.remove("is-drop-target");
+    target = next;
+    target?.el.classList.add("is-drop-target");
+    ghost?.classList.toggle("has-target", !!target);
+    if (label) {
+      label.hidden = !target;
+      if (target?.kind === "group") label.textContent = `→ ${t(`mealType.plural.${target.el.dataset.mealType}`)}`;
+      else if (target) label.textContent = t("stack.stackWith", { name: target.el.querySelector(".entry-name")?.textContent?.trim() ?? "" });
+    }
+    if (target && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(8);
   };
 
   const scrollParent = (el) => {
@@ -78,6 +115,12 @@ export function wireMealDrag(list, { canDrag, onDrop }) {
     document.body.appendChild(ghost);
     sourceRow.classList.add("is-drag-source");
     list.classList.add("is-dragging");
+    if (onMove) {
+      label = document.createElement("div");
+      label.className = "drag-label";
+      label.hidden = true;
+      document.body.appendChild(label);
+    }
     scroller = scrollParent(list);
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(15);
   };
@@ -86,14 +129,20 @@ export function wireMealDrag(list, { canDrag, onDrop }) {
     last = { x, y };
     ghost.style.left = `${x - offset.x}px`;
     ghost.style.top = `${y - offset.y}px`;
-    const next = rowAt(x, y);
-    if (next !== target) {
-      target?.classList.remove("is-drop-target");
-      target = next;
-      target?.classList.add("is-drop-target");
-      if (target && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(8);
+    if (label) {
+      const r = ghost.getBoundingClientRect();
+      label.style.left = `${Math.min(window.innerWidth - 16, r.right - 12)}px`;
+      label.style.top = `${r.top - 14}px`;
     }
-    ghost.classList.toggle("has-target", !!target);
+    const { row, group } = under(x, y);
+    hoverGroup = group;
+    if (row !== hoverRow) {
+      clearTimeout(dwellTimer);
+      hoverRow = row;
+      dwelled = false;
+      if (row && onMove) dwellTimer = setTimeout(() => { dwelled = true; setTarget(decide()); }, STACK_DWELL_MS);
+    }
+    setTarget(decide());
     autoScroll();
   };
 
@@ -116,22 +165,29 @@ export function wireMealDrag(list, { canDrag, onDrop }) {
     cancelHold();
     if (scrollRaf) cancelAnimationFrame(scrollRaf);
     scrollRaf = null;
+    clearTimeout(dwellTimer);
     const wasLifted = lifted;
     const src = sourceRow?.dataset.entryId;
-    const dst = target?.dataset.entryId;
+    const chosen = target;
     ghost?.remove();
     ghost = null;
+    label?.remove();
+    label = null;
     sourceRow?.classList.remove("is-drag-source");
-    target?.classList.remove("is-drop-target");
+    target?.el.classList.remove("is-drop-target");
     list.classList.remove("is-dragging");
     lifted = false;
     sourceRow = null;
     target = null;
+    hoverRow = null;
+    hoverGroup = null;
+    dwelled = false;
     start = null;
     if (wasLifted) {
       suppressClick = true; // the click that follows letting go must not open the meal
       setTimeout(() => { suppressClick = false; }, 400);
-      if (drop && src && dst) onDrop(src, dst);
+      if (drop && src && chosen?.kind === "row") onDrop(src, chosen.el.dataset.entryId);
+      else if (drop && src && chosen?.kind === "group") onMove(src, chosen.el.dataset.mealType);
     }
   };
 

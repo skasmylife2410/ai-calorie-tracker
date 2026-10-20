@@ -796,7 +796,7 @@
   },
   "stack": {
     "select": "Seleccionar",
-    "tip": "Mantén una comida y suéltala sobre otra para juntarlas.",
+    "tip": "Mantén una comida para moverla. Déjala sobre otra para juntarlas.",
     "tipPast": "Toca Hoy para comerla otra vez hoy.",
     "selected": "{n} seleccionadas",
     "pick": "Toca comidas para seleccionarlas",
@@ -812,7 +812,13 @@
     "favTip": "Marca varias para registrarlas juntas.",
     "pickFood": "Seleccionar {name}",
     "asOne": "Como una comida",
-    "logMany": "Registrar {n} · {kcal} kcal"
+    "logMany": "Registrar {n} · {kcal} kcal",
+    "foods": "{n} alimento|{n} alimentos",
+    "detach": "Separar",
+    "detachOne": "Separar {name}",
+    "detached": "{name} vuelve a ser una comida aparte",
+    "dropHere": "Suelta aquí",
+    "stackWith": "Juntar con {name}"
   },
   "group": {
     "hint": "Truco: mantén presionada una comida y suéltala sobre otra para agruparlas.",
@@ -1527,8 +1533,7 @@
       "dinner": "Cena",
       "snack": "Meriendas"
     },
-    "loggedAs": "Registrada como",
-    "change": "Cambiar qué comida del día fue"
+    "loggedAs": "Registrada como"
   },
   "feedShare": {
     "short": "Compartir",

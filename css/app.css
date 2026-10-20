@@ -2956,18 +2956,26 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 
 /* --- Meal rows with a footer: mealtime label + Share / ♥ / bin (js/ui/entry-row.js) --- */
 .entry-row.has-foot .entry-row-fg { flex-wrap: wrap; padding-right: 12px !important; row-gap: 10px; }
-.entry-foot { flex-basis: 100%; display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.entry-foot { flex-basis: 100%; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 36px; }
 .entry-foot .entry-row-actions { flex: none; position: static; transform: none; margin-left: auto !important; display: flex; align-items: center; gap: 6px; }
 .entry-foot :is(.entry-row-fav, .entry-row-bin) { width: 36px; height: 36px; }
-.entry-meal-type { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px 0 12px; border: 0; border-radius: 999px;
-  font: inherit; font-size: 13px; font-weight: 700; background: var(--sc-secondary-14, rgba(0,0,0,.06)); color: var(--sc-primary-text); cursor: pointer; }
-.entry-meal-type span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.entry-meal-type .icon { flex: none; color: var(--sc-secondary); }
+/* "2 foods" on a stack, and the foods it holds, each with Detach */
+.entry-foods-btn { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px 0 10px; border: 0; border-radius: 999px;
+  font: inherit; font-size: 12.5px; font-weight: 700; background: var(--sc-secondary-14, rgba(0,0,0,.06)); color: var(--sc-primary-text); cursor: pointer; }
+.entry-foods-btn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-foods { flex-basis: 100%; display: flex; flex-direction: column; padding: 2px 8px 2px 12px; border-radius: 14px; background: var(--sc-secondary-14, rgba(0,0,0,.06)); }
+.entry-food { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+.entry-food + .entry-food { border-top: 1px solid var(--sc-secondary-14, rgba(0,0,0,.06)); }
+.entry-food-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.entry-food-text b { font-size: 14.5px; color: var(--sc-primary-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-food-text small { font-size: 12.5px; color: var(--sc-secondary); }
+.entry-detach { flex: none; height: 30px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--sc-primary-text); background: transparent;
+  font: inherit; font-size: 12.5px; font-weight: 700; color: var(--sc-primary-text); cursor: pointer; }
 /* narrow phones (and longer Spanish words): a little tighter, so the bin never leaves the card */
 @media (max-width: 389px) {
   .entry-foot { gap: 6px; }
   .entry-foot .entry-row-actions { gap: 5px; }
-  .entry-meal-type { padding: 0 8px 0 10px; font-size: 12.5px; }
+  .entry-foods-btn { padding: 0 9px 0 7px; gap: 3px; font-size: 12px; }
   .entry-row-share { padding: 0 10px 0 9px; gap: 5px; font-size: 12.5px; }
   .entry-foot :is(.entry-row-fav, .entry-row-bin) { width: 32px; height: 32px; }
 }
@@ -2976,7 +2984,6 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .entry-row-share.is-shared { background: var(--sc-secondary-14, rgba(0,0,0,.06)); color: var(--sc-primary-text); }
 .entry-row-share.is-shared .icon, .share-row.is-shared .icon { color: var(--sc-good) !important; }
 .entry-row-share:disabled { opacity: .6; }
-.entry-foot.is-picking { gap: 0; }
 
 /* the four mealtimes: on a row (picking) and in the bar after logging */
 .mt-choices { flex: 1; display: flex; gap: 4px; padding: 3px; border-radius: 13px; background: var(--sc-secondary-14, rgba(0,0,0,.06)); min-width: 0; }
@@ -2992,10 +2999,28 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
   .meal-type-bar { animation: undo-in .22s ease-out; }
 }
 
-/* section headers in a day's meals: Breakfast · 480 kcal */
-.ml-section { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 6px 6px; font-size: 15px; font-weight: 800; color: var(--sc-primary-text); }
-.ml-section:first-of-type { padding-top: 2px; }
-.ml-section-kcal { font-size: 13px; font-weight: 600; color: var(--sc-secondary); font-variant-numeric: tabular-nums; }
+/* A day's meals: one card per meal of the day, its meals inside (js/ui/today-meals.js) */
+.ml-group { margin-bottom: 12px; border-radius: 22px; background: var(--sc-card-bg, #fff); box-shadow: 0 0 0 1px var(--sc-secondary-14, rgba(0,0,0,.06)); overflow: hidden; }
+.ml-group.is-empty { display: none; }
+.ml-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 14px 16px 2px; }
+.ml-group-name { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sc-secondary); }
+.ml-group-kcal { font-size: 12px; color: var(--sc-secondary); white-space: nowrap; }
+.ml-group-kcal b { margin-right: 3px; font-size: 18px; font-weight: 800; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
+.ml-group-drop { font-size: 13px; color: var(--sc-secondary); }
+.ml-group-rows .entry-row { filter: none; border-radius: 0 !important; }
+.ml-group-rows .entry-row .entry-row-fg { background: transparent; border-radius: 0; box-shadow: none; }
+.ml-group-rows .entry-row + .entry-row { border-top: 1px solid var(--sc-secondary-14, rgba(0,0,0,.06)); }
+.entry-grip { flex: none; align-self: center; width: 10px; height: 16px; margin: 0 -4px 0 -2px; opacity: .75;
+  background-image: radial-gradient(circle, var(--sc-secondary) 1.5px, transparent 1.8px); background-size: 5px 5.33px; }
+/* while a meal is held: every meal of the day shows, empty ones as a dashed place to drop it */
+.is-dragging .ml-group.is-empty { display: block; background: transparent; box-shadow: none; border: 1.5px dashed var(--sc-secondary); }
+.is-dragging .ml-group.is-empty .ml-group-head { padding-bottom: 14px; }
+.ml-group.is-drop-target { box-shadow: 0 0 0 2px var(--sc-primary-text); }
+.ml-group.is-drop-target .ml-group-name { color: var(--sc-primary-text); }
+.ml-group-rows .entry-row.is-drop-target .entry-row-fg { box-shadow: inset 0 0 0 2.5px var(--sc-primary-text); border-radius: 18px; transform: none; }
+.entry-drag-ghost .entry-row-fg { background: var(--sc-card-bg, #fff) !important; border-radius: 20px !important; box-shadow: 0 0 0 1.5px var(--sc-primary-text) !important; }
+.drag-label { position: fixed; z-index: 1001; transform: translateX(-100%); max-width: 70vw; padding: 7px 12px; border-radius: 999px; pointer-events: none;
+  background: var(--sc-primary-text); color: var(--sc-background, #fff); font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Share on the meal screen and the edit screen */
 .share-row { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--sc-primary-text); color: var(--sc-background, #fff); }
@@ -3045,3 +3070,7 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .shm-count { margin-top: -4px; text-align: right; font-size: 12px; color: var(--sc-secondary); font-variant-numeric: tabular-nums; }
 .shm-go { flex: none; padding: 14px 0; font-size: 16px; }
 .feed-caption { margin: 0 0 6px; }
+/* the meal in your hand is solid: nothing underneath shows through it */
+.entry-drag-ghost, .entry-drag-ghost.has-target { opacity: 1; }
+/* rows with a footer: the name and numbers share the line with the photo and shrink (names end in "…"); only the footer wraps */
+.entry-row.has-foot :is(.entry-complete-body, .entry-body, .entry-fail-body) { flex: 1 1 0; min-width: 0; }

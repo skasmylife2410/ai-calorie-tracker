@@ -3,16 +3,13 @@
 
 import { safeSrc } from "../safe-src.js";
 import { entryState, isWaitingForAi } from "../queue.js";
-import { isGroupedEntry } from "../store.js";
+import { isGroupedEntry, isFavorited, itemsOfEntry } from "../store.js";
 import { ANALYSIS_MODES } from "../api.js";
 import { icon } from "./icons.js";
 import { foodCategory, foodIconSvg } from "./food-icons.js";
 import { ringGauge } from "./ring.js";
 import { t } from "../i18n.js";
 import { sureBadgeHtml } from "./questions.js";
-import { isFavorited } from "../store.js";
-import { mealTypeOf } from "../nutrition.js";
-import { mealTypeChoicesHtml } from "./meal-type.js";
 
 const MACRO_META = [
   { key: "proteinG", label: "P", icon: "fishFill", color: "var(--sc-protein)" },
@@ -138,24 +135,28 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// stacks whose foods are showing, so a redraw of the list keeps them open
+const openFoods = new Set();
+
 /**
  * Mounts one entry row into `container` (appends). Returns a cleanup() to call before the next
  * re-render (clears the pending-ring ticking interval, if any).
  * @param {HTMLElement} container
  * @param {object} entry
  * @param {{onTap:(entry)=>void, onDelete:(entry)=>void, onShare?:Function, onFavorite?:Function,
- *   onCopyToday?:Function, onMealType?:(entry, type)=>void,
+ *   onCopyToday?:Function, footer?:boolean, grip?:boolean, onDetach?:(entry, index)=>void,
  *   select?:{on:boolean, selected:boolean, onToggle:(entry)=>void}}} handlers
  *   select: the list is in Select mode: the row shows a check and a tap selects it instead of opening
- *   onMealType: the row gets a footer with its mealtime (tap to change) and the buttons, so the
- *   name has the whole width and Share can say what it does
+ *   footer: the buttons sit on a line of their own, so the name has the whole width and Share can
+ *   say what it does. grip: the dots that say the meal can be held and moved.
+ *   onDetach: a stacked meal shows "2 foods", which opens its foods, each with Detach
  */
-export function mountEntryRow(container, entry, { onTap, onDelete, onShare = null, onFavorite = null, onCopyToday = null, onMealType = null, select = null }) {
+export function mountEntryRow(container, entry, { onTap, onDelete, onShare = null, onFavorite = null, onCopyToday = null, footer = false, grip = false, onDetach = null, select = null }) {
   const state = entryState(entry);
   const wrap = document.createElement("div");
   const selecting = Boolean(select?.on) && state !== "pending";
-  const foot = Boolean(onMealType) && !selecting;
-  wrap.className = `entry-row${foot ? " has-foot" : ""}${selecting ? " is-selecting" : ""}${selecting && select.selected ? " is-selected" : ""}`;
+  const foot = footer && !selecting;
+  wrap.className = `entry-row${foot ? " has-foot" : ""}${grip && !selecting ? " has-grip" : ""}${selecting ? " is-selecting" : ""}${selecting && select.selected ? " is-selected" : ""}`;
   wrap.dataset.entryId = entry.id;
   wrap.dataset.state = state;
   const fav = onFavorite && state !== "pending" && state !== "failed" ? isFavorited(entry) : false;
@@ -178,11 +179,26 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
   // No swipe gestures on rows any more: sideways swipes now move between tabs, and a visible
   // bin is quicker than any gesture anyway. Tap the row to edit, tap the bin to remove.
   const actsHtml = acts.length ? `<div class="entry-row-actions">${acts.join("")}</div>` : "";
-  const mealChip = `<button type="button" class="entry-meal-type" aria-label="${t("mealType.change")}"><span>${t(`mealType.${mealTypeOf(entry)}`)}</span>${icon("chevronDown", { size: 11 })}</button>`;
+  // a stack's foods, each one detachable (in case it was stacked by mistake)
+  const foods = onDetach && foot && state !== "pending" && state !== "failed" && isGroupedEntry(entry) ? itemsOfEntry(entry) : [];
+  const canDetach = foods.length > 1;
+  const foodsOpen = canDetach && openFoods.has(entry.id);
+  const foodsChip = canDetach
+    ? `<button type="button" class="entry-foods-btn" aria-expanded="${foodsOpen}">${icon(foodsOpen ? "chevronUp" : "chevronDown", { size: 12 })}<span>${t("stack.foods", { n: foods.length })}</span></button>`
+    : "<span></span>";
+  const foodsHtml = foodsOpen ? `
+      <div class="entry-foods">
+        ${foods.map((f, i) => `
+          <div class="entry-food">
+            <span class="entry-food-text"><b>${escapeHtml(f.name)}</b><small>${Math.round(f.calories)} kcal${Number(f.gramsEstimate) > 0 ? ` · ${Math.round(f.gramsEstimate)} g` : ""}</small></span>
+            <button type="button" class="entry-detach" data-detach="${i}" aria-label="${t("stack.detachOne", { name: escapeHtml(f.name) })}">${t("stack.detach")}</button>
+          </div>`).join("")}
+      </div>` : "";
   wrap.innerHTML = `
     <div class="entry-row-fg${state === "failed" ? " failed" : ""}">
+      ${grip && !selecting ? `<span class="entry-grip" aria-hidden="true"></span>` : ""}
       ${state === "pending" ? pendingRowHtml(entry) : state === "failed" ? failedRowHtml(entry) : completedRowHtml(entry)}
-      ${foot ? `<div class="entry-foot">${mealChip}${actsHtml}</div>` : ""}
+      ${foot ? `<div class="entry-foot">${foodsChip}${actsHtml}</div>${foodsHtml}` : ""}
     </div>
     ${foot ? "" : actsHtml}
     ${selecting ? `<span class="entry-row-check" aria-hidden="true">${select.selected ? icon("checkmark", { size: 14 }) : ""}</span>` : ""}
@@ -191,7 +207,7 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
   container.appendChild(wrap);
 
   wrap.addEventListener("click", (e) => {
-    if (e.target.closest(".entry-row-actions, .entry-foot")) return;
+    if (e.target.closest(".entry-row-actions, .entry-foot, .entry-foods")) return;
     if (selecting) { select.onToggle(entry); return; }
     // an unsure analysis with questions waiting: ask them first
     if (state !== "pending" && Array.isArray(entry.analysisQuestions) && entry.analysisQuestions.length > 0) {
@@ -217,17 +233,19 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
     btn.setAttribute("aria-label", t("feedShare.sharedLabel"));
     btn.innerHTML = sharedInner;
   });
-  // the mealtime: tap it, and the four choices take the footer's place; one tap files the meal
-  wrap.querySelector(".entry-meal-type")?.addEventListener("click", (e) => {
+  // "2 foods": show or hide what the stack holds
+  wrap.querySelector(".entry-foods-btn")?.addEventListener("click", (e) => {
     e.stopPropagation();
-    const box = wrap.querySelector(".entry-foot");
-    box.classList.add("is-picking");
-    box.innerHTML = `<div class="mt-choices">${mealTypeChoicesHtml(mealTypeOf(entry))}</div>`;
-    box.querySelectorAll("[data-meal-type]").forEach((b) => b.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      onMealType(entry, b.dataset.mealType);
-    }));
+    if (openFoods.has(entry.id)) openFoods.delete(entry.id);
+    else openFoods.add(entry.id);
+    const tmp = document.createElement("div");
+    mountEntryRow(tmp, entry, { onTap, onDelete, onShare, onFavorite, onCopyToday, footer, grip, onDetach, select });
+    wrap.replaceWith(tmp.firstElementChild);
   });
+  wrap.querySelectorAll("[data-detach]").forEach((b) => b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onDetach(entry, Number(b.dataset.detach));
+  }));
   wrap.querySelector(".entry-row-fav")?.addEventListener("click", (e) => {
     e.stopPropagation();
     const on = onFavorite(entry);
