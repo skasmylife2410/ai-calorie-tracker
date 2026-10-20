@@ -3007,6 +3007,12 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .ml-group-kcal { font-size: 12px; color: var(--sc-secondary); white-space: nowrap; }
 .ml-group-kcal b { margin-right: 3px; font-size: 18px; font-weight: 800; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
 .ml-group-drop { font-size: 13px; color: var(--sc-secondary); }
+.ml-group-right { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ml-group-right .icon { align-self: center; color: var(--sc-secondary); }
+/* a meal of the day that's over folds to its header; a tap opens it */
+.ml-group-head.is-toggle { width: 100%; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ml-group.is-folded .ml-group-head { padding-bottom: 14px; }
+.ml-group.is-folded .ml-group-rows { display: none; }
 .ml-group-rows .entry-row { filter: none; border-radius: 0 !important; }
 .ml-group-rows .entry-row .entry-row-fg { background: transparent; border-radius: 0; box-shadow: none; }
 .ml-group-rows .entry-row + .entry-row { border-top: 1px solid var(--sc-secondary-14, rgba(0,0,0,.06)); }

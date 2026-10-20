@@ -11,7 +11,7 @@ import * as queue from "../queue.js";
 import { icon } from "./icons.js";
 import { deleteWithUndo } from "./undo-delete.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
-import { localDateString, MEAL_TYPES, mealTypeOf } from "../nutrition.js";
+import { localDateString, MEAL_TYPES, mealTypeOf, finishedMealTypes } from "../nutrition.js";
 import { shareToFeed, canShare } from "./share-meal.js";
 // opened on a tap, so loaded then (app.js warms them up once the app is idle)
 const openResultsSheet = (...args) => import("./results.js").then((m) => m.openResultsSheet(...args));
@@ -75,6 +75,9 @@ export function render(container) {
   cleanups.push(renderMealList(container.querySelector("#tm-list"), today, () => render(container)));
 }
 
+// Meals of the day opened again after folding away ("YYYY-MM-DD:breakfast"), while the app is open.
+const unfolded = new Set();
+
 // Select mode: one list at a time, kept across redraws of that day's list.
 let selecting = null; // { day: "YYYY-MM-DD", ids: Set<string> }
 
@@ -128,19 +131,37 @@ export function renderMealList(list, date, onChange) {
     onChange();
     toast(t("stack.detached", { name: out.detached.name }), { undo: () => { out.undo(); onChange(); } });
   };
-  // one card per meal of the day; the empty ones only show while a meal is held, as places to drop it
+  // one card per meal of the day; the empty ones only show while a meal is held, as places to drop it.
+  // Breakfast folds to its header once lunch or dinner has started, lunch once dinner has (a tap opens it).
+  const finished = finishedMealTypes(meals.map(mealTypeOf));
   for (const type of MEAL_TYPES) {
     const inIt = meals.filter((m) => mealTypeOf(m) === type);
     const kcal = inIt.reduce((a, m) => a + (Number(m.calories) || 0), 0);
+    const foldable = finished.includes(type);
+    const head = (folded) => `
+      <span class="ml-group-name">${t(`mealType.plural.${type}`)}</span>
+      <span class="ml-group-right">
+        ${inIt.length ? `<span class="ml-group-kcal">${folded ? `${t("us.mealsCount", { n: inIt.length })} · ` : ""}<b>${formatNumber(Math.round(kcal))}</b> kcal</span>` : `<span class="ml-group-drop">${t("stack.dropHere")}</span>`}
+        ${foldable ? icon(folded ? "chevronDown" : "chevronUp", { size: 14 }) : ""}
+      </span>`;
+    const folded = foldable && !unfolded.has(`${dayKey}:${type}`);
     list.insertAdjacentHTML("beforeend", `
-      <section class="ml-group${inIt.length ? "" : " is-empty"}" data-meal-type="${type}">
-        <header class="ml-group-head">
-          <span class="ml-group-name">${t(`mealType.plural.${type}`)}</span>
-          ${inIt.length ? `<span class="ml-group-kcal"><b>${formatNumber(Math.round(kcal))}</b> kcal</span>` : `<span class="ml-group-drop">${t("stack.dropHere")}</span>`}
-        </header>
+      <section class="ml-group${inIt.length ? "" : " is-empty"}${folded ? " is-folded" : ""}" data-meal-type="${type}">
+        ${foldable
+          ? `<button type="button" class="ml-group-head is-toggle" aria-expanded="${!folded}">${head(folded)}</button>`
+          : `<header class="ml-group-head">${head(false)}</header>`}
         <div class="ml-group-rows"></div>
       </section>`);
-    const rows = list.lastElementChild.querySelector(".ml-group-rows");
+    const group = list.lastElementChild;
+    group.querySelector(".ml-group-head.is-toggle")?.addEventListener("click", (e) => {
+      const key = `${dayKey}:${type}`;
+      const nowFolded = !group.classList.contains("is-folded");
+      if (nowFolded) unfolded.delete(key); else unfolded.add(key);
+      group.classList.toggle("is-folded", nowFolded);
+      e.currentTarget.setAttribute("aria-expanded", String(!nowFolded));
+      e.currentTarget.innerHTML = head(nowFolded);
+    });
+    const rows = group.querySelector(".ml-group-rows");
     for (const entry of inIt) own.push(
       mountEntryRow(rows, entry, {
         footer: true,

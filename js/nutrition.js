@@ -905,3 +905,12 @@ export function guessMealType(timestamp) {
 export function mealTypeOf(entry) {
   return MEAL_TYPES.includes(entry?.mealType) ? entry.mealType : guessMealType(entry?.timestamp ?? Date.now());
 }
+
+// a meal of the day is over once a later main meal has started; snacks never are
+const LATER_MEALS = { breakfast: ["lunch", "dinner"], lunch: ["dinner"] };
+
+/** Which meals of the day fold away on Home: breakfast once lunch or dinner has a meal, lunch once dinner has. */
+export function finishedMealTypes(present) {
+  const has = new Set(present);
+  return MEAL_TYPES.filter((type) => has.has(type) && (LATER_MEALS[type] ?? []).some((later) => has.has(later)));
+}

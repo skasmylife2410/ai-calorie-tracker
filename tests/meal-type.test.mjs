@@ -85,3 +85,14 @@ test("a food detached from a stack is its own meal again, same time and meal of 
   assert.equal(store.detachItem(out.detached.id, 0), null, "a single meal has nothing to detach");
   assert.equal(store.detachItem(stack.id, 9), null);
 });
+
+test("breakfast folds away once lunch or dinner has a meal, lunch once dinner has; never dinner or snacks", async () => {
+  const { finishedMealTypes } = await import("../js/nutrition.js");
+  assert.deepEqual(finishedMealTypes(["breakfast"]), []);
+  assert.deepEqual(finishedMealTypes(["breakfast", "snack"]), [], "a snack doesn't end breakfast");
+  assert.deepEqual(finishedMealTypes(["breakfast", "lunch"]), ["breakfast"]);
+  assert.deepEqual(finishedMealTypes(["breakfast", "lunch", "dinner", "snack"]), ["breakfast", "lunch"]);
+  assert.deepEqual(finishedMealTypes(["breakfast", "dinner"]), ["breakfast"], "no lunch: breakfast still ends at dinner");
+  assert.deepEqual(finishedMealTypes(["lunch", "dinner", "snack"]), ["lunch"]);
+  assert.deepEqual(finishedMealTypes(["dinner", "snack"]), []);
+});
