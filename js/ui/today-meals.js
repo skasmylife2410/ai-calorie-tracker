@@ -12,7 +12,8 @@ import { icon } from "./icons.js";
 import { deleteWithUndo } from "./undo-delete.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 import { localDateString, MEAL_TYPES, mealTypeOf, finishedMealTypes } from "../nutrition.js";
-import { shareToFeed, canShare } from "./share-meal.js";
+import { shareToFeed, shareMealtimeToFeed, canShare } from "./share-meal.js";
+import { mealtimeSummary } from "../mealtime.js";
 // opened on a tap, so loaded then (app.js warms them up once the app is idle)
 const openResultsSheet = (...args) => import("./results.js").then((m) => m.openResultsSheet(...args));
 const openAddFoodSheet = (...args) => import("./addfood.js").then((m) => m.openAddFoodSheet(...args));
@@ -187,6 +188,27 @@ export function renderMealList(list, date, onChange) {
         onDelete: (e) => deleteWithUndo(e, onChange),
       })
     );
+    // two or more meals under one mealtime can go out together: one post, and others can eat the same
+    const goes = inIt.filter(canShare);
+    if (goes.length >= 2) {
+      const meal = t(`mealType.lower.${type}`);
+      const shared = goes.every((e) => Number(e.sharedAt) > 0);
+      group.insertAdjacentHTML("beforeend", `
+        <div class="ml-group-foot">
+          ${shared
+            ? `<button type="button" class="entry-row-share is-shared" aria-label="${t("feedShare.sharedLabel")}">${icon("checkmark", { size: 13 })}<span>${t("feedShare.shared")}</span></button>`
+            : `<button type="button" class="entry-row-share" aria-label="${t("feedShare.mealtimeLabel", { meal })}">${icon("feedShare", { size: 17 })}<span>${t("feedShare.mealtime", { meal })}</span></button>`}
+        </div>`);
+      group.querySelector(".ml-group-foot .entry-row-share").addEventListener("click", async (e) => {
+        if (shared) { globalThis.snapcalGoTo?.("shared"); return; }
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const fresh = store.entriesForDay(date).filter((m) => mealTypeOf(m) === type);
+        const done = await shareMealtimeToFeed(mealtimeSummary(type, fresh, dayKey));
+        btn.disabled = false;
+        if (done) onChange();
+      });
+    }
   }
 
   if (sel) showSelectBar(sel, { isToday, onDone: () => { selecting = null; closeSelectBar(); redraw(); } });

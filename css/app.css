@@ -3013,7 +3013,10 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 /* a meal of the day that's over folds to its header; a tap opens it */
 .ml-group-head.is-toggle { width: 100%; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ml-group.is-folded .ml-group-head { padding-bottom: 14px; }
-.ml-group.is-folded .ml-group-rows { display: none; }
+.ml-group.is-folded :is(.ml-group-rows, .ml-group-foot) { display: none; }
+.ml-group-foot { display: flex; justify-content: flex-end; padding: 8px 12px 12px; border-top: 1px solid var(--sc-secondary-14, rgba(0,0,0,.06)); }
+/* the whole mealtime's Share is quieter than each meal's own: a ring, not a solid */
+.ml-group-foot .entry-row-share:not(.is-shared) { background: transparent; color: var(--sc-primary-text); box-shadow: inset 0 0 0 1.5px var(--sc-primary-text); }
 .ml-group-rows .entry-row { filter: none; border-radius: 0 !important; }
 .ml-group-rows .entry-row .entry-row-fg { background: transparent; border-radius: 0; box-shadow: none; }
 .ml-group-rows .entry-row + .entry-row { border-top: 1px solid var(--sc-secondary-14, rgba(0,0,0,.06)); }
@@ -3081,3 +3084,33 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .entry-drag-ghost, .entry-drag-ghost.has-target { opacity: 1; }
 /* rows with a footer: the name and numbers share the line with the photo and shrink (names end in "…"); only the footer wraps */
 .entry-row.has-foot :is(.entry-complete-body, .entry-body, .entry-fail-body) { flex: 1 1 0; min-width: 0; }
+
+/* sharing a mealtime: what goes out (collage or board), and "I ate the same" */
+.shm-mealtime { display: flex; flex-direction: column; gap: 10px; }
+.shm-collage { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; }
+.shm-board { overflow: hidden; border-radius: 16px; box-shadow: 0 0 0 1px var(--sc-secondary-14, rgba(0,0,0,.06)); }
+.shm-board .ib { aspect-ratio: 4 / 3; }
+.shm-mealtime .shm-text b { display: block; }
+.as-body { padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; }
+.as-head { display: flex; flex-direction: column; gap: 4px; padding: 0 2px; }
+.as-head b { font-size: 20px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.as-head b::first-letter { text-transform: uppercase; }
+.as-head small { font-size: 14px; line-height: 1.4; color: var(--sc-secondary); }
+.as-types { flex: none; }
+.as-foods { list-style: none; margin: 0; padding: 0; border-radius: 16px; overflow: hidden; background: var(--sc-card-bg, #fff); box-shadow: 0 0 0 1px var(--sc-secondary-14, rgba(0,0,0,.06)); }
+.as-food { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.as-food + .as-food { border-top: 1px solid var(--sc-secondary-14, rgba(0,0,0,.06)); }
+.as-check { flex: none; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; border-radius: 8px; border: 1.5px solid var(--sc-primary-text); background: transparent; color: var(--sc-background, #fff); cursor: pointer; }
+.as-check[aria-checked="true"] { background: var(--sc-primary-text); }
+.as-glyph { flex: none; display: grid; place-items: center; color: var(--sc-primary-text); }
+.as-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.as-name b { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-name small { font-size: 12.5px; color: var(--sc-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.as-food.is-off .as-name b { text-decoration: line-through; }
+.as-food.is-off .as-glyph { opacity: .4; }
+.as-portions { flex: none; width: 112px; }
+.as-food.is-off .as-portions { visibility: hidden; } /* a food you didn't have has no portion to pick */
+.as-total { text-align: center; font-size: 14px; color: var(--sc-secondary); font-variant-numeric: tabular-nums; }
+.as-total b { font-size: 22px; font-weight: 800; color: var(--sc-primary-text); }
+.as-go { flex: none; padding: 14px 0; font-size: 16px; }
+@media (max-width: 360px) { .as-glyph { display: none; } .as-portions { width: 100px; } }

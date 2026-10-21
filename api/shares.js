@@ -4,6 +4,9 @@
 //                                                            each with its comments
 // POST { op: "share", kind, item }      -> { ok, id }      kind "meal" (a logged meal, its photo if it
 //                                                            has one, an optional caption in `note`;
+//                                                            with `mealType` a whole breakfast, lunch,
+//                                                            dinner or snack: its foods in `items`, its
+//                                                            photos as one collage in `photo`;
 //                                                            up to MEALS_PER_DAY; the same meal twice
 //                                                            in one group is one post) or "post" (a
 //                                                            short caption, photo optional; one a day)
@@ -23,7 +26,7 @@ import { isSafeDataImage } from "../js/safe-src.js";
 import { requireUser } from "./_auth.js";
 import { select, insert, remove, parseBody, newId, restBase } from "./_rest.js";
 import { resolveGroup } from "./_groups.js";
-import { cleanMicros } from "../js/nutrition.js";
+import { cleanMicros, MEAL_TYPES, MAX_SHARED_FOODS } from "../js/nutrition.js";
 import { cleanGif, gifsFromGiphy } from "../js/gif.js";
 import { notify, displayName } from "./_push.js";
 import { membersOf } from "./_groups.js";
@@ -43,6 +46,7 @@ const COMMENT_MAX = 100;
 const COMMENTS_PER_DAY = 40;
 const COMMENTS_PER_POST = 50;
 
+const ES_MEALTIME = { breakfast: "el desayuno", lunch: "el almuerzo", dinner: "la cena", snack: "una merienda" };
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
 const num = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v) * 10) / 10) : 0);
 const str = (v, max) => String(v ?? "").trim().slice(0, max);
@@ -94,11 +98,13 @@ export function cleanItem(kind, item = {}) {
   if (kind === "meal") {
     const photo = typeof item.photo === "string" && isSafeDataImage(item.photo) && item.photo.length <= MAX_PHOTO ? item.photo : null;
     const items = Array.isArray(item.items)
-      ? item.items.slice(0, 12).map((i) => ({ name: str(i.name, 60), gramsEstimate: num(i.gramsEstimate), calories: num(i.calories), proteinG: num(i.proteinG), carbsG: num(i.carbsG), fatG: num(i.fatG), micros: boundedMicros(i.micros) }))
+      ? item.items.slice(0, MAX_SHARED_FOODS).map((i) => ({ name: str(i.name, 60), gramsEstimate: num(i.gramsEstimate), calories: num(i.calories), proteinG: num(i.proteinG), carbsG: num(i.carbsG), fatG: num(i.fatG), micros: boundedMicros(i.micros) }))
       : [];
     // which meal in their log it is, so sharing it again doesn't post it twice
     const entryId = /^[0-9a-zA-Z-]{1,64}$/.test(String(item.entryId ?? "")) ? String(item.entryId) : null;
-    return { ...base, micros: boundedMicros(item.micros), photo, items, ...(entryId ? { entryId } : {}) };
+    // a whole mealtime (breakfast, lunch…) rather than one meal: the feed labels it, others can copy its foods
+    const mealType = MEAL_TYPES.includes(item.mealType) ? item.mealType : null;
+    return { ...base, micros: boundedMicros(item.micros), photo, items, ...(mealType ? { mealType } : {}), ...(entryId ? { entryId } : {}) };
   }
   return {
     ...base,
@@ -174,7 +180,9 @@ export default async function handler(req, res) {
       await notify(members.filter((u) => u !== me), (lang) => ({
         title: kind === "post"
           ? (lang === "es" ? `${who} publicó algo` : `${who} posted`)
-          : (lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`),
+          : data.mealType
+            ? (lang === "es" ? `${who} compartió ${ES_MEALTIME[data.mealType]}` : `${who} shared ${data.mealType}`)
+            : (lang === "es" ? `${who} compartió una comida` : `${who} shared a meal`),
         body: kind === "post" ? (data.text || (data.gif ? "GIF" : lang === "es" ? "Una foto" : "A photo")) : data.note || `${data.name} · ${Math.round(data.calories)} kcal`,
         url: "/?tab=shared",
         tag: `post-${id}`,

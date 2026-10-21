@@ -927,6 +927,9 @@ export function boardGoals(profileData) {
 // ---------------------------------------------------------------------------
 
 /** The day's meals, in the order Home lists them. */
+/** Most foods in one shared mealtime (the phone and api/shares.js hold the same line). */
+export const MAX_SHARED_FOODS = 24;
+
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
 
 /**

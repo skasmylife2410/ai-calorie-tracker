@@ -8,6 +8,8 @@ import { icon } from "./icons.js";
 import { gifImgHtml, gifUrl, gifSources } from "../gif.js";
 import { openGifPicker } from "./gif-picker.js";
 import { openCropSheet } from "./crop.js";
+import { ingredientBoardHtml } from "./ingredient-board.js";
+import { openAteSameSheet, isMealtimePost } from "./ate-same.js";
 
 /** The "GIF" mark on buttons: the letters in a small rounded box, drawn like the other glyphs. */
 export const GIF_GLYPH = `<span class="gif-glyph" aria-hidden="true">GIF</span>`;
@@ -193,11 +195,12 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     const mine = s.owner === me;
     const comments = s.comments ?? [];
     const isPost = s.kind === "post";
+    const mealtime = isMealtimePost(s); // a whole breakfast, lunch…: collage or board, and its foods
     const all = expanded.has(s.id);
     const shown = all ? comments : comments.slice(-COMMENTS_SHOWN);
     const hiddenCount = comments.length - shown.length;
     return `
-      <article class="feed-card${isPost ? " is-post" : ""}${d.photo || d.gif ? "" : " no-photo"}" data-id="${esc(s.id)}">
+      <article class="feed-card${isPost ? " is-post" : ""}${d.photo || d.gif || mealtime ? "" : " no-photo"}" data-id="${esc(s.id)}">
         <header class="feed-head">
           ${avHtml(s.owner)}
           <span class="feed-who">${esc(nameOf(s.owner))}</span>
@@ -205,10 +208,12 @@ export async function renderFeed(host, { me, people, colors, group = null, group
           ${mine ? `<button type="button" class="feed-del" data-del="${esc(s.id)}" aria-label="${t("social.deletePost")}">${icon("trashFill", { size: 15 })}</button>` : ""}
         </header>
         ${d.photo ? `<img class="feed-photo" src="${safeSrc(d.photo)}" alt="${esc(d.name || d.text || "")}" loading="lazy">` : ""}
+        ${mealtime && !d.photo && !d.photoHidden ? `<div class="feed-board">${ingredientBoardHtml(d.items)}</div>` : ""}
         ${d.photoHidden ? `<p class="fc-hidden feed-photo-hidden">${t("social.photoHidden")}</p>` : ""}
         ${!d.photo && d.gif ? gifImgHtml(d.gif, { cls: "feed-photo feed-gif", size: "large", alt: t("gif.by", { name: nameOf(s.owner) }) }) : ""}
         <div class="feed-main">
           ${isPost ? (d.text ? `<p class="feed-text">${esc(d.text)}</p>` : "") : `
+            ${mealtime ? `<div class="feed-kicker">${t(`mealType.${d.mealType}`)} · ${t("stack.foods", { n: d.items.length })}</div>` : ""}
             ${d.note ? `<p class="feed-text feed-caption">${esc(d.note)}</p>` : ""}
             <div class="feed-title"><span class="feed-name">${esc(d.name)}</span><span class="feed-kcal">${formatNumber(d.calories)}</span><span class="feed-unit">kcal</span></div>
             <div class="feed-macros">
@@ -216,6 +221,7 @@ export async function renderFeed(host, { me, people, colors, group = null, group
               <span><i style="background:var(--sc-carbs)"></i>${formatNumber(d.carbsG)} g ${t("home.carbsShort").toLowerCase()}</span>
               <span><i style="background:var(--sc-fat)"></i>${formatNumber(d.fatG)} g ${t("home.fatShort").toLowerCase()}</span>
             </div>
+            ${mealtime && d.photo ? `<p class="feed-foods">${d.items.map((i) => esc(i.name)).join(" · ")}</p>` : ""}
 `}
           <div class="feed-actions">
             <span class="feed-count">${icon("textBubbleFill", { size: 15 })}${comments.length ? t("social.commentsCount", { n: comments.length }) : t("social.comment")}</span>
@@ -334,6 +340,16 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     list.querySelectorAll("[data-log]").forEach((b) => b.addEventListener("click", async () => {
       const s = out.shares.find((x) => x.id === b.dataset.log);
       if (!s) return;
+      if (isMealtimePost(s)) {
+        // a whole mealtime: pick what you had first
+        const { added: n, mealType } = await openAteSameSheet(s, { who: nameOf(s.owner) });
+        if (!n) return;
+        markAteToo(s.id);
+        b.disabled = true;
+        b.textContent = `✓ ${t("social.logged")}`;
+        toast(t("ateSame.done", { foods: t("stack.foods", { n }), meal: t(`mealType.lower.${mealType}`) }));
+        return;
+      }
       b.disabled = true;
       await logAteToo(s);
       markAteToo(s.id);

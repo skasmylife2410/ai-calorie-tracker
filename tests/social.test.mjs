@@ -167,7 +167,7 @@ test("shared items are cleaned: bad photos dropped, numbers bounded, lists cappe
   assert.equal(meal.calories, 0);
   assert.equal(meal.proteinG, 0);
   assert.equal(meal.photo, null, "only inline image data URLs are kept");
-  assert.equal(meal.items.length, 12);
+  assert.equal(meal.items.length, 24, "a whole mealtime can carry up to 24 foods");
   assert.equal("extra" in meal, false);
 
   const big = cleanItem("meal", { name: "a", photo: "data:image/jpeg;base64," + "A".repeat(200000) });

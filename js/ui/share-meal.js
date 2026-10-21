@@ -1,14 +1,20 @@
-// share-meal.js — "Share" on a meal: a short sheet shows the meal, which group it goes to (when
-// you're in more than one) and an optional caption; then it goes to that group's feed, the meal
-// remembers it's there (its row then says "Shared"), and a note says where it went, with a way
-// to go and see it. Any finished meal can be shared, with or without a photo.
+// share-meal.js — "Share" on a meal, or on a whole breakfast, lunch, dinner or snack: a short sheet
+// shows what's going out, which group it goes to (when you're in more than one) and an optional
+// caption; then it goes to that group's feed, the meal(s) remember it's there (the row then says
+// "Shared"), and a note says where it went, with a way to go and see it. Any finished meal can be
+// shared, with or without a photo. A mealtime goes as one post: its photos as a collage, or, with
+// none, its foods drawn as a board (ingredient-board.js).
 
 import * as store from "../store.js";
 import { t, formatNumber } from "../i18n.js";
-import { shareMeal, sharingGroups, CAPTION_MAX } from "../social.js";
+import { shareMeal, shareMealtime, collagePhotos, sharingGroups, CAPTION_MAX } from "../social.js";
+import { canShare } from "../mealtime.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { safeSrc } from "../safe-src.js";
 import { foodCategory, foodIconSvg } from "./food-icons.js";
+import { ingredientBoardHtml } from "./ingredient-board.js";
+
+export { canShare };
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 let timer = null;
@@ -34,16 +40,13 @@ const reason = (out) => ({
   network: t("errors.offline"),
 }[out.errorType] ?? (out.message || t("errors.generic")));
 
-/** Whether a meal can go to the feed: done analysing (a photo is optional). */
-export const canShare = (entry) => Boolean(entry) && entry.isPending !== true && entry.analysisFailed !== true;
-
 /**
- * Opens the share sheet for `entry` (`overrides`: edits on screen that aren't saved yet).
- * Resolves true once the meal is in the feed, false if it was cancelled or refused.
+ * The sheet itself. `previewHtml` is what's going out; `send(caption, groupId)` posts it and
+ * answers like api/shares.js; `onShared()` marks the meal(s). Resolves true once it's in the
+ * feed, false if it was cancelled or refused.
  */
-export async function shareToFeed(entry, overrides = {}) {
+async function openShareSheet({ previewHtml, send, onShared }) {
   const groups = await sharingGroups();
-  const meal = { ...entry, ...overrides };
   return new Promise((resolve) => {
     let settled = false;
     const settle = (v) => { if (!settled) { settled = true; resolve(v); } };
@@ -51,15 +54,10 @@ export async function shareToFeed(entry, overrides = {}) {
     openSheet({
       onClosed: () => settle(false),
       render(panel, close) {
-        const thumb = meal.photoDataUrl
-          ? `<img class="shm-thumb" src="${safeSrc(meal.photoDataUrl)}" alt="">`
-          : `<span class="shm-thumb is-food" aria-hidden="true">${foodIconSvg(foodCategory(meal), { size: 24 })}</span>`;
         panel.innerHTML = `
           ${navBar({ title: t("feedShare.title"), leading: { label: t("app.cancel") } })}
           <div class="sheet-panel-body shm-body">
-            <div class="shm-meal">${thumb}
-              <span class="shm-text"><b>${esc(meal.name)}</b><small>${formatNumber(Math.round(Number(meal.calories) || 0))} kcal</small></span>
-            </div>
+            ${previewHtml}
             ${groups.length > 1 ? `
               <div class="shm-label">${t("feedShare.with")}</div>
               <div class="us-groups shm-groups" role="group" aria-label="${t("feedShare.with")}">
@@ -82,7 +80,7 @@ export async function shareToFeed(entry, overrides = {}) {
         go.addEventListener("click", async () => {
           go.disabled = true;
           go.textContent = t("auth.working");
-          const out = await shareMeal({ ...meal, entryId: entry.id }, caption.value, group?.id ?? null);
+          const out = await send(caption.value, group?.id ?? null);
           if (!out.ok) {
             const err = panel.querySelector("#shm-err");
             err.hidden = false;
@@ -91,12 +89,51 @@ export async function shareToFeed(entry, overrides = {}) {
             go.textContent = t("feedShare.to", { group: group?.name ?? t("social.tab") });
             return;
           }
-          if (store.getFoodEntry(entry.id)) store.updateFoodEntry(entry.id, { sharedAt: Date.now() });
+          onShared();
           settle(true);
           close();
           note(t("feedShare.done", { group: out.group?.name ?? group?.name ?? t("social.tab") }), { see: true });
         });
       },
     });
+  });
+}
+
+/**
+ * Opens the share sheet for `entry` (`overrides`: edits on screen that aren't saved yet).
+ * Resolves true once the meal is in the feed, false if it was cancelled or refused.
+ */
+export function shareToFeed(entry, overrides = {}) {
+  const meal = { ...entry, ...overrides };
+  const thumb = meal.photoDataUrl
+    ? `<img class="shm-thumb" src="${safeSrc(meal.photoDataUrl)}" alt="">`
+    : `<span class="shm-thumb is-food" aria-hidden="true">${foodIconSvg(foodCategory(meal), { size: 24 })}</span>`;
+  return openShareSheet({
+    previewHtml: `
+      <div class="shm-meal">${thumb}
+        <span class="shm-text"><b>${esc(meal.name)}</b><small>${formatNumber(Math.round(Number(meal.calories) || 0))} kcal</small></span>
+      </div>`,
+    send: (caption, group) => shareMeal({ ...meal, entryId: entry.id }, caption, group),
+    onShared: () => { if (store.getFoodEntry(entry.id)) store.updateFoodEntry(entry.id, { sharedAt: Date.now() }); },
+  });
+}
+
+/**
+ * Opens the share sheet for a whole mealtime (`summary`: mealtime.mealtimeSummary). It shows what
+ * will be posted: the collage of the photos, or the foods drawn as a board.
+ */
+export async function shareMealtimeToFeed(summary) {
+  const collage = await collagePhotos(summary.photos);
+  const hero = collage
+    ? `<img class="shm-collage" src="${safeSrc(collage)}" alt="">`
+    : `<div class="shm-board">${ingredientBoardHtml(summary.items)}</div>`;
+  return openShareSheet({
+    previewHtml: `
+      <div class="shm-mealtime">
+        ${hero}
+        <div class="shm-text"><b>${t(`mealType.${summary.mealType}`)} · ${t("stack.foods", { n: summary.items.length })}</b><small>${esc(summary.name)} · ${formatNumber(Math.round(summary.calories))} kcal</small></div>
+      </div>`,
+    send: (caption, group) => shareMealtime({ ...summary, collage }, caption, group),
+    onShared: () => { const now = Date.now(); for (const id of summary.ids) if (store.getFoodEntry(id)) store.updateFoodEntry(id, { sharedAt: now }); },
   });
 }

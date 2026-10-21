@@ -437,7 +437,7 @@
     "share": "Compartir en Nosotros",
     "shareIdea": "Compartir",
     "shareDone": "Compartido",
-    "logThis": "Yo también comí esto",
+    "logThis": "Comí lo mismo",
     "ateTooMeal": "Agregada a tu registro a la hora en que la compartieron",
     "ateTooPhoto": "Analizándola para tu registro, a la hora en que la compartieron",
     "logged": "Registrado",
@@ -1535,7 +1535,13 @@
       "dinner": "Cena",
       "snack": "Meriendas"
     },
-    "loggedAs": "Registrada como"
+    "loggedAs": "Registrada como",
+    "lower": {
+      "breakfast": "desayuno",
+      "lunch": "almuerzo",
+      "dinner": "cena",
+      "snack": "merienda"
+    }
   },
   "feedShare": {
     "short": "Compartir",
@@ -1553,7 +1559,9 @@
     "with": "Con",
     "caption": "Texto",
     "captionPlaceholder": "Escribe algo (opcional)",
-    "to": "Compartir con {group}"
+    "to": "Compartir con {group}",
+    "mealtime": "Compartir {meal}",
+    "mealtimeLabel": "Compartir tu {meal} con tu grupo"
   },
   "muscle": {
     "switch": "Ganar músculo también",
@@ -1578,5 +1586,15 @@
     "gainLead": "Tu objetivo es ganar músculo, así que tu proteína ya está pensada para ello.",
     "ok": "Entendido",
     "lifting": "¿Entrenas con pesas?"
+  },
+  "ateSame": {
+    "whose": "{meal} de {name}",
+    "hint": "Quita lo que no comiste o cambia la porción. Se guarda en tu registro a la hora en que lo compartieron.",
+    "fileUnder": "Guardar en",
+    "portion": "Porción",
+    "count": "{n} de {of} alimentos",
+    "add": "Agregar a mi {meal}",
+    "pickOne": "Elige al menos un alimento",
+    "done": "Agregaste {foods} a tu {meal}"
   }
 }

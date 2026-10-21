@@ -437,7 +437,7 @@
     "share": "Share with Us",
     "shareIdea": "Share",
     "shareDone": "Shared",
-    "logThis": "I ate this too",
+    "logThis": "I ate the same",
     "ateTooMeal": "Added to your log at the time they shared it",
     "ateTooPhoto": "Analysing it for your log, at the time they shared it",
     "logged": "Logged",
@@ -1535,7 +1535,13 @@
       "dinner": "Dinner",
       "snack": "Snacks"
     },
-    "loggedAs": "Logged as"
+    "loggedAs": "Logged as",
+    "lower": {
+      "breakfast": "breakfast",
+      "lunch": "lunch",
+      "dinner": "dinner",
+      "snack": "snack"
+    }
   },
   "feedShare": {
     "short": "Share",
@@ -1553,7 +1559,9 @@
     "with": "With",
     "caption": "Caption",
     "captionPlaceholder": "Add a caption (optional)",
-    "to": "Share with {group}"
+    "to": "Share with {group}",
+    "mealtime": "Share {meal}",
+    "mealtimeLabel": "Share your {meal} with your group"
   },
   "muscle": {
     "switch": "Build muscle too",
@@ -1578,5 +1586,15 @@
     "gainLead": "Your goal is building muscle, so your protein is now set for it.",
     "ok": "Got it",
     "lifting": "Lifting weights?"
+  },
+  "ateSame": {
+    "whose": "{name}'s {meal}",
+    "hint": "Untick what you didn't have or change the portion. It goes in your log at the time they shared it.",
+    "fileUnder": "File it under",
+    "portion": "Portion",
+    "count": "{n} of {of} foods",
+    "add": "Add to my {meal}",
+    "pickOne": "Pick at least one food",
+    "done": "Added {foods} to your {meal}"
   }
 }

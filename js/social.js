@@ -1,5 +1,6 @@
 // social.js — client side of notes (api/notes.js) and the shared feed (api/shares.js).
 import { apiFetch } from "./net.js";
+import { collageLayout, MAX_COLLAGE } from "./mealtime.js";
 
 async function post(url, body) {
   try {
@@ -93,6 +94,44 @@ export async function shrinkPhoto(dataUrl, edge = SHARE_EDGE) {
   }
 }
 
+/**
+ * Up to MAX_COLLAGE photos as one picture (side by side, one big and two small, or a grid of four),
+ * the size of a post photo. One photo is just that photo; none, or no canvas: null / the first.
+ */
+export async function collagePhotos(dataUrls, edge = SHARE_EDGE) {
+  const urls = (dataUrls ?? []).filter((u) => typeof u === "string" && u.startsWith("data:image/")).slice(0, MAX_COLLAGE);
+  if (urls.length <= 1 || typeof document === "undefined") return urls[0] ? shrinkPhoto(urls[0], edge) : null;
+  try {
+    const imgs = await Promise.all(urls.map((src) => new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = src;
+    })));
+    const w = edge, h = Math.round(edge * 0.75);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#0A0A0A";
+    ctx.fillRect(0, 0, w, h);
+    collageLayout(imgs.length, w, h).forEach((r, i) => {
+      const img = imgs[i];
+      const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
+      const scale = Math.max(r.w / iw, r.h / ih); // cover: fill the tile, trim the overflow
+      const sw = r.w / scale, sh = r.h / scale;
+      ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, r.x, r.y, r.w, r.h);
+    });
+    for (const q of [0.6, 0.45, 0.3]) {
+      const webp = canvas.toDataURL("image/webp", q);
+      const out = webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", q);
+      if (out.length <= 170000) return out; // the server's limit (api/shares.js) is 180,000
+    }
+    return null;
+  } catch {
+    return shrinkPhoto(urls[0], edge);
+  }
+}
+
 export const POST_MAX = 140;
 export const CAPTION_MAX = 140; // a shared meal's caption
 export const COMMENT_MAX = 100;
@@ -126,6 +165,26 @@ export async function shareMeal(entry, note = "", group = null) {
       items: entry.analysisItems ?? [],
       note: String(note ?? "").trim().slice(0, CAPTION_MAX),
       entryId: entry.entryId ?? entry.id ?? null, // sharing the same meal again doesn't post it twice
+    },
+  });
+}
+
+/** Share a whole mealtime (see mealtime.js): its foods in one list, its photos as one collage. */
+export async function shareMealtime(summary, note = "", group = null) {
+  // the collage the sheet already showed, so what was previewed is what is posted
+  const photo = "collage" in summary ? summary.collage : await collagePhotos(summary.photos);
+  return post("/api/shares", {
+    op: "share",
+    kind: "meal",
+    ...(group ? { group } : {}),
+    item: {
+      name: summary.name, mealType: summary.mealType,
+      calories: summary.calories, proteinG: summary.proteinG, carbsG: summary.carbsG, fatG: summary.fatG,
+      micros: summary.micros ?? null,
+      photo,
+      items: summary.items,
+      note: String(note ?? "").trim().slice(0, CAPTION_MAX),
+      entryId: summary.key,
     },
   });
 }
