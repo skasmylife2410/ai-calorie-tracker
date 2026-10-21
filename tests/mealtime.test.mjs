@@ -144,7 +144,7 @@ test("'I ate the same' applies to whole-mealtime posts only, at the time they sh
 });
 
 test("the plate drawing: foods cleaned into a prompt, at most eight, nothing but words and weights", async () => {
-  const { cleanFoods, buildPlatePrompt } = await import("../api/plate.js");
+  const { cleanFoods, buildPlatePrompt } = await import("../api/_plate.js");
   const foods = cleanFoods([
     { name: "  White   rice ", grams: 200.4 },
     { name: "white rice", grams: 50 },                                   // the same food twice: once
@@ -183,7 +183,7 @@ test("the phone asks for the picture once per foods, and gives up quietly", asyn
     globalThis.fetch = async (url, init) => { calls.push([String(url), JSON.parse(init.body)]); return { status: 200, ok: true, json: async () => ({ ok: true, image: "QQ==", mime: "image/png" }) }; };
     const pic = await drawPlate(foods);
     assert.equal(pic, "data:image/png;base64,QQ==", "no canvas here: the picture as it came");
-    assert.deepEqual(calls[0], ["/api/plate", { foods: [{ name: "Rice", grams: 200 }, { name: "Beans", grams: 130 }] }]);
+    assert.deepEqual(calls[0], ["/api/doodle", { op: "plate", foods: [{ name: "Rice", grams: 200 }, { name: "Beans", grams: 130 }] }]);
     assert.equal(await drawPlate(foods), pic);
     assert.equal(calls.length, 1, "the same foods again: the picture already made");
 

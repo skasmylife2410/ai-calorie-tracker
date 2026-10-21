@@ -1,6 +1,8 @@
 // api/doodle.js — draws each person's doodle with Nano Banana (Gemini's image model).
 //
 // POST { state, variant, photo? }  ->  { ok, image, mime }  |  { ok:false, errorType, message }
+// POST { op: "plate", foods: [{ name, grams? }] }  -> the same: one illustration of a shared
+//   mealtime's foods (see _plate.js)
 //   state:   "strong" | "wellFed" | "idle" | "showoff"   — which pose ("showoff" is for shared summaries)
 //   variant: "a" | "b"                        — him / her
 //   photo:   optional base64 JPEG (no data: prefix) of the profile picture, so the doodle
@@ -14,6 +16,7 @@
 import { requireUser } from "./_auth.js";
 import { useAllowance, IMAGE_AI_PER_HOUR, overAllowance } from "./_limits.js";
 import { generateImage, extractImage } from "./_image.js";
+import { cleanFoods, buildPlatePrompt } from "./_plate.js";
 
 export { extractImage }; // (kept here for the tests that import it from this file)
 
@@ -47,10 +50,13 @@ export default async function handler(req, res) {
 
   const key = (process.env.GEMINI_API_KEY || "").trim();
   if (!key) return res.status(200).json({ ok: false, errorType: "badKey", message: "No Gemini key set." });
-  if (!(await useAllowance(`img:${me}`, IMAGE_AI_PER_HOUR, 60))) return overAllowance(res);
 
   let body;
   try { body = typeof req.body === "object" && req.body ? req.body : JSON.parse(req.body || "{}"); } catch { body = {}; }
+  const plate = body.op === "plate" ? cleanFoods(body.foods) : null;
+  if (plate && plate.length === 0) return res.status(200).json({ ok: false, errorType: "empty", message: "Nothing to draw." });
+  if (!(await useAllowance(`img:${me}`, IMAGE_AI_PER_HOUR, 60))) return overAllowance(res);
+  if (plate) return res.status(200).json(await generateImage(key, [{ text: buildPlatePrompt(plate) }]));
   const state = ["strong", "wellFed", "idle", "showoff"].includes(body.state) ? body.state : "strong";
   const variant = body.variant === "b" ? "b" : "a";
   const photo = typeof body.photo === "string" && body.photo.length > 0 && body.photo.length <= MAX_PHOTO ? body.photo : null;

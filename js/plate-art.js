@@ -1,5 +1,5 @@
 // plate-art.js — a picture of a mealtime's foods for a share that has no photos to make a collage
-// from. The server draws it with the image model (api/plate.js); here it's asked for, set on a
+// from. The server draws it with the image model (api/doodle.js, op "plate"); here it's asked for, set on a
 // white 4:3 frame the size of a post photo and kept for this visit, so reopening the share sheet
 // doesn't pay for a second picture. When it can't be drawn (no credits, no connection, too slow)
 // the answer is null and the share goes out with the board instead (js/ui/ingredient-board.js).
@@ -53,10 +53,10 @@ export async function drawPlate(foods, { waitMs = WAIT_MS } = {}) {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), waitMs) : null;
   try {
-    const res = await apiFetch("/api/plate", {
+    const res = await apiFetch("/api/doodle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ foods: list.map((f) => ({ name: f.name, grams: f.gramsEstimate })) }),
+      body: JSON.stringify({ op: "plate", foods: list.map((f) => ({ name: f.name, grams: f.gramsEstimate })) }),
       ...(ctrl ? { signal: ctrl.signal } : {}),
     });
     const out = await res.json();
