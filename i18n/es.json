@@ -1561,7 +1561,9 @@
     "captionPlaceholder": "Escribe algo (opcional)",
     "to": "Compartir con {group}",
     "mealtime": "Compartir {meal}",
-    "mealtimeLabel": "Compartir tu {meal} con tu grupo"
+    "mealtimeLabel": "Compartir tu {meal} con tu grupo",
+    "drawing": "Dibujando tu {meal} con IA…",
+    "drawn": "Dibujo hecho con IA"
   },
   "muscle": {
     "switch": "Ganar músculo también",

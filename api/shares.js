@@ -104,7 +104,9 @@ export function cleanItem(kind, item = {}) {
     const entryId = /^[0-9a-zA-Z-]{1,64}$/.test(String(item.entryId ?? "")) ? String(item.entryId) : null;
     // a whole mealtime (breakfast, lunch…) rather than one meal: the feed labels it, others can copy its foods
     const mealType = MEAL_TYPES.includes(item.mealType) ? item.mealType : null;
-    return { ...base, micros: boundedMicros(item.micros), photo, items, ...(mealType ? { mealType } : {}), ...(entryId ? { entryId } : {}) };
+    // a picture the image model drew from the foods, not a photo of them: the feed says so
+    const drawn = item.drawn === true && photo && mealType;
+    return { ...base, micros: boundedMicros(item.micros), photo, items, ...(mealType ? { mealType } : {}), ...(drawn ? { drawn: true } : {}), ...(entryId ? { entryId } : {}) };
   }
   return {
     ...base,

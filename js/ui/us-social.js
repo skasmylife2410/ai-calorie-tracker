@@ -207,7 +207,8 @@ export async function renderFeed(host, { me, people, colors, group = null, group
           <span class="feed-when">${agoLabel(s.created_at)}</span>
           ${mine ? `<button type="button" class="feed-del" data-del="${esc(s.id)}" aria-label="${t("social.deletePost")}">${icon("trashFill", { size: 15 })}</button>` : ""}
         </header>
-        ${d.photo ? `<img class="feed-photo" src="${safeSrc(d.photo)}" alt="${esc(d.name || d.text || "")}" loading="lazy">` : ""}
+        ${d.photo && d.drawn ? `<div class="feed-media"><img class="feed-photo" src="${safeSrc(d.photo)}" alt="${esc(d.name || d.text || "")}" loading="lazy"><span class="feed-drawn">${t("feedShare.drawn")}</span></div>`
+          : d.photo ? `<img class="feed-photo" src="${safeSrc(d.photo)}" alt="${esc(d.name || d.text || "")}" loading="lazy">` : ""}
         ${mealtime && !d.photo && !d.photoHidden ? `<div class="feed-board">${ingredientBoardHtml(d.items)}</div>` : ""}
         ${d.photoHidden ? `<p class="fc-hidden feed-photo-hidden">${t("social.photoHidden")}</p>` : ""}
         ${!d.photo && d.gif ? gifImgHtml(d.gif, { cls: "feed-photo feed-gif", size: "large", alt: t("gif.by", { name: nameOf(s.owner) }) }) : ""}

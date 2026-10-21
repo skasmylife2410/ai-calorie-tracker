@@ -1561,7 +1561,9 @@
     "captionPlaceholder": "Add a caption (optional)",
     "to": "Share with {group}",
     "mealtime": "Share {meal}",
-    "mealtimeLabel": "Share your {meal} with your group"
+    "mealtimeLabel": "Share your {meal} with your group",
+    "drawing": "Drawing your {meal} with AI…",
+    "drawn": "Drawn by AI"
   },
   "muscle": {
     "switch": "Build muscle too",

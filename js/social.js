@@ -182,6 +182,7 @@ export async function shareMealtime(summary, note = "", group = null) {
       calories: summary.calories, proteinG: summary.proteinG, carbsG: summary.carbsG, fatG: summary.fatG,
       micros: summary.micros ?? null,
       photo,
+      ...(photo && summary.drawn ? { drawn: true } : {}),
       items: summary.items,
       note: String(note ?? "").trim().slice(0, CAPTION_MAX),
       entryId: summary.key,

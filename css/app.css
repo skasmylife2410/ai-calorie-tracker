@@ -3114,3 +3114,6 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .as-total b { font-size: 22px; font-weight: 800; color: var(--sc-primary-text); }
 .as-go { flex: none; padding: 14px 0; font-size: 16px; }
 @media (max-width: 360px) { .as-glyph { display: none; } .as-portions { width: 100px; } }
+.shm-art { border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--sc-secondary-14, rgba(0,0,0,.06)); }
+.shm-drawing { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sc-secondary); }
+.shm-drawing .left-spin { flex: none; width: 14px; height: 14px; }

@@ -2,8 +2,9 @@
 // shows what's going out, which group it goes to (when you're in more than one) and an optional
 // caption; then it goes to that group's feed, the meal(s) remember it's there (the row then says
 // "Shared"), and a note says where it went, with a way to go and see it. Any finished meal can be
-// shared, with or without a photo. A mealtime goes as one post: its photos as a collage, or, with
-// none, its foods drawn as a board (ingredient-board.js).
+// shared, with or without a photo. A mealtime goes as one post: its photos as a collage or, with
+// none, a picture of its foods drawn by the image model (plate-art.js), or the foods as a board
+// (ingredient-board.js) when that can't be drawn.
 
 import * as store from "../store.js";
 import { t, formatNumber } from "../i18n.js";
@@ -45,7 +46,7 @@ const reason = (out) => ({
  * answers like api/shares.js; `onShared()` marks the meal(s). Resolves true once it's in the
  * feed, false if it was cancelled or refused.
  */
-async function openShareSheet({ previewHtml, send, onShared }) {
+async function openShareSheet({ previewHtml, send, onShared, afterRender }) {
   const groups = await sharingGroups();
   return new Promise((resolve) => {
     let settled = false;
@@ -69,6 +70,7 @@ async function openShareSheet({ previewHtml, send, onShared }) {
             <button type="button" class="acct-btn is-primary shm-go" id="shm-go">${t("feedShare.to", { group: esc(group?.name ?? t("social.tab")) })}</button>
           </div>`;
         wireNavBar(panel, { onLeading: close });
+        afterRender?.(panel);
         const caption = panel.querySelector("#shm-caption");
         const go = panel.querySelector("#shm-go");
         caption.addEventListener("input", () => { panel.querySelector("#shm-count").textContent = `${caption.value.length}/${CAPTION_MAX}`; });
@@ -120,20 +122,43 @@ export function shareToFeed(entry, overrides = {}) {
 
 /**
  * Opens the share sheet for a whole mealtime (`summary`: mealtime.mealtimeSummary). It shows what
- * will be posted: the collage of the photos, or the foods drawn as a board.
+ * will be posted: the collage of the photos or, with none, the image model's picture of the foods
+ * (asked for as the sheet opens; the board stands in until it's there, and if it never comes).
  */
 export async function shareMealtimeToFeed(summary) {
   const collage = await collagePhotos(summary.photos);
+  let picture = collage;   // what goes out as the post's photo
+  let drawn = false;
+  // started before the sheet is up, so it's drawing while the caption is being written
+  const drawing = collage ? null : import("../plate-art.js")
+    .then((m) => m.drawPlate(summary.items))
+    .then((img) => { if (img) { picture = img; drawn = true; } return img; })
+    .catch(() => null);
+  const pictureHtml = (src, isDrawn) => `
+    <div class="shm-art feed-media"><img class="shm-collage" src="${safeSrc(src)}" alt="">${isDrawn ? `<span class="feed-drawn">${t("feedShare.drawn")}</span>` : ""}</div>`;
   const hero = collage
-    ? `<img class="shm-collage" src="${safeSrc(collage)}" alt="">`
-    : `<div class="shm-board">${ingredientBoardHtml(summary.items)}</div>`;
+    ? pictureHtml(collage, false)
+    : `<div class="shm-board">${ingredientBoardHtml(summary.items)}</div>
+       <div class="shm-drawing" role="status"><span class="left-spin" aria-hidden="true"></span>${t("feedShare.drawing", { meal: t(`mealType.lower.${summary.mealType}`) })}</div>`;
   return openShareSheet({
     previewHtml: `
       <div class="shm-mealtime">
         ${hero}
         <div class="shm-text"><b>${t(`mealType.${summary.mealType}`)} · ${t("stack.foods", { n: summary.items.length })}</b><small>${esc(summary.name)} · ${formatNumber(Math.round(summary.calories))} kcal</small></div>
       </div>`,
-    send: (caption, group) => shareMealtime({ ...summary, collage }, caption, group),
+    afterRender: (panel) => {
+      drawing?.then((img) => {
+        if (!panel.isConnected) return;
+        panel.querySelector(".shm-drawing")?.remove();
+        const board = panel.querySelector(".shm-board");
+        if (img && board) board.outerHTML = pictureHtml(img, true);
+      });
+    },
+    // tapped before the picture is ready: wait for it (or for it to fail) rather than post without
+    send: async (caption, group) => {
+      await drawing;
+      return shareMealtime({ ...summary, collage: picture, drawn }, caption, group);
+    },
     onShared: () => { const now = Date.now(); for (const id of summary.ids) if (store.getFoodEntry(id)) store.updateFoodEntry(id, { sharedAt: now }); },
   });
 }
