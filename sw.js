@@ -81,6 +81,7 @@ const APP_SHELL = [
   "/js/ui/meal-type.js",
   "/js/ui/share-meal.js",
   "/js/ui/groups.js",
+  "/js/ui/muscle-ask.js",
   "/js/ui/micros.js",
   "/js/ui/missed-you.js",
   "/js/ui/monthly-review.js",

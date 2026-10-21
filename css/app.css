@@ -1968,6 +1968,7 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .onb-choice.is-on { background: var(--sc-primary-text); color: #fff; }
 .onb-choice-label { font-size: 16px; font-weight: 700; }
 .onb-choice-sub { font-size: 12px; opacity: .72; line-height: 1.4; }
+.onb-toggle { grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; cursor: pointer; }
 .onb-label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--sc-secondary); margin: 20px 0 8px; }
 .onb-field { display: flex; align-items: baseline; gap: 8px; background: rgba(255,255,255,.85); border-radius: 16px; padding: 12px 16px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
 .onb-input { font: inherit; font-size: 26px; font-weight: 800; width: 100%; min-width: 0; border: 0; background: none; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }

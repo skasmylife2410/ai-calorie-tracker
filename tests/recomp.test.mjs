@@ -17,7 +17,7 @@ const store = await import("../js/store.js");
 const {
   resolveUserGoals, targetDelta, monthlyReview, buildsMuscle, RECOMP_MAX_DEFICIT_KCAL, RECOMP_LEAN_KG_PER_WEEK,
 } = await import("../js/nutrition.js");
-const { goalChoiceOf, goalPatch } = await import("../js/ui/formfields.js");
+const { goalChoiceOf, goalPatch, musclePatch } = await import("../js/ui/formfields.js");
 
 const D = 86400000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -35,7 +35,6 @@ test("building muscle too: protein 2.6 g per kg of lean mass (2.1 per kg without
   assert.equal(recomp.fatTargetG, plain.fatTargetG, "carbs make room, fat stays");
   const noLean = resolveUserGoals({ ...RECOMP, bodyFatPct: null, build: null }, { learnedTdee: 2453 });
   assert.ok(noLean.proteinTargetG >= 170 && noLean.proteinTargetG <= 186, `by body weight: ${noLean.proteinTargetG}`);
-  assert.equal(buildsMuscle({ ...RECOMP, goal: "maintain" }), false, "only with a fat-loss goal");
 });
 
 test("building muscle too: the steady pace, never more than 500 kcal under", () => {
@@ -67,15 +66,54 @@ test("check-in: the scale may drop slower by the muscle gained, and steps never 
   assert.ok(flat.patch.targetDeltaKcal >= -RECOMP_MAX_DEFICIT_KCAL, `${flat.patch.targetDeltaKcal}`);
 });
 
-test("Profile's goal picker: setup's goals and paces, losing fat while building muscle among them", () => {
-  assert.equal(goalChoiceOf(RECOMP), "recomp");
-  assert.equal(goalChoiceOf(LIFTER), "lose:slow");
+test("everyone can build muscle: the Build muscle goal always (unless they said no), losing fat or keeping weight when switched on", () => {
+  assert.equal(buildsMuscle({ goal: "gain" }), true);
+  assert.equal(buildsMuscle({ targetDeltaKcal: 300 }), true, "older profiles: a surplus is the Build muscle goal");
+  assert.equal(buildsMuscle({ goal: "gain", buildMuscle: false }), false);
+  assert.equal(buildsMuscle({ goal: "lose" }), false, "not unless they say so");
+  assert.equal(buildsMuscle({ goal: "maintain", buildMuscle: true }), true);
+  assert.equal(buildsMuscle({ targetDeltaKcal: -500, buildMuscle: true }), true);
+
+  // in a surplus 2.3 g per kg of lean mass; keeping weight 2.6, like losing fat
+  const gainer = { age: 25, sex: "male", heightCm: 178, weightKg: 75, build: "muscular", activityLevel: "moderate", goal: "gain", goalRate: "normal", targetDeltaKcal: 275 };
+  assert.equal(resolveUserGoals(gainer).proteinTargetG, Math.round(75 * 0.85 * 2.3));
+  assert.equal(resolveUserGoals({ ...gainer, buildMuscle: false }).proteinTargetG, Math.round(75 * 0.85 * 2.1), "just gaining weight: as before");
+  const keeper = { ...LIFTER, goal: "maintain", targetDeltaKcal: 0 };
+  assert.equal(resolveUserGoals({ ...keeper, buildMuscle: true }).proteinTargetG, Math.round(88 * 0.78 * 2.6));
+  assert.equal(resolveUserGoals({ ...keeper, buildMuscle: true }).targetCalories, resolveUserGoals(keeper).targetCalories, "same calories");
+});
+
+test("keeping weight while building muscle: the check-in allows the scale to creep up by the muscle, not down", () => {
+  const now = Date.UTC(2026, 9, 21, 9);
+  const keeper = { ...LIFTER, goal: "maintain", goalRate: null, targetDeltaKcal: 0 };
+  const creeping = line(now, 88, 0.22);
+  assert.equal(monthlyReview({ profile: keeper, weights: creeping, now }).verdict, "driftUp");
+  const r = monthlyReview({ profile: { ...keeper, buildMuscle: true }, weights: creeping, now });
+  assert.equal(r.verdict, "onTrack");
+  assert.equal(r.recomp, true);
+  assert.equal(r.patch.targetDeltaKcal, 0);
+  assert.equal(monthlyReview({ profile: { ...keeper, buildMuscle: true }, weights: line(now, 88, -0.25), now }).verdict, "driftDown");
+  assert.equal(monthlyReview({ profile: { goal: "gain", goalRate: "normal", targetDeltaKcal: 275, weightKg: 75 }, weights: line(now, 75, 0.25), now }).recomp, false, "a surplus isn't a recomposition");
+});
+
+test("Profile's goal picker and switch: setup's goals and paces; building muscle while losing fat is the steady pace", () => {
+  assert.equal(goalChoiceOf(RECOMP), "lose:slow");
   assert.equal(goalChoiceOf({ targetDeltaKcal: -500 }), "lose:normal", "older profiles: a calorie change only");
   assert.equal(goalChoiceOf({ targetDeltaKcal: 0 }), "maintain");
-  assert.deepEqual(goalPatch("recomp", { weightKg: 88, goalRate: "fast" }), { goal: "lose", goalRate: "slow", buildMuscle: true, targetDeltaKcal: -340 });
-  assert.deepEqual(goalPatch("maintain", { weightKg: 88, goalRate: "slow" }), { goal: "maintain", goalRate: "slow", buildMuscle: false, targetDeltaKcal: 0 });
-  assert.equal(goalPatch("lose:fast", { weightKg: 88 }).buildMuscle, false);
+  assert.deepEqual(musclePatch(true, { ...LIFTER, goalRate: "fast" }), { goal: "lose", goalRate: "slow", buildMuscle: true, targetDeltaKcal: -340 });
+  assert.deepEqual(musclePatch(true, { weightKg: 70, targetDeltaKcal: 0 }), { goal: "maintain", goalRate: null, buildMuscle: true, targetDeltaKcal: 0 });
+  assert.equal(goalPatch("lose:fast", RECOMP).buildMuscle, false, "a faster pace turns it off");
+  assert.equal(goalPatch("maintain", RECOMP).buildMuscle, true, "keeping weight keeps it");
+  assert.equal(goalPatch("gain:normal", LIFTER).buildMuscle, true, "Build muscle always does");
   assert.equal(goalPatch("brunch", {}), null);
+});
+
+test("asked once: until there's an answer on the profile", async () => {
+  const { needsMuscleAnswer } = await import("../js/ui/muscle-ask.js");
+  assert.equal(needsMuscleAnswer(LIFTER), true);
+  assert.equal(needsMuscleAnswer({ ...LIFTER, buildMuscle: false }), false);
+  assert.equal(needsMuscleAnswer({ ...LIFTER, buildMuscle: true }), false);
+  assert.equal(needsMuscleAnswer({ age: 30 }), false, "no numbers to show yet");
 });
 
 test("a weigh-in saved after the day's check-in is counted; once, that day only, and Undo still goes back to before", async () => {

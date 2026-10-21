@@ -37,7 +37,7 @@ const DEFAULTS = {
   activityLevel: "light",
   goal: "lose",         // lose | maintain | gain
   rate: "normal",       // slow | normal | fast
-  buildMuscle: false,   // with "lose": lose fat and build muscle at once (steady pace, more protein)
+  buildMuscle: false,   // "lose" or "maintain" while building muscle too ("gain" always is)
   diets: [],            // js/diets.js keys; empty = no restrictions
 };
 
@@ -97,10 +97,11 @@ export function render(container, onComplete, { redo = false, resume = false } =
   let installFor = defaultInstallFor();
   let stopInstallWatch = null;
 
+  const muscle = () => draft.goal === "gain" || draft.buildMuscle === true;
   const goals = () => resolveUserGoals({
     weightKg: draft.weightKg, heightCm: draft.heightCm, age: draft.age, sex: draft.sex,
     activityLevel: draft.activityLevel, build: draft.build, bodyFatPct: draft.bodyFatPct,
-    goal: draft.goal, buildMuscle: draft.buildMuscle, targetDeltaKcal: targetDelta(draft),
+    goal: draft.goal, buildMuscle: muscle(), targetDeltaKcal: targetDelta({ ...draft, buildMuscle: muscle() }),
   });
 
   const finish = () => {
@@ -115,8 +116,8 @@ export function render(container, onComplete, { redo = false, resume = false } =
       activityLevel: draft.activityLevel,
       goal: draft.goal,
       goalRate: draft.buildMuscle && draft.goal === "lose" ? "slow" : draft.rate,
-      buildMuscle: draft.buildMuscle && draft.goal === "lose",
-      targetDeltaKcal: targetDelta(draft),
+      buildMuscle: muscle(),
+      targetDeltaKcal: targetDelta({ ...draft, buildMuscle: muscle() }),
       customTargetKcal: null,
       weightUnit: draft.units === "imperial" ? "lb" : "kg",
       doodleVariant: draft.sex === "female" ? "b" : "a",
@@ -257,18 +258,24 @@ export function render(container, onComplete, { redo = false, resume = false } =
         const g = draft.weightKg > 0 && draft.heightCm > 0 && draft.age > 0 ? goals() : null;
         const kgPerWeek = draft.goal === "maintain" ? 0
           : Math.abs(g ? g.computedTargetCalories - g.tdee : targetDelta(draft)) * 7 / 7700;
-        const recomp = draft.goal === "lose" && draft.buildMuscle;
-        const goalKey = recomp ? "recomp" : draft.goal;
         const perWeek = (Math.round(kgPerWeek * 100) / 100).toFixed(2);
+        const toggle = draft.goal === "gain" ? "" : `
+          <label class="onb-label" for="onb-muscle">${t("muscle.lifting")}</label>
+          <label class="onb-choice onb-toggle">
+            <span class="onb-choice-label">${t("muscle.switch")}</span>
+            <input type="checkbox" role="switch" class="ios-switch" id="onb-muscle" ${draft.buildMuscle ? "checked" : ""}>
+          </label>`;
         return `
           <h1 class="onb-title">${t("onb.goalTitle")}</h1>
           <div class="onb-choices">
-            ${choice("lose", goalKey, t("onb.goalLose"))}
-            ${choice("recomp", goalKey, t("onb.goalRecomp"))}
-            ${choice("maintain", goalKey, t("onb.goalMaintain"))}
-            ${choice("gain", goalKey, t("onb.goalGain"))}
+            ${choice("lose", draft.goal, t("onb.goalLose"))}
+            ${choice("maintain", draft.goal, t("onb.goalMaintain"))}
+            ${choice("gain", draft.goal, t("onb.goalGain"))}
           </div>
-          ${recomp ? `<p class="onb-note">${t("onb.recompNote", { n: perWeek })}</p>` : draft.goal === "maintain" ? "" : `
+          ${toggle}
+          ${draft.goal !== "gain" && draft.buildMuscle
+            ? `<p class="onb-note">${draft.goal === "lose" ? t("onb.recompNote", { n: perWeek }) : t("onb.keepMuscleNote")}</p>`
+            : draft.goal === "maintain" ? "" : `
             <label class="onb-label">${t("onb.rateTitle")}</label>
             <div class="onb-choices onb-row">
               ${choice("slow", draft.rate, t("onb.rateSlow"))}
@@ -324,11 +331,17 @@ export function render(container, onComplete, { redo = false, resume = false } =
       if (name === "activity") draft.activityLevel = v;
       if (name === "goal") {
         if (["slow", "normal", "fast"].includes(v)) draft.rate = v;
-        else if (v === "recomp") { draft.goal = "lose"; draft.buildMuscle = true; draft.rate = "slow"; }
-        else { draft.goal = v; draft.buildMuscle = false; }
+        else draft.goal = v;
+        if (draft.goal === "lose" && draft.buildMuscle) draft.rate = "slow";
       }
       draw();
     }));
+
+    body.querySelector("#onb-muscle")?.addEventListener("change", (e) => {
+      draft.buildMuscle = e.target.checked;
+      if (draft.buildMuscle && draft.goal === "lose") draft.rate = "slow"; // a bigger deficit holds muscle back
+      draw();
+    });
 
     body.querySelectorAll("[data-diet]").forEach((b) => b.addEventListener("click", () => {
       draft.diets = b.dataset.diet === "none" ? [] : toggleDiet(draft.diets, b.dataset.diet);

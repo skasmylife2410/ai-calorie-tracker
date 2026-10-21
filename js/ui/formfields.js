@@ -8,17 +8,17 @@
 // equivalent for a single-level choice, without building a second navigation stack.
 
 import { wireNumericInput } from "./numeric-field.js";
-import { ACTIVITY_LABELS, SEX_LABELS, roundDisplay, buildsMuscle, targetDelta } from "../nutrition.js";
+import { ACTIVITY_LABELS, SEX_LABELS, roundDisplay, buildsMuscle, goalOf, targetDelta } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { t } from "../i18n.js";
 
-// The goal, as setup asks it (onboarding.js): what for and how fast, or losing fat while building
-// muscle (a steady pace and more protein, nutrition.buildsMuscle).
+// The goal, as setup asks it (onboarding.js): what for and how fast. Building muscle is a switch
+// next to it for losing fat or keeping weight (nutrition.buildsMuscle); the "Build muscle" goal
+// always does.
 export const GOAL_CHOICES = [
   { key: "lose:slow", goal: "lose", rate: "slow" },
   { key: "lose:normal", goal: "lose", rate: "normal" },
   { key: "lose:fast", goal: "lose", rate: "fast" },
-  { key: "recomp", goal: "lose", rate: "slow", buildMuscle: true },
   { key: "maintain", goal: "maintain", rate: null },
   { key: "gain:slow", goal: "gain", rate: "slow" },
   { key: "gain:normal", goal: "gain", rate: "normal" },
@@ -28,29 +28,34 @@ const RATE_KEYS = { slow: "onb.rateSlow", normal: "onb.rateNormal", fast: "onb.r
 
 /** Which of GOAL_CHOICES a profile is on (older profiles have only a calorie change). */
 export function goalChoiceOf(profile) {
-  if (buildsMuscle(profile)) return "recomp";
-  const delta = Number(profile.targetDeltaKcal) || 0;
-  const goal = ["lose", "maintain", "gain"].includes(profile.goal) ? profile.goal : delta < 0 ? "lose" : delta > 0 ? "gain" : "maintain";
+  const goal = goalOf(profile);
   return goal === "maintain" ? "maintain" : `${goal}:${RATE_KEYS[profile.goalRate] ? profile.goalRate : "normal"}`;
 }
 
-/** The profile fields a goal choice sets; the calorie change follows from the trend weight. */
+const patchFor = (goal, rate, buildMuscle, profile) => ({
+  goal, goalRate: rate, buildMuscle,
+  targetDeltaKcal: targetDelta({ goal, rate, weightKg: Number(profile.weightKg) || 0, buildMuscle }),
+});
+
+/** The profile fields a goal choice sets; the calorie change follows from the trend weight.
+ *  Building muscle stays on for a steady fat loss or keeping weight; a faster fat loss turns it
+ *  off (that deficit holds muscle back), and "Build muscle" turns it on. */
 export function goalPatch(key, profile) {
   const c = GOAL_CHOICES.find((x) => x.key === key);
   if (!c) return null;
-  const buildMuscle = c.buildMuscle === true;
-  return {
-    goal: c.goal,
-    goalRate: c.rate ?? profile.goalRate ?? null,
-    buildMuscle,
-    targetDeltaKcal: targetDelta({ goal: c.goal, rate: c.rate, weightKg: Number(profile.weightKg) || 0, buildMuscle }),
-  };
+  const keeps = c.goal === "maintain" || c.rate === "slow";
+  const buildMuscle = c.goal === "gain" || (keeps && profile.buildMuscle === true);
+  return patchFor(c.goal, c.rate ?? profile.goalRate ?? null, buildMuscle, profile);
 }
 
-const goalLabel = (c) => (c.key === "recomp" ? t("onb.goalRecomp")
-  : c.goal === "maintain" ? t("onb.goalMaintain")
-  : `${t(c.goal === "lose" ? "onb.goalLose" : "onb.goalGain")} · ${t(RATE_KEYS[c.rate])}`);
+/** The "Build muscle too" switch: on while losing fat also sets the steady pace. */
+export function musclePatch(on, profile) {
+  const goal = goalOf(profile);
+  return patchFor(goal, goal === "lose" && on ? "slow" : profile.goalRate ?? null, on === true, profile);
+}
 
+const goalLabel = (c) => (c.goal === "maintain" ? t("onb.goalMaintain")
+  : `${t(c.goal === "lose" ? "onb.goalLose" : "onb.goalGain")} · ${t(RATE_KEYS[c.rate])}`);
 
 function pickerRow({ id, label, currentLabel, options }) {
   return `
@@ -128,6 +133,11 @@ export function goalSectionHtml(profile) {
           currentLabel: goalLabel(GOAL_CHOICES.find((c) => c.key === current)),
           options: GOAL_CHOICES.map((c) => ({ value: c.key, label: goalLabel(c), selected: c.key === current })),
         })}
+        ${goalOf(profile) === "gain" ? "" : `
+        <label class="ios-row theme-markers">
+          <span class="theme-text"><b>${t("muscle.switch")}</b><small>${t(goalOf(profile) === "lose" ? "muscle.switchSubLose" : "muscle.switchSubKeep")}</small></span>
+          <input type="checkbox" role="switch" class="ios-switch" id="field-muscle" ${buildsMuscle(profile) ? "checked" : ""} />
+        </label>`}
       </div>
     </div>
   `;
@@ -172,6 +182,8 @@ export function wireProfileFormFields(container, profile, onPatch) {
   if (sexSelect) sexSelect.addEventListener("change", () => onPatch({ sex: sexSelect.value }));
   if (activitySelect) activitySelect.addEventListener("change", () => onPatch({ activityLevel: activitySelect.value }));
   if (goalSelect) goalSelect.addEventListener("change", () => { const patch = goalPatch(goalSelect.value, profile); if (patch) onPatch(patch); });
+  const muscle = container.querySelector("#field-muscle");
+  if (muscle) muscle.addEventListener("change", () => onPatch(musclePatch(muscle.checked, profile)));
 }
 
 /** CalculatorEstimateRows (§3.4): BMR / TDEE / Estimated target. */

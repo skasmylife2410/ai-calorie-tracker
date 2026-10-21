@@ -295,10 +295,12 @@ async function boot() {
   whenFirstSynced(8000).then(() => setTimeout(() => {
     try { store.syncLearnedTdeeFlag(); } catch { /* never block the app */ }
     if (hasProfile && !document.querySelector(".sheet-panel")) maybeShowGoalsUpdate();
-    // the 30-day check-in runs after the sync, so a second phone sees it was already done
+    // the 30-day check-in runs after the sync, so a second phone sees it was already done; once,
+    // before it, everyone is asked whether they're building muscle too (it changes the plan)
     if (hasProfile && !document.querySelector(".sheet-panel")) {
-      import("./ui/monthly-review.js")
-        .then((m) => m.maybeRunMonthlyReview({ onChange: () => { try { refreshMood(); } catch { /* never block */ } } }))
+      import("./ui/muscle-ask.js")
+        .then((a) => a.maybeAskMuscle() || import("./ui/monthly-review.js")
+          .then((m) => m.maybeRunMonthlyReview({ onChange: () => { try { refreshMood(); } catch { /* never block */ } } })))
         .catch(() => {});
     }
   }, 1500));

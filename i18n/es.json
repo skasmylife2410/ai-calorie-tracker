@@ -626,8 +626,8 @@
     "android2": "Toca <b>Instalar app</b> o <b>Agregar a la pantalla principal</b> {icon}.",
     "android3": "Toca <b>Instalar</b>. SnapCal aparece con tus apps: ábrela desde ahí.",
     "androidNote": "Samsung Internet: toca el menú ☰ y luego Añadir página a → Pantalla de inicio.",
-    "goalRecomp": "Bajar grasa y ganar músculo",
-    "recompNote": "Un ritmo tranquilo, unos {n} kg de grasa por semana, y más proteína, para que tu entrenamiento construya músculo mientras pierdes grasa. Funciona si entrenas con pesas varias veces por semana."
+    "recompNote": "Un ritmo tranquilo, unos {n} kg de grasa por semana, y más proteína, para que tu entrenamiento construya músculo mientras pierdes grasa. Funciona si entrenas con pesas varias veces por semana.",
+    "keepMuscleNote": "Las mismas calorías y más proteína, para que tu entrenamiento construya músculo mientras tu peso se mantiene. Funciona si entrenas con pesas varias veces por semana."
   },
   "activity": {
     "sedentary": "Casi todo sentada/o",
@@ -1482,7 +1482,7 @@
     "stepMore": "{n} kcal más al día te devuelven a tu ritmo.",
     "paceFixed": "Tu nuevo presupuesto te devuelve a tu ritmo.",
     "recompTitle": "También ganando músculo",
-    "recompBody": "El músculo también pesa, así que la báscula baja más despacio que la grasa. El plan cuenta con hasta {lean} de músculo nuevo al mes, y tu proteína está pensada para ello: {g} g al día.",
+    "recompBody": "El músculo también pesa, así que la báscula no distingue la grasa perdida del músculo ganado. El plan cuenta con hasta {lean} de músculo nuevo al mes, y tu proteína está pensada para ello: {g} g al día.",
     "paceCapped": "Tu presupuesto se acerca a tu gasto real, 150 kcal por revisión, hasta que vuelvas al ritmo."
   },
   "weighWhy": {
@@ -1554,5 +1554,29 @@
     "caption": "Texto",
     "captionPlaceholder": "Escribe algo (opcional)",
     "to": "Compartir con {group}"
+  },
+  "muscle": {
+    "switch": "Ganar músculo también",
+    "switchSubLose": "Más proteína y un ritmo tranquilo, para que el músculo crezca mientras pierdes grasa.",
+    "switchSubKeep": "Más proteína, para que el músculo crezca mientras tu peso se mantiene.",
+    "askTitle": "¿También quieres ganar músculo?",
+    "askLead": "Tu revisión de 30 días ahora puede planear para el músculo, no solo para tu peso. Esto es lo que cambia para ti si dices que sí.",
+    "with": "Ganando músculo",
+    "proteinTitle": "Más proteína",
+    "proteinLose": "{g} g al día: lo que ayuda al músculo a crecer mientras pierdes grasa.",
+    "proteinKeep": "{g} g al día: lo que ayuda al músculo a crecer mientras tu peso se mantiene.",
+    "proteinGain": "{g} g al día: lo que ayuda al músculo a crecer con un superávit de calorías.",
+    "paceTitle": "Un ritmo tranquilo",
+    "paceBody": "La grasa baja unos {to} por semana en vez de {from}. Un déficit mayor frena el músculo.",
+    "checkTitle": "Una revisión más justa",
+    "checkBody": "El músculo también pesa, así que la revisión cuenta con hasta {lean} de músculo nuevo al mes antes de decir que vas fuera de ritmo.",
+    "note": "Funciona si entrenas con pesas varias veces por semana. Puedes cambiarlo cuando quieras en Perfil › Objetivo.",
+    "no": "No, solo mi peso",
+    "yes": "Sí, ganar músculo",
+    "doneTitle": "Tu plan ya incluye ganar músculo",
+    "doneLead": "Desde hoy:",
+    "gainLead": "Tu objetivo es ganar músculo, así que tu proteína ya está pensada para ello.",
+    "ok": "Entendido",
+    "lifting": "¿Entrenas con pesas?"
   }
 }

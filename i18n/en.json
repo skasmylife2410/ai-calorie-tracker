@@ -626,8 +626,8 @@
     "android2": "Tap <b>Install app</b> or <b>Add to Home screen</b> {icon}.",
     "android3": "Tap <b>Install</b>. SnapCal appears with your apps — open it from there.",
     "androidNote": "Samsung Internet: tap the menu ☰, then Add page to → Home screen.",
-    "goalRecomp": "Lose fat, build muscle",
-    "recompNote": "A steady pace, about {n} kg of fat a week, and more protein, so your training builds muscle while the fat comes off. It works when you lift weights a few times a week."
+    "recompNote": "A steady pace, about {n} kg of fat a week, and more protein, so your training builds muscle while the fat comes off. It works when you lift weights a few times a week.",
+    "keepMuscleNote": "Same calories, more protein, so your training builds muscle while your weight holds. It works when you lift weights a few times a week."
   },
   "activity": {
     "sedentary": "Mostly sitting",
@@ -1482,7 +1482,7 @@
     "stepMore": "{n} kcal more a day brings you back on pace.",
     "paceFixed": "Your new budget brings you back on pace.",
     "recompTitle": "Building muscle too",
-    "recompBody": "Muscle weighs something, so the scale drops slower than the fat does. The plan allows for up to {lean} of new muscle a month, and your protein is set for it: {g} g a day.",
+    "recompBody": "Muscle weighs something too, so the scale can't tell fat lost from muscle gained. The plan allows for up to {lean} of new muscle a month, and your protein is set for it: {g} g a day.",
     "paceCapped": "Your budget steps toward your real burn, 150 kcal per check-in, until you're back on pace."
   },
   "weighWhy": {
@@ -1554,5 +1554,29 @@
     "caption": "Caption",
     "captionPlaceholder": "Add a caption (optional)",
     "to": "Share with {group}"
+  },
+  "muscle": {
+    "switch": "Build muscle too",
+    "switchSubLose": "More protein and the steady pace, so muscle can grow while the fat comes off.",
+    "switchSubKeep": "More protein, so muscle can grow while your weight holds.",
+    "askTitle": "Building muscle too?",
+    "askLead": "Your 30-day check-in can now plan for muscle, not just your weight. This is what changes for you if you say yes.",
+    "with": "Building muscle",
+    "proteinTitle": "More protein",
+    "proteinLose": "{g} g a day: what helps muscle grow while the fat comes off.",
+    "proteinKeep": "{g} g a day: what helps muscle grow while your weight holds.",
+    "proteinGain": "{g} g a day: what helps muscle grow in a calorie surplus.",
+    "paceTitle": "A steady pace",
+    "paceBody": "Fat comes off at about {to} a week instead of {from}. A bigger deficit holds muscle back.",
+    "checkTitle": "A fairer check-in",
+    "checkBody": "Muscle weighs something too, so the check-in allows for up to {lean} of new muscle a month before it calls your pace off.",
+    "note": "It works when you lift weights a few times a week. Change it any time in Profile › Goal.",
+    "no": "No, just my weight",
+    "yes": "Yes, build muscle",
+    "doneTitle": "Your plan builds muscle",
+    "doneLead": "From today:",
+    "gainLead": "Your goal is building muscle, so your protein is now set for it.",
+    "ok": "Got it",
+    "lifting": "Lifting weights?"
   }
 }
