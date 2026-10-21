@@ -8,17 +8,49 @@
 // equivalent for a single-level choice, without building a second navigation stack.
 
 import { wireNumericInput } from "./numeric-field.js";
-import { ACTIVITY_LABELS, SEX_LABELS, roundDisplay } from "../nutrition.js";
+import { ACTIVITY_LABELS, SEX_LABELS, roundDisplay, buildsMuscle, targetDelta } from "../nutrition.js";
 import { icon } from "./icons.js";
 import { t } from "../i18n.js";
 
-export const GOAL_OPTIONS = [
-  { delta: -500, get label() { return t("ui.goal_lose05"); } },
-  { delta: -250, get label() { return t("ui.goal_lose025"); } },
-  { delta: 0, get label() { return t("ui.goal_maintain"); } },
-  { delta: 250, get label() { return t("ui.goal_gain025"); } },
-  { delta: 500, get label() { return t("ui.goal_gain05"); } },
+// The goal, as setup asks it (onboarding.js): what for and how fast, or losing fat while building
+// muscle (a steady pace and more protein, nutrition.buildsMuscle).
+export const GOAL_CHOICES = [
+  { key: "lose:slow", goal: "lose", rate: "slow" },
+  { key: "lose:normal", goal: "lose", rate: "normal" },
+  { key: "lose:fast", goal: "lose", rate: "fast" },
+  { key: "recomp", goal: "lose", rate: "slow", buildMuscle: true },
+  { key: "maintain", goal: "maintain", rate: null },
+  { key: "gain:slow", goal: "gain", rate: "slow" },
+  { key: "gain:normal", goal: "gain", rate: "normal" },
+  { key: "gain:fast", goal: "gain", rate: "fast" },
 ];
+const RATE_KEYS = { slow: "onb.rateSlow", normal: "onb.rateNormal", fast: "onb.rateFast" };
+
+/** Which of GOAL_CHOICES a profile is on (older profiles have only a calorie change). */
+export function goalChoiceOf(profile) {
+  if (buildsMuscle(profile)) return "recomp";
+  const delta = Number(profile.targetDeltaKcal) || 0;
+  const goal = ["lose", "maintain", "gain"].includes(profile.goal) ? profile.goal : delta < 0 ? "lose" : delta > 0 ? "gain" : "maintain";
+  return goal === "maintain" ? "maintain" : `${goal}:${RATE_KEYS[profile.goalRate] ? profile.goalRate : "normal"}`;
+}
+
+/** The profile fields a goal choice sets; the calorie change follows from the trend weight. */
+export function goalPatch(key, profile) {
+  const c = GOAL_CHOICES.find((x) => x.key === key);
+  if (!c) return null;
+  const buildMuscle = c.buildMuscle === true;
+  return {
+    goal: c.goal,
+    goalRate: c.rate ?? profile.goalRate ?? null,
+    buildMuscle,
+    targetDeltaKcal: targetDelta({ goal: c.goal, rate: c.rate, weightKg: Number(profile.weightKg) || 0, buildMuscle }),
+  };
+}
+
+const goalLabel = (c) => (c.key === "recomp" ? t("onb.goalRecomp")
+  : c.goal === "maintain" ? t("onb.goalMaintain")
+  : `${t(c.goal === "lose" ? "onb.goalLose" : "onb.goalGain")} · ${t(RATE_KEYS[c.rate])}`);
+
 
 function pickerRow({ id, label, currentLabel, options }) {
   return `
@@ -85,7 +117,7 @@ export function activityLevelSectionHtml(profile) {
 }
 
 export function goalSectionHtml(profile) {
-  const current = GOAL_OPTIONS.find((g) => g.delta === profile.targetDeltaKcal) ?? GOAL_OPTIONS[0];
+  const current = goalChoiceOf(profile);
   return `
     <div class="ios-section">
       <div class="ios-section-header">${t("profileScreen.goal")}</div>
@@ -93,8 +125,8 @@ export function goalSectionHtml(profile) {
         ${pickerRow({
           id: "field-goal",
           label: t("profileScreen.goal"),
-          currentLabel: current.label,
-          options: GOAL_OPTIONS.map((g) => ({ value: String(g.delta), label: g.label, selected: g.delta === current.delta })),
+          currentLabel: goalLabel(GOAL_CHOICES.find((c) => c.key === current)),
+          options: GOAL_CHOICES.map((c) => ({ value: c.key, label: goalLabel(c), selected: c.key === current })),
         })}
       </div>
     </div>
@@ -139,7 +171,7 @@ export function wireProfileFormFields(container, profile, onPatch) {
   }
   if (sexSelect) sexSelect.addEventListener("change", () => onPatch({ sex: sexSelect.value }));
   if (activitySelect) activitySelect.addEventListener("change", () => onPatch({ activityLevel: activitySelect.value }));
-  if (goalSelect) goalSelect.addEventListener("change", () => onPatch({ targetDeltaKcal: Number(goalSelect.value) }));
+  if (goalSelect) goalSelect.addEventListener("change", () => { const patch = goalPatch(goalSelect.value, profile); if (patch) onPatch(patch); });
 }
 
 /** CalculatorEstimateRows (§3.4): BMR / TDEE / Estimated target. */

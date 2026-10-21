@@ -37,6 +37,7 @@ const DEFAULTS = {
   activityLevel: "light",
   goal: "lose",         // lose | maintain | gain
   rate: "normal",       // slow | normal | fast
+  buildMuscle: false,   // with "lose": lose fat and build muscle at once (steady pace, more protein)
   diets: [],            // js/diets.js keys; empty = no restrictions
 };
 
@@ -60,6 +61,7 @@ export function draftFromProfile(profile, latest = store.latestWeight()) {
     activityLevel: profile.activityLevel ?? DEFAULTS.activityLevel,
     goal: profile.goal ?? (Number(profile.targetDeltaKcal) > 0 ? "gain" : Number(profile.targetDeltaKcal) < 0 ? "lose" : "maintain"),
     rate: profile.goalRate ?? DEFAULTS.rate,
+    buildMuscle: profile.buildMuscle === true,
     diets: cleanDiets(profile.diets),
   };
 }
@@ -98,7 +100,7 @@ export function render(container, onComplete, { redo = false, resume = false } =
   const goals = () => resolveUserGoals({
     weightKg: draft.weightKg, heightCm: draft.heightCm, age: draft.age, sex: draft.sex,
     activityLevel: draft.activityLevel, build: draft.build, bodyFatPct: draft.bodyFatPct,
-    targetDeltaKcal: targetDelta(draft),
+    goal: draft.goal, buildMuscle: draft.buildMuscle, targetDeltaKcal: targetDelta(draft),
   });
 
   const finish = () => {
@@ -112,7 +114,8 @@ export function render(container, onComplete, { redo = false, resume = false } =
       bodyFatPct: draft.bodyFatPct,
       activityLevel: draft.activityLevel,
       goal: draft.goal,
-      goalRate: draft.rate,
+      goalRate: draft.buildMuscle && draft.goal === "lose" ? "slow" : draft.rate,
+      buildMuscle: draft.buildMuscle && draft.goal === "lose",
       targetDeltaKcal: targetDelta(draft),
       customTargetKcal: null,
       weightUnit: draft.units === "imperial" ? "lb" : "kg",
@@ -254,21 +257,25 @@ export function render(container, onComplete, { redo = false, resume = false } =
         const g = draft.weightKg > 0 && draft.heightCm > 0 && draft.age > 0 ? goals() : null;
         const kgPerWeek = draft.goal === "maintain" ? 0
           : Math.abs(g ? g.computedTargetCalories - g.tdee : targetDelta(draft)) * 7 / 7700;
+        const recomp = draft.goal === "lose" && draft.buildMuscle;
+        const goalKey = recomp ? "recomp" : draft.goal;
+        const perWeek = (Math.round(kgPerWeek * 100) / 100).toFixed(2);
         return `
           <h1 class="onb-title">${t("onb.goalTitle")}</h1>
           <div class="onb-choices">
-            ${choice("lose", draft.goal, t("onb.goalLose"))}
-            ${choice("maintain", draft.goal, t("onb.goalMaintain"))}
-            ${choice("gain", draft.goal, t("onb.goalGain"))}
+            ${choice("lose", goalKey, t("onb.goalLose"))}
+            ${choice("recomp", goalKey, t("onb.goalRecomp"))}
+            ${choice("maintain", goalKey, t("onb.goalMaintain"))}
+            ${choice("gain", goalKey, t("onb.goalGain"))}
           </div>
-          ${draft.goal === "maintain" ? "" : `
+          ${recomp ? `<p class="onb-note">${t("onb.recompNote", { n: perWeek })}</p>` : draft.goal === "maintain" ? "" : `
             <label class="onb-label">${t("onb.rateTitle")}</label>
             <div class="onb-choices onb-row">
               ${choice("slow", draft.rate, t("onb.rateSlow"))}
               ${choice("normal", draft.rate, t("onb.rateNormal"))}
               ${choice("fast", draft.rate, t("onb.rateFast"))}
             </div>
-            <p class="onb-note">${t("onb.ratePerWeek", { n: (Math.round(kgPerWeek * 100) / 100).toFixed(2) })} · ${t("onb.rateNote")}</p>`}`;
+            <p class="onb-note">${t("onb.ratePerWeek", { n: perWeek })} · ${t("onb.rateNote")}</p>`}`;
       }
 
       case "diet": {
@@ -315,7 +322,11 @@ export function render(container, onComplete, { redo = false, resume = false } =
       if (name === "about") draft.sex = v;
       if (name === "build") { draft.build = v; draft.bodyFatPct = null; }
       if (name === "activity") draft.activityLevel = v;
-      if (name === "goal") (["slow", "normal", "fast"].includes(v) ? (draft.rate = v) : (draft.goal = v));
+      if (name === "goal") {
+        if (["slow", "normal", "fast"].includes(v)) draft.rate = v;
+        else if (v === "recomp") { draft.goal = "lose"; draft.buildMuscle = true; draft.rate = "slow"; }
+        else { draft.goal = v; draft.buildMuscle = false; }
+      }
       draw();
     }));
 

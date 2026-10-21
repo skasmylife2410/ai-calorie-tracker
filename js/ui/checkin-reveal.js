@@ -7,7 +7,7 @@
 import * as store from "../store.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 import { sfx } from "../sounds.js";
-import { REVIEW_EVERY_DAYS } from "../nutrition.js";
+import { REVIEW_EVERY_DAYS, RECOMP_LEAN_KG_PER_WEEK } from "../nutrition.js";
 
 const NEEDED_WEIGH_INS = 4; // nutrition.monthlyReview: at least 4 readings over two weeks
 const reduced = () => Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
@@ -41,9 +41,11 @@ export function revealItems(r) {
     if (r.verdict === "onTrack") items.push([t("reveal.onPaceTitle"), t("reveal.onPaceBody", sides)]);
     else items.push([
       t(`reveal.pace${dir}`, sides),
-      r.stepKcal ? t(r.stepKcal < 0 ? "reveal.stepLess" : "reveal.stepMore", { n: formatNumber(Math.abs(r.stepKcal)) }) : t("reveal.paceFixed"),
+      r.stepKcal ? t(r.stepKcal < 0 ? "reveal.stepLess" : "reveal.stepMore", { n: formatNumber(Math.abs(r.stepKcal)) })
+        : t(r.maintenanceCapped ? "reveal.paceCapped" : "reveal.paceFixed"),
     ]);
   }
+  if (r.recomp) items.push([t("reveal.recompTitle"), t("reveal.recompBody", { lean: wt(RECOMP_LEAN_KG_PER_WEEK * 4), g: formatNumber(r.to?.proteinG ?? 0) })]);
   if (r.eased) items.push([t("review.easedTitle"), t("review.easedBody", { kg: wt(2) })]);
   return items;
 }
@@ -152,7 +154,7 @@ export function revealCheckin({ record, items = revealItems(record), onChange } 
       <div class="ci-from">${from !== to ? `<s>${formatNumber(from)}</s> →` : t("reveal.same")}</div>
       <div class="ci-num ci-budget" id="ci-budget">${formatNumber(from)}</div>
       <div class="ci-unit">${t("reveal.perDay")}</div>
-      <div class="ci-rows">${items.slice(0, 3).map(([title, body]) => `<div class="ci-row"><i aria-hidden="true"></i><div><b>${title}</b><span>${body}</span></div></div>`).join("")}</div>
+      <div class="ci-rows">${items.slice(0, 4).map(([title, body]) => `<div class="ci-row"><i aria-hidden="true"></i><div><b>${title}</b><span>${body}</span></div></div>`).join("")}</div>
       ${next ? `<p class="ci-next">${t("review.next", { date: formatDate(next, { month: "long", day: "numeric" }) })}</p>` : ""}`;
     root.querySelector("#ci-actions").innerHTML = `
       <button type="button" class="ci-btn" data-ci="undo">${t("reveal.undo")}</button>

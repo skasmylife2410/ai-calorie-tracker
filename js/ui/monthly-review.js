@@ -6,7 +6,7 @@
 import * as store from "../store.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 import { openSheet } from "./sheet.js";
-import { REVIEW_EVERY_DAYS, REVIEW_NEAR_GOAL_KG } from "../nutrition.js";
+import { REVIEW_EVERY_DAYS, REVIEW_NEAR_GOAL_KG, RECOMP_LEAN_KG_PER_WEEK } from "../nutrition.js";
 import { revealCheckin, revealNeedWeighIns } from "./checkin-reveal.js";
 
 const lb = () => store.weightUnit() === "lb";
@@ -46,6 +46,7 @@ function changeItems(r) {
     ]);
   }
   if (r.reached) items.push([t("review.reachedTitle"), t("review.reachedBody")]);
+  if (r.recomp) items.push([t("reveal.recompTitle"), t("reveal.recompBody", { lean: kg(RECOMP_LEAN_KG_PER_WEEK * 4), g: formatNumber(r.to?.proteinG ?? 0) })]);
   if (r.eased) items.push([t("review.easedTitle"), t("review.easedBody", { kg: kg(REVIEW_NEAR_GOAL_KG) })]);
   if (r.stepKcal) {
     items.push([
@@ -106,8 +107,34 @@ function showRecord(record, { onChange } = {}) {
   });
 }
 
+let noteTimer = null;
+
+/**
+ * Today's check-in ran before today's weigh-in: counts it (store.recountMonthlyReview) and says
+ * so, with a way to see the check-in again. True when it changed something.
+ */
+export function maybeRecountReview({ onChange } = {}) {
+  const record = store.recountMonthlyReview();
+  if (!record) return false;
+  try { store.syncLearnedTdeeFlag(); } catch { /* never block */ }
+  onChange?.();
+  document.getElementById("undo-toast")?.remove();
+  clearTimeout(noteTimer);
+  const el = document.createElement("div");
+  el.id = "undo-toast";
+  el.className = "undo-toast";
+  el.setAttribute("role", "status");
+  el.innerHTML = `<span class="undo-text"></span><button type="button" class="undo-btn">${t("review.seeIt")}</button>`;
+  el.querySelector(".undo-text").textContent = t("review.recounted");
+  el.querySelector(".undo-btn").addEventListener("click", () => { el.remove(); showRecord(record, { onChange }); });
+  document.body.appendChild(el);
+  noteTimer = setTimeout(() => el.remove(), 6000);
+  return true;
+}
+
 /** Runs the check-in when it's due. True if a sheet was shown. */
 export function maybeRunMonthlyReview({ onChange } = {}) {
+  if (maybeRecountReview({ onChange })) return true;
   if (!store.reviewIsDue()) return false;
   const review = store.monthlyReviewNow();
   // a month of logging is a moment: shown full screen (checkin-reveal.js), not as a plain sheet

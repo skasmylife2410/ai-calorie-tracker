@@ -1145,6 +1145,28 @@ export function applyMonthlyReview(review, { now = Date.now() } = {}) {
   return record;
 }
 
+/**
+ * The check-in opens with the app, often before that morning's weigh-in. A weigh-in saved later
+ * the same day is counted: the check-in is worked out again from where it started (its `prev`),
+ * keeping its date and its Undo. Returns the new record, or null when there's nothing to count.
+ */
+export function recountMonthlyReview(now = Date.now()) {
+  const r = getProfile().lastReview;
+  if (!r || r.undone || !r.prev || !(Number(r.at) > 0) || startOfDay(r.at) !== startOfDay(now)) return null;
+  const counted = Number(r.countedTo) || Number(r.at);
+  if (!allWeightRaw().some((w) => Number(w.updatedAt ?? w.timestamp) > counted)) return null;
+  const before = getProfile();
+  setProfile({ ...r.prev });
+  const review = monthlyReviewNow({ now });
+  if (review.status !== "ready") {
+    setProfile(Object.fromEntries(Object.keys(r.prev).map((k) => [k, before[k] ?? null])));
+    return null;
+  }
+  const record = { ...applyMonthlyReview(review, { now: r.at }), countedTo: now };
+  setProfile({ lastReview: record });
+  return record;
+}
+
 /** Puts back what the last review changed. The check-in stays done; the next is in 30 days. */
 export function undoMonthlyReview() {
   const r = getProfile().lastReview;

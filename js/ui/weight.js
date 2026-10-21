@@ -18,7 +18,7 @@ import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 import { buildDays, summarize, insights, milestones, weightDirection } from "../progress.js";
 import { localDateString } from "../nutrition.js";
-import { reviewCardHtml, wireReviewCard } from "./monthly-review.js";
+import { reviewCardHtml, wireReviewCard, maybeRecountReview } from "./monthly-review.js";
 
 const RANGES = [30, 90, 365];
 let range = 30;
@@ -462,6 +462,8 @@ export function openWeightSheet({ timestamp = Date.now(), onSaved } = {}) {
         if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(15);
         onSaved?.();
         close();
+        // the check-in opened before this weigh-in: it counts it now
+        maybeRecountReview({ onChange: onSaved });
       };
 
       panel.querySelector("#wt-save").addEventListener("click", save);

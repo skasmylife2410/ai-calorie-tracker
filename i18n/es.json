@@ -625,7 +625,9 @@
     "android1": "En Chrome, toca el menú {icon} arriba a la derecha.",
     "android2": "Toca <b>Instalar app</b> o <b>Agregar a la pantalla principal</b> {icon}.",
     "android3": "Toca <b>Instalar</b>. SnapCal aparece con tus apps: ábrela desde ahí.",
-    "androidNote": "Samsung Internet: toca el menú ☰ y luego Añadir página a → Pantalla de inicio."
+    "androidNote": "Samsung Internet: toca el menú ☰ y luego Añadir página a → Pantalla de inicio.",
+    "goalRecomp": "Bajar grasa y ganar músculo",
+    "recompNote": "Un ritmo tranquilo, unos {n} kg de grasa por semana, y más proteína, para que tu entrenamiento construya músculo mientras pierdes grasa. Funciona si entrenas con pesas varias veces por semana."
   },
   "activity": {
     "sedentary": "Casi todo sentada/o",
@@ -869,11 +871,6 @@
     "carbs": "Carbohidratos",
     "fat": "Grasa",
     "auto": "Auto",
-    "goal_lose05": "Bajar ~0,5 kg/semana",
-    "goal_lose025": "Bajar ~0,25 kg/semana",
-    "goal_maintain": "Mantener el peso",
-    "goal_gain025": "Subir ~0,25 kg/semana",
-    "goal_gain05": "Subir ~0,5 kg/semana",
     "weight": "Peso",
     "height": "Estatura",
     "age": "Edad",
@@ -1385,7 +1382,9 @@
     "cardToday": "Toca hoy",
     "cardIn": "Próxima en {n} días",
     "cardEvery": "las metas se ajustan a tu peso cada {n} días",
-    "maintCapped": "Tus registros apuntan a unas {measured} kcal. El mantenimiento se mueve como mucho 150 kcal por revisión, para que un mes con ruido no cambie tus metas de golpe. Si se mantiene, la próxima revisión sigue en esa dirección."
+    "maintCapped": "Tus registros apuntan a unas {measured} kcal. El mantenimiento se mueve como mucho 150 kcal por revisión, para que un mes con ruido no cambie tus metas de golpe. Si se mantiene, la próxima revisión sigue en esa dirección.",
+    "recounted": "Revisión actualizada con tu peso de hoy.",
+    "seeIt": "Ver"
   },
   "addTo": {
     "title": "Añadir a esta comida",
@@ -1481,7 +1480,10 @@
     "paceSteady": "Tu peso se mantuvo; el plan era {planned} por semana",
     "stepLess": "{n} kcal menos al día te devuelven a tu ritmo.",
     "stepMore": "{n} kcal más al día te devuelven a tu ritmo.",
-    "paceFixed": "Tu nuevo presupuesto te devuelve a tu ritmo."
+    "paceFixed": "Tu nuevo presupuesto te devuelve a tu ritmo.",
+    "recompTitle": "También ganando músculo",
+    "recompBody": "El músculo también pesa, así que la báscula baja más despacio que la grasa. El plan cuenta con hasta {lean} de músculo nuevo al mes, y tu proteína está pensada para ello: {g} g al día.",
+    "paceCapped": "Tu presupuesto se acerca a tu gasto real, 150 kcal por revisión, hasta que vuelvas al ritmo."
   },
   "weighWhy": {
     "kicker": "Por qué pesarte",

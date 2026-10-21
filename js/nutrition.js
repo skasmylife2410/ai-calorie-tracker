@@ -141,6 +141,9 @@ export const PROTEIN_G_PER_KG = 1.6;           // kept for older callers: the "m
 export const PROTEIN_LEAN_EXTRA = 0.5;         // per kilo of lean mass it's a bit more than per kilo of body weight
 export const PROTEIN_MAX_SHARE = 0.35;         // never more than 35% of the day's calories
 export const PROTEIN_MIN_G_PER_KG = 0.8;       // and never under the basic daily requirement
+// Losing fat and building muscle at once: protein at the top of the range (Barakat et al. 2020,
+// on recomposition: 2.6–3.5 g per kg of lean mass), so 2.1 per kg here, 2.6 per kg of lean mass.
+export const PROTEIN_RECOMP_G_PER_KG = 2.1;
 export const FAT_SHARE = 0.3;
 export const FAT_SHARE_MIN = 0.25;   // fat gives way to here on few calories, to keep carbs up
 export const CARBS_MIN_G = 130;      // the daily carbohydrate minimum (RDA)
@@ -160,11 +163,12 @@ export function proteinReferenceKg(weightKg, heightCm) {
 
 /** Daily protein in grams: per kilo by activity and goal, of the reference weight (or of lean
  *  mass when that's known); capped at 35% of calories, never under 0.8 g/kg. */
-export function proteinTargetG({ weightKg, heightCm, leanKg = 0, deltaKcal = 0, activityLevel = "moderate", targetKcal = 2000 }) {
+export function proteinTargetG({ weightKg, heightCm, leanKg = 0, deltaKcal = 0, activityLevel = "moderate", targetKcal = 2000, buildMuscle = false }) {
   const w = Number(weightKg);
   if (!(w > 0)) return Math.round((targetKcal * 0.25) / 4);
   const rates = PROTEIN_G_PER_KG_BY_ACTIVITY[normalizeActivityLevel(activityLevel)] ?? PROTEIN_G_PER_KG_BY_ACTIVITY.moderate;
-  const perKg = Number(deltaKcal) < 0 ? rates.lose : rates.maintain;
+  let perKg = Number(deltaKcal) < 0 ? rates.lose : rates.maintain;
+  if (buildMuscle) perKg = Math.max(perKg, PROTEIN_RECOMP_G_PER_KG);
   let g = leanKg > 0 ? leanKg * (perKg + PROTEIN_LEAN_EXTRA) : proteinReferenceKg(w, heightCm) * perKg;
   g = Math.min(g, (targetKcal * PROTEIN_MAX_SHARE) / 4);
   g = Math.max(g, w * PROTEIN_MIN_G_PER_KG);
@@ -249,7 +253,7 @@ export function resolveUserGoals(profile, { learnedTdee = null } = {}) {
   if (weightKg > 0) {
     proteinG = customProteinG !== null && customProteinG !== undefined
       ? Number(customProteinG)
-      : proteinTargetG({ weightKg, heightCm, leanKg: lbm, deltaKcal: targetDeltaKcal, activityLevel, targetKcal: effectiveTargetCalories });
+      : proteinTargetG({ weightKg, heightCm, leanKg: lbm, deltaKcal: targetDeltaKcal, activityLevel, targetKcal: effectiveTargetCalories, buildMuscle: buildsMuscle(profile) });
     carbsG = Math.max(0, (effectiveTargetCalories - proteinG * 4 - fatG * 9) / 4);
     if (carbsG < CARBS_MIN_G && (customFatG === null || customFatG === undefined)) {
       // on few calories, fat comes down from 30% toward 25% to keep carbs near the daily minimum
@@ -363,9 +367,23 @@ export function learnedMaintenance({ days = [], weights = [], formulaTdee = 0 })
 /** Weekly change each pace aims for, as a share of body weight. */
 export const GOAL_RATE_PCT = Object.freeze({ slow: 0.0035, normal: 0.006, fast: 0.009 });
 
+// Losing fat while building muscle ("recomposition"). The deficit stays small: the steady pace,
+// and never more than 500 kcal a day, past which muscle gain slows down (Murphy & Koehler 2022).
+// The scale then shows fat lost minus muscle gained, so the check-in allows for up to 0.1 kg a
+// week of new muscle (about 0.4 kg a month, the upper end for someone training regularly in a
+// small deficit) before it calls the pace slow.
+export const RECOMP_MAX_DEFICIT_KCAL = 500;
+export const RECOMP_LEAN_KG_PER_WEEK = 0.1;
+
+/** Whether this profile is losing fat and building muscle at once. */
+export const buildsMuscle = (profile) => profile?.buildMuscle === true && profile?.goal === "lose";
+
 /** Daily calorie change for a goal and pace: a deficit to lose, a small surplus to gain. */
-export function targetDelta({ goal, rate, weightKg }) {
+export function targetDelta({ goal, rate, weightKg, buildMuscle = false }) {
   if (goal === "maintain") return 0;
+  if (goal === "lose" && buildMuscle) {
+    return -Math.min(RECOMP_MAX_DEFICIT_KCAL, Math.round((weightKg * GOAL_RATE_PCT.slow * 7700) / 7 / 10) * 10);
+  }
   const pctPerWeek = GOAL_RATE_PCT[rate] ?? GOAL_RATE_PCT.normal;
   const kgPerWeek = weightKg * pctPerWeek;
   const perDay = Math.round((kgPerWeek * 7700) / 7 / 10) * 10;
@@ -427,7 +445,9 @@ export function monthlyReview({ profile = {}, weights = [], now = Date.now(), le
 
   const delta = Number(profile.targetDeltaKcal) || 0;
   const goal = ["lose", "gain", "maintain"].includes(profile.goal) ? profile.goal : delta < 0 ? "lose" : delta > 0 ? "gain" : "maintain";
-  const plannedKgPerWeek = (delta * 7) / KCAL_PER_KG;
+  // building muscle too: the scale can drop slower than the fat does, by the muscle gained
+  const recomp = buildsMuscle(profile);
+  const plannedKgPerWeek = (delta * 7) / KCAL_PER_KG + (recomp ? RECOMP_LEAN_KG_PER_WEEK : 0);
   const oldKg = Number(profile.weightKg) > 0 ? Number(profile.weightKg) : endKg;
   const newKg = Math.round(endKg * 10) / 10;
 
@@ -459,8 +479,8 @@ export function monthlyReview({ profile = {}, weights = [], now = Date.now(), le
     let rate = profile.goalRate;
     if (pointsRight && rate === "fast" && Math.abs(goalKg - newKg) <= REVIEW_NEAR_GOAL_KG) { rate = "normal"; eased = true; patch.goalRate = rate; }
     // the deficit or surplus is a share of body weight, so it follows the new weight
-    let nextDelta = rate && goal !== "maintain"
-      ? targetDelta({ goal, rate, weightKg: newKg })
+    let nextDelta = (rate || recomp) && goal !== "maintain"
+      ? targetDelta({ goal, rate, weightKg: newKg, buildMuscle: recomp })
       : Math.round((delta * (newKg / oldKg)) / 10) * 10;
     // 3. off plan and nothing else is correcting it: a small step toward the plan
     if (!learnedOn && verdict !== "onTrack") {
@@ -470,6 +490,7 @@ export function monthlyReview({ profile = {}, weights = [], now = Date.now(), le
     }
     if (goal === "gain") nextDelta = Math.max(0, Math.min(500, nextDelta));
     if (goal === "lose") nextDelta = Math.min(0, nextDelta);
+    if (recomp) nextDelta = Math.max(-RECOMP_MAX_DEFICIT_KCAL, nextDelta);
     patch.targetDeltaKcal = nextDelta;
   }
 
@@ -486,6 +507,7 @@ export function monthlyReview({ profile = {}, weights = [], now = Date.now(), le
     kgPerWeek: Math.round(kgPerWeek * 100) / 100,
     plannedKgPerWeek: Math.round(plannedKgPerWeek * 100) / 100,
     goal,
+    recomp,
     goalKg,
     reached,
     eased,

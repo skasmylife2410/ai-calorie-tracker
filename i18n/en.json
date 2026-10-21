@@ -625,7 +625,9 @@
     "android1": "In Chrome, tap the menu {icon} at the top right.",
     "android2": "Tap <b>Install app</b> or <b>Add to Home screen</b> {icon}.",
     "android3": "Tap <b>Install</b>. SnapCal appears with your apps — open it from there.",
-    "androidNote": "Samsung Internet: tap the menu ☰, then Add page to → Home screen."
+    "androidNote": "Samsung Internet: tap the menu ☰, then Add page to → Home screen.",
+    "goalRecomp": "Lose fat, build muscle",
+    "recompNote": "A steady pace, about {n} kg of fat a week, and more protein, so your training builds muscle while the fat comes off. It works when you lift weights a few times a week."
   },
   "activity": {
     "sedentary": "Mostly sitting",
@@ -869,11 +871,6 @@
     "carbs": "Carbs",
     "fat": "Fat",
     "auto": "Auto",
-    "goal_lose05": "Lose ~0.5 kg/week",
-    "goal_lose025": "Lose ~0.25 kg/week",
-    "goal_maintain": "Maintain weight",
-    "goal_gain025": "Gain ~0.25 kg/week",
-    "goal_gain05": "Gain ~0.5 kg/week",
     "weight": "Weight",
     "height": "Height",
     "age": "Age",
@@ -1385,7 +1382,9 @@
     "cardToday": "Due today",
     "cardIn": "Next in {n} days",
     "cardEvery": "targets adjust to your weight every {n} days",
-    "maintCapped": "Your logs point to about {measured} kcal. Maintenance moves 150 kcal at most per check-in, so one noisy month can't swing your targets. If it holds, the next check-in keeps going that way."
+    "maintCapped": "Your logs point to about {measured} kcal. Maintenance moves 150 kcal at most per check-in, so one noisy month can't swing your targets. If it holds, the next check-in keeps going that way.",
+    "recounted": "Check-in updated with today's weigh-in.",
+    "seeIt": "See it"
   },
   "addTo": {
     "title": "Add to this meal",
@@ -1481,7 +1480,10 @@
     "paceSteady": "Your weight held steady, plan was {planned} a week",
     "stepLess": "{n} kcal less a day brings you back on pace.",
     "stepMore": "{n} kcal more a day brings you back on pace.",
-    "paceFixed": "Your new budget brings you back on pace."
+    "paceFixed": "Your new budget brings you back on pace.",
+    "recompTitle": "Building muscle too",
+    "recompBody": "Muscle weighs something, so the scale drops slower than the fat does. The plan allows for up to {lean} of new muscle a month, and your protein is set for it: {g} g a day.",
+    "paceCapped": "Your budget steps toward your real burn, 150 kcal per check-in, until you're back on pace."
   },
   "weighWhy": {
     "kicker": "Why weigh in",
