@@ -16,6 +16,7 @@ import { requireUser } from "./_auth.js";
 import { select, insert, patch, parseBody, restBase } from "./_rest.js";
 import { maxUsers, isAdmin, INVITE_DAYS, REFERRALS } from "./_members.js";
 import { myGroups, membersOf, isMember } from "./_groups.js";
+import { audit } from "./_audit.js";
 
 const fail = (res, errorType, message, status = 200) => res.status(status).json({ ok: false, errorType, message });
 
@@ -96,6 +97,7 @@ export default async function handler(req, res) {
       const code = newInviteCode();
       const expiresAt = new Date(Date.now() + INVITE_DAYS * 86400000).toISOString();
       await insert("snapcal_invites", { code, created_by: me, expires_at: expiresAt, group_id: groupId });
+      audit("invite.create", { by: me, group: groupId });
       return res.status(200).json({ ok: true, code, expiresAt, group: groupId });
     }
 

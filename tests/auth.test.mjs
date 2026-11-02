@@ -333,3 +333,43 @@ test("security: the old shared passcodes are refused unless legacy passcodes are
     }
   }
 });
+
+test("passwords from the guessing lists, repeats and the username are refused", async () => {
+  assert.equal(acct.passwordProblem("Password123"), "common", "compared lowercased");
+  assert.equal(acct.passwordProblem("12345678"), "common");
+  assert.equal(acct.passwordProblem("aaaaaaaaaa"), "common", "one character repeated");
+  assert.equal(acct.passwordProblem("maria2026!", "maria"), "common", "contains the username");
+  assert.equal(acct.passwordProblem("cumbia7431", "maria"), null);
+  assert.match(acct.passwordMessage("common"), /too easy to guess/);
+
+  const res = mockRes();
+  await auth(req({ op: "signup", consent: true, username: "rosa", password: "iloveyou", invite: "valid-invite-0002" }), res);
+  assert.equal(res.body.errorType, "common");
+  assert.match(res.body.message, /too easy to guess/, "the server's message is what the app shows");
+});
+
+test("an unknown username costs a full password check, so timing can't reveal who exists", () => {
+  const user = acct.hashPassword("cumbia7431");
+  assert.equal(acct.checkPassword("cumbia7431", { salt: user.salt, password_hash: user.hash }), true);
+  assert.equal(acct.checkPassword("wrong", { salt: user.salt, password_hash: user.hash }), false);
+  const t0 = process.hrtime.bigint();
+  assert.equal(acct.checkPassword("cumbia7431", null), false);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.ok(ms > 5, `the decoy hash ran (${ms.toFixed(1)}ms)`);
+});
+
+test("security events are written to the audit trail, never with the password", async () => {
+  const lines = [];
+  const info = console.info;
+  console.info = (line) => lines.push(String(line));
+  try {
+    await auth(req({ op: "login", username: "nobody-here", password: "secretguess99" }), mockRes());
+  } finally {
+    console.info = info;
+  }
+  const entry = lines.map((l) => JSON.parse(l)).find((e) => e.audit === "login.fail");
+  assert.ok(entry, "failed sign-in logged");
+  assert.equal(entry.user, "nobody-here");
+  assert.equal(entry.known, false);
+  assert.ok(!lines.join("").includes("secretguess99"), "no password in the log");
+});

@@ -103,10 +103,54 @@ export function readSession(token) {
   return readSessionDetail(token)?.username ?? null;
 }
 
-/** Password rules kept deliberately mild: 8+ characters, anything goes. */
-export function passwordProblem(password) {
+/**
+ * The passwords tried first by anyone guessing (the top of the public breach lists), all 8+
+ * characters so the length rule doesn't already catch them. Compared lowercased.
+ */
+const COMMON_PASSWORDS = new Set([
+  "password", "password1", "password12", "password123", "passw0rd", "p@ssw0rd", "p@ssword",
+  "12345678", "123456789", "1234567890", "0123456789", "87654321", "11111111", "00000000",
+  "12341234", "12121212", "11223344", "123123123", "1q2w3e4r", "1qaz2wsx", "qwertyui",
+  "qwerty12", "qwerty123", "qwertyuiop", "asdfghjk", "asdfasdf", "zxcvbnm1", "abcd1234",
+  "abc12345", "abcdefgh", "aa123456", "iloveyou", "iloveyou1", "sunshine", "princess",
+  "football", "baseball", "superman", "starwars", "whatever", "trustno1", "letmein1",
+  "welcome1", "welcome123", "changeme", "computer", "internet", "michelle", "jennifer",
+  "contraseña", "contrasena", "contrasena1", "teamo123", "snapcal1", "snapcal123",
+]);
+
+/**
+ * Password rules kept deliberately mild: 8+ characters, anything goes, except a password from
+ * the guessing lists, one character repeated, or the username itself (NIST SP 800-63B 5.1.1.2).
+ */
+export function passwordProblem(password, username = "") {
   const p = String(password ?? "");
   if (p.length < 8) return "tooShort";
   if (p.length > 200) return "tooLong";
+  const lower = p.toLowerCase();
+  if (COMMON_PASSWORDS.has(lower) || /^(.)\1+$/.test(p)) return "common";
+  if (username && lower.includes(String(username).toLowerCase())) return "common";
   return null;
+}
+
+/** What to tell someone whose new password passwordProblem() refused. */
+export function passwordMessage(problem) {
+  if (problem === "common") return "That password is too easy to guess. Pick something less common, and not your username.";
+  if (problem === "tooLong") return "That password is too long (200 characters at most).";
+  return "Password must be at least 8 characters.";
+}
+
+const DUMMY_SALT = crypto.randomBytes(16).toString("hex");
+const DUMMY_HASH = hashPassword("not-a-real-password", DUMMY_SALT).hash;
+
+/**
+ * Same as verifyPassword, but takes as long when there is no such account. Without the decoy,
+ * "no such user" answers in a millisecond and "wrong password" in ~100ms, so the identical
+ * error message would still tell an attacker which usernames exist.
+ */
+export function checkPassword(password, user) {
+  if (!user) {
+    verifyPassword(password, DUMMY_SALT, DUMMY_HASH);
+    return false;
+  }
+  return verifyPassword(password, user.salt, user.password_hash);
 }

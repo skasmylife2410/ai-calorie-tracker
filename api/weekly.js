@@ -13,6 +13,7 @@
 //
 // One Vercel function for both jobs keeps the project under the Hobby plan's function limit.
 
+import crypto from "node:crypto";
 import { requireUser } from "./_auth.js";
 import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
@@ -346,12 +347,23 @@ export async function nudgeInactive(now = Date.now(), { skip = new Set() } = {})
   return { due: due.length, sent, owners: due };
 }
 
+const CLIENT_ERROR_DAYS = 90;
+
+/** Constant-time string compare, so the cron secret can't be found by timing the reply. */
+function sameSecret(given, expected) {
+  const a = Buffer.from(String(given ?? ""));
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export async function purgeOldPosts(now = Date.now()) {
   const cutoff = new Date(now - FEED_DAYS * 86400000).toISOString();
   await remove("snapcal_shares", { created_at: `lt.${cutoff}` }); // comments cascade
   // failed sign-in records only matter for 15 minutes; keep a day for looking back
   await remove("snapcal_auth_failures", { at: `lt.${new Date(now - 86400000).toISOString()}` }).catch(() => {});
   await remove("snapcal_password_resets", { expires_at: `lt.${new Date(now - 86400000).toISOString()}` }).catch(() => {});
+  // crash reports are for fixing bugs, not for keeping: three months is plenty
+  await remove("snapcal_client_errors", { at: `lt.${new Date(now - CLIENT_ERROR_DAYS * 86400000).toISOString()}` }).catch(() => {});
   return cutoff;
 }
 
@@ -360,7 +372,7 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     const secret = (process.env.CRON_SECRET || "").trim();
-    if (!secret || req.headers?.authorization !== `Bearer ${secret}`) return fail(res, "auth", "Not allowed.", 401);
+    if (!secret || !sameSecret(req.headers?.authorization, `Bearer ${secret}`)) return fail(res, "auth", "Not allowed.", 401);
     const now = new Date();
     // the evening run (second cron, ~7:30pm): only the streak reminder
     if (String(req.query?.job ?? new URL(req.url, "http://x").searchParams.get("job") ?? "") === "evening") {
