@@ -17,6 +17,7 @@ import { isAdmin, MAX_GROUPS, ADMIN } from "./_members.js";
 import { deleteAccount } from "./_account-data.js";
 import { forgetAccount } from "./_auth.js";
 import { notify, displayName } from "./_push.js";
+import { mailConfigured } from "./_mail.js";
 
 const NAME_MAX = 30;
 const fail = (res, errorType, message) => res.status(200).json({ ok: false, errorType, message });
@@ -161,13 +162,15 @@ export default async function handler(req, res) {
         }
       }
 
-      const users = await select("snapcal_users", { select: "username,created_at", order: "created_at.asc", limit: "100" });
+      // whether each has a recovery email (not the address): the owner can add one where it's missing
+      const users = await select("snapcal_users", { select: "username,created_at,has_email:email", order: "created_at.asc", limit: "100" });
       const memberships = await select("snapcal_group_members", { select: "group_id,username", limit: "1000" });
       const people = users.map((u) => ({
         username: u.username,
         groups: memberships.filter((m) => m.username === u.username).map((m) => m.group_id),
+        hasEmail: Boolean(u.has_email),
       }));
-      return res.status(200).json({ ok: true, groups: allGroups, people, isAdmin: true });
+      return res.status(200).json({ ok: true, groups: allGroups, people, isAdmin: true, mailOn: mailConfigured() });
     }
 
     return res.status(200).json(await mine(me));

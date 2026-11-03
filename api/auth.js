@@ -5,6 +5,9 @@
 // POST { op: "change", username, password, newPassword }-> { ok, token }
 // POST { op: "whoami" } with x-snapcal-token            -> { ok, username, email }
 // POST { op: "setEmail", username, password, email }    -> { ok, email }   "" removes it
+// POST { op: "memberEmail", username, password, email } with the owner's session -> { ok, email }
+//                                                        the owner adds a recovery email for someone
+//                                                        who has none (never replaces one)
 // POST { op: "forgot", identifier, lang }                -> { ok }          same answer either way
 // POST { op: "reset", token, newPassword }               -> { ok, token, username }
 // POST { op: "consent" }                 with session     -> { ok }   agrees to POLICY_VERSION
@@ -209,6 +212,7 @@ export default async function handler(req, res) {
   }
 
   if (op === "forgot") return forgot(req, res, body);
+  if (op === "memberEmail") return memberEmail(req, res, body);
   if (op === "consent" || op === "export" || op === "deleteAccount") return accountOp(req, res, body, op);
   if (op === "reset") return resetPassword(req, res, body);
 
@@ -375,6 +379,47 @@ async function forgot(req, res, body) {
     console.error("forgot:", err);
   }
   return res.status(200).json(sent);
+}
+
+/**
+ * The owner adds a recovery email for someone who never set one (most people signed up before
+ * emails were asked for), so they can get back in with "Forgot password?" on their own: the link
+ * goes to their inbox and they choose the password. Needs the owner's session and the owner's
+ * password, like setEmail, so an unlocked phone can't be used to point accounts at another inbox.
+ * An email someone set themselves is never replaced: only they can change it.
+ */
+async function memberEmail(req, res, body) {
+  const me = await verifiedUser(req);
+  if (!me || !isAdmin(me)) return fail(res, "forbidden", "Only the app's owner can do that.");
+  const keys = [`user:${me}`, `ip:${clientIp(req)}`];
+  try {
+    if (await isLocked(keys)) return tooMany(res);
+    const owner = await getUser(me);
+    if (!owner || !verifyPassword(String(body.password ?? ""), owner.salt, owner.password_hash)) {
+      await recordFailure(keys);
+      return fail(res, "unauthorized", "Wrong password.");
+    }
+    const username = normalizeUsername(body.username);
+    const email = String(body.email ?? "").trim().toLowerCase();
+    if (email.length > 254 || !EMAIL_RE.test(email)) return fail(res, "badEmail", "That email address doesn't look right.");
+    const member = USERNAME_RE.test(username) ? await getUser(username) : null;
+    if (!member) return fail(res, "other", "No such account.");
+    if (member.email) return fail(res, "hasEmail", "They already have a recovery email. Only they can change it.");
+    // only while it's still empty, so two at once (or them adding their own meanwhile) can't clash
+    const r = await fetch(`${restBase()}/rest/v1/snapcal_users?username=eq.${encodeURIComponent(username)}&email=is.null`, {
+      method: "PATCH",
+      headers: restHeaders({ Prefer: "return=representation" }),
+      body: JSON.stringify({ email }),
+    });
+    if (r.status === 409) return fail(res, "emailTaken", "That email is already used by another account.");
+    if (!r.ok) throw new Error(`Supabase email update failed (${r.status})`);
+    const rows = await r.json().catch(() => []);
+    if (!Array.isArray(rows) || rows.length === 0) return fail(res, "hasEmail", "They already have a recovery email. Only they can change it.");
+    return res.status(200).json({ ok: true, email, mailOn: mailConfigured() });
+  } catch (err) {
+    console.error("memberEmail:", err);
+    return fail(res, "other", "Something went wrong. Try again.");
+  }
 }
 
 /** Sets a new password from a reset link, then signs the person in. */

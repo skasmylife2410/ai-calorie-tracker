@@ -478,6 +478,12 @@ async function wireMembers(container, me) {
       return await r.json();
     } catch { return { ok: false }; }
   };
+  const callAuth = async (body) => {
+    try {
+      const r = await apiFetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      return await r.json();
+    } catch { return { ok: false, errorType: "network" }; }
+  };
   const draw = async (data) => {
     const info = data ?? (await call({ op: "all" }));
     if (!info.ok || !info.isAdmin) { host.remove(); return; }
@@ -487,6 +493,9 @@ async function wireMembers(container, me) {
         ${info.people.map((p) => `
           <div class="mem-row">
             <span class="mem-name">${escapeHtml(p.username)}${p.username === me ? ` <i>${t("members.you")}</i>` : ""}</span>
+            ${p.username === me ? "" : p.hasEmail
+              ? `<span class="mem-email-on">✓ ${t("members.emailOn")}</span>`
+              : `<button type="button" class="mem-email" data-email="${escapeHtml(p.username)}">${t("members.addEmail")}</button>`}
             ${p.username !== me ? `<button type="button" class="mem-remove" data-remove="${escapeHtml(p.username)}">${t("members.remove")}</button>` : ""}
             <span class="mem-groups">
               ${info.groups.map((g) => `
@@ -496,7 +505,8 @@ async function wireMembers(container, me) {
             ${p.groups.length === 0 ? `<span class="mem-warn">${t("members.none")}</span>` : ""}
           </div>`).join("")}
       </div>
-      <div class="ios-section-footer">${t("members.hint")}</div>`;
+      <div class="ios-section-footer">${t("members.hint")} ${t("members.emailHint")}${info.mailOn === false ? ` <b>${t("members.mailOff")}</b>` : ""}</div>`;
+    host.querySelectorAll("[data-email]").forEach((b) => b.addEventListener("click", () => openMemberEmailSheet(b.dataset.email, { call: callAuth, onDone: () => draw() })));
     host.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", async () => {
       const who = b.dataset.remove;
       if (!confirm(t("members.removeConfirm", { name: who }))) return;
@@ -515,6 +525,56 @@ async function wireMembers(container, me) {
     }));
   };
   draw();
+}
+
+/**
+ * The owner adds a recovery email for someone who has none, so they can use "Forgot password?"
+ * themselves: the link goes to their inbox and they choose the password. The owner's password
+ * confirms it (api/auth.js, op memberEmail); an email someone set themselves can't be replaced.
+ */
+async function openMemberEmailSheet(username, { call, onDone }) {
+  const { openSheet, navBar, wireNavBar } = await import("./sheet.js");
+  openSheet({
+    onClosed: onDone,
+    render(panel, close) {
+      panel.innerHTML = `
+        ${navBar({ title: t("members.emailTitle"), leading: { label: t("app.cancel") } })}
+        <div class="sheet-panel-body mem-email-body">
+          <p class="mem-email-lead">${t("members.emailLead", { name: escapeHtml(username) })}</p>
+          <input type="email" class="auth-input" id="mem-email-input" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="${t("auth.emailPlaceholder")}" aria-label="${t("auth.email")}">
+          <input type="password" class="auth-input" id="mem-email-pass" autocomplete="current-password" placeholder="${t("members.yourPassword")}" aria-label="${t("members.yourPassword")}">
+          <div class="acct-msg is-error" id="mem-email-err" role="status" hidden></div>
+          <button type="button" class="acct-btn is-primary" id="mem-email-save">${t("app.save")}</button>
+        </div>`;
+      wireNavBar(panel, { onLeading: close });
+      const email = panel.querySelector("#mem-email-input");
+      const pass = panel.querySelector("#mem-email-pass");
+      const err = panel.querySelector("#mem-email-err");
+      const save = panel.querySelector("#mem-email-save");
+      setTimeout(() => email.focus(), 300);
+      save.addEventListener("click", async () => {
+        save.disabled = true;
+        save.textContent = t("auth.working");
+        const out = await call({ op: "memberEmail", username, email: email.value.trim(), password: pass.value });
+        if (!out.ok) {
+          err.hidden = false;
+          err.textContent = ({
+            unauthorized: t("members.emailWrongPassword"), badEmail: t("members.emailBad"), emailTaken: t("members.emailTaken"),
+            hasEmail: t("members.emailHas"), network: t("errors.offline"),
+          })[out.errorType] ?? (out.message || t("errors.generic"));
+          save.disabled = false;
+          save.textContent = t("app.save");
+          return;
+        }
+        panel.querySelector(".mem-email-body").innerHTML = `
+          <p class="mem-email-lead"><b>${t("members.emailDoneTitle")}</b></p>
+          <p class="mem-email-lead">${t("members.emailDone", { name: escapeHtml(username), email: escapeHtml(out.email) })}</p>
+          ${out.mailOn === false ? `<p class="acct-msg is-error">${t("members.mailOff")}</p>` : ""}
+          <button type="button" class="acct-btn is-primary" id="mem-email-ok">${t("members.emailOk")}</button>`;
+        panel.querySelector("#mem-email-ok").addEventListener("click", close);
+      });
+    },
+  });
 }
 
 /** Invite people: everyone has REFERRALS links (api/invites.js); the owner sees places used instead. */

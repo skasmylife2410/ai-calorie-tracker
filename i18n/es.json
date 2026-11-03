@@ -642,7 +642,21 @@
     "hint": "Toca un grupo para añadir o quitar a alguien de él. Quien no tiene grupo solo se ve a sí mismo. Quitar saca a alguien de la app para siempre.",
     "you": "tú",
     "remove": "Quitar",
-    "removeConfirm": "¿Quitar a {name} de SnapCal? Se borran su cuenta y todo lo que contiene (comidas, fotos, peso, notas) y se cierra su sesión en el teléfono. No se puede deshacer."
+    "removeConfirm": "¿Quitar a {name} de SnapCal? Se borran su cuenta y todo lo que contiene (comidas, fotos, peso, notas) y se cierra su sesión en el teléfono. No se puede deshacer.",
+    "addEmail": "Agregar correo",
+    "emailOn": "correo",
+    "emailTitle": "Correo de recuperación",
+    "emailHint": "Sin correo, “¿Olvidaste tu contraseña?” no les llega: agrégalo y podrán volver a entrar solos.",
+    "mailOff": "El correo aún no está configurado en el servidor, así que no se pueden enviar enlaces.",
+    "emailLead": "Para {name}. Con él, {name} puede tocar “¿Olvidaste tu contraseña?” en la pantalla de inicio, recibir un enlace en ese correo y elegir una contraseña nueva. Después solo esa persona puede cambiarlo.",
+    "yourPassword": "Tu contraseña, para confirmar",
+    "emailWrongPassword": "Esa no es tu contraseña.",
+    "emailBad": "Ese correo no parece válido.",
+    "emailTaken": "Ese correo ya lo usa otra cuenta.",
+    "emailHas": "Ya tiene un correo de recuperación. Solo esa persona puede cambiarlo.",
+    "emailDoneTitle": "Guardado",
+    "emailDone": "Dile a {name}: en la pantalla de inicio, que toque “¿Olvidaste tu contraseña?” y escriba {email}. El enlace llega ahí en un minuto (que revise el spam) y funciona 30 minutos.",
+    "emailOk": "Entendido"
   },
   "redo": {
     "title": "Configurar de nuevo",

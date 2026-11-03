@@ -39,7 +39,11 @@ globalThis.fetch = async (url, opts = {}) => {
   if (method === "POST") USERS.push(...payload);
   if (method === "PATCH") {
     const eq = decodeURIComponent(u.searchParams.get("username").replace("eq.", ""));
-    USERS = USERS.map((r) => (r.username === eq ? { ...r, ...payload } : r));
+    // "&email=is.null": only a row whose email is still empty (as PostgREST filters it)
+    const hit = (r) => r.username === eq && (u.searchParams.get("email") !== "is.null" || !r.email);
+    const changed = USERS.filter(hit).map((r) => ({ ...r, ...payload }));
+    USERS = USERS.map((r) => (hit(r) ? { ...r, ...payload } : r));
+    return { ok: true, status: 200, json: async () => changed, text: async () => "" };
   }
   return { ok: true, text: async () => "" };
 };
@@ -332,4 +336,28 @@ test("security: the old shared passcodes are refused unless legacy passcodes are
       if (v === undefined) delete process.env[k]; else process.env[k] = v;
     }
   }
+});
+
+test("the owner can add a recovery email for someone without one: own password, never replacing theirs", async () => {
+  const { hashPassword } = acct;
+  const mk = (username, password, extra = {}) => { const { salt, hash } = hashPassword(password); return { username, salt, password_hash: hash, ...extra }; };
+  USERS = [mk("aelson", "owner-pass-123"), mk("jacquelin", "forgotten-1"), mk("vivi", "vivi-pass-99", { email: "vivi@example.com" })];
+  const ownerToken = acct.createSession("aelson", undefined, { salt: USERS[0].salt });
+  const memberToken = acct.createSession("jacquelin", undefined, { salt: USERS[1].salt });
+  const call = async (body, token) => { const res = mockRes(); await auth(req({ op: "memberEmail", ...body }, token), res); return res.body; };
+
+  assert.equal((await call({ username: "vivi", email: "x@example.com", password: "forgotten-1" }, memberToken)).errorType, "forbidden", "only the owner");
+  assert.equal((await call({ username: "jacquelin", email: "jac@example.com", password: "owner-pass-123" })).errorType, "forbidden", "and only signed in");
+  assert.equal((await call({ username: "jacquelin", email: "jac@example.com", password: "wrong" }, ownerToken)).errorType, "unauthorized", "the owner's own password confirms it");
+  assert.equal((await call({ username: "jacquelin", email: "not-an-email", password: "owner-pass-123" }, ownerToken)).errorType, "badEmail");
+  assert.equal((await call({ username: "nobody", email: "n@example.com", password: "owner-pass-123" }, ownerToken)).ok, false);
+  assert.equal((await call({ username: "vivi", email: "mine@example.com", password: "owner-pass-123" }, ownerToken)).errorType, "hasEmail", "an email they set themselves stays theirs");
+  assert.equal(USERS.find((u) => u.username === "vivi").email, "vivi@example.com");
+
+  const ok = await call({ username: "Jacquelin", email: " Jac@Example.com ", password: "owner-pass-123" }, ownerToken);
+  assert.equal(ok.ok, true);
+  assert.equal(ok.email, "jac@example.com");
+  const saved = USERS.find((u) => u.username === "jacquelin");
+  assert.equal(saved.email, "jac@example.com", "lower-case, trimmed");
+  assert.ok(acct.verifyPassword("forgotten-1", saved.salt, saved.password_hash), "her password isn't touched: she chooses a new one from the link");
 });

@@ -642,7 +642,21 @@
     "hint": "Tap a group to add or remove someone. People with no group see only themselves. Remove takes someone out of the app for good.",
     "you": "you",
     "remove": "Remove",
-    "removeConfirm": "Remove {name} from SnapCal? Their account and everything in it (meals, photos, weight, notes) are deleted, and their phone is signed out. This can't be undone."
+    "removeConfirm": "Remove {name} from SnapCal? Their account and everything in it (meals, photos, weight, notes) are deleted, and their phone is signed out. This can't be undone.",
+    "addEmail": "Add email",
+    "emailOn": "email",
+    "emailTitle": "Recovery email",
+    "emailHint": "No email means “Forgot password?” can't reach them: add one and they can get back in on their own.",
+    "mailOff": "Email isn't set up on the server yet, so reset links can't be sent.",
+    "emailLead": "For {name}. With it, {name} can tap “Forgot password?” on the sign-in screen, get a link in that inbox and choose a new password. Only they can change it later.",
+    "yourPassword": "Your password, to confirm",
+    "emailWrongPassword": "That's not your password.",
+    "emailBad": "That email address doesn't look right.",
+    "emailTaken": "That email is already used by another account.",
+    "emailHas": "They already have a recovery email. Only they can change it.",
+    "emailDoneTitle": "Saved",
+    "emailDone": "Tell {name}: on the sign-in screen, tap “Forgot password?” and type {email}. The link arrives there within a minute (check spam too) and works for 30 minutes.",
+    "emailOk": "Got it"
   },
   "redo": {
     "title": "Set up again",
