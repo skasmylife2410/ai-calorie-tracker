@@ -25,7 +25,7 @@
 
 import {
   USERNAME_RE, normalizeUsername, hashPassword, verifyPassword,
-  createSession, readSession, readSessionDetail, sessionStamp, LEGACY_SESSIONS_UNTIL, passwordProblem,
+  createSession, readSession, readSessionDetail, sessionStamp, LEGACY_SESSIONS_UNTIL, passwordProblem, passwordMessage, checkPassword,
 } from "./_accounts.js";
 import { maxUsers as memberCap, isAdmin, ADMIN } from "./_members.js";
 import { inviteProblem, inviteGroup } from "./invites.js";
@@ -35,6 +35,7 @@ import { mailConfigured, sendMail, appUrl } from "./_mail.js";
 import { POLICY_VERSION } from "./_policy.js";
 import { exportAccount, deleteAccount } from "./_account-data.js";
 import { verifiedUser, forgetAccount } from "./_auth.js";
+import { audit } from "./_audit.js";
 import crypto from "node:crypto";
 
 const EMAIL_RE = /^[^\s@"<>()]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
@@ -240,8 +241,8 @@ export default async function handler(req, res) {
         }[linkProblem] ?? "That invite code isn't right.";
         return fail(res, linkProblem === "unknown" ? "badInvite" : `invite${linkProblem[0].toUpperCase()}${linkProblem.slice(1)}`, why);
       }
-      const problem = passwordProblem(password);
-      if (problem) return fail(res, problem, "Password must be at least 8 characters.");
+      const problem = passwordProblem(password, username);
+      if (problem) return fail(res, problem, passwordMessage(problem));
       // Health data (meals, weight, photos) needs explicit agreement before any is collected.
       if (body.consent !== true) return fail(res, "consent", "Please agree to the privacy policy to create an account.");
       if (await getUser(username)) return fail(res, "taken", "That username is already taken.");
@@ -271,13 +272,17 @@ export default async function handler(req, res) {
         const groupId = await inviteGroup(invite);
         if (groupId) await addMembership(groupId, username);
       }
+      audit("signup", { user: username, ip: clientIp(req) });
       return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt }) });
     }
 
     // Password guesses (login, or a change authorised by the current password) are braked per
     // account and per address, so neither one name nor one machine can keep trying.
     const guessKeys = [`user:${username}`, `ip:${clientIp(req)}`];
-    if (await isLocked(guessKeys)) return tooMany(res);
+    if (await isLocked(guessKeys)) {
+      audit("locked", { op, user: username, ip: clientIp(req) });
+      return tooMany(res);
+    }
     const sessionUser = op === "setEmail" ? await verifiedUser(req) : null;
 
     const user = await getUser(username);
@@ -290,9 +295,10 @@ export default async function handler(req, res) {
       // none (js/ui/login.js), and many of them are signed in precisely because they no longer
       // remember the password. Then the write only applies while the email is still empty.
       const first = Boolean(user) && !user.email && email !== "";
-      const authorised = sessionUser === username && user && (first || verifyPassword(password, user.salt, user.password_hash));
+      const authorised = (first || checkPassword(password, user)) && Boolean(user) && sessionUser === username;
       if (!authorised) {
         await recordFailure(guessKeys);
+        audit("setEmail.fail", { user: username, ip: clientIp(req) });
         return fail(res, "unauthorized", "Wrong password.");
       }
       if (email !== "" && (email.length > 254 || !EMAIL_RE.test(email))) return fail(res, "badEmail", "That email address doesn't look right.");
@@ -305,33 +311,38 @@ export default async function handler(req, res) {
       if (!r.ok) throw new Error(`Supabase email update failed (${r.status})`);
       // set a moment ago from another phone: from now on it's a change, which needs the password
       if (first && !((await r.json().catch(() => [])).length > 0)) return fail(res, "unauthorized", "Wrong password.");
+      audit(email ? "email.set" : "email.removed", { user: username, ip: clientIp(req), ...(first ? { first: true } : {}) });
       return res.status(200).json({ ok: true, email: email || null });
     }
 
     if (op === "change") {
       // Always the current password: a session alone (an unlocked or stolen phone) must not be
       // enough to take the account over.
-      const authorised = user && verifyPassword(password, user.salt, user.password_hash);
+      const authorised = checkPassword(password, user);
       if (!authorised) {
         await recordFailure(guessKeys);
+        audit("password.change.fail", { user: username, ip: clientIp(req) });
         return fail(res, "unauthorized", "Wrong password.");
       }
 
-      const problem = passwordProblem(body.newPassword);
-      if (problem) return fail(res, problem, "New password must be at least 8 characters.");
+      const problem = passwordProblem(body.newPassword, username);
+      if (problem) return fail(res, problem, passwordMessage(problem));
 
       const { salt, hash } = hashPassword(String(body.newPassword));
       await writeUser({ username, salt, password_hash: hash, must_change: false }, { update: true });
       forgetAccount(username); // every other session (signed with the old password) stops now
+      audit("password.change", { user: username, ip: clientIp(req) });
       return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt }) });
     }
 
     // login — the same reply for "no such user" and "wrong password", so the form can't be used
     // to find out who has an account.
-    if (!user || !verifyPassword(password, user.salt, user.password_hash)) {
+    if (!checkPassword(password, user)) {
       await recordFailure(guessKeys);
+      audit("login.fail", { user: username, known: Boolean(user), ip: clientIp(req) });
       return fail(res, "badLogin", "Wrong username or password.");
     }
+    audit("login", { user: username, ip: clientIp(req) });
     return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt: user.salt }), mustChange: user.must_change === true });
   } catch (err) {
     if (err?.code === "taken") return fail(res, "taken", "That username is already taken.");
@@ -383,6 +394,7 @@ async function forgot(req, res, body) {
       <p><a href="${link}" style="display:inline-block;background:#1c1c1e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:12px;font-weight:600">${es ? "Elegir nueva contraseña" : "Choose a new password"}</a></p>
       <p style="color:#8e8e93;font-size:13px">${lines[2]}<br>${lines[4]}</p></div>`;
     await sendMail({ to: user.email, subject, text: lines.join("\n\n"), html });
+    audit("password.reset.requested", { user: user.username, ip: clientIp(req) });
   } catch (err) {
     console.error("forgot:", err);
   }
@@ -403,8 +415,9 @@ async function memberEmail(req, res, body) {
   try {
     if (await isLocked(keys)) return tooMany(res);
     const owner = await getUser(me);
-    if (!owner || !verifyPassword(String(body.password ?? ""), owner.salt, owner.password_hash)) {
+    if (!checkPassword(String(body.password ?? ""), owner)) {
       await recordFailure(keys);
+      audit("admin.memberEmail.fail", { by: me, ip: clientIp(req) });
       return fail(res, "unauthorized", "Wrong password.");
     }
     const username = normalizeUsername(body.username);
@@ -423,6 +436,7 @@ async function memberEmail(req, res, body) {
     if (!r.ok) throw new Error(`Supabase email update failed (${r.status})`);
     const rows = await r.json().catch(() => []);
     if (!Array.isArray(rows) || rows.length === 0) return fail(res, "hasEmail", "They already have a recovery email. Only they can change it.");
+    audit("admin.memberEmail", { by: me, user: username, ip: clientIp(req) });
     return res.status(200).json({ ok: true, email, mailOn: mailConfigured() });
   } catch (err) {
     console.error("memberEmail:", err);
@@ -436,9 +450,10 @@ async function resetPassword(req, res, body) {
   const ipKey = [`ip:${clientIp(req)}`];
   if (await isLocked(ipKey)) return tooMany(res);
   const problem = passwordProblem(body.newPassword);
-  if (problem) return fail(res, problem, "Password must be at least 8 characters.");
+  if (problem) return fail(res, problem, passwordMessage(problem));
   const bad = async () => {
     await recordFailure(ipKey);
+    audit("password.reset.fail", { ip: clientIp(req) });
     return fail(res, "badReset", "That reset link has expired or was already used. Ask for a new one.");
   };
   if (!/^[A-Za-z0-9_-]{40,50}$/.test(token)) return bad();
@@ -462,6 +477,7 @@ async function resetPassword(req, res, body) {
       method: "PATCH", headers: restHeaders(), body: JSON.stringify({ used_at: now }),
     });
     forgetAccount(username); // sessions made with the old password stop working
+    audit("password.reset", { user: username, ip: clientIp(req) });
     return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt }), username });
   } catch (err) {
     console.error("reset:", err);
@@ -487,11 +503,13 @@ async function accountOp(req, res, body, op) {
     const keys = [`user:${username}`, `ip:${clientIp(req)}`];
     if (await isLocked(keys)) return tooMany(res);
     const user = await getUser(username);
-    if (!user || !verifyPassword(String(body.password ?? ""), user.salt, user.password_hash)) {
+    if (!checkPassword(String(body.password ?? ""), user)) {
       await recordFailure(keys);
+      audit("account.delete.fail", { user: username, ip: clientIp(req) });
       return fail(res, "unauthorized", "Wrong password.");
     }
     await deleteAccount(username);
+    audit("account.delete", { user: username, ip: clientIp(req) });
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error(`${op}:`, err);

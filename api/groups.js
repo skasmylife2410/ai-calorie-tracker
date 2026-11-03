@@ -18,6 +18,7 @@ import { deleteAccount } from "./_account-data.js";
 import { forgetAccount } from "./_auth.js";
 import { notify, displayName } from "./_push.js";
 import { mailConfigured } from "./_mail.js";
+import { audit } from "./_audit.js";
 
 const NAME_MAX = 30;
 const fail = (res, errorType, message) => res.status(200).json({ ok: false, errorType, message });
@@ -138,6 +139,7 @@ export default async function handler(req, res) {
       await deleteAccount(username);
       forgetAccount(username);
       for (const g of theirs) await dropIfEmpty(g.id);
+      audit("admin.removeAccount", { by: me, user: username });
       body.op = "all"; // fall through: answer with the updated list
     }
 
@@ -160,6 +162,7 @@ export default async function handler(req, res) {
         } else {
           await remove("snapcal_group_members", { group_id: `eq.${groupId}`, username: `eq.${username}` });
         }
+        audit(shouldBeMember ? "admin.addToGroup" : "admin.removeFromGroup", { by: me, user: username, group: groupId });
       }
 
       // whether each has a recovery email (not the address): the owner can add one where it's missing

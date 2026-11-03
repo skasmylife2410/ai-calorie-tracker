@@ -438,3 +438,14 @@ test("a meal without a photo can be shared, with a caption, and shows in the fee
   res = mockRes(); await shares(as("baby", { op: "share", kind: "meal", item: { name: "Té", note: "x".repeat(400), entryId: "e2" } }), res);
   assert.equal(DB.snapcal_shares.at(-1).data.note.length, 200);
 });
+
+test("crash reports older than 90 days are purged with the daily run", async () => {
+  reset();
+  DB.snapcal_client_errors = [
+    { id: "old", at: new Date(Date.now() - 91 * 86400000).toISOString() },
+    { id: "new", at: new Date().toISOString() },
+  ];
+  const { purgeOldPosts } = await import("../api/weekly.js");
+  await purgeOldPosts();
+  assert.deepEqual(DB.snapcal_client_errors.map((e) => e.id), ["new"]);
+});
