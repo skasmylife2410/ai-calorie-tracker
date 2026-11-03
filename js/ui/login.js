@@ -68,8 +68,8 @@ const looksLikeEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
 /**
  * Full-screen "add a recovery email" for an account that has none, so a forgotten password can
  * always be reset by email ("Forgot password?"). Typed twice, since a typo here is only found the
- * day it's needed. The session is enough to add the first one (api/auth.js); the only other way
- * out is signing out. Resolves once it's saved.
+ * day it's needed. The session is enough to add the first one (api/auth.js). Resolves once it's
+ * saved, or on "Not now" (asked again the next time the app opens).
  */
 export function renderEmailGate(container, username) {
   return new Promise((resolve) => {
@@ -88,7 +88,7 @@ export function renderEmailGate(container, username) {
             <input id="eg-again" class="auth-input" type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="${t("auth.emailAgain")}" aria-label="${t("auth.emailAgain")}" value="${escapeHtml(typed.again)}" />
             ${error ? `<div class="auth-error" role="alert">${escapeHtml(error)}</div>` : ""}
             <button type="button" class="auth-submit" id="eg-go" ${busy ? "disabled" : ""}>${busy ? t("auth.working") : t("auth.emailGateGo")}</button>
-            <button type="button" class="auth-switch" id="eg-out">${t("auth.signOut")}</button>
+            <button type="button" class="auth-switch" id="eg-later">${t("auth.emailGateLater")}</button>
           </div>
         </div>`;
       const email = container.querySelector("#eg-email");
@@ -108,10 +108,9 @@ export function renderEmailGate(container, username) {
         error = { badEmail: t("members.emailBad"), emailTaken: t("members.emailTaken"), network: t("errors.offline") }[out.errorType] ?? (out.message || t("errors.generic"));
         draw();
       });
-      container.querySelector("#eg-out").addEventListener("click", () => {
-        setStoredToken("");
-        location.reload();
-      });
+      // "Not now" lets them in and asks again next time. It used to be "Sign out", the only other
+      // button, and people tapped it to get past the screen, then couldn't get back in.
+      container.querySelector("#eg-later").addEventListener("click", () => resolve());
     };
     draw();
   });
