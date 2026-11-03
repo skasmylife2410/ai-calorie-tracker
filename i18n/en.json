@@ -307,6 +307,7 @@
     "emailAgain": "Type it again",
     "emailMismatch": "The two emails don't match.",
     "emailGateEmpty": "Enter your email.",
+    "emailGateLater": "Not now",
     "emailGateGo": "Save and continue"
   },
   "day": {
