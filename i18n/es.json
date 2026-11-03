@@ -307,6 +307,7 @@
     "emailAgain": "Escríbelo otra vez",
     "emailMismatch": "Los dos correos no coinciden.",
     "emailGateEmpty": "Escribe tu correo.",
+    "emailGateLater": "Ahora no",
     "emailGateGo": "Guardar y continuar"
   },
   "day": {
