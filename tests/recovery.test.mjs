@@ -43,8 +43,10 @@ function fakeDb() {
       if (method === "PATCH") {
         const who = eq(u, "username");
         if (body.email && db.users.some((x) => x.email === body.email && x.username !== who)) return ok([], 409);
-        Object.assign(db.users.find((x) => x.username === who), body);
-        return ok();
+        const row = db.users.find((x) => x.username === who);
+        if (u.searchParams.get("email") === "is.null" && row.email) return ok([]); // only while empty
+        Object.assign(row, body);
+        return ok([row]);
       }
     }
     if (table === "snapcal_password_resets") {
@@ -122,4 +124,33 @@ test("without Brevo configured, forgot says so instead of pretending", async () 
   } finally {
     process.env.BREVO_API_KEY = saved;
   }
+});
+
+test("the first recovery email needs only the session; changing or removing one still needs the password", async () => {
+  const db = fakeDb();
+  const session = acct.createSession("noemail");
+  const asked = (body, headers = { "x-snapcal-token": session }) => call({ op: "setEmail", username: "noemail", ...body }, headers);
+  assert.equal((await asked({ email: "first@example.com" }, {})).body.errorType, "unauthorized", "never without the session");
+  assert.equal((await call({ op: "setEmail", username: "noemail", email: "first@example.com" }, { "x-snapcal-token": acct.createSession("maria") })).body.errorType, "unauthorized", "only your own account");
+  assert.equal((await asked({ email: "" })).body.errorType, "unauthorized", "an empty one isn't a first email");
+  assert.equal((await asked({ email: "nope" })).body.errorType, "badEmail");
+  assert.equal((await asked({ email: "maria@example.com" })).body.errorType, "emailTaken");
+  const first = await asked({ email: " First@Example.com " });
+  assert.deepEqual(first.body, { ok: true, email: "first@example.com" });
+  assert.equal(db.users[1].email, "first@example.com");
+  assert.equal((await asked({ email: "thief@example.com" })).body.errorType, "unauthorized", "a second one is a change: password needed");
+  assert.equal((await asked({ email: "" })).body.errorType, "unauthorized", "and so is removing it");
+  assert.equal(db.users[1].email, "first@example.com");
+  assert.equal((await asked({ email: "new@example.com", password: "oldpassword1" })).body.ok, true);
+});
+
+test("the app asks for a recovery email only when the server clearly says there's none", async () => {
+  globalThis.location ??= { search: "" };
+  const { needsRecoveryEmail } = await import("../js/ui/login.js");
+  assert.equal(needsRecoveryEmail({ ok: true, username: "jacquelin", email: null }), true);
+  assert.equal(needsRecoveryEmail({ ok: true, username: "maria", email: "maria@example.com" }), false);
+  assert.equal(needsRecoveryEmail({ ok: true, username: "maria" }), false, "a database hiccup (no email field) never blocks");
+  assert.equal(needsRecoveryEmail({ ok: false, errorType: "network" }), false, "nor does being offline");
+  assert.equal(needsRecoveryEmail({ ok: false, errorType: "unauthorized", email: null }), false);
+  assert.equal(needsRecoveryEmail(null), false);
 });

@@ -4,7 +4,9 @@
 // POST { op: "signup", username, password, invite }     -> { ok, token }
 // POST { op: "change", username, password, newPassword }-> { ok, token }
 // POST { op: "whoami" } with x-snapcal-token            -> { ok, username, email }
-// POST { op: "setEmail", username, password, email }    -> { ok, email }   "" removes it
+// POST { op: "setEmail", username, password, email }    -> { ok, email }   "" removes it; the first
+//                                                        email needs only the session (the app asks
+//                                                        everyone without one), changing it the password
 // POST { op: "memberEmail", username, password, email } with the owner's session -> { ok, email }
 //                                                        the owner adds a recovery email for someone
 //                                                        who has none (never replaces one)
@@ -281,22 +283,28 @@ export default async function handler(req, res) {
     const user = await getUser(username);
 
     if (op === "setEmail") {
-      // Needs both the session and the current password: otherwise anyone holding an unlocked
-      // phone could point recovery at their own inbox and take the account later.
-      const authorised = sessionUser === username && user && verifyPassword(password, user.salt, user.password_hash);
+      const email = String(body.email ?? "").trim().toLowerCase();
+      // Changing or removing an email needs both the session and the current password: otherwise
+      // anyone holding an unlocked phone could point recovery at their own inbox and take the
+      // account later. Adding the first one needs only the session: the app asks everyone who has
+      // none (js/ui/login.js), and many of them are signed in precisely because they no longer
+      // remember the password. Then the write only applies while the email is still empty.
+      const first = Boolean(user) && !user.email && email !== "";
+      const authorised = sessionUser === username && user && (first || verifyPassword(password, user.salt, user.password_hash));
       if (!authorised) {
         await recordFailure(guessKeys);
         return fail(res, "unauthorized", "Wrong password.");
       }
-      const email = String(body.email ?? "").trim().toLowerCase();
       if (email !== "" && (email.length > 254 || !EMAIL_RE.test(email))) return fail(res, "badEmail", "That email address doesn't look right.");
-      const r = await fetch(`${restBase()}/rest/v1/snapcal_users?username=eq.${encodeURIComponent(username)}`, {
+      const r = await fetch(`${restBase()}/rest/v1/snapcal_users?username=eq.${encodeURIComponent(username)}${first ? "&email=is.null" : ""}`, {
         method: "PATCH",
-        headers: restHeaders(),
+        headers: restHeaders(first ? { Prefer: "return=representation" } : {}),
         body: JSON.stringify({ email: email || null }),
       });
       if (r.status === 409) return fail(res, "emailTaken", "That email is already used by another account.");
       if (!r.ok) throw new Error(`Supabase email update failed (${r.status})`);
+      // set a moment ago from another phone: from now on it's a change, which needs the password
+      if (first && !((await r.json().catch(() => [])).length > 0)) return fail(res, "unauthorized", "Wrong password.");
       return res.status(200).json({ ok: true, email: email || null });
     }
 

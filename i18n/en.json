@@ -300,7 +300,14 @@
     "emailWhy": "Used only to send you a reset link if you forget your password. Leave it empty to remove it.",
     "emailPlaceholder": "you@example.com",
     "emailSaved": "Saved. You can now reset your password by email.",
-    "emailRemoved": "Email removed."
+    "emailRemoved": "Email removed.",
+    "emailGateTitle": "Add a recovery email",
+    "emailGateSub": "If you ever forget your password, we'll send a link to this email so you can get back in. It's used for nothing else.",
+    "emailGateWho": "Signed in as {name}",
+    "emailAgain": "Type it again",
+    "emailMismatch": "The two emails don't match.",
+    "emailGateEmpty": "Enter your email.",
+    "emailGateGo": "Save and continue"
   },
   "day": {
     "meals": "Meals",

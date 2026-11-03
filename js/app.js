@@ -16,7 +16,7 @@ import { showLoggedBar } from "./ui/meal-type.js";
 import { startAutoUpdate, applyIfPending } from "./updater.js";
 import "./install.js"; // catches Android Chrome's install offer as early as possible
 import { viewedTimestamp } from "./ui/today.js";
-import { renderLogin, hasValidSession, consentNeeded, renderConsent, resetLinkToken } from "./ui/login.js";
+import { renderLogin, hasValidSession, consentNeeded, renderConsent, emailNeeded, renderEmailGate, resetLinkToken } from "./ui/login.js";
 
 import { mountSky } from "./ui/sky.js";
 import { applyTheme, watchSystemTheme } from "./theme.js";
@@ -189,7 +189,12 @@ async function boot() {
     if (checkBehind) {
       hasValidSession().then(async (ok) => {
         if (!ok) { await renderLogin(appRoot); location.reload(); return; }
-        if (await consentNeeded()) { await renderConsent(appRoot); renderShell(); }
+        const consent = await consentNeeded();
+        if (consent) await renderConsent(appRoot);
+        // everyone needs a recovery email, so a forgotten password can always be reset
+        const who = await emailNeeded();
+        if (who) await renderEmailGate(appRoot, who);
+        if (consent || who) renderShell();
       }).catch((err) => console.error("app.js: session check failed", err));
     } else {
       if (!(await hasValidSession())) {
@@ -198,6 +203,9 @@ async function boot() {
       // Health data needs the person's agreement to the current privacy policy before the app
       // collects anything; accounts made before the policy existed are asked once here.
       if (await consentNeeded()) await renderConsent(appRoot);
+      // and a recovery email, so a forgotten password can always be reset by email
+      const who = await emailNeeded();
+      if (who) await renderEmailGate(appRoot, who);
     }
   } catch (err) {
     console.error("app.js: login failed, continuing unauthenticated", err);

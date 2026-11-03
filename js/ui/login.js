@@ -40,12 +40,81 @@ export function resetLinkToken() {
 }
 
 let lastWhoami = null;
+let lastAccount = null; // the same answer, for the recovery-email check that follows consent
 
 /** True when the signed-in account hasn't agreed to the current privacy policy yet. */
 export async function consentNeeded() {
   const out = lastWhoami ?? (await postAuth({ op: "whoami" }, { timeoutMs: BOOT_AUTH_TIMEOUT_MS }));
   lastWhoami = null;
+  lastAccount = out;
   return out?.ok === true && out.needsConsent === true;
+}
+
+/** Whether a whoami answer says this account has no recovery email. Only a clear "none" counts:
+ *  offline, or a database hiccup (the answer then has no email field), never blocks anyone. */
+export function needsRecoveryEmail(out) {
+  return out?.ok === true && typeof out.username === "string" && "email" in out && !out.email;
+}
+
+/** The signed-in username when the account still has no recovery email, else null. */
+export async function emailNeeded() {
+  const out = lastAccount ?? (await postAuth({ op: "whoami" }, { timeoutMs: BOOT_AUTH_TIMEOUT_MS }));
+  lastAccount = null;
+  return needsRecoveryEmail(out) ? out.username : null;
+}
+
+const looksLikeEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
+
+/**
+ * Full-screen "add a recovery email" for an account that has none, so a forgotten password can
+ * always be reset by email ("Forgot password?"). Typed twice, since a typo here is only found the
+ * day it's needed. The session is enough to add the first one (api/auth.js); the only other way
+ * out is signing out. Resolves once it's saved.
+ */
+export function renderEmailGate(container, username) {
+  return new Promise((resolve) => {
+    let error = "";
+    let busy = false;
+    let typed = { email: "", again: "" };
+    const draw = () => {
+      container.innerHTML = `
+        <div class="auth-screen">
+          <div class="auth-card">
+            <div class="auth-brand">SnapCal</div>
+            <h1 class="auth-title">${t("auth.emailGateTitle")}</h1>
+            <div class="auth-sub">${t("auth.emailGateSub")}</div>
+            <div class="auth-who">${t("auth.emailGateWho", { name: escapeHtml(username) })}</div>
+            <input id="eg-email" class="auth-input" type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="email" placeholder="${t("auth.emailPlaceholder")}" aria-label="${t("auth.email")}" value="${escapeHtml(typed.email)}" />
+            <input id="eg-again" class="auth-input" type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="${t("auth.emailAgain")}" aria-label="${t("auth.emailAgain")}" value="${escapeHtml(typed.again)}" />
+            ${error ? `<div class="auth-error" role="alert">${escapeHtml(error)}</div>` : ""}
+            <button type="button" class="auth-submit" id="eg-go" ${busy ? "disabled" : ""}>${busy ? t("auth.working") : t("auth.emailGateGo")}</button>
+            <button type="button" class="auth-switch" id="eg-out">${t("auth.signOut")}</button>
+          </div>
+        </div>`;
+      const email = container.querySelector("#eg-email");
+      const again = container.querySelector("#eg-again");
+      email.addEventListener("input", () => { typed.email = email.value; });
+      again.addEventListener("input", () => { typed.again = again.value; });
+      container.querySelector("#eg-go").addEventListener("click", async () => {
+        const a = email.value.trim().toLowerCase(), b = again.value.trim().toLowerCase();
+        if (!a) { error = t("auth.emailGateEmpty"); draw(); return; }
+        if (!looksLikeEmail(a)) { error = t("members.emailBad"); draw(); return; }
+        if (a !== b) { error = t("auth.emailMismatch"); draw(); return; }
+        busy = true; error = ""; draw();
+        const out = await postAuth({ op: "setEmail", username, email: a });
+        busy = false;
+        // "unauthorized" here means one was set meanwhile (another phone): it has an email now
+        if (out.ok || out.errorType === "unauthorized") { resolve(); return; }
+        error = { badEmail: t("members.emailBad"), emailTaken: t("members.emailTaken"), network: t("errors.offline") }[out.errorType] ?? (out.message || t("errors.generic"));
+        draw();
+      });
+      container.querySelector("#eg-out").addEventListener("click", () => {
+        setStoredToken("");
+        location.reload();
+      });
+    };
+    draw();
+  });
 }
 
 /**

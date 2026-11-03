@@ -300,7 +300,14 @@
     "emailWhy": "Solo se usa para enviarte un enlace si olvidas tu contraseña. Déjalo vacío para quitarlo.",
     "emailPlaceholder": "tu@ejemplo.com",
     "emailSaved": "Guardado. Ya puedes restablecer tu contraseña por correo.",
-    "emailRemoved": "Correo eliminado."
+    "emailRemoved": "Correo eliminado.",
+    "emailGateTitle": "Agrega un correo de recuperación",
+    "emailGateSub": "Si algún día olvidas tu contraseña, te enviaremos un enlace a este correo para que vuelvas a entrar. No se usa para nada más.",
+    "emailGateWho": "Sesión iniciada como {name}",
+    "emailAgain": "Escríbelo otra vez",
+    "emailMismatch": "Los dos correos no coinciden.",
+    "emailGateEmpty": "Escribe tu correo.",
+    "emailGateGo": "Guardar y continuar"
   },
   "day": {
     "meals": "Comidas",

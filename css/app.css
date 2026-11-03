@@ -1942,7 +1942,11 @@ html, body { background: var(--sky-base, var(--sc-background)) !important; trans
 .inv-copy, .inv-cancel { font: inherit; font-size: 12px; font-weight: 700; border: 0; border-radius: 10px; padding: 6px 10px; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
 .inv-cancel { color: var(--sc-red); }
 .auth-sub { font-size: 14px; color: var(--sc-secondary); margin: -12px 0 14px; }
+/* the recovery-email step says whose account it is: people who forgot the password often forgot the name too */
+.auth-who { margin: -4px 0 14px; font-size: 14px; font-weight: 600; color: var(--sc-primary-text); }
 .auth-error:empty { display: none; }
+/* Classic's red is 3.2–3.6:1 on light surfaces: too faint for words; the same hue, deeper, for sign-in errors */
+:root[data-theme="classic"] .auth-error { color: #D70015; }
 .inv-group { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--sc-secondary); background: var(--sc-secondary-15); padding: 3px 7px; border-radius: 7px; }
 .inv-pick { padding: 12px 14px; border-top: 1px solid var(--sc-secondary-14); }
 .inv-pick-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
