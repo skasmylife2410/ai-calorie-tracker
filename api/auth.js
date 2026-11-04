@@ -1,6 +1,7 @@
 // api/auth.js — login, sign-up and password change. The only endpoint that sees plain passwords.
 //
-// POST { op: "login",  username, password }            -> { ok, token, mustChange }
+// POST { op: "login",  username, password }            -> { ok, token, mustChange, username }
+//                                                        `username` may be the recovery email instead
 // POST { op: "signup", username, password, invite }     -> { ok, token }
 // POST { op: "change", username, password, newPassword }-> { ok, token }
 // POST { op: "whoami" } with x-snapcal-token            -> { ok, username, email }
@@ -65,6 +66,15 @@ async function countUsers() {
   const range = res.headers.get("content-range") || "";
   const total = Number(range.split("/")[1]);
   return Number.isFinite(total) ? total : 0;
+}
+
+/** The account with this recovery email (already lower-cased), or null. */
+async function getUserByEmail(email) {
+  const params = new URLSearchParams({ select: "*", email: `eq.${email}`, limit: "1" });
+  const res = await fetch(`${restBase()}/rest/v1/snapcal_users?${params}`, { headers: restHeaders() });
+  if (!res.ok) throw new Error(`Supabase read failed (${res.status})`);
+  const rows = await res.json();
+  return rows[0] ?? null;
 }
 
 async function getUser(username) {
@@ -215,6 +225,8 @@ export default async function handler(req, res) {
   }
 
   if (op === "forgot") return forgot(req, res, body);
+  // people remember their email far better than the username they picked once
+  if (op === "login" && String(body.username ?? "").includes("@")) return loginByEmail(req, res, body);
   if (op === "memberEmail") return memberEmail(req, res, body);
   if (op === "consent" || op === "export" || op === "deleteAccount") return accountOp(req, res, body, op);
   if (op === "reset") return resetPassword(req, res, body);
@@ -343,10 +355,38 @@ export default async function handler(req, res) {
       return fail(res, "badLogin", "Wrong username or password.");
     }
     audit("login", { user: username, ip: clientIp(req) });
-    return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt: user.salt }), mustChange: user.must_change === true });
+    return res.status(200).json({ ok: true, token: createSession(username, undefined, { salt: user.salt }), mustChange: user.must_change === true, username });
   } catch (err) {
     if (err?.code === "taken") return fail(res, "taken", "That username is already taken.");
     console.error("auth:", err);
+    return fail(res, "other", "Something went wrong. Try again.");
+  }
+}
+
+/**
+ * Signing in with the recovery email instead of the username. The same braking and the same
+ * reply as a username sign-in: an unknown email and a wrong password look identical (and take as
+ * long, checkPassword), so the form can't be used to find out whose email is in the app.
+ */
+async function loginByEmail(req, res, body) {
+  const email = String(body.username ?? "").trim().toLowerCase().slice(0, 254);
+  const password = String(body.password ?? "");
+  try {
+    const user = EMAIL_RE.test(email) ? await getUserByEmail(email) : null;
+    const keys = [`user:${user ? user.username : email}`, `ip:${clientIp(req)}`];
+    if (await isLocked(keys)) {
+      audit("locked", { op: "login", user: user?.username ?? null, byEmail: true, ip: clientIp(req) });
+      return tooMany(res);
+    }
+    if (!checkPassword(password, user)) {
+      await recordFailure(keys);
+      audit("login.fail", { user: user?.username ?? null, byEmail: true, known: Boolean(user), ip: clientIp(req) });
+      return fail(res, "badLogin", "Wrong username or password.");
+    }
+    audit("login", { user: user.username, byEmail: true, ip: clientIp(req) });
+    return res.status(200).json({ ok: true, token: createSession(user.username, undefined, { salt: user.salt }), mustChange: user.must_change === true, username: user.username });
+  } catch (err) {
+    console.error("login:", err);
     return fail(res, "other", "Something went wrong. Try again.");
   }
 }

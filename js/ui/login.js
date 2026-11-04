@@ -287,9 +287,9 @@ export function renderLogin(container, { mode = "login" } = {}) {
             <h1 class="auth-title">${isSignup && linkCode ? t("invite.joinTitle") : isSignup ? t("auth.createTitle") : t("auth.signInTitle")}</h1>
             ${isSignup && linkCode ? `<div class="auth-sub">${t("invite.joinSub")}</div><div class="auth-error" id="auth-link-msg">${linkProblem ? t(`invite.bad.${linkProblem}`) : ""}</div>` : ""}
 
-            <label class="auth-label" for="auth-user">${t("auth.username")}</label>
+            <label class="auth-label" for="auth-user">${isSignup ? t("auth.username") : t("auth.userOrEmail")}</label>
             <input id="auth-user" class="auth-input" type="text" autocapitalize="none" autocorrect="off"
-                   spellcheck="false" autocomplete="username" inputmode="text" />
+                   spellcheck="false" autocomplete="username" inputmode="${isSignup ? "text" : "email"}" />
 
             <label class="auth-label" for="auth-pass">${t("auth.password")}</label>
             <input id="auth-pass" class="auth-input" type="password"
@@ -354,9 +354,11 @@ export function renderLogin(container, { mode = "login" } = {}) {
           return;
         }
         setStoredToken(out.token);
-        try { localStorage.setItem("snapcal.username", username); } catch { /* private mode */ }
+        // signed in with the email: the account's username comes back from the server
+        const account = typeof out.username === "string" && out.username ? out.username : username;
+        try { localStorage.setItem("snapcal.username", account); } catch { /* private mode */ }
         if (linkCode) history.replaceState(null, "", location.pathname);
-        resolve({ username, mustChange: out.mustChange === true });
+        resolve({ username: account, mustChange: out.mustChange === true });
       };
       container.querySelector("#auth-forgot")?.addEventListener("click", () => {
         current = "forgot"; error = ""; notice = ""; draw();

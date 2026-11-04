@@ -33,7 +33,8 @@ globalThis.fetch = async (url, opts = {}) => {
       return { ok: true, headers: { get: () => `0-0/${USERS.length}` }, json: async () => [] };
     }
     const eq = u.searchParams.get("username")?.replace("eq.", "");
-    return { ok: true, json: async () => USERS.filter((r) => r.username === eq) };
+    const byEmail = u.searchParams.get("email")?.replace("eq.", "");
+    return { ok: true, json: async () => USERS.filter((r) => (byEmail ? r.email === byEmail : r.username === eq)) };
   }
   const payload = JSON.parse(opts.body);
   if (method === "POST") USERS.push(...payload);
@@ -400,4 +401,25 @@ test("security events are written to the audit trail, never with the password", 
   assert.equal(entry.user, "nobody-here");
   assert.equal(entry.known, false);
   assert.ok(!lines.join("").includes("secretguess99"), "no password in the log");
+});
+
+test("signing in with the recovery email works like the username, and gives nothing away", async () => {
+  const { salt, hash } = acct.hashPassword("arepa-con-queso-9");
+  USERS = [{ username: "jacquelin", salt, password_hash: hash, email: "asi@example.com", must_change: false }];
+  const login = async (username, password) => { const res = mockRes(); await auth(req({ op: "login", username, password }), res); return res.body; };
+
+  const ok = await login(" Asi@Example.com ", "arepa-con-queso-9");
+  assert.equal(ok.ok, true);
+  assert.equal(ok.username, "jacquelin", "the app learns whose account it is");
+  assert.equal(acct.readSession(ok.token), "jacquelin");
+  assert.equal((await login("jacquelin", "arepa-con-queso-9")).username, "jacquelin", "the username still works");
+
+  const wrong = await login("asi@example.com", "nope-nope-nope");
+  const unknown = await login("nobody@example.com", "arepa-con-queso-9");
+  const typo = await login("not an @ email", "arepa-con-queso-9");
+  for (const out of [wrong, unknown, typo]) {
+    assert.equal(out.ok, false);
+    assert.equal(out.errorType, "badLogin");
+    assert.equal(out.message, (await login("jacquelin", "nope-nope-nope")).message, "the same words as a wrong username or password");
+  }
 });
