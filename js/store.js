@@ -621,6 +621,13 @@ export function applyRemoteFoodEntry(remote) {
     return;
   }
 
+  // A deletion made on this device that hasn't reached the server yet must survive the pull that
+  // precedes every push (sync.js runs pull first). Without this, the entry is absent locally, so
+  // localUpdatedAt is -1, remote always wins, and the row below puts the deleted meal straight
+  // back on screen — the "I deleted it and it came back" bug.
+  const pendingDelete = allDeletedTombstonesRaw().find((t) => t.id === remote.id);
+  if (pendingDelete && (pendingDelete.deletedAt ?? 0) >= remoteUpdatedAt) return;
+
   const data = remote.data ?? {};
   const unfinished = (e) => e?.isPending === true || e?.analysisFailed === true;
   const finished = (e) => e && !unfinished(e) && (Number(e.calories) > 0 || (Array.isArray(e.analysisItems) && e.analysisItems.length > 0));

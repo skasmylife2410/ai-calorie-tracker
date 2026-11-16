@@ -78,7 +78,11 @@ export function buildPushPayload(sinceMs = 0) {
       updatedAt: new Date(e.updatedAt ?? Date.now()).toISOString(),
     }));
 
-  const tombstones = store.allDeletedTombstones().filter((t) => (t.deletedAt ?? 0) > sinceMs);
+  // Every pending tombstone goes, not just the ones newer than sinceMs: they are cleared only
+  // once the server has accepted them, so the list holds exactly the deletions it has yet to
+  // hear about. Filtering by sinceMs stranded any tombstone that missed its window — sinceMs
+  // only grows, so it was never offered again and the deletion never propagated.
+  const tombstones = store.allDeletedTombstones();
   const tombstoneRows = tombstones.map((t) => ({
     id: t.id,
     day: t.day,
