@@ -74,11 +74,11 @@ async function start(kind, { onItems, onWork, mealId }) {
     openCameraScan({ onResult: (r) => fromCamera(r, { onItems, onWork }) });
   } else if (kind === "describe" || kind === "voice") {
     const { openDescribeMealSheet } = await import("./describe.js");
-    openDescribeMealSheet({
-      voice: kind === "voice",
-      onText: (text, { photoDataUrl = null, leftoversDataUrl = null } = {}) =>
-        onWork(`“${text.length > 40 ? `${text.slice(0, 40)}…` : text}”`, describedItems(text, photoDataUrl, leftoversDataUrl)),
-    });
+    const onText = (text, { photoDataUrl = null, leftoversDataUrl = null } = {}) =>
+      onWork(`“${text.length > 40 ? `${text.slice(0, 40)}…` : text}”`, describedItems(text, photoDataUrl, leftoversDataUrl));
+    const voiceNote = kind === "voice" ? await import("./voice-note.js") : null;
+    if (voiceNote?.canRecordVoiceNote()) voiceNote.openVoiceNote({ onText, onType: () => openDescribeMealSheet({ onText }) });
+    else openDescribeMealSheet({ voice: kind === "voice", onText });
   } else if (kind === "saved") {
     const { openFavouritesSheet } = await import("./favourites.js");
     openFavouritesSheet({ onPick: onItems, excludeId: mealId });

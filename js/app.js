@@ -489,9 +489,15 @@ function handleTileAction(tileId) {
     case "describe":
       openDescribeMealSheet({ timestamp: activeTimestamp() });
       break;
-    case "voice":
-      openDescribeMealSheet({ voice: true, timestamp: activeTimestamp() });
+    case "voice": {
+      // a voice note where the phone can record one; otherwise the typed sheet with its dictation
+      const timestamp = activeTimestamp();
+      import("./ui/voice-note.js").then(({ canRecordVoiceNote, openVoiceNote }) => {
+        if (canRecordVoiceNote()) openVoiceNote({ timestamp, onType: () => openDescribeMealSheet({ timestamp }) });
+        else openDescribeMealSheet({ voice: true, timestamp });
+      });
       break;
+    }
     case "exercise":
       openExerciseSheet({ onSaved: () => renderCurrentTab() });
       break;

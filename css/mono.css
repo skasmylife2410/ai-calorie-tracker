@@ -536,3 +536,6 @@
 :root[data-theme="mono"] .water-btn { background: var(--mn-control, var(--sc-secondary-15)); color: var(--mn-ink); }
 :root[data-theme="mono"] .water-btn.is-plus { background: var(--mn-ink); color: var(--mn-on-ink); }
 :root[data-theme="mono"] .water-line b { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; }
+
+/* voice note: the timer is a number people read, so it's dot-matrix like the others */
+:root[data-theme="mono"] .vn-timer { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }

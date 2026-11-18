@@ -421,6 +421,23 @@
     "tip": "Incluye cantidades cuando puedas —«dos medidas», «un puñado»— y el cálculo mejora mucho.",
     "analyze": "Analizar"
   },
+  "voiceNote": {
+    "title": "Nota de voz",
+    "prompt": "Di lo que comiste",
+    "hint": "y más o menos cuánto — “dos arepas con queso y un café con leche”",
+    "under": "Foto opcional · hasta {max} min",
+    "stop": "Detener y enviar",
+    "discard": "Descartar",
+    "photo": "Agrega una foto de la comida",
+    "sending": "Escribiéndolo…",
+    "retry": "Reintentar",
+    "again": "Grabar de nuevo",
+    "type": "Mejor escribirla",
+    "denied": "El micrófono está desactivado para SnapCal. Actívalo en los ajustes del teléfono, o escribe la comida.",
+    "failed": "No se pudo escribir. Reintenta, o escribe la comida.",
+    "offline": "Sin conexión. Reintenta cuando vuelvas a estar en línea, o escribe la comida.",
+    "empty": "No se escuchó nada. Graba de nuevo un poco más cerca del teléfono."
+  },
   "plate": {
     "open": "Ver esta porción en un plato",
     "hide": "Ocultar el plato",

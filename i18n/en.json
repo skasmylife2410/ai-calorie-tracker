@@ -421,6 +421,23 @@
     "tip": "Include quantities where you can — \"two scoops\", \"a handful\" — and the estimate gets a lot better.",
     "analyze": "Analyze"
   },
+  "voiceNote": {
+    "title": "Voice note",
+    "prompt": "Say what you ate",
+    "hint": "and roughly how much — “two arepas with cheese and a coffee with milk”",
+    "under": "Photo optional · up to {max} min",
+    "stop": "Stop and send",
+    "discard": "Discard",
+    "photo": "Add a photo of the meal",
+    "sending": "Writing it down…",
+    "retry": "Try again",
+    "again": "Record again",
+    "type": "Type instead",
+    "denied": "The microphone is off for SnapCal. Allow it in your phone's settings, or type the meal.",
+    "failed": "Couldn't write that down. Try again, or type the meal.",
+    "offline": "No connection. Try again when you're back online, or type the meal.",
+    "empty": "Nothing came through. Record again a little closer to the phone."
+  },
   "plate": {
     "open": "Check this portion on a plate",
     "hide": "Hide the plate",
