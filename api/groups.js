@@ -5,6 +5,7 @@
 // POST { op: "add", group, username } -> asks someone from one of your groups to join this one
 // POST { op: "accept" | "decline", group } -> answers an ask to join
 // Owner only: { op: "all" | "set" | "remove" } (Profile › Members).
+// "Train together" (going live for a group): { op: "live…" }, see api/_live.js.
 //
 // Being in a group shows your log to everyone in it, so nobody is ever put in a group by someone
 // else: an ask waits in snapcal_group_invites until the person says yes. A group someone made
@@ -19,6 +20,7 @@ import { forgetAccount } from "./_auth.js";
 import { notify, displayName } from "./_push.js";
 import { mailConfigured } from "./_mail.js";
 import { audit } from "./_audit.js";
+import { handleLive } from "./_live.js";
 
 const NAME_MAX = 30;
 const fail = (res, errorType, message) => res.status(200).json({ ok: false, errorType, message });
@@ -69,6 +71,11 @@ export default async function handler(req, res) {
   const groupId = String(body.group ?? "").trim();
 
   try {
+    if (op.startsWith("live")) {
+      const out = await handleLive(op, me, body);
+      if (out) return res.status(200).json(out);
+    }
+
     if (op === "create") {
       const name = cleanName(body.name);
       if (!name) return fail(res, "noName", "Give the group a name.");

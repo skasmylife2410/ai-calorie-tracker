@@ -1714,5 +1714,49 @@
     "creditChange": "Change it in Profile › Exercise calories.",
     "watchTitle": "A watch or a machine",
     "watch": "Their numbers are estimates too, often 20–40% high. Logging their number is fine: the same share of it counts toward your budget."
+  },
+  "live": {
+    "title": "Train together",
+    "goLive": "Go live",
+    "watch": "Watch",
+    "join": "Join",
+    "badge": "LIVE",
+    "watching": "{n} watching",
+    "empty": "Working out? Go live and your group can watch, or train with you on camera.",
+    "whatToday": "What are you training?",
+    "yourLevel": "Your level",
+    "who": "Only people in {group} can see it. Nothing is recorded.",
+    "unsupported": "This phone or browser can't stream video. Try Chrome or Safari.",
+    "starting": "Starting the camera…",
+    "waiting": "You're live. Waiting for someone to join…",
+    "connecting": "Connecting…",
+    "reconnecting": "Reconnecting…",
+    "you": "You",
+    "mic": "Microphone",
+    "flip": "Switch camera",
+    "end": "End",
+    "leave": "Leave",
+    "sound": "Tap for sound",
+    "noCamera": "Boca0 can't use the camera. Allow it in your phone's settings and try again.",
+    "offline": "No connection. Try again when you're online.",
+    "failed": "That didn't work. Try again.",
+    "over": "They've finished. Good job to both of you.",
+    "full": "Too many people are watching right now. Try again in a bit.",
+    "blocked": "Couldn't connect. One of the networks may be blocking video; try on wifi.",
+    "muscles": {
+      "chest": "Chest",
+      "back": "Back",
+      "legs": "Legs",
+      "shoulders": "Shoulders",
+      "arms": "Arms",
+      "core": "Core",
+      "full": "Full body",
+      "cardio": "Cardio"
+    },
+    "levels": {
+      "beginner": "Beginner",
+      "average": "Average",
+      "expert": "Expert"
+    }
   }
 }

@@ -3238,3 +3238,51 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .note-dismiss.note-reply { background: var(--sc-blue); color: var(--sc-card-bg, #fff); }
 .note-quote { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 12px; padding: 10px 12px; border-radius: 14px; background: var(--sc-secondary-14); font-size: 14px; line-height: 1.4; }
 .note-quote small { font-size: 12px; font-weight: 600; color: var(--sc-secondary); }
+
+/* "Train together" (js/ui/live.js): the card on Us, and the live / watching screens */
+.us-live:empty { display: none; }
+.lv-card { padding: 14px 15px; margin: 6px 0 14px; }
+.lv-head { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.lv-head-ic { display: inline-grid; place-items: center; color: var(--sc-primary-text); }
+.lv-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--sc-secondary-15); margin-top: 10px; }
+.lv-row + .lv-row { margin-top: 0; }
+.lv-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lv-who b { display: flex; align-items: center; gap: 7px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-who span { font-size: 13px; color: var(--sc-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-dot { flex: none; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--sc-red); }
+.lv-btn { flex: none; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 13px; border-radius: 999px; border: 0;
+  background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.lv-btn.is-ink { background: var(--sc-primary-text); color: var(--sc-card-bg, #fff); }
+.lv-empty { margin: 8px 0 0; font-size: 14px; line-height: 1.4; color: var(--sc-secondary); }
+.lv-go { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; font: inherit; font-size: 14px; font-weight: 600;
+  padding: 9px 15px; border-radius: 999px; border: 0; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
+.lv-body { padding: 18px 16px 24px; }
+.lv-body .ctx-label { margin-top: 18px; font-size: 13px; font-weight: 600; color: var(--sc-secondary); }
+.lv-note { margin: 18px 0 0; font-size: 13.5px; line-height: 1.4; color: var(--sc-secondary); }
+.lv-start { display: block; width: 100%; margin-top: 16px; padding: 14px 0; font-size: 16px; }
+
+.fullscreen-cover.lv-cover { background: #000; color: #F2F2F2; }
+.lv-main { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.lv-cover .is-mirror { transform: scaleX(-1); }
+.lv-top { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 28px; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0)); font-size: 14px; }
+.lv-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(0,0,0,.55);
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.lv-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv-count { margin-left: auto; font-size: 13px; color: #D0D0D4; }
+.lv-status { position: absolute; left: 24px; right: 24px; top: 46%; text-align: center; font-size: 15px; line-height: 1.4;
+  padding: 12px 14px; border-radius: 14px; background: rgba(0,0,0,.55); }
+.lv-status[hidden] { display: none; }
+.lv-tiles { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); display: flex; flex-direction: column; gap: 8px; }
+.lv-tile { position: relative; width: 96px; height: 128px; border-radius: 14px; overflow: hidden; background: #151515; box-shadow: 0 0 0 1px rgba(255,255,255,.18); }
+.lv-tile video { width: 100%; height: 100%; object-fit: cover; }
+.lv-tile span { position: absolute; left: 6px; bottom: 5px; right: 6px; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-controls { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 28px 16px calc(env(safe-area-inset-bottom, 0px) + 20px); background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.6)); }
+.lv-ctl { display: inline-grid; place-items: center; min-width: 52px; height: 52px; padding: 0 14px; border-radius: 999px; border: 0;
+  font: inherit; font-size: 14px; font-weight: 600; background: rgba(255,255,255,.16); color: #F2F2F2; }
+.lv-ctl.is-off { opacity: .55; }
+.lv-ctl[aria-pressed="true"] { background: #F2F2F2; color: #0A0A0A; }
+.lv-ctl[hidden] { display: none; }
+.lv-end { height: 52px; padding: 0 26px; border-radius: 999px; border: 0; font: inherit; font-size: 16px; font-weight: 700; background: #F2F2F2; color: #0A0A0A; }

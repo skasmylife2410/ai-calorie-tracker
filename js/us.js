@@ -531,7 +531,8 @@ function render() {
   const days = dayList(range);
   // one chart for everyone: % of goal, calories or protein, with people picked out (js/ui/us-together.js)
   const chart = `<section class="tg-section" id="us-chart"></section>`;
-  body.innerHTML = groupBarHtml() + invitedHtml(people) + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + quietHtml(people) + todayHtml(people) + chart +
+  const live = body.id === "us-tab-body" ? `<section id="us-live" class="us-live"></section>` : "";
+  body.innerHTML = groupBarHtml() + invitedHtml(people) + live + `<section id="us-coach" class="us-coach"></section><section id="us-push"></section><section class="us-recap" id="us-recap"></section>` + quietHtml(people) + todayHtml(people) + chart +
     (people.length === 1 ? `<p class="tg-note">${t("groups.onlyYou", { name: escHtml(data.group?.name ?? "") })}</p>` : "");
   body.querySelectorAll("[data-group]").forEach((b) => b.addEventListener("click", () => {
     if (b.dataset.group === (data.group?.id ?? null)) return;
@@ -546,6 +547,12 @@ function render() {
     people, days, me: data.me, todayKey: localDateString(Date.now()), selectedDay: null,
     dayDetail: (key, mark) => dayDetailHtml(people, key, mark),
   });
+  // "Train together": who's live in this group, and going live yourself (js/ui/live.js)
+  if (body.id === "us-tab-body") {
+    const groups = data.groups ?? [];
+    const group = data.group ?? groups.find((g) => g.id === groupId) ?? groups[0];
+    import("./ui/live.js").then((m) => m.renderLiveCard(body.querySelector("#us-live"), { group })).catch(() => {});
+  }
   if (body.id === "us-tab-body") renderPushCard(body.querySelector("#us-push")); // in the app only, not us.html
   renderRecap(body.querySelector("#us-recap"), { lang: currentLanguage() === "es" ? "es" : "en" });
   // the coach's own account: who shares their log, one tap away (js/ui/coach.js)

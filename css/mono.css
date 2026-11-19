@@ -408,7 +408,7 @@
   box-shadow: inset 0 0 0 1.5px var(--mn-ink) !important;
 }
 :root[data-theme="mono"][data-mode="dark"] .onb-choice.is-on * { color: inherit; }
-:root[data-theme="mono"][data-mode="dark"] :is(.ex-chip, .lang-btn, .mem-chip, .ctx-chip):not(.is-on) {
+:root[data-theme="mono"][data-mode="dark"] :is(.ex-chip, .lang-btn, .mem-chip, .ctx-chip):not(.is-on, [aria-pressed="true"], .is-note) {
   background: transparent !important; color: var(--mn-sec) !important; box-shadow: inset 0 0 0 1px var(--mn-off) !important;
 }
 

@@ -1714,5 +1714,49 @@
     "creditChange": "Cámbialo en Perfil › Calorías del ejercicio.",
     "watchTitle": "Un reloj o una máquina",
     "watch": "Sus números también son cálculos, a menudo un 20–40% altos. Está bien registrar su número: la misma parte cuenta para tu presupuesto."
+  },
+  "live": {
+    "title": "Entrenar juntos",
+    "goLive": "Transmitir en vivo",
+    "watch": "Mirar",
+    "join": "Unirme",
+    "badge": "EN VIVO",
+    "watching": "{n} mirando",
+    "empty": "¿Vas a entrenar? Transmite en vivo y tu grupo puede mirarte o entrenar contigo por cámara.",
+    "whatToday": "¿Qué vas a entrenar?",
+    "yourLevel": "Tu nivel",
+    "who": "Solo lo ve la gente de {group}. No se graba nada.",
+    "unsupported": "Este teléfono o navegador no puede transmitir video. Prueba con Chrome o Safari.",
+    "starting": "Encendiendo la cámara…",
+    "waiting": "Estás en vivo. Esperando a que alguien se una…",
+    "connecting": "Conectando…",
+    "reconnecting": "Reconectando…",
+    "you": "Tú",
+    "mic": "Micrófono",
+    "flip": "Cambiar cámara",
+    "end": "Terminar",
+    "leave": "Salir",
+    "sound": "Toca para oír",
+    "noCamera": "Boca0 no puede usar la cámara. Permítela en los ajustes del teléfono e inténtalo de nuevo.",
+    "offline": "Sin conexión. Inténtalo cuando tengas internet.",
+    "failed": "No funcionó. Inténtalo de nuevo.",
+    "over": "Ya terminó. Buen trabajo a los dos.",
+    "full": "Hay demasiada gente mirando ahora. Prueba en un rato.",
+    "blocked": "No se pudo conectar. Puede que una de las redes bloquee el video; prueba con wifi.",
+    "muscles": {
+      "chest": "Pecho",
+      "back": "Espalda",
+      "legs": "Piernas",
+      "shoulders": "Hombros",
+      "arms": "Brazos",
+      "core": "Abdomen",
+      "full": "Cuerpo completo",
+      "cardio": "Cardio"
+    },
+    "levels": {
+      "beginner": "Principiante",
+      "average": "Intermedio",
+      "expert": "Experto"
+    }
   }
 }

@@ -323,6 +323,7 @@ function openFromUrl(href) {
   const goals = url.searchParams.get("goals") === "1";
   const coach = url.searchParams.get("coach") === "1";
   const weighin = url.searchParams.get("weighin") === "1";
+  const live = url.searchParams.get("live");
   if (url.search) history.replaceState(null, "", "/");
   if (!hasProfile) return false;
   // the old Today tab now lives on Home as the "Today's meals" mini tab
@@ -344,7 +345,9 @@ function openFromUrl(href) {
   if (coach) setTimeout(() => import("./ui/coach.js").then((m) => m.isCoach() && m.openCoachSheet()).catch(() => {}), 600);
   // "why your weight matters" opens the explainer
   if (weighin) setTimeout(() => import("./ui/weigh-why.js").then((m) => m.openWeighWhySheet({ onSaved: () => renderShell() })).catch(() => {}), 600);
-  return Boolean(tab || whatsNew || goals || coach || weighin);
+  // "X is live": the Us card opens that session as soon as it has loaded (js/ui/live.js)
+  if (live) import("./ui/live.js").then((m) => m.wantLive(live)).catch(() => {});
+  return Boolean(tab || whatsNew || goals || coach || weighin || live);
 }
 
 // ---------------------------------------------------------------------------
