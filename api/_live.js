@@ -1,5 +1,5 @@
-// api/_live.js — "Train together": go live for one of your groups while you work out, and the
-// others in it can watch, or join with their own camera. Reached through api/groups.js (op live*),
+// api/_live.js — "Train together": go live for one of your groups while you work out; the others
+// swipe through whoever is live, like a feed of streams. Reached through api/groups.js (op live*),
 // because the Hobby plan has no room for another endpoint.
 //
 // The video never touches this server. Phones connect straight to each other (WebRTC): a viewer
@@ -7,17 +7,17 @@
 // answer, and from then on the phones talk directly. Only who is live, what they're training and
 // these two short texts are stored; nothing is recorded.
 //
-// POST { op: "live", group }                         -> { ok, sessions, ice, mine }
+// POST { op: "live", group? }                        -> { ok, sessions, ice, mine }  (no group: all of yours)
 // POST { op: "liveStart", group, muscle, level }    -> { ok, id }   (tells the group, once in a while)
-// POST { op: "liveBeat", id }                        -> { ok, offers: [{ id, viewer, name, camera, offer }], watching }
+// POST { op: "liveBeat", id }                        -> { ok, offers: [{ id, viewer, name, offer }], left, watching }
 // POST { op: "liveAnswer", signal, answer }          -> { ok }
 // POST { op: "liveEnd", id }                         -> { ok }
-// POST { op: "liveJoin", id, offer, camera }         -> { ok, signal }
+// POST { op: "liveJoin", id, offer }                 -> { ok, signal }
 // POST { op: "liveWait", signal }                    -> { ok, answer, ended }
 // POST { op: "liveLeave", signal }                   -> { ok }
 
 import { select, insert, patch, remove, newId } from "./_rest.js";
-import { isMember, membersOf } from "./_groups.js";
+import { isMember, membersOf, myGroups } from "./_groups.js";
 import { notify, displayName } from "./_push.js";
 
 export const MUSCLES = ["chest", "back", "legs", "shoulders", "arms", "core", "full", "cardio"];
@@ -57,12 +57,15 @@ async function watchingCount(liveId) {
 
 export async function handleLive(op, me, body) {
   if (op === "live") {
+    // one group, or (no group) every group you're in: the feed you swipe through
     const group = String(body.group ?? "");
-    if (!group || !(await isMember(me, group))) return fail("notMember", "You're not in that group.");
-    const rows = await select("snapcal_live", { select: "id,owner,muscle,level,started_at", group_id: `eq.${group}`, ended_at: "is.null", last_seen: `gt.${since(ALIVE_MS)}`, order: "started_at.desc", limit: "20" });
+    const mine = await myGroups(me);
+    const ids = group ? mine.filter((g) => g.id === group).map((g) => g.id) : mine.map((g) => g.id);
+    if (!ids.length) return fail("notMember", "You're not in that group.");
+    const rows = await select("snapcal_live", { select: "id,owner,group_id,muscle,level,started_at", group_id: `in.(${ids.map((g) => `"${g}"`).join(",")})`, ended_at: "is.null", last_seen: `gt.${since(ALIVE_MS)}`, order: "started_at.desc", limit: "30" });
     const sessions = await Promise.all(rows.map(async (r) => ({
       id: r.id, owner: r.owner, name: await displayName(r.owner), muscle: r.muscle, level: r.level,
-      startedAt: r.started_at, watching: await watchingCount(r.id),
+      group: mine.find((g) => g.id === r.group_id)?.name ?? "", startedAt: r.started_at, watching: await watchingCount(r.id),
     })));
     return { ok: true, sessions, ice: iceServers(), mine: sessions.find((s) => s.owner === me)?.id ?? null };
   }
@@ -84,7 +87,7 @@ export async function handleLive(op, me, body) {
       const word = (lang) => LABELS[lang][muscle];
       await notify(people.filter((u) => u !== me), (lang) => ({
         title: lang === "es" ? `${who} está en vivo: ${word("es")}` : `${who} is live: ${word("en")}`,
-        body: lang === "es" ? "Toca para mirar o entrenar en compañía." : "Tap to watch, or train with them.",
+        body: lang === "es" ? "Toca para mirar." : "Tap to watch.",
         url: `/?tab=us&live=${id}`,
         tag: `live-${me}`,
       }));
@@ -101,7 +104,7 @@ export async function handleLive(op, me, body) {
     }
     if (s.ended_at) return { ok: true, ended: true, offers: [], watching: 0 };
     await patch("snapcal_live", { id: `eq.${s.id}` }, { last_seen: new Date().toISOString() });
-    const waiting = await select("snapcal_live_signals", { select: "id,viewer,camera,offer", live_id: `eq.${s.id}`, answer: "is.null", left_at: "is.null", created_at: `gt.${since(ALIVE_MS)}`, limit: "10" });
+    const waiting = await select("snapcal_live_signals", { select: "id,viewer,offer", live_id: `eq.${s.id}`, answer: "is.null", left_at: "is.null", created_at: `gt.${since(ALIVE_MS)}`, limit: "10" });
     const offers = await Promise.all(waiting.map(async (w) => ({ ...w, name: await displayName(w.viewer) })));
     const left = await select("snapcal_live_signals", { select: "id", live_id: `eq.${s.id}`, or: `(left_at.not.is.null,last_seen.lt.${since(ALIVE_MS)})`, limit: "50" });
     return { ok: true, offers, left: left.map((r) => r.id), watching: await watchingCount(s.id) };
@@ -127,7 +130,7 @@ export async function handleLive(op, me, body) {
     await patch("snapcal_live_signals", { live_id: `eq.${s.id}`, viewer: `eq.${me}`, left_at: "is.null" }, { left_at: new Date().toISOString() });
     if ((await watchingCount(s.id)) >= MAX_WATCHING) return fail("full", "Too many people are watching right now.");
     const id = newId();
-    await insert("snapcal_live_signals", { id, live_id: s.id, viewer: me, camera: body.camera === true, offer });
+    await insert("snapcal_live_signals", { id, live_id: s.id, viewer: me, camera: false, offer });
     return { ok: true, signal: id };
   }
 

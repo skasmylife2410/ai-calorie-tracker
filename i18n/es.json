@@ -1719,19 +1719,17 @@
     "title": "Entrenar juntos",
     "goLive": "Transmitir en vivo",
     "watch": "Mirar",
-    "join": "Unirme",
     "badge": "EN VIVO",
     "watching": "{n} mirando",
-    "empty": "¿Vas a entrenar? Transmite en vivo y tu grupo puede mirarte o entrenar contigo por cámara.",
+    "empty": "¿Vas a entrenar? Transmite en vivo y tus grupos te pueden ver.",
     "whatToday": "¿Qué vas a entrenar?",
     "yourLevel": "Tu nivel",
-    "who": "Solo lo ve la gente de {group}. No se graba nada.",
+    "who": "Solo la gente de {group} puede verte. No se graba nada.",
     "unsupported": "Este teléfono o navegador no puede transmitir video. Prueba con Chrome o Safari.",
     "starting": "Encendiendo la cámara…",
     "waiting": "Estás en vivo. Esperando a que alguien se una…",
     "connecting": "Conectando…",
     "reconnecting": "Reconectando…",
-    "you": "Tú",
     "mic": "Micrófono",
     "flip": "Cambiar cámara",
     "end": "Terminar",
@@ -1757,6 +1755,10 @@
       "beginner": "Principiante",
       "average": "Intermedio",
       "expert": "Experto"
-    }
+    },
+    "liveNow": "{n} en vivo",
+    "all": "Todos",
+    "swipe": "Desliza para ver a otra persona",
+    "noneAtLevel": "Nadie de este nivel está en vivo ahora."
   }
 }

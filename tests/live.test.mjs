@@ -1,5 +1,5 @@
-// live.test.mjs — "Train together": go live for a group; people in it can watch or join with
-// their camera. The server only passes the connection offer and answer between phones.
+// live.test.mjs — "Train together": go live for a group; people in it swipe through whoever is
+// live. The server only passes the connection offer and answer between phones.
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -63,13 +63,13 @@ test("go live, a groupmate joins, the answer comes back, and leaving and ending 
   assert.deepEqual([seen.sessions[0].name, seen.sessions[0].muscle, seen.sessions[0].level], ["Mi baby", "chest", "beginner"]);
   assert.ok(seen.ice[0].urls.length, "always some STUN servers");
 
-  const join = await call("thayra23", { op: "liveJoin", id: start.id, offer: SDP, camera: true });
+  const join = await call("thayra23", { op: "liveJoin", id: start.id, offer: SDP });
   assert.equal(join.ok, true);
   assert.equal((await call("thayra23", { op: "liveWait", signal: join.signal })).answer, null);
 
   const beat = await call("baby", { op: "liveBeat", id: start.id });
   assert.equal(beat.offers.length, 1);
-  assert.deepEqual([beat.offers[0].viewer, beat.offers[0].camera, beat.offers[0].offer], ["thayra23", true, SDP]);
+  assert.deepEqual([beat.offers[0].viewer, beat.offers[0].offer], ["thayra23", SDP]);
   assert.equal(beat.watching, 0, "nobody is counted before they're connected");
 
   assert.equal((await call("baby", { op: "liveAnswer", signal: join.signal, answer: SDP })).ok, true);
@@ -84,6 +84,17 @@ test("go live, a groupmate joins, the answer comes back, and leaving and ending 
   await call("baby", { op: "liveEnd", id: start.id });
   assert.equal((await call("thayra23", { op: "live", group: "family" })).sessions.length, 0);
   assert.equal((await call("aelson", { op: "liveJoin", id: start.id, offer: SDP })).errorType, "ended");
+});
+
+test("the feed lists streams from every group you're in, and only those", async () => {
+  reset();
+  DB.snapcal_group_members.push({ group_id: "work", username: "baby", joined_at: "5" });
+  const fam = await call("thayra23", { op: "liveStart", group: "family", muscle: "back", level: "average" });
+  const work = await call("loner", { op: "liveStart", group: "work", muscle: "arms", level: "expert" });
+  const babyFeed = await call("baby", { op: "live" });
+  assert.deepEqual(babyFeed.sessions.map((s) => s.id).sort(), [fam.id, work.id].sort());
+  assert.equal(babyFeed.sessions.find((s) => s.id === work.id).group, "Work");
+  assert.deepEqual((await call("aelson", { op: "live" })).sessions.map((s) => s.id), [fam.id], "not the Work stream");
 });
 
 test("only people in the group see or join it, and only the person live can answer", async () => {
@@ -124,10 +135,11 @@ test("a TURN relay is offered only when it's fully configured", () => {
   assert.deepEqual(withTurn[1], { urls: ["turn:a.example:3478", "turns:a.example:443"], username: "u", credential: "p" });
 });
 
-test("the card puts people doing the same workout first", () => {
-  const s = [{ id: "a", muscle: "legs" }, { id: "b", muscle: "chest" }, { id: "c", muscle: "chest" }];
-  assert.deepEqual(orderSessions(s, "chest").map((x) => x.id), ["b", "c", "a"]);
-  assert.deepEqual(orderSessions(s).map((x) => x.id), ["a", "b", "c"]);
+test("the feed puts people at your level first, and the level filter keeps only them", () => {
+  const s = [{ id: "a", level: "expert" }, { id: "b", level: "beginner" }, { id: "c", level: "expert" }, { id: "d", level: "beginner" }];
+  assert.deepEqual(orderSessions(s, { level: "beginner" }).map((x) => x.id), ["b", "d", "a", "c"]);
+  assert.deepEqual(orderSessions(s).map((x) => x.id), ["a", "b", "c", "d"]);
+  assert.deepEqual(orderSessions(s, { level: "beginner", only: "expert" }).map((x) => x.id), ["a", "c"]);
   assert.equal(liveSupported({}), false);
   assert.equal(typeof workoutLabel, "function");
 });
