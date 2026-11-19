@@ -96,6 +96,8 @@ export function morningPushFor({ today, dueDay = null, weighDays = [], firstLogD
   if (today === noticeDay) return { kind: "notice" };
   const days = [...weighDays].filter(Boolean).sort();
   if (days.includes(today)) return null;
+  // Friday: the review is written this morning, and this morning's weight goes into it
+  if (new Date(`${today}T12:00:00Z`).getUTCDay() === 5 && (days.length > 0 || firstLogDay)) return { kind: "friday" };
   if (toDue !== null && toDue >= 2 && toDue <= 7) return { kind: "countdown", days: toDue };
   const last = days[days.length - 1] ?? null;
   if (!last) return firstLogDay && new Date(`${today}T12:00:00Z`).getUTCDay() === 1 ? { kind: "gap", never: true } : null;
@@ -110,6 +112,7 @@ export function morningMessage(p, { name = "", lang = "en" } = {}) {
   if (p.kind === "checkin") return { title: es ? "Tu revisión de 30 días llegó" : "Your 30-day check-in is here", body: es ? "Ya tenemos un mes de tus datos. Abre SnapCal para ver tu nuevo presupuesto diario." : "A month of your data is in. Open SnapCal to see your new daily budget.", url: "/", tag: "checkin" };
   if (p.kind === "eve") return { title: es ? "Tu revisión es mañana" : "Your check-in is tomorrow", body: es ? "Pésate mañana temprano, antes de abrir la app: entra en tu nuevo presupuesto." : "Weigh in tomorrow morning, before you open the app: it goes into your new budget.", url: "/?weighin=1", tag: "checkin" };
   if (p.kind === "notice") return { title: es ? "Por qué importa tu peso" : "Why your weight matters", body: es ? "Tu presupuesto es una estimación hasta que la báscula diga lo contrario. Toca para ver por qué importa pesarte cada mañana." : "Your budget is a guess until the scale says otherwise. Tap to see why a morning weigh-in matters.", url: "/?weighin=1", tag: "weighin" };
+  if (p.kind === "friday") return { title: es ? "Pésate para tu repaso del viernes" : "Weigh in for your Friday review", body: es ? "Tu repaso semanal ya está listo. Súbete a la báscula y se actualiza con tu peso de hoy." : "Your weekly review is ready. Step on the scale and it updates with today's weight.", url: "/?weighin=1", tag: "weighin" };
   if (p.kind === "countdown") return { title: es ? `Faltan ${p.days} días para tu revisión` : `${p.days} days to your check-in`, body: es ? "Súbete a la báscula esta mañana: cada pesaje hace tu nuevo presupuesto más preciso." : "Step on the scale this morning: every reading makes your new budget more accurate.", url: "/?weighin=1", tag: "weighin" };
   const who = String(name ?? "").trim();
   const title = p.never
@@ -159,6 +162,16 @@ export async function morningPushes(now = Date.now(), { skip = new Set() } = {})
   return { kinds, sent };
 }
 
+/** Weigh-ins for a check-in: the week, plus its Friday morning (the review is written then, and
+ *  the app asks for a weigh-in that morning). */
+const weighRange = (win) => ({ day: `gte.${win.start}`, and: `(day.lte.${addDays(win.end, 1)})` });
+
+/** Fingerprint of the weigh-ins a check-in used: it's rewritten when a new one comes in. */
+export const weighKey = (rows) => (Array.isArray(rows) ? rows : [])
+  .map((r) => `${r.day}:${Number(r.data?.kg) || 0}`).sort().join(",");
+
+const weighRows = (owner, win) => select("snapcal_weight", { select: "day,data", owner: `eq.${owner}`, "data->>deleted": "is.null", ...weighRange(win), limit: "30" });
+
 /** Builds and stores one person's recommendation for the week that ended yesterday. */
 export async function recapFor(owner, win) {
   const range = { day: `gte.${win.start}`, and: `(day.lte.${win.end})` };
@@ -166,7 +179,7 @@ export async function recapFor(owner, win) {
     // columns only — never `data`, which holds the meal photo
     select("snapcal_food_entries", { select: "id,day,logged_at,name,calories,protein_g", owner: `eq.${owner}`, deleted: "eq.false", ...range, limit: "300" }),
     select("snapcal_exercise", { select: "day,data", owner: `eq.${owner}`, ...range, limit: "100" }),
-    select("snapcal_weight", { select: "day,data", owner: `eq.${owner}`, "data->>deleted": "is.null", ...range, limit: "30" }),
+    weighRows(owner, win),
     select("snapcal_profile", { select: "data", owner: `eq.${owner}`, limit: "1" }),
   ]);
   const profile = profiles[0]?.data ?? {};
@@ -180,7 +193,7 @@ export async function recapFor(owner, win) {
     const raw = await askGemini(buildPrompt({ name: profile.displayName, stats, candidates, notes }));
     recap = cleanRecap(raw, candidates);
   }
-  const data = { weekStart: win.start, weekEnd: win.end, stats: { ...shownStats, days }, ...recap, goalsV: GOALS_VERSION, notesKey: notesKey(notes), createdAt: new Date().toISOString() };
+  const data = { weekStart: win.start, weekEnd: win.end, stats: { ...shownStats, days }, ...recap, goalsV: GOALS_VERSION, notesKey: notesKey(notes), weighKey: weighKey(weights), createdAt: new Date().toISOString() };
   await upsert("snapcal_recaps", { owner, week_start: win.start, data });
   return data;
 }
@@ -423,8 +436,13 @@ export default async function handler(req, res) {
     // written with old targets, or before they added context about that week (being sick…):
     // the same week again, with the targets and the context they have now
     const profile = (await select("snapcal_profile", { select: "data", owner: `eq.${me}`, limit: "1" }))[0]?.data;
-    const contextChanged = notesKey(weekNotes(profile, { start: recap.weekStart, end: recap.weekEnd })) !== (recap.notesKey ?? "");
-    if (recap.goalsV !== GOALS_VERSION || recapIsStale(recap, goalsFrom(profile)) || contextChanged) {
+    const win = { start: recap.weekStart, end: recap.weekEnd };
+    const contextChanged = notesKey(weekNotes(profile, win)) !== (recap.notesKey ?? "");
+    // a weigh-in after it was written (Friday morning's, asked for): the weight change includes it.
+    // Check-ins from before weighKey existed aren't rewritten for that alone.
+    const weighed = typeof recap.weighKey === "string" ? await weighRows(me, win).catch(() => null) : null;
+    const weighChanged = weighed !== null && weighKey(weighed) !== recap.weighKey; // unreadable: no change
+    if (recap.goalsV !== GOALS_VERSION || recapIsStale(recap, goalsFrom(profile)) || contextChanged || weighChanged) {
       try { recap = await recapFor(me, { start: recap.weekStart, end: recap.weekEnd }); } catch { /* keep the old one rather than none */ }
     }
     if (recap.tips?.length && !recap.byLang?.[lang]) recap = await addLanguage(me, rows[0].week_start, recap, lang);

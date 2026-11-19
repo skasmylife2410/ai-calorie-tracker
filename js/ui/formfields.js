@@ -12,13 +12,15 @@ import { ACTIVITY_LABELS, SEX_LABELS, roundDisplay, buildsMuscle, goalOf, target
 import { icon } from "./icons.js";
 import { t } from "../i18n.js";
 
-// The goal, as setup asks it (onboarding.js): what for and how fast. Building muscle is a switch
-// next to it for losing fat or keeping weight (nutrition.buildsMuscle); the "Build muscle" goal
-// always does.
+// The goal, as setup asks it (onboarding.js): what for and how fast. Body recomposition (losing
+// fat while building muscle) is a goal of its own: losing at the steady pace with building muscle
+// on (nutrition.isRecomp). Keeping weight can build muscle too, with the switch next to it; the
+// "Build muscle" goal always does.
 export const GOAL_CHOICES = [
   { key: "lose:slow", goal: "lose", rate: "slow" },
   { key: "lose:normal", goal: "lose", rate: "normal" },
   { key: "lose:fast", goal: "lose", rate: "fast" },
+  { key: "recomp", goal: "lose", rate: "slow", recomp: true },
   { key: "maintain", goal: "maintain", rate: null },
   { key: "gain:slow", goal: "gain", rate: "slow" },
   { key: "gain:normal", goal: "gain", rate: "normal" },
@@ -29,6 +31,7 @@ const RATE_KEYS = { slow: "onb.rateSlow", normal: "onb.rateNormal", fast: "onb.r
 /** Which of GOAL_CHOICES a profile is on (older profiles have only a calorie change). */
 export function goalChoiceOf(profile) {
   const goal = goalOf(profile);
+  if (goal === "lose" && profile.buildMuscle === true) return "recomp";
   return goal === "maintain" ? "maintain" : `${goal}:${RATE_KEYS[profile.goalRate] ? profile.goalRate : "normal"}`;
 }
 
@@ -38,13 +41,12 @@ const patchFor = (goal, rate, buildMuscle, profile) => ({
 });
 
 /** The profile fields a goal choice sets; the calorie change follows from the trend weight.
- *  Building muscle stays on for a steady fat loss or keeping weight; a faster fat loss turns it
- *  off (that deficit holds muscle back), and "Build muscle" turns it on. */
+ *  Recomposition and "Build muscle" turn building muscle on; losing weight turns it off (that's
+ *  what Recomposition is for); keeping weight keeps the switch as it was. */
 export function goalPatch(key, profile) {
   const c = GOAL_CHOICES.find((x) => x.key === key);
   if (!c) return null;
-  const keeps = c.goal === "maintain" || c.rate === "slow";
-  const buildMuscle = c.goal === "gain" || (keeps && profile.buildMuscle === true);
+  const buildMuscle = c.recomp === true || c.goal === "gain" || (c.goal === "maintain" && profile.buildMuscle === true);
   return patchFor(c.goal, c.rate ?? profile.goalRate ?? null, buildMuscle, profile);
 }
 
@@ -54,7 +56,7 @@ export function musclePatch(on, profile) {
   return patchFor(goal, goal === "lose" && on ? "slow" : profile.goalRate ?? null, on === true, profile);
 }
 
-const goalLabel = (c) => (c.goal === "maintain" ? t("onb.goalMaintain")
+const goalLabel = (c) => (c.recomp ? t("onb.goalRecomp") : c.goal === "maintain" ? t("onb.goalMaintain")
   : `${t(c.goal === "lose" ? "onb.goalLose" : "onb.goalGain")} · ${t(RATE_KEYS[c.rate])}`);
 
 function pickerRow({ id, label, currentLabel, options }) {
@@ -133,9 +135,10 @@ export function goalSectionHtml(profile) {
           currentLabel: goalLabel(GOAL_CHOICES.find((c) => c.key === current)),
           options: GOAL_CHOICES.map((c) => ({ value: c.key, label: goalLabel(c), selected: c.key === current })),
         })}
-        ${goalOf(profile) === "gain" ? "" : `
+        ${current === "recomp" ? `<div class="ios-section-footer goal-recomp-note">${t("onb.goalRecompSub")}</div>` : ""}
+        ${goalOf(profile) !== "maintain" ? "" : `
         <label class="ios-row theme-markers">
-          <span class="theme-text"><b>${t("muscle.switch")}</b><small>${t(goalOf(profile) === "lose" ? "muscle.switchSubLose" : "muscle.switchSubKeep")}</small></span>
+          <span class="theme-text"><b>${t("muscle.switch")}</b><small>${t("muscle.switchSubKeep")}</small></span>
           <input type="checkbox" role="switch" class="ios-switch" id="field-muscle" ${buildsMuscle(profile) ? "checked" : ""} />
         </label>`}
       </div>

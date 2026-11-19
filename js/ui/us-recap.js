@@ -65,6 +65,14 @@ function mealHtml(meal, lang) {
     : `<div class="rc-chip"><span class="rc-chip-name">${esc(meal.name)}</span><span class="rc-chip-meta">${day}, ${kcal}</span></div>`;
 }
 
+/** Whether there's a weigh-in from the review's Friday (the day after its week) or since. */
+function weighedSince(weekEnd) {
+  const friday = new Date(`${weekEnd}T12:00:00`);
+  friday.setDate(friday.getDate() + 1);
+  const from = `${friday.getFullYear()}-${String(friday.getMonth() + 1).padStart(2, "0")}-${String(friday.getDate()).padStart(2, "0")}`;
+  return (store.allWeightEntries?.() ?? []).some((w) => w.day >= from);
+}
+
 /** The context they gave about the week shown (from this phone's profile, which the server read). */
 function weekNotesHtml(r) {
   const notes = store.contextNotes?.().filter((n) => n.days.some((d) => d >= r.weekStart && d <= r.weekEnd)) ?? [];
@@ -105,13 +113,22 @@ export async function renderRecap(host, { lang = "en" } = {}) {
             ${tip.meals?.length ? `<div class="rc-meals">${tip.meals.map((m) => mealHtml(m, lang)).join("")}</div>` : ""}
           </li>`).join("")}
       </ol>
-      <div class="rc-context"><button type="button" class="ctx-chip" data-ctx-add>${t("ctxNote.add")}</button></div>
+      <div class="rc-context">
+        ${weighedSince(r.weekEnd) ? "" : `<button type="button" class="ctx-chip rc-weigh">${t("recap.weighIn")}</button>`}
+        <button type="button" class="ctx-chip" data-ctx-add>${t("ctxNote.add")}</button>
+      </div>
     </div>`;
-  // context about this week (being sick…): saved, sent to the server, and the check-in is rewritten
-  wireContextRow(host, new Date(`${r.weekEnd}T12:00:00`), async () => {
+  // context about this week (being sick…) or this morning's weight: saved, sent to the server,
+  // and the check-in is rewritten with it (api/weekly.js)
+  const rewrite = async () => {
     host.querySelector(".rc-context")?.insertAdjacentHTML("beforeend", `<span class="rc-rewriting">${esc(t("ctxNote.rewriting"))}</span>`);
     try { const { syncNow } = await import("../sync.js"); await syncNow(); } catch { /* offline: it goes with the next sync */ }
     renderRecap(host, { lang });
+  };
+  wireContextRow(host, new Date(`${r.weekEnd}T12:00:00`), rewrite);
+  host.querySelector(".rc-weigh")?.addEventListener("click", async () => {
+    const { openWeightSheet } = await import("./weight.js");
+    openWeightSheet({ onSaved: rewrite });
   });
   host.querySelector(".rc-hide")?.addEventListener("click", () => {
     hideRecap(r.weekStart);

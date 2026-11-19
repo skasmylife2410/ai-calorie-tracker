@@ -266,6 +266,7 @@ function paintRepairNote(container) {
 function weighLineText(p) {
   if (p.kind === "checkin") return p.days === 0 ? t("home.weighCheckinToday") : p.days === 1 ? t("home.weighCheckinTomorrow") : t("home.weighCheckinIn", { n: p.days });
   if (p.kind === "gap") return t("home.weighGap", { n: p.days });
+  if (p.kind === "friday") return t("home.weighFriday");
   return t("home.weighWhy");
 }
 

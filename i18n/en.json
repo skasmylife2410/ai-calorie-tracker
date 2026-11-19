@@ -50,6 +50,7 @@
     "weighCheckinTomorrow": "check-in tomorrow",
     "weighCheckinIn": "check-in in {n} days",
     "weighGap": "last one {n} days ago",
+    "weighFriday": "for your Friday review",
     "weighWhy": "why it matters"
   },
   "menu": {
@@ -625,6 +626,8 @@
     "activitySub": "Outside of workouts — your job and daily life.",
     "goalTitle": "What's the goal?",
     "goalLose": "Lose fat",
+    "goalRecomp": "Body recomposition",
+    "goalRecompSub": "Lose fat and build muscle at the same time",
     "goalMaintain": "Stay as I am",
     "goalGain": "Build muscle",
     "rateTitle": "How fast?",
@@ -787,6 +790,7 @@
     "placeholder": "Name"
   },
   "recap": {
+    "weighIn": "Weigh in for this review",
     "title": "Your Friday check-in",
     "range": "{from} to {to}",
     "private": "Only you see this",

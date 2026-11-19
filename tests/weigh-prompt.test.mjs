@@ -32,3 +32,15 @@ test("no check-in near: only after three days without the scale", () => {
   weigh([[now - 4 * DAY, 88]]);
   assert.deepEqual(store.weighInPrompt(now), { kind: "gap", days: 4 });
 });
+
+test("Friday: the line asks for the review's weigh-in, even the day after the last one", () => {
+  localStorage.clear();
+  const friday = Date.parse("2026-10-16T08:00:00");
+  weigh([[friday - DAY, 88]]); // weighed yesterday: any other day, no line
+  assert.equal(store.weighInPrompt(friday - DAY + 6 * 3600000), null, "Thursday afternoon, weighed that morning");
+  assert.deepEqual(store.weighInPrompt(friday), { kind: "friday" });
+  weigh([[friday - DAY, 88], [friday - 3600000, 87.8]]);
+  assert.equal(store.weighInPrompt(friday), null, "weighed in this morning");
+  // tests run in UTC or local time alike: Friday is the local weekday
+  assert.equal(new Date(friday).getDay(), 5);
+});

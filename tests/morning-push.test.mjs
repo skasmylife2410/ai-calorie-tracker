@@ -32,11 +32,12 @@ test("a gap: every third day for three weeks, then it stops", () => {
     const p = morningPushFor({ today, dueDay: "2026-12-30", weighDays: ["2026-10-01"], noticeDay: notice });
     if (p) kinds.push(`${p.kind}${p.days}`);
   }
-  assert.deepEqual(kinds, ["gap3", "gap6", "gap9", "gap12", "gap15", "gap18", "gap21"]);
+  // Fridays (Oct 2, 9, 16, 23) ask for the Friday review's weigh-in instead
+  assert.deepEqual(kinds, ["fridayundefined", "gap3", "gap6", "fridayundefined", "gap9", "gap12", "fridayundefined", "gap18", "gap21", "fridayundefined"]);
 });
 
 test("never weighed in: Monday mornings, once they've logged a meal", () => {
-  assert.equal(morningPushFor({ today: "2026-10-16", weighDays: [], firstLogDay: "2026-09-13", noticeDay: notice }), null, "a Friday");
+  assert.equal(morningPushFor({ today: "2026-10-17", weighDays: [], firstLogDay: "2026-09-13", noticeDay: notice }), null, "a Saturday");
   assert.equal(morningPushFor({ today: "2026-10-19", weighDays: [], firstLogDay: null, noticeDay: notice }), null, "nothing logged yet");
   const p = morningPushFor({ today: "2026-10-19", weighDays: [], firstLogDay: "2026-09-13", noticeDay: notice });
   assert.deepEqual(p, { kind: "gap", never: true });
@@ -54,4 +55,16 @@ test("the due date is worked out the way the app does", () => {
   assert.equal(checkinDueAt({ lastReviewAt: first, firstWeighAt: 1 }), first + 30 * DAY);
   assert.equal(checkinDueAt({ nextReviewAt: first + 7 * DAY, lastReviewAt: first }), first + 7 * DAY, "snoozed a week for weigh-ins");
   assert.equal(checkinDueAt({}), null);
+});
+
+test("Friday: weigh in for the review, unless you already have this morning", () => {
+  const friday = "2026-11-20";
+  assert.deepEqual(morningPushFor({ today: friday, weighDays: ["2026-11-18"], noticeDay: notice }), { kind: "friday" });
+  assert.deepEqual(morningPushFor({ today: friday, weighDays: [], firstLogDay: "2026-11-01", noticeDay: notice }), { kind: "friday" }, "never weighed in, but logging");
+  assert.equal(morningPushFor({ today: friday, weighDays: [friday], noticeDay: notice }), null, "already weighed in");
+  assert.equal(morningPushFor({ today: friday, weighDays: [], firstLogDay: null, noticeDay: notice }), null, "not using the app yet");
+  assert.equal(morningPushFor({ today: friday, dueDay: friday, weighDays: [], noticeDay: notice }).kind, "checkin", "the check-in still comes first");
+  const m = morningMessage({ kind: "friday" }, { lang: "es" });
+  assert.equal(m.title, "Pésate para tu repaso del viernes");
+  assert.equal(m.url, "/?weighin=1");
 });

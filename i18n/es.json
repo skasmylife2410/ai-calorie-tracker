@@ -50,6 +50,7 @@
     "weighCheckinTomorrow": "revisión mañana",
     "weighCheckinIn": "revisión en {n} días",
     "weighGap": "último hace {n} días",
+    "weighFriday": "para tu repaso del viernes",
     "weighWhy": "por qué importa"
   },
   "menu": {
@@ -625,6 +626,8 @@
     "activitySub": "Fuera del ejercicio: tu trabajo y tu día a día.",
     "goalTitle": "¿Cuál es la meta?",
     "goalLose": "Bajar grasa",
+    "goalRecomp": "Recomposición corporal",
+    "goalRecompSub": "Bajar grasa y ganar músculo a la vez",
     "goalMaintain": "Mantenerme",
     "goalGain": "Ganar músculo",
     "rateTitle": "¿Qué tan rápido?",
@@ -787,6 +790,7 @@
     "placeholder": "Nombre"
   },
   "recap": {
+    "weighIn": "Pésate para este repaso",
     "title": "Tu revisión del viernes",
     "range": "Del {from} al {to}",
     "private": "Solo tú ves esto",

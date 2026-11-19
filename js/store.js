@@ -1271,6 +1271,8 @@ export function weighInPrompt(now = Date.now()) {
   if (weights.some((w) => w.timestamp >= today)) return null;
   const next = checkinWeighIns(now);
   if (next && next.days <= 7) return { kind: "checkin", days: next.days };
+  // Friday's review is written from the week's weigh-ins: a reading this morning goes into it
+  if (new Date(now).getDay() === 5) return { kind: "friday" };
   const last = weights.reduce((max, w) => Math.max(max, Number(w.timestamp) || 0), 0);
   if (!last) return { kind: "never" };
   const days = Math.round((today - startOfDay(last)) / DAY_MS);

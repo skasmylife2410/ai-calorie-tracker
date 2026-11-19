@@ -97,13 +97,18 @@ test("keeping weight while building muscle: the check-in allows the scale to cre
 });
 
 test("Profile's goal picker and switch: setup's goals and paces; building muscle while losing fat is the steady pace", () => {
-  assert.equal(goalChoiceOf(RECOMP), "lose:slow");
+  assert.equal(goalChoiceOf(RECOMP), "recomp", "losing fat while building muscle is a goal of its own");
+  assert.equal(goalChoiceOf({ ...RECOMP, buildMuscle: false }), "lose:slow");
   assert.equal(goalChoiceOf({ targetDeltaKcal: -500 }), "lose:normal", "older profiles: a calorie change only");
   assert.equal(goalChoiceOf({ targetDeltaKcal: 0 }), "maintain");
   assert.deepEqual(musclePatch(true, { ...LIFTER, goalRate: "fast" }), { goal: "lose", goalRate: "slow", buildMuscle: true, targetDeltaKcal: -340 });
   assert.deepEqual(musclePatch(true, { weightKg: 70, targetDeltaKcal: 0 }), { goal: "maintain", goalRate: null, buildMuscle: true, targetDeltaKcal: 0 });
   assert.equal(goalPatch("lose:fast", RECOMP).buildMuscle, false, "a faster pace turns it off");
   assert.equal(goalPatch("maintain", RECOMP).buildMuscle, true, "keeping weight keeps it");
+  assert.equal(goalPatch("lose:slow", RECOMP).buildMuscle, false, "plain fat loss: Recomposition is the goal for both");
+  const recomp = goalPatch("recomp", { weightKg: 85, goal: "lose", goalRate: "fast", buildMuscle: false });
+  assert.deepEqual({ goal: recomp.goal, goalRate: recomp.goalRate, buildMuscle: recomp.buildMuscle }, { goal: "lose", goalRate: "slow", buildMuscle: true });
+  assert.ok(recomp.targetDeltaKcal < 0 && recomp.targetDeltaKcal >= -500, "a small deficit, never more than 500 kcal");
   assert.equal(goalPatch("gain:normal", LIFTER).buildMuscle, true, "Build muscle always does");
   assert.equal(goalPatch("brunch", {}), null);
 });

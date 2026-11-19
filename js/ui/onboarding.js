@@ -259,7 +259,10 @@ export function render(container, onComplete, { redo = false, resume = false } =
         const kgPerWeek = draft.goal === "maintain" ? 0
           : Math.abs(g ? g.computedTargetCalories - g.tdee : targetDelta(draft)) * 7 / 7700;
         const perWeek = (Math.round(kgPerWeek * 100) / 100).toFixed(2);
-        const toggle = draft.goal === "gain" ? "" : `
+        // Body recomposition is its own choice (losing at the steady pace, building muscle);
+        // the switch is for keeping weight while building muscle
+        const pick = draft.goal === "lose" && draft.buildMuscle ? "recomp" : draft.goal;
+        const toggle = draft.goal !== "maintain" ? "" : `
           <label class="onb-label" for="onb-muscle">${t("muscle.lifting")}</label>
           <label class="onb-choice onb-toggle">
             <span class="onb-choice-label">${t("muscle.switch")}</span>
@@ -268,9 +271,10 @@ export function render(container, onComplete, { redo = false, resume = false } =
         return `
           <h1 class="onb-title">${t("onb.goalTitle")}</h1>
           <div class="onb-choices">
-            ${choice("lose", draft.goal, t("onb.goalLose"))}
-            ${choice("maintain", draft.goal, t("onb.goalMaintain"))}
-            ${choice("gain", draft.goal, t("onb.goalGain"))}
+            ${choice("lose", pick, t("onb.goalLose"))}
+            ${choice("recomp", pick, t("onb.goalRecomp"), t("onb.goalRecompSub"))}
+            ${choice("maintain", pick, t("onb.goalMaintain"))}
+            ${choice("gain", pick, t("onb.goalGain"))}
           </div>
           ${toggle}
           ${draft.goal !== "gain" && draft.buildMuscle
@@ -331,7 +335,8 @@ export function render(container, onComplete, { redo = false, resume = false } =
       if (name === "activity") draft.activityLevel = v;
       if (name === "goal") {
         if (["slow", "normal", "fast"].includes(v)) draft.rate = v;
-        else draft.goal = v;
+        else if (v === "recomp") { draft.goal = "lose"; draft.buildMuscle = true; }
+        else { draft.goal = v; if (v === "lose") draft.buildMuscle = false; }
         if (draft.goal === "lose" && draft.buildMuscle) draft.rate = "slow";
       }
       draw();
