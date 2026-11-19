@@ -76,13 +76,25 @@ function iceDone(pc) {
   });
 }
 
+// Video only. The microphone is asked for only when it's turned on: opening it at all makes
+// phones (iPhones above all) pause whatever music is playing, and most people train to their own.
 async function camera(facing = "user") {
   return navigator.mediaDevices.getUserMedia({
     // upright, like the phone is held (or propped up) while streaming
     video: { facingMode: facing, width: { ideal: 480 }, height: { ideal: 640 }, frameRate: { ideal: 24, max: 30 } },
-    audio: { echoCancellation: true, noiseSuppression: true },
   });
 }
+async function microphone() {
+  const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+  return s.getAudioTracks()[0];
+}
+
+// The viewer's choice of sound, kept between lives: off by default, so your own music keeps playing.
+export const SOUND_KEY = "snapcal.liveSound";
+export function soundWanted(storage = globalThis.localStorage) {
+  try { return storage?.getItem(SOUND_KEY) === "1"; } catch { return false; }
+}
+function rememberSound(on) { try { localStorage.setItem(SOUND_KEY, on ? "1" : "0"); } catch { /* private mode */ } }
 
 async function capVideo(pc) {
   for (const sender of pc.getSenders()) {
@@ -206,14 +218,19 @@ function chatView(root, hostName) {
 }
 
 /** The top line of a live: how long it's been on and how many are watching, in dot-matrix. */
-function instrumentHtml({ close = false } = {}) {
+function instrumentHtml({ close = false, sound = null } = {}) {
   return `
     <div class="lv-inst">
       ${close ? `<button type="button" class="lv-down" data-lv-close aria-label="${t("live.leave")}">${icon("chevronDown", { size: 22 })}</button>` : ""}
       <i class="lv-dot" aria-hidden="true"></i>
       <b class="lv-clock" aria-label="${t("live.badge")}">0:00</b>
+      ${sound === null ? "" : soundButtonHtml(sound)}
       <span class="lv-watch"><b class="lv-num">00</b><small>${t("live.watchingLabel")}</small></span>
     </div>`;
+}
+function soundButtonHtml(on) {
+  return `<button type="button" class="lv-mute" data-lv-sound aria-pressed="${on}" aria-label="${t(on ? "live.soundOn" : "live.soundOff")}">
+    ${icon(on ? "speaker" : "speakerSlash", { size: 18 })}<span>${t(on ? "live.soundOnShort" : "live.soundOffShort")}</span></button>`;
 }
 
 // --- the card on Us ------------------------------------------------------------------------
@@ -315,6 +332,7 @@ function startLive({ group, muscle }) {
   let ended = false;
   let facing = "user";
   let micOn = false;
+  let mic = null; // the microphone track, only while it's on
   let lock = null;
   let tick = null;
   const peers = new Map(); // signal id -> RTCPeerConnection
@@ -324,8 +342,11 @@ function startLive({ group, muscle }) {
     clearInterval(tick);
     for (const pc of peers.values()) pc.close();
     stream?.getTracks().forEach((tr) => tr.stop());
+    mic?.stop();
     lock?.release?.().catch?.(() => {});
   };
+  // each viewer's sound slot: carries the mic while it's on, nothing otherwise
+  const audioSender = (pc) => pc.getTransceivers().find((tr) => tr.receiver?.track?.kind === "audio")?.sender;
 
   openFullScreenCover({
     render: (panel, close) => {
@@ -361,11 +382,17 @@ function startLive({ group, muscle }) {
         if (sessionId) await api({ op: "liveEnd", id: sessionId });
         close();
       });
-      const setMic = () => {
-        stream?.getAudioTracks().forEach((tr) => { tr.enabled = micOn; });
+      const setMic = async (on) => {
+        if (on && !mic) {
+          try { mic = await microphone(); } catch { status("live.noMic"); setTimeout(() => status(""), 3000); return; }
+        }
+        if (!on && mic) { mic.stop(); mic = null; } // let go of it entirely, so music can play again
+        micOn = Boolean(on && mic);
+        for (const pc of peers.values()) audioSender(pc)?.replaceTrack(micOn ? mic : null).catch(() => {});
         $("lv-mic").setAttribute("aria-pressed", String(micOn));
+        $("lv-mic").setAttribute("aria-label", t(micOn ? "live.micOn" : "live.micOff"));
       };
-      $("lv-mic").addEventListener("click", () => { micOn = !micOn; setMic(); });
+      $("lv-mic").addEventListener("click", () => setMic(!micOn));
       $("lv-flip").addEventListener("click", async () => {
         try {
           facing = facing === "user" ? "environment" : "user";
@@ -398,9 +425,11 @@ function startLive({ group, muscle }) {
           dc.addEventListener("message", (m) => room.receive(o.id, m.data));
           dc.addEventListener("close", () => room.leave(o.id));
         });
-        stream.getTracks().forEach((tr) => pc.addTrack(tr, stream));
+        stream.getVideoTracks().forEach((tr) => pc.addTrack(tr, stream));
         pc.addEventListener("connectionstatechange", () => { if (["failed", "closed"].includes(pc.connectionState)) drop(o.id); });
         await pc.setRemoteDescription({ type: "offer", sdp: o.offer });
+        const sound = pc.getTransceivers().find((tr) => tr.receiver?.track?.kind === "audio");
+        if (sound) { sound.direction = "sendonly"; if (micOn && mic) await sound.sender.replaceTrack(mic); }
         await pc.setLocalDescription(await pc.createAnswer());
         await capVideo(pc);
         await iceDone(pc);
@@ -416,7 +445,6 @@ function startLive({ group, muscle }) {
         }
         if (ended) { stream.getTracks().forEach((tr) => tr.stop()); return; }
         $("lv-self").srcObject = stream;
-        setMic();
         const out = await api({ op: "liveStart", group: group.id, muscle });
         if (!out.ok) { status(out.errorType === "network" ? "live.offline" : "live.failed"); return; }
         sessionId = out.id;
@@ -446,7 +474,7 @@ function startLive({ group, muscle }) {
 // --- the feed: swipe through whoever is live ----------------------------------------------
 
 /** One stream on screen: connects when it's shown, lets go when you swipe past. */
-function watcher(slide, s) {
+function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {} } = {}) {
   let pc = null;
   let dc = null;
   let signal = null;
@@ -488,10 +516,15 @@ function watcher(slide, s) {
       if (mine !== pc) return;
       try { chat.show(JSON.parse(m.data)); } catch { /* not a message */ }
     });
+    // picture and sound arrive as separate tracks (the sound only once their mic is on): one stream holds both
+    const media = new MediaStream();
     pc.addEventListener("track", (e) => {
       if (mine !== pc) return;
-      video.srcObject = e.streams[0] ?? new MediaStream([e.track]);
-      video.play().catch(() => { video.muted = true; video.play().catch(() => {}); slide.querySelector(".lv-sound").hidden = false; });
+      media.addTrack(e.track);
+      if (video.srcObject !== media) video.srcObject = media;
+      video.muted = !sound();
+      // a phone that won't play sound without a tap plays muted, and the button says so
+      video.play().catch(() => { video.muted = true; video.play().catch(() => {}); onAutoplayBlocked(); });
       status("");
     });
     pc.addEventListener("connectionstatechange", () => {
@@ -521,12 +554,8 @@ function watcher(slide, s) {
       await sleep(answered ? VIEW_BEAT_MS : 1000);
     }
   };
-  slide.querySelector(".lv-sound").addEventListener("click", (e) => {
-    e.currentTarget.hidden = true;
-    video.muted = false;
-    video.play().catch(() => {});
-  });
-  return { start: () => start().catch(() => status("live.failed")), stop };
+  const setSound = (on) => { video.muted = !on; if (on) video.play().catch(() => {}); };
+  return { start: () => start().catch(() => status("live.failed")), stop, setSound };
 }
 
 function slideHtml(s) {
@@ -535,7 +564,6 @@ function slideHtml(s) {
       <video class="lv-main" autoplay playsinline></video>
       <div class="lv-shade" aria-hidden="true"></div>
       <div class="lv-status" hidden></div>
-      <button type="button" class="lv-sound" hidden>${t("live.sound")}</button>
       <div class="lv-bottom">
         <div class="lv-hearts" aria-hidden="true"></div>
         <div class="lv-comments" aria-live="polite"></div>
@@ -557,13 +585,14 @@ function openFeed(list, startId) {
   let tick = null;
   const watchers = new Map(); // id -> watcher
   let current = null;
+  let soundOn = soundWanted();
 
   openFullScreenCover({
     render: (panel, close) => {
       panel.classList.add("lv-cover");
       panel.innerHTML = `
         <div class="lv-feed" id="lv-feed"></div>
-        ${instrumentHtml({ close: true })}
+        ${instrumentHtml({ close: true, sound: soundWanted() })}
         <div class="lv-rail" id="lv-rail" aria-hidden="true"></div>`;
       const feed = panel.querySelector("#lv-feed");
       const rail = panel.querySelector("#lv-rail");
@@ -577,6 +606,19 @@ function openFeed(list, startId) {
         const slides = [...feed.querySelectorAll(".lv-slide")];
         rail.innerHTML = slides.length > 1 ? slides.map((sl) => `<i class="${sl.dataset.id === current ? "is-on" : ""}"></i>`).join("") : "";
       };
+      // the stream's sound: off keeps your own music going; the choice is remembered
+      const drawSound = (on) => {
+        soundOn = on;
+        panel.querySelector("[data-lv-sound]").outerHTML = soundButtonHtml(on);
+        panel.querySelector("[data-lv-sound]").addEventListener("click", () => toggleSound());
+      };
+      const toggleSound = () => {
+        const on = !soundOn;
+        rememberSound(on);
+        drawSound(on);
+        watchers.get(current)?.setSound(on);
+      };
+      panel.querySelector("[data-lv-sound]").addEventListener("click", toggleSound);
       const show = (id) => {
         if (current === id) return;
         if (current) watchers.get(current)?.stop();
@@ -590,7 +632,7 @@ function openFeed(list, startId) {
       const addSlide = (s) => {
         feed.insertAdjacentHTML("beforeend", slideHtml(s));
         const slide = feed.lastElementChild;
-        watchers.set(s.id, watcher(slide, s));
+        watchers.set(s.id, watcher(slide, s, { sound: () => soundOn, onAutoplayBlocked: () => drawSound(false) }));
         observer.observe(slide);
       };
 

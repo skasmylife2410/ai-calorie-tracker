@@ -228,3 +228,16 @@ test("comments: the live phone passes each one on under the name the server gave
   assert.equal(cleanComment("a".repeat(400)).length, COMMENT_MAX);
   assert.equal(cleanComment("   "), "");
 });
+
+test("watching is muted unless you turned the sound on (your own music keeps playing)", async () => {
+  const { soundWanted, SOUND_KEY } = await import("../js/ui/live.js");
+  const store = (v) => ({ getItem: (k) => (k === SOUND_KEY ? v : null) });
+  assert.equal(soundWanted(store(null)), false, "off until chosen");
+  assert.equal(soundWanted(store("1")), true);
+  assert.equal(soundWanted(store("0")), false);
+  assert.equal(soundWanted({ getItem() { throw new Error("private mode"); } }), false);
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("../js/ui/live.js", import.meta.url), "utf8");
+  const cam = src.slice(src.indexOf("async function camera"), src.indexOf("async function microphone"));
+  assert.doesNotMatch(cam, /audio/, "going live doesn't open the mic (that would pause their music)");
+});

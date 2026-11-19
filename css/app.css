@@ -3284,9 +3284,10 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .lv-down { display: grid; place-items: center; width: 32px; height: 32px; margin-left: -8px; border: 0; border-radius: 50%; background: none; color: #F2F2F2; }
 .lv-status { position: absolute; z-index: 2; left: 28px; right: 28px; top: 42%; text-align: center; font-size: 15px; line-height: 1.4; color: #E5E5EA; }
 .lv-status[hidden] { display: none; }
-.lv-sound { position: absolute; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%); height: 40px; padding: 0 16px; border-radius: 999px;
-  border: 1px solid rgba(242,242,242,.5); background: rgba(0,0,0,.35); color: #F2F2F2; font: inherit; font-size: 14px; font-weight: 600; }
-.lv-sound[hidden] { display: none; }
+/* the stream's sound, next to the clock: muted keeps your own music playing */
+.lv-mute { display: inline-flex; align-items: center; gap: 5px; height: 30px; margin-left: 8px; padding: 0 11px 0 9px; border-radius: 15px;
+  border: 1px solid rgba(242,242,242,.4); background: rgba(0,0,0,.25); color: #F2F2F2; font: inherit; font-size: 12px; font-weight: 600; }
+.lv-mute[aria-pressed="false"] { color: #C8C8CC; }
 
 .lv-bottom { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 0 20px calc(env(safe-area-inset-bottom, 0px) + 18px); }
 .lv-comments { max-height: 30vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 56px; scrollbar-width: none;

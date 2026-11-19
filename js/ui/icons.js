@@ -17,6 +17,8 @@ const RAW = {
   fishFill: `<path d="M3 12c2.5-3.5 6-5.5 9.5-5.5 3 0 5.7 1.4 7.8 3.6.4.4.9.4 1.2-.1.5-.8.8-1.6 1-2.3.1-.4.6-.4.7 0 .3 1.1.5 2.6.3 4.3-.2 1.7-.4 3.2-.7 4.3-.1.4-.6.4-.7 0-.2-.7-.5-1.5-1-2.3-.3-.5-.8-.5-1.2-.1-2.1 2.2-4.8 3.6-7.8 3.6C9 17.5 5.5 15.5 3 12Z"/><circle cx="7.4" cy="10.6" r="0.9"/>`,
   leafFill: `<path d="M20 4c-8.5 0-15 5.8-15 13.5 0 .8.66 1.4 1.44 1.28C7.9 18.2 9.4 16.4 11 14.7c1.9-2 4.3-3.9 7.4-5.3.4-.2.8.3.5.6-2.6 2.6-4.6 5-6 7.4-.2.4.2.9.6.7 6.6-3 9.5-8.5 9.5-13.1 0-.6-.5-1-1-1Z"/>`,
   // exercise: a dumbbell, plates either side of the bar
+  speaker: `<path d="M4 9.5h3.2L12 5.2v13.6l-4.8-4.3H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`,
+  speakerSlash: `<path d="M4 9.5h3.2L12 5.2v13.6l-4.8-4.3H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z"/><path d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`,
   heartFill: `<path d="M12 20.6 4.4 13.2A4.9 4.9 0 0 1 11.3 6.3l.7.7.7-.7a4.9 4.9 0 0 1 6.9 6.9L12 20.6Z"/>`,
   dumbbell: `<rect x="1.6" y="9.2" width="2.6" height="5.6" rx="1.1"/><rect x="4.8" y="5.8" width="3.6" height="12.4" rx="1.4"/><rect x="8.2" y="10.7" width="7.6" height="2.6" rx="1"/><rect x="15.6" y="5.8" width="3.6" height="12.4" rx="1.4"/><rect x="19.8" y="9.2" width="2.6" height="5.6" rx="1.1"/>`,
   dropFill: `<path d="M12 2.4c-3 3.9-6.5 8.6-6.5 12.3 0 3.6 2.9 6.8 6.5 6.8s6.5-3.2 6.5-6.8c0-3.7-3.5-8.4-6.5-12.3Z"/>`,

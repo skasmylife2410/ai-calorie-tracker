@@ -1733,7 +1733,6 @@
     "flip": "Switch camera",
     "end": "End",
     "leave": "Leave",
-    "sound": "Tap for sound",
     "noCamera": "Boca0 can't use the camera. Allow it in your phone's settings and try again.",
     "offline": "No connection. Try again when you're online.",
     "failed": "That didn't work. Try again.",
@@ -1763,6 +1762,13 @@
     "watchingLabel": "watching",
     "tapToWatch": "Tap someone to watch, then swipe for the next.",
     "reply": "Reply",
-    "levelWhy": "From your exercise log: {n} training days in the last {w} weeks. Anyone can watch anyone."
+    "levelWhy": "From your exercise log: {n} training days in the last {w} weeks. Anyone can watch anyone.",
+    "soundOn": "Stream sound on. Tap to mute and keep your own music.",
+    "soundOff": "Stream muted, your music keeps playing. Tap for sound.",
+    "soundOnShort": "Sound",
+    "soundOffShort": "Muted",
+    "micOn": "Microphone on. Tap to turn it off.",
+    "micOff": "Microphone off: your music keeps playing. Tap to talk.",
+    "noMic": "Boca0 can't use the microphone. Allow it in your phone's settings."
   }
 }

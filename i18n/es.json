@@ -1733,7 +1733,6 @@
     "flip": "Cambiar cámara",
     "end": "Terminar",
     "leave": "Salir",
-    "sound": "Toca para oír",
     "noCamera": "Boca0 no puede usar la cámara. Permítela en los ajustes del teléfono e inténtalo de nuevo.",
     "offline": "Sin conexión. Inténtalo cuando tengas internet.",
     "failed": "No funcionó. Inténtalo de nuevo.",
@@ -1763,6 +1762,13 @@
     "watchingLabel": "mirando",
     "tapToWatch": "Toca a alguien para mirar y desliza para ver al siguiente.",
     "reply": "Responder",
-    "levelWhy": "Según tu registro de ejercicio: {n} días de entrenamiento en las últimas {w} semanas. Todos pueden ver a todos."
+    "levelWhy": "Según tu registro de ejercicio: {n} días de entrenamiento en las últimas {w} semanas. Todos pueden ver a todos.",
+    "soundOn": "Sonido del en vivo activado. Toca para silenciarlo y seguir con tu música.",
+    "soundOff": "En vivo silenciado, tu música sigue sonando. Toca para oír.",
+    "soundOnShort": "Sonido",
+    "soundOffShort": "Silencio",
+    "micOn": "Micrófono activado. Toca para apagarlo.",
+    "micOff": "Micrófono apagado: tu música sigue sonando. Toca para hablar.",
+    "noMic": "Boca0 no puede usar el micrófono. Permítelo en los ajustes del teléfono."
   }
 }
