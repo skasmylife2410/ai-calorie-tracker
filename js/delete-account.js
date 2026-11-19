@@ -18,7 +18,7 @@ const TEXT = {
     tooMany: "Too many attempts. Try again in 15 minutes.",
     failed: "That didn't work. Try again, or email us.",
     offline: "No connection. Try again when you're online.",
-    help: 'Can\'t sign in? Email <a href="mailto:CONTACT_EMAIL">CONTACT_EMAIL</a> from any address, with your username, and we\'ll delete the account within 30 days. Read the <a href="/privacy.html">privacy policy</a>.',
+    help: 'Can\'t sign in? Email <a href="mailto:skasmylife2410@gmail.com">skasmylife2410@gmail.com</a> from any address, with your username, and we\'ll delete the account within 30 days. Read the <a href="/privacy.html">privacy policy</a>.',
   },
   es: {
     title: "Eliminar tu cuenta · SnapCal",
@@ -33,7 +33,7 @@ const TEXT = {
     tooMany: "Demasiados intentos. Prueba otra vez en 15 minutos.",
     failed: "No funcionó. Inténtalo de nuevo o escríbenos.",
     offline: "Sin conexión. Inténtalo cuando tengas internet.",
-    help: '¿No puedes entrar? Escribe a <a href="mailto:CONTACT_EMAIL">CONTACT_EMAIL</a> desde cualquier correo, con tu nombre de usuario, y borraremos la cuenta en un plazo de 30 días. Lee la <a href="/privacy.html">política de privacidad</a>.',
+    help: '¿No puedes entrar? Escribe a <a href="mailto:skasmylife2410@gmail.com">skasmylife2410@gmail.com</a> desde cualquier correo, con tu nombre de usuario, y borraremos la cuenta en un plazo de 30 días. Lee la <a href="/privacy.html">política de privacidad</a>.',
   },
 };
 

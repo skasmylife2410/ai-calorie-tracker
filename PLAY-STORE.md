@@ -17,9 +17,8 @@ only needed to change the Android package itself (name, icon, version).
 
 ## Steps
 
-1. **Contact email.** Replace `CONTACT_EMAIL` in `privacy.html` (twice per language),
-   `delete-account.html` and `js/delete-account.js` with the address people can write to.
-   Use the same one as the Play listing's developer email.
+1. **Contact email:** skasmylife2410@gmail.com is in the privacy policy and on the deletion
+   page. Use the same address as the Play listing's developer email.
 2. **Play Console.** Create the developer account ($25 once) and an app called SnapCal.
 3. **PWABuilder.** Enter the site address, choose Android, package ID `app.snapcal.tracker`,
    and let it create the signing key. Keep the key file and its passwords somewhere safe.
