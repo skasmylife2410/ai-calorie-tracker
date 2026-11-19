@@ -435,7 +435,8 @@ function openGoalSheet({ onSaved } = {}) {
 export function openWeightSheet({ timestamp = Date.now(), onSaved } = {}) {
   openSheet({
     render(panel, close) {
-      const existing = store.allWeightEntries().find((w) => w.day === new Date(timestamp).toISOString().slice(0, 10));
+      // weights are kept by local day (store.addWeightEntry); the UTC date is tomorrow every evening in Colombia
+      const existing = store.allWeightEntries().find((w) => w.day === localDateString(timestamp));
       const start = existing ? fmt1(toDisplay(existing.kg)) : "";
 
       panel.innerHTML = `
