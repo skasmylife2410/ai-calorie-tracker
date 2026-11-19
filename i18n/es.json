@@ -1720,7 +1720,6 @@
     "goLive": "Transmitir en vivo",
     "watch": "Mirar",
     "badge": "EN VIVO",
-    "watching": "{n} mirando",
     "empty": "¿Vas a entrenar? Transmite en vivo y tus grupos te pueden ver.",
     "whatToday": "¿Qué vas a entrenar?",
     "yourLevel": "Tu nivel",
@@ -1757,12 +1756,13 @@
       "expert": "Experto"
     },
     "liveNow": "{n} en vivo",
-    "all": "Todos",
-    "swipe": "Desliza para ver a otra persona",
-    "noneAtLevel": "Nadie de este nivel está en vivo ahora.",
     "commentPlaceholder": "Comenta…",
     "heart": "Enviar un corazón",
     "joined": "{name} se unió",
-    "you": "Tú"
+    "you": "Tú",
+    "watchingLabel": "mirando",
+    "tapToWatch": "Toca a alguien para mirar y desliza para ver al siguiente.",
+    "reply": "Responder",
+    "levelWhy": "Según tu registro de ejercicio: {n} días de entrenamiento en las últimas {w} semanas. Todos pueden ver a todos."
   }
 }

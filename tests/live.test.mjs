@@ -9,8 +9,8 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "sb_secret_x";
 
 const { createSession } = await import("../api/_accounts.js");
 const { default: groups } = await import("../api/groups.js");
-const { iceServers, MAX_WATCHING } = await import("../api/_live.js");
-const { orderSessions, workoutLabel, liveSupported } = await import("../js/ui/live.js");
+const { iceServers, MAX_WATCHING, levelFromLog } = await import("../api/_live.js");
+const { elapsed, twoDigits, workoutLabel, liveSupported } = await import("../js/ui/live.js");
 
 const mockRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
 const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": createSession(user, undefined, { salt: "test-salt" }) }, body });
@@ -25,7 +25,7 @@ const reset = () => { DB = {
     { group_id: "family", username: "thayra23", joined_at: "3" }, { group_id: "work", username: "loner", joined_at: "4" },
   ],
   snapcal_profile: [{ owner: "baby", data: { displayName: "Mi baby" } }],
-  snapcal_live: [], snapcal_live_signals: [],
+  snapcal_live: [], snapcal_live_signals: [], snapcal_exercise: [],
 }; };
 const cond = (row, k, v) => {
   if (v === "is.null") return row[k] === null || row[k] === undefined;
@@ -33,6 +33,7 @@ const cond = (row, k, v) => {
   const [op, ...rest] = v.split("."); const val = rest.join(".");
   if (op === "eq") return String(row[k]) === val;
   if (op === "gt") return String(row[k]) > val;
+  if (op === "gte") return String(row[k]) >= val;
   if (op === "lt") return String(row[k]) < val;
   if (op === "in") return val.replace(/[()"]/g, "").split(",").includes(String(row[k]));
   throw new Error(`mock: unknown filter ${k}=${v}`);
@@ -55,12 +56,12 @@ const SDP = "v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\n";
 
 test("go live, a groupmate joins, the answer comes back, and leaving and ending show up", async () => {
   reset();
-  const start = await call("baby", { op: "liveStart", group: "family", muscle: "chest", level: "beginner" });
+  const start = await call("baby", { op: "liveStart", group: "family", muscle: "chest" });
   assert.equal(start.ok, true);
 
   const seen = await call("thayra23", { op: "live", group: "family" });
   assert.equal(seen.sessions.length, 1);
-  assert.deepEqual([seen.sessions[0].name, seen.sessions[0].muscle, seen.sessions[0].level], ["Mi baby", "chest", "beginner"]);
+  assert.deepEqual([seen.sessions[0].name, seen.sessions[0].muscle, seen.sessions[0].level], ["Mi baby", "chest", "beginner"], "no log yet: beginner");
   assert.ok(seen.ice[0].urls.length, "always some STUN servers");
 
   const join = await call("thayra23", { op: "liveJoin", id: start.id, offer: SDP });
@@ -89,8 +90,8 @@ test("go live, a groupmate joins, the answer comes back, and leaving and ending 
 test("the feed lists streams from every group you're in, and only those", async () => {
   reset();
   DB.snapcal_group_members.push({ group_id: "work", username: "baby", joined_at: "5" });
-  const fam = await call("thayra23", { op: "liveStart", group: "family", muscle: "back", level: "average" });
-  const work = await call("loner", { op: "liveStart", group: "work", muscle: "arms", level: "expert" });
+  const fam = await call("thayra23", { op: "liveStart", group: "family", muscle: "back" });
+  const work = await call("loner", { op: "liveStart", group: "work", muscle: "arms" });
   const babyFeed = await call("baby", { op: "live" });
   assert.deepEqual(babyFeed.sessions.map((s) => s.id).sort(), [fam.id, work.id].sort());
   assert.equal(babyFeed.sessions.find((s) => s.id === work.id).group, "Work");
@@ -99,10 +100,10 @@ test("the feed lists streams from every group you're in, and only those", async 
 
 test("only people in the group see or join it, and only the person live can answer", async () => {
   reset();
-  const { id } = await call("baby", { op: "liveStart", group: "family", muscle: "legs", level: "expert" });
+  const { id } = await call("baby", { op: "liveStart", group: "family", muscle: "legs" });
   assert.equal((await call("loner", { op: "live", group: "family" })).errorType, "notMember");
   assert.equal((await call("loner", { op: "liveJoin", id, offer: SDP })).errorType, "notMember");
-  assert.equal((await call("loner", { op: "liveStart", group: "family", muscle: "legs", level: "expert" })).errorType, "notMember");
+  assert.equal((await call("loner", { op: "liveStart", group: "family", muscle: "legs" })).errorType, "notMember");
   const { signal } = await call("aelson", { op: "liveJoin", id, offer: SDP });
   assert.equal((await call("thayra23", { op: "liveAnswer", signal, answer: SDP })).ok, false, "someone else can't answer");
   assert.equal((await call("thayra23", { op: "liveWait", signal })).ok, false, "or read someone else's seat");
@@ -112,18 +113,18 @@ test("only people in the group see or join it, and only the person live can answ
 
 test("bad input is refused, and a second session replaces the first", async () => {
   reset();
-  assert.equal((await call("baby", { op: "liveStart", group: "family", muscle: "toes", level: "beginner" })).ok, false);
-  assert.equal((await call("baby", { op: "liveStart", group: "family", muscle: "back" })).ok, false);
-  const first = await call("baby", { op: "liveStart", group: "family", muscle: "back", level: "average" });
+  assert.equal((await call("baby", { op: "liveStart", group: "family", muscle: "toes" })).ok, false);
+  assert.equal((await call("baby", { op: "liveStart", group: "family" })).ok, false, "a workout is needed");
+  const first = await call("baby", { op: "liveStart", group: "family", muscle: "back" });
   assert.equal((await call("aelson", { op: "liveJoin", id: first.id, offer: "<script>" })).ok, false, "only real connection offers");
-  const second = await call("baby", { op: "liveStart", group: "family", muscle: "arms", level: "average" });
+  const second = await call("baby", { op: "liveStart", group: "family", muscle: "arms" });
   const list = await call("aelson", { op: "live", group: "family" });
   assert.deepEqual(list.sessions.map((s) => s.id), [second.id]);
 });
 
 test("a session holds a few people at most", async () => {
   reset();
-  const { id } = await call("baby", { op: "liveStart", group: "family", muscle: "core", level: "beginner" });
+  const { id } = await call("baby", { op: "liveStart", group: "family", muscle: "core" });
   for (let i = 0; i < MAX_WATCHING; i++) DB.snapcal_live_signals.push({ id: `s${i}`, live_id: id, viewer: `x${i}`, offer: SDP, answer: SDP, left_at: null, last_seen: now(), created_at: now() });
   assert.equal((await call("aelson", { op: "liveJoin", id, offer: SDP })).errorType, "full");
 });
@@ -135,11 +136,43 @@ test("a TURN relay is offered only when it's fully configured", () => {
   assert.deepEqual(withTurn[1], { urls: ["turn:a.example:3478", "turns:a.example:443"], username: "u", credential: "p" });
 });
 
-test("the feed puts people at your level first, and the level filter keeps only them", () => {
-  const s = [{ id: "a", level: "expert" }, { id: "b", level: "beginner" }, { id: "c", level: "expert" }, { id: "d", level: "beginner" }];
-  assert.deepEqual(orderSessions(s, { level: "beginner" }).map((x) => x.id), ["b", "d", "a", "c"]);
-  assert.deepEqual(orderSessions(s).map((x) => x.id), ["a", "b", "c", "d"]);
-  assert.deepEqual(orderSessions(s, { level: "beginner", only: "expert" }).map((x) => x.id), ["a", "c"]);
+test("the level comes from the exercise log, not from the phone", async () => {
+  const today = "2026-11-20";
+  const day = (n) => new Date(Date.parse(`${today}T00:00:00Z`) - n * 864e5).toISOString().slice(0, 10);
+  const gym = (n, extra = {}) => ({ day: day(n), data: { activity: "gym", minutes: 45, intensity: "moderate", ...extra } });
+  assert.equal(levelFromLog([], { today }).level, "beginner");
+  // twice a week for eight weeks: average
+  const twice = Array.from({ length: 16 }, (_, i) => gym(i * 3.5 | 0));
+  assert.equal(levelFromLog(twice, { today, firstDay: day(200) }).level, "average");
+  // four times a week, logging for months: expert; the same but only three weeks of history: not yet
+  const four = Array.from({ length: 32 }, (_, i) => gym(Math.floor(i * 1.75)));
+  assert.equal(levelFromLog(four, { today, firstDay: day(200) }).level, "expert");
+  assert.equal(levelFromLog(four, { today, firstDay: day(20) }).level, "average");
+  // easy walks, short sessions, deleted ones and two on one day don't add up
+  const fluff = [gym(1, { activity: "walk", intensity: "easy" }), gym(2, { minutes: 10 }), gym(3, { deleted: true }), gym(4), gym(4), gym(80)];
+  const out = levelFromLog(fluff, { today, firstDay: day(200) });
+  assert.deepEqual([out.level, out.trainingDays, out.weeks], ["beginner", 1, 8]);
+  assert.equal(levelFromLog([gym(1, { activity: "walk", intensity: "hard" })], { today }).trainingDays, 1, "a hard walk counts");
+
+  // the server uses it when going live, whatever the phone sends
+  reset();
+  const now = new Date().toISOString().slice(0, 10);
+  const back = (n) => new Date(Date.parse(`${now}T00:00:00Z`) - n * 864e5).toISOString().slice(0, 10);
+  // (the mock ignores "order", so the oldest row goes first)
+  DB.snapcal_exercise = [{ owner: "baby", day: back(300), data: { activity: "gym", minutes: 50 } }]
+    .concat(Array.from({ length: 32 }, (_, i) => ({ owner: "baby", day: back(Math.floor(i * 1.75)), data: { activity: "gym", minutes: 50 } })));
+  const start = await call("baby", { op: "liveStart", group: "family", muscle: "chest", level: "beginner" });
+  assert.equal(start.level, "expert");
+  assert.equal((await call("aelson", { op: "live" })).sessions[0].level, "expert");
+  assert.equal((await call("baby", { op: "liveLevel" })).level, "expert");
+});
+
+test("the live clock and the watcher count", () => {
+  const at = "2026-11-20T10:00:00Z";
+  assert.equal(elapsed(at, Date.parse(at) + 247e3), "4:07");
+  assert.equal(elapsed(at, Date.parse(at) + 3729e3), "1:02:09");
+  assert.equal(elapsed(at, Date.parse(at) - 5e3), "0:00");
+  assert.deepEqual([twoDigits(7), twoDigits(0), twoDigits(140)], ["07", "00", "99"]);
   assert.equal(liveSupported({}), false);
   assert.equal(typeof workoutLabel, "function");
 });

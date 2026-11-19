@@ -1,6 +1,12 @@
 // live.js — "Train together" on the Us tab: go live for your group while you work out, and
 // everyone else swipes through whoever is live, one full-screen stream at a time (like a feed of
-// live videos). It's watching, not a video call: viewers send no camera or sound.
+// live videos). It's watching, not a video call: viewers send no camera or sound. Everyone sees
+// everyone, whatever their level; the level shown comes from each person's exercise log
+// (api/_live.js levelFromLog), never from a choice.
+//
+// The look (Figma "Boca0 · Live redesign", direction A "Instrument"): the video edge to edge, the
+// time live and the watchers as dot-matrix numbers, the workout as the big word, plain comments,
+// and a dot rail for your place in the feed.
 //
 // The video goes straight between phones (WebRTC). The server (api/_live.js via /api/groups) only
 // says who is live and passes each viewer's connection offer and the answer, once. The person
@@ -17,6 +23,7 @@ export const LEVELS = ["beginner", "average", "expert"];
 const BEAT_MS = 2500;      // the live phone asks for new viewers this often
 const VIEW_BEAT_MS = 5000; // a viewer says "still here" this often
 const FEED_REFRESH_MS = 15000; // new streams join the feed while you're in it
+const TICK_MS = 1000;           // the live clock
 const ANSWER_WAIT_MS = 25000;
 const CARD_REFRESH_MS = 20000;
 const ICE_WAIT_MS = 3000;
@@ -47,12 +54,16 @@ export function liveSupported(g = globalThis) {
   return Boolean(g.RTCPeerConnection && g.navigator?.mediaDevices?.getUserMedia);
 }
 
-/** The feed: streams at your level first (then the newest, as the server sends them); a level filter keeps only that level. */
-export function orderSessions(sessions, { level = null, only = null } = {}) {
-  const list = (sessions ?? []).filter((s) => !only || s.level === only);
-  if (!level) return list;
-  return list.map((s, i) => ({ s, i })).sort((a, b) => Number(b.s.level === level) - Number(a.s.level === level) || a.i - b.i).map((x) => x.s);
+/** How long someone has been live: "4:07", "24:13", "1:02:09". */
+export function elapsed(startedAt, now = Date.now()) {
+  const sec = Math.max(0, Math.floor((now - Date.parse(startedAt)) / 1000)) || 0;
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = sec % 60;
+  const two = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${two(m)}:${two(x)}` : `${m}:${two(x)}`;
 }
+
+/** Watchers as the dot-matrix counter shows them: two digits. */
+export const twoDigits = (n) => String(Math.max(0, Math.min(99, Number(n) || 0))).padStart(2, "0");
 
 // Waits until the connection has gathered its addresses, so one offer/answer carries everything
 // (no trickling back and forth through the server). Gives up waiting after a few seconds.
@@ -158,7 +169,15 @@ export function chatRoom({ now = () => Date.now() } = {}) {
 function commentHtml(msg, hostName) {
   if (msg.type === "join") return `<div class="lv-c is-join">${esc(t("live.joined", { name: msg.name }))}</div>`;
   const who = msg.host ? hostName : msg.name;
-  return `<div class="lv-c${msg.host ? " is-host" : ""}"><b>${esc(who)}</b> ${esc(msg.text)}</div>`;
+  return `<div class="lv-c${msg.host ? " is-host" : ""}"><span class="lv-c-who">${esc(who)}</span><span class="lv-c-text">${esc(msg.text)}</span></div>`;
+}
+
+// a heart drawn in dots, like the numbers
+const HEART_ROWS = [".XX.XX.", "XXXXXXX", "XXXXXXX", ".XXXXX.", "..XXX..", "...X..."];
+export function dotHeart(size = 28) {
+  const cell = 10;
+  const dots = HEART_ROWS.flatMap((row, y) => [...row].map((c, x) => (c === "X" ? `<circle cx="${x * cell + 5}" cy="${y * cell + 5}" r="3.8"/>` : ""))).join("");
+  return `<svg class="lv-dotheart" width="${size}" height="${Math.round(size * 6 / 7)}" viewBox="0 0 70 60" fill="currentColor" aria-hidden="true">${dots}</svg>`;
 }
 
 /** Draws incoming comments, joins and hearts into a stream's overlay. */
@@ -176,8 +195,8 @@ function chatView(root, hostName) {
       else if (msg.type === "heart") {
         const h = document.createElement("i");
         h.className = "lv-heart";
-        h.style.setProperty("--dx", `${Math.round(Math.random() * 30 - 15)}px`);
-        h.innerHTML = icon("heartFill", { size: 26 });
+        h.style.setProperty("--dx", `${Math.round(Math.random() * 24 - 12)}px`);
+        h.innerHTML = dotHeart(22);
         hearts.appendChild(h);
         setTimeout(() => h.remove(), 1800);
       } else add(msg);
@@ -186,14 +205,15 @@ function chatView(root, hostName) {
   };
 }
 
-function chatBarHtml({ heart = true } = {}) {
+/** The top line of a live: how long it's been on and how many are watching, in dot-matrix. */
+function instrumentHtml({ close = false } = {}) {
   return `
-    <div class="lv-hearts" aria-hidden="true"></div>
-    <div class="lv-comments" aria-live="polite"></div>
-    <form class="lv-say" autocomplete="off">
-      <input class="lv-input" name="c" maxlength="${COMMENT_MAX}" enterkeyhint="send" placeholder="${t("live.commentPlaceholder")}" aria-label="${t("live.commentPlaceholder")}" />
-      ${heart ? `<button type="button" class="lv-like" aria-label="${t("live.heart")}">${icon("heartFill", { size: 22 })}</button>` : ""}
-    </form>`;
+    <div class="lv-inst">
+      ${close ? `<button type="button" class="lv-down" data-lv-close aria-label="${t("live.leave")}">${icon("chevronDown", { size: 22 })}</button>` : ""}
+      <i class="lv-dot" aria-hidden="true"></i>
+      <b class="lv-clock" aria-label="${t("live.badge")}">0:00</b>
+      <span class="lv-watch"><b class="lv-num">00</b><small>${t("live.watchingLabel")}</small></span>
+    </div>`;
 }
 
 // --- the card on Us ------------------------------------------------------------------------
@@ -204,10 +224,7 @@ let lastIce = FALLBACK_ICE;
 /** A "X is live" notification was tapped: open the feed at that stream once the Us card has loaded. */
 export function wantLive(id) { pendingLive = id || null; }
 
-const myLevel = () => { try { const l = localStorage.getItem("snapcal.liveLevel"); return LEVELS.includes(l) ? l : null; } catch { return null; } };
-const initial = (name) => esc(String(name || "?").trim().charAt(0).toUpperCase());
-
-/** Who's live in any of your groups (a row of people, tap to watch), and going live yourself. */
+/** Who's live in any of your groups (a tile each, tap to watch), and going live yourself. */
 export function renderLiveCard(el, { group } = {}) {
   if (!el || !group?.id) return;
   let timer = null;
@@ -217,22 +234,30 @@ export function renderLiveCard(el, { group } = {}) {
     const out = await api({ op: "live" });
     if (!el.isConnected || !out.ok) return;
     lastIce = out.ice?.length ? out.ice : FALLBACK_ICE;
-    const others = orderSessions(out.sessions.filter((s) => s.id !== out.mine), { level: myLevel() });
+    const others = out.sessions.filter((s) => s.id !== out.mine);
     const mineLive = out.sessions.some((s) => s.id === out.mine);
     el.innerHTML = `
       <div class="lv-card card">
         <div class="lv-head">
-          <span class="lv-head-ic" aria-hidden="true">${icon("dumbbell", { size: 16 })}</span>
           <b>${t("live.title")}</b>
-          ${others.length ? `<span class="lv-head-n">${t("live.liveNow", { n: others.length })}</span>` : ""}
+          ${others.length ? `<span class="lv-head-n"><i class="lv-dot" aria-hidden="true"></i>${t("live.liveNow", { n: others.length })}</span>` : ""}
         </div>
-        ${others.length ? `<div class="lv-people" role="list">${others.map((s) => `
-          <button type="button" class="lv-person" role="listitem" data-lv-open="${esc(s.id)}">
-            <span class="lv-ring"><span class="lv-avatar">${initial(s.name)}</span><span class="lv-tag">${t("live.badge")}</span></span>
-            <b>${esc(s.name)}</b>
-            <span>${esc(t(`live.muscles.${s.muscle}`))}</span>
-          </button>`).join("")}</div>` : `<p class="lv-empty">${t("live.empty")}</p>`}
-        ${mineLive ? "" : `<button type="button" class="lv-go" data-lv-go>${icon("cameraFill", { size: 15 })}<span>${t("live.goLive")}</span></button>`}
+        <div class="lv-tiles-row" role="list">
+          ${others.map((s) => `
+            <button type="button" class="lv-tile" role="listitem" data-lv-open="${esc(s.id)}">
+              <span class="lv-tile-pic">
+                <span class="lv-tile-time"><i class="lv-dot" aria-hidden="true"></i><b data-started="${esc(s.startedAt)}">${elapsed(s.startedAt)}</b></span>
+                <b class="lv-tile-word">${esc(t(`live.muscles.${s.muscle}`))}</b>
+              </span>
+              <span class="lv-tile-name">${esc(s.name)}</span>
+            </button>`).join("")}
+          ${mineLive ? "" : `
+            <button type="button" class="lv-tile is-go" data-lv-go>
+              <span class="lv-tile-pic">${icon("plus", { size: 22 })}<span>${t("live.goLive")}</span></span>
+              <span class="lv-tile-name">&nbsp;</span>
+            </button>`}
+        </div>
+        <p class="lv-empty">${others.length ? t("live.tapToWatch") : t("live.empty")}</p>
       </div>`;
     el.querySelector("[data-lv-go]")?.addEventListener("click", () => openGoLive({ group }));
     el.querySelectorAll("[data-lv-open]").forEach((b) => b.addEventListener("click", () => openFeed(others, b.dataset.lvOpen)));
@@ -243,18 +268,21 @@ export function renderLiveCard(el, { group } = {}) {
     }
   };
   draw();
-  timer = setInterval(draw, CARD_REFRESH_MS);
+  timer = setInterval(() => {
+    // the tiles' clocks tick between refreshes
+    el.querySelectorAll("[data-started]").forEach((b) => { b.textContent = elapsed(b.dataset.started); });
+  }, TICK_MS);
+  const refresh = setInterval(() => { if (!el.isConnected) clearInterval(refresh); else draw(); }, CARD_REFRESH_MS);
 }
 
 // --- going live ----------------------------------------------------------------------------
 
 function openGoLive({ group }) {
   let muscle = null;
-  let level = myLevel();
+  let level = null; // from their exercise log, filled in once it's known
   openSheet({
     render: (panel, close) => {
       const draw = () => {
-        const ready = Boolean(muscle && level);
         panel.innerHTML = `
           ${navBar({ title: t("live.title"), leading: { label: t("app.cancel") } })}
           <div class="sheet-panel-body lv-body">
@@ -262,39 +290,38 @@ function openGoLive({ group }) {
             <div class="ctx-kinds" role="group" aria-label="${t("live.whatToday")}">
               ${MUSCLES.map((m) => `<button type="button" class="ctx-chip" data-muscle="${m}" aria-pressed="${m === muscle}">${t(`live.muscles.${m}`)}</button>`).join("")}
             </div>
-            <div class="ctx-label">${t("live.yourLevel")}</div>
-            <div class="ctx-kinds" role="group" aria-label="${t("live.yourLevel")}">
-              ${LEVELS.map((l) => `<button type="button" class="ctx-chip" data-level="${l}" aria-pressed="${l === level}">${t(`live.levels.${l}`)}</button>`).join("")}
+            <div class="lv-level">
+              <span class="ctx-label">${t("live.yourLevel")}</span>
+              <b>${level ? t(`live.levels.${level.level}`) : "…"}</b>
+              <small>${level ? t("live.levelWhy", { n: level.trainingDays, w: level.weeks }) : ""}</small>
             </div>
             <p class="lv-note">${t("live.who", { group: esc(group.name ?? "") })}</p>
             ${liveSupported() ? "" : `<p class="lv-note is-warn">${t("live.unsupported")}</p>`}
-            <button type="button" class="acct-btn is-primary lv-start" id="lv-start" ${ready && liveSupported() ? "" : "disabled"}>${t("live.goLive")}</button>
+            <button type="button" class="acct-btn is-primary lv-start" id="lv-start" ${muscle && liveSupported() ? "" : "disabled"}>${t("live.goLive")}</button>
           </div>`;
         wireNavBar(panel, { onLeading: close });
         panel.querySelectorAll("[data-muscle]").forEach((b) => b.addEventListener("click", () => { muscle = b.dataset.muscle; draw(); }));
-        panel.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => { level = b.dataset.level; draw(); }));
-        panel.querySelector("#lv-start").addEventListener("click", () => {
-          try { localStorage.setItem("snapcal.liveLevel", level); } catch { /* private mode */ }
-          close();
-          startLive({ group, muscle, level });
-        });
+        panel.querySelector("#lv-start").addEventListener("click", () => { close(); startLive({ group, muscle }); });
       };
       draw();
+      api({ op: "liveLevel" }).then((out) => { if (out.ok && panel.isConnected) { level = out; draw(); } });
     },
   });
 }
 
-function startLive({ group, muscle, level }) {
+function startLive({ group, muscle }) {
   let stream = null;
   let sessionId = null;
   let ended = false;
   let facing = "user";
   let micOn = false;
   let lock = null;
+  let tick = null;
   const peers = new Map(); // signal id -> RTCPeerConnection
   const room = chatRoom();
 
   const stopAll = () => {
+    clearInterval(tick);
     for (const pc of peers.values()) pc.close();
     stream?.getTracks().forEach((tr) => tr.stop());
     lock?.release?.().catch?.(() => {});
@@ -305,20 +332,27 @@ function startLive({ group, muscle, level }) {
       panel.classList.add("lv-cover");
       panel.innerHTML = `
         <video class="lv-main is-mirror" id="lv-self" autoplay playsinline muted></video>
-        <div class="lv-top">
-          <span class="lv-badge"><i class="lv-dot" aria-hidden="true"></i>${t("live.badge")}</span>
-          <span class="lv-what">${esc(workoutLabel(muscle, level))}</span>
-          <span class="lv-count" id="lv-count"></span>
-        </div>
+        <div class="lv-shade" aria-hidden="true"></div>
+        ${instrumentHtml()}
         <div class="lv-status" id="lv-status">${t("live.starting")}</div>
-        <div class="lv-chat is-host">${chatBarHtml({ heart: false })}</div>
-        <div class="lv-controls">
-          <button type="button" class="lv-ctl" id="lv-mic" aria-pressed="false" aria-label="${t("live.mic")}">${icon("mic", { size: 20 })}</button>
-          <button type="button" class="lv-ctl" id="lv-flip" aria-label="${t("live.flip")}">${icon("cameraFill", { size: 20 })}</button>
+        <div class="lv-bottom is-host">
+          <div class="lv-hearts" aria-hidden="true"></div>
+          <div class="lv-comments" aria-live="polite"></div>
+          <div class="lv-word" id="lv-word">${esc(t(`live.muscles.${muscle}`))}</div>
+          <div class="lv-meta" id="lv-meta">${t("live.you")}</div>
+          <div class="lv-host-row">
+            <form class="lv-say" autocomplete="off">
+              <input class="lv-input" name="c" maxlength="${COMMENT_MAX}" enterkeyhint="send" placeholder="${t("live.reply")}" aria-label="${t("live.reply")}" />
+            </form>
+            <button type="button" class="lv-round" id="lv-mic" aria-pressed="false" aria-label="${t("live.mic")}">${icon("mic", { size: 19 })}</button>
+            <button type="button" class="lv-round" id="lv-flip" aria-label="${t("live.flip")}">${icon("cameraFill", { size: 19 })}</button>
+          </div>
           <button type="button" class="lv-end" id="lv-end">${t("live.end")}</button>
         </div>`;
       const $ = (id) => panel.querySelector(`#${id}`);
       const status = (key) => { $("lv-status").textContent = key ? t(key) : ""; $("lv-status").hidden = !key; };
+      const startedAt = new Date().toISOString();
+      tick = setInterval(() => { panel.querySelector(".lv-clock").textContent = elapsed(startedAt); }, TICK_MS);
 
       $("lv-end").addEventListener("click", async () => {
         if (ended) return;
@@ -330,7 +364,6 @@ function startLive({ group, muscle, level }) {
       const setMic = () => {
         stream?.getAudioTracks().forEach((tr) => { tr.enabled = micOn; });
         $("lv-mic").setAttribute("aria-pressed", String(micOn));
-        $("lv-mic").classList.toggle("is-off", !micOn);
       };
       $("lv-mic").addEventListener("click", () => { micOn = !micOn; setMic(); });
       $("lv-flip").addEventListener("click", async () => {
@@ -384,9 +417,10 @@ function startLive({ group, muscle, level }) {
         if (ended) { stream.getTracks().forEach((tr) => tr.stop()); return; }
         $("lv-self").srcObject = stream;
         setMic();
-        const out = await api({ op: "liveStart", group: group.id, muscle, level });
+        const out = await api({ op: "liveStart", group: group.id, muscle });
         if (!out.ok) { status(out.errorType === "network" ? "live.offline" : "live.failed"); return; }
         sessionId = out.id;
+        if (out.level) $("lv-meta").textContent = `${t("live.you")} · ${t(`live.levels.${out.level}`)} · ${group.name ?? ""}`;
         lock = await keepAwake();
         status("live.waiting");
         while (!ended) {
@@ -396,7 +430,7 @@ function startLive({ group, muscle, level }) {
             if (beat.ended) break;
             for (const o of beat.offers ?? []) if (!peers.has(o.id)) answer(o).catch(() => drop(o.id));
             for (const id of beat.left ?? []) if (peers.has(id)) drop(id);
-            $("lv-count").textContent = beat.watching ? t("live.watching", { n: beat.watching }) : "";
+            panel.querySelector(".lv-num").textContent = twoDigits(beat.watching);
             status(beat.watching ? "" : "live.waiting");
           }
           await sleep(BEAT_MS);
@@ -497,15 +531,20 @@ function watcher(slide, s) {
 
 function slideHtml(s) {
   return `
-    <section class="lv-slide" data-id="${esc(s.id)}">
+    <section class="lv-slide" data-id="${esc(s.id)}" data-started="${esc(s.startedAt ?? "")}">
       <video class="lv-main" autoplay playsinline></video>
+      <div class="lv-shade" aria-hidden="true"></div>
       <div class="lv-status" hidden></div>
-      <button type="button" class="lv-ctl lv-sound" hidden>${t("live.sound")}</button>
-      <div class="lv-chat">${chatBarHtml()}</div>
-      <div class="lv-info">
-        <span class="lv-badge"><i class="lv-dot" aria-hidden="true"></i>${t("live.badge")}${s.watching ? ` · ${t("live.watching", { n: s.watching })}` : ""}</span>
-        <b>${esc(s.name)}</b>
-        <span>${esc(workoutLabel(s.muscle, s.level))}${s.group ? ` · ${esc(s.group)}` : ""}</span>
+      <button type="button" class="lv-sound" hidden>${t("live.sound")}</button>
+      <div class="lv-bottom">
+        <div class="lv-hearts" aria-hidden="true"></div>
+        <div class="lv-comments" aria-live="polite"></div>
+        <div class="lv-word">${esc(t(`live.muscles.${s.muscle}`))}</div>
+        <div class="lv-meta">${esc(s.name)} · ${esc(t(`live.levels.${s.level}`))}${s.group ? ` · ${esc(s.group)}` : ""}</div>
+        <form class="lv-say" autocomplete="off">
+          <input class="lv-input" name="c" maxlength="${COMMENT_MAX}" enterkeyhint="send" placeholder="${t("live.commentPlaceholder")}" aria-label="${t("live.commentPlaceholder")}" />
+          <button type="button" class="lv-like" aria-label="${t("live.heart")}">${dotHeart(28)}</button>
+        </form>
       </div>
     </section>`;
 }
@@ -513,9 +552,9 @@ function slideHtml(s) {
 /** Full screen, one live stream at a time; swipe up or down for the next person. */
 function openFeed(list, startId) {
   let sessions = [...list];
-  let only = null; // a level filter, or everyone
   let lock = null;
   let refresh = null;
+  let tick = null;
   const watchers = new Map(); // id -> watcher
   let current = null;
 
@@ -524,74 +563,61 @@ function openFeed(list, startId) {
       panel.classList.add("lv-cover");
       panel.innerHTML = `
         <div class="lv-feed" id="lv-feed"></div>
-        <div class="lv-top lv-feed-top">
-          <div class="lv-levels" role="group" aria-label="${t("live.yourLevel")}">
-            <button type="button" data-only="" aria-pressed="true">${t("live.all")}</button>
-            ${LEVELS.map((l) => `<button type="button" data-only="${l}" aria-pressed="false">${t(`live.levels.${l}`)}</button>`).join("")}
-          </div>
-          <button type="button" class="lv-close" id="lv-close" aria-label="${t("live.leave")}">${icon("xmark", { size: 18 })}</button>
-        </div>
-        <div class="lv-swipe" id="lv-swipe" hidden>${icon("chevronUp", { size: 16 })}<span>${t("live.swipe")}</span></div>`;
+        ${instrumentHtml({ close: true })}
+        <div class="lv-rail" id="lv-rail" aria-hidden="true"></div>`;
       const feed = panel.querySelector("#lv-feed");
+      const rail = panel.querySelector("#lv-rail");
+      const clock = panel.querySelector(".lv-clock");
+      const num = panel.querySelector(".lv-num");
 
+      const drawTop = () => {
+        const s = sessions.find((x) => x.id === current);
+        clock.textContent = s?.startedAt ? elapsed(s.startedAt) : "0:00";
+        num.textContent = twoDigits(s?.watching);
+        const slides = [...feed.querySelectorAll(".lv-slide")];
+        rail.innerHTML = slides.length > 1 ? slides.map((sl) => `<i class="${sl.dataset.id === current ? "is-on" : ""}"></i>`).join("") : "";
+      };
       const show = (id) => {
         if (current === id) return;
         if (current) watchers.get(current)?.stop();
         current = id;
         watchers.get(id)?.start();
+        drawTop();
       };
       const observer = new IntersectionObserver((entries) => {
         for (const e of entries) if (e.isIntersecting && e.intersectionRatio >= 0.6) show(e.target.dataset.id);
       }, { root: feed, threshold: [0.6] });
-
-      const build = (focusId) => {
-        for (const w of watchers.values()) w.stop();
-        watchers.clear();
-        current = null;
-        observer.disconnect();
-        const shown = orderSessions(sessions, { level: myLevel(), only });
-        feed.innerHTML = shown.length ? shown.map(slideHtml).join("") : `<div class="lv-slide lv-none"><p>${t("live.noneAtLevel")}</p></div>`;
-        feed.querySelectorAll(".lv-slide[data-id]").forEach((slide) => {
-          const s = shown.find((x) => x.id === slide.dataset.id);
-          watchers.set(s.id, watcher(slide, s));
-          observer.observe(slide);
-        });
-        panel.querySelector("#lv-swipe").hidden = shown.length < 2;
-        const at = feed.querySelector(`.lv-slide[data-id="${CSS.escape(focusId ?? "")}"]`);
-        if (at) feed.scrollTop = at.offsetTop;
+      const addSlide = (s) => {
+        feed.insertAdjacentHTML("beforeend", slideHtml(s));
+        const slide = feed.lastElementChild;
+        watchers.set(s.id, watcher(slide, s));
+        observer.observe(slide);
       };
 
-      // new streams join at the end, so the one you're watching doesn't jump
+      sessions.forEach(addSlide);
+      const at = feed.querySelector(`.lv-slide[data-id="${CSS.escape(startId ?? "")}"]`);
+      if (at) feed.scrollTop = at.offsetTop;
+
+      // new streams join at the end, so the one you're watching doesn't jump; counts stay current
       const addNew = async () => {
         const out = await api({ op: "live" });
         if (!out.ok || !panel.isConnected) return;
-        const fresh = out.sessions.filter((s) => s.id !== out.mine && !sessions.some((x) => x.id === s.id));
-        if (!fresh.length) return;
-        sessions = [...sessions, ...fresh];
-        for (const s of orderSessions(fresh, { only })) {
-          feed.querySelector(".lv-none")?.remove();
-          feed.insertAdjacentHTML("beforeend", slideHtml(s));
-          const slide = feed.lastElementChild;
-          watchers.set(s.id, watcher(slide, s));
-          observer.observe(slide);
+        for (const s of out.sessions) {
+          const known = sessions.find((x) => x.id === s.id);
+          if (known) known.watching = s.watching;
+          else if (s.id !== out.mine) { sessions.push(s); addSlide(s); }
         }
-        panel.querySelector("#lv-swipe").hidden = feed.querySelectorAll(".lv-slide[data-id]").length < 2;
+        drawTop();
       };
 
-      panel.querySelectorAll("[data-only]").forEach((b) => b.addEventListener("click", () => {
-        only = b.dataset.only || null;
-        panel.querySelectorAll("[data-only]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-        build(current);
-      }));
-      feed.addEventListener("scroll", () => { panel.querySelector("#lv-swipe").hidden = true; }, { once: true, passive: true });
-      panel.querySelector("#lv-close").addEventListener("click", close);
-
-      build(startId);
+      panel.querySelector("[data-lv-close]").addEventListener("click", close);
       keepAwake().then((l) => { lock = l; });
       refresh = setInterval(addNew, FEED_REFRESH_MS);
+      tick = setInterval(drawTop, TICK_MS);
     },
     onClosed: () => {
       clearInterval(refresh);
+      clearInterval(tick);
       for (const w of watchers.values()) w.stop();
       lock?.release?.().catch?.(() => {});
     },

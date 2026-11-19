@@ -8,7 +8,8 @@
 // these two short texts are stored; nothing is recorded.
 //
 // POST { op: "live", group? }                        -> { ok, sessions, ice, mine }  (no group: all of yours)
-// POST { op: "liveStart", group, muscle, level }    -> { ok, id }   (tells the group, once in a while)
+// POST { op: "liveLevel" }                          -> { ok, level, trainingDays, perWeek, weeks }  (from their exercise log)
+// POST { op: "liveStart", group, muscle }           -> { ok, id, level }   (tells the group, once in a while)
 // POST { op: "liveBeat", id }                        -> { ok, offers: [{ id, viewer, name, offer }], left, watching }
 // POST { op: "liveAnswer", signal, answer }          -> { ok }
 // POST { op: "liveEnd", id }                         -> { ok }
@@ -26,6 +27,39 @@ export const MAX_WATCHING = 10;    // every viewer is a separate upload from the
 const ALIVE_MS = 30 * 1000;        // a session or viewer with no beat for this long is gone
 const NOTIFY_EVERY_MS = 2 * 3600 * 1000; // the group hears "X is live" at most this often per person
 const SDP_MAX = 20000;
+
+// --- level, from what they've logged ---------------------------------------------------------
+// Nobody picks their own level: it comes from their exercise log over the last eight weeks.
+// A training day is a day with at least one session of 20+ minutes that isn't an easy walk.
+const LEVEL_WINDOW_DAYS = 56;
+const MIN_SESSION_MIN = 20;
+
+/** "beginner" | "average" | "expert" from exercise rows ({ day, data }), plus the numbers behind it. */
+export function levelFromLog(rows, { today = new Date().toISOString().slice(0, 10), firstDay = null } = {}) {
+  const from = new Date(Date.parse(`${today}T00:00:00Z`) - (LEVEL_WINDOW_DAYS - 1) * 864e5).toISOString().slice(0, 10);
+  const days = new Set();
+  for (const r of rows ?? []) {
+    const d = r?.data ?? {};
+    if (d.deleted || !r.day || r.day < from || r.day > today) continue;
+    if ((Number(d.minutes) || 0) < MIN_SESSION_MIN) continue;
+    if (d.activity === "walk" && d.intensity !== "hard") continue;
+    days.add(r.day);
+  }
+  const perWeek = days.size / (LEVEL_WINDOW_DAYS / 7);
+  // expert needs it to be a habit: training logged for six weeks or more
+  const weeksLogging = firstDay ? (Date.parse(today) - Date.parse(firstDay)) / (7 * 864e5) : 0;
+  const level = perWeek >= 3.5 && weeksLogging >= 6 ? "expert" : perWeek >= 1.5 ? "average" : "beginner";
+  return { level, trainingDays: days.size, perWeek: Math.round(perWeek * 10) / 10, weeks: LEVEL_WINDOW_DAYS / 7 };
+}
+
+async function levelOf(username) {
+  const from = new Date(Date.now() - LEVEL_WINDOW_DAYS * 864e5).toISOString().slice(0, 10);
+  const [rows, first] = await Promise.all([
+    select("snapcal_exercise", { select: "day,data", owner: `eq.${username}`, day: `gte.${from}`, limit: "1000" }),
+    select("snapcal_exercise", { select: "day", owner: `eq.${username}`, order: "day.asc", limit: "1" }),
+  ]);
+  return levelFromLog(rows, { firstDay: first[0]?.day ?? null });
+}
 
 const fail = (errorType, message) => ({ ok: false, errorType, message });
 const since = (ms) => new Date(Date.now() - ms).toISOString();
@@ -70,11 +104,13 @@ export async function handleLive(op, me, body) {
     return { ok: true, sessions, ice: iceServers(), mine: sessions.find((s) => s.owner === me)?.id ?? null };
   }
 
+  if (op === "liveLevel") return { ok: true, ...(await levelOf(me)) };
+
   if (op === "liveStart") {
     const group = String(body.group ?? "");
     const muscle = MUSCLES.includes(body.muscle) ? body.muscle : "";
-    const level = LEVELS.includes(body.level) ? body.level : "";
-    if (!muscle || !level) return fail("other", "Pick what you're training and your level.");
+    if (!muscle) return fail("other", "Pick what you're training.");
+    const { level } = await levelOf(me); // from their log, never from the phone
     if (!group || !(await isMember(me, group))) return fail("notMember", "You're not in that group.");
     // one session at a time: an older one of yours ends, and day-old leftovers are cleared
     await patch("snapcal_live", { owner: `eq.${me}`, ended_at: "is.null" }, { ended_at: new Date().toISOString() });
@@ -92,7 +128,7 @@ export async function handleLive(op, me, body) {
         tag: `live-${me}`,
       }));
     }
-    return { ok: true, id };
+    return { ok: true, id, level };
   }
 
   if (op === "liveBeat" || op === "liveEnd") {

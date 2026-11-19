@@ -1720,7 +1720,6 @@
     "goLive": "Go live",
     "watch": "Watch",
     "badge": "LIVE",
-    "watching": "{n} watching",
     "empty": "Working out? Go live and your groups can watch.",
     "whatToday": "What are you training?",
     "yourLevel": "Your level",
@@ -1757,12 +1756,13 @@
       "expert": "Expert"
     },
     "liveNow": "{n} live",
-    "all": "All",
-    "swipe": "Swipe for the next person",
-    "noneAtLevel": "Nobody at this level is live right now.",
     "commentPlaceholder": "Comment…",
     "heart": "Send a heart",
     "joined": "{name} joined",
-    "you": "You"
+    "you": "You",
+    "watchingLabel": "watching",
+    "tapToWatch": "Tap someone to watch, then swipe for the next.",
+    "reply": "Reply",
+    "levelWhy": "From your exercise log: {n} training days in the last {w} weeks. Anyone can watch anyone."
   }
 }
