@@ -195,3 +195,52 @@ test("the phone asks for the picture once per foods, and gives up quietly", asyn
     assert.equal(await drawPlate([{ name: "  " }]), null);
   } finally { globalThis.fetch = real; }
 });
+
+test("Add to my day: a post from today goes in with them, an earlier one today, now", async () => {
+  const { ateWhenDefault, ateAt } = await import("../js/ui/ate-same.js");
+  const now = new Date(2026, 10, 19, 20, 0).getTime();
+  const lunchToday = { created_at: new Date(2026, 10, 19, 13, 0).toISOString() };
+  const monday = { created_at: new Date(2026, 10, 16, 13, 0).toISOString() };
+  assert.equal(ateWhenDefault(lunchToday, now), "together");
+  assert.equal(ateAt(lunchToday, "together", now), Date.parse(lunchToday.created_at));
+  assert.equal(ateWhenDefault(monday, now), "now", "Monday's lunch shared days ago lands today");
+  assert.equal(ateAt(monday, "now", now), now);
+  assert.equal(ateWhenDefault({ created_at: new Date(now + 3600000).toISOString() }, now), "now", "a clock that's ahead");
+});
+
+test("Add to my day: a single shared meal goes in as one meal, scaled, its foods inside", async () => {
+  const { foodsOfShare, logSharedMeal } = await import("../js/ui/ate-same.js");
+  const share = { kind: "meal", created_at: new Date().toISOString(), data: {
+    name: "Bandeja paisa", calories: 1000, proteinG: 50, carbsG: 100, fatG: 40,
+    items: [item("Rice", 260, 5, 57, 1, 200), item("Beans", 240, 15, 40, 1, 180), item("Chicharrón", 500, 30, 3, 38, 90)] } };
+  const [one] = foodsOfShare(share);
+  assert.equal(one.name, "Bandeja paisa");
+  assert.equal(one.gramsEstimate, 470, "its foods' weights added up");
+  const ts = new Date(2026, 10, 19, 12, 30).getTime();
+  const e = logSharedMeal(share, { factor: 0.5, mealType: "lunch", timestamp: ts });
+  const saved = store.getFoodEntry(e.id);
+  assert.equal(saved.calories, 500);
+  assert.equal(saved.proteinG, 25);
+  assert.equal(saved.mealType, "lunch");
+  assert.equal(saved.timestamp, ts);
+  assert.equal(saved.analysisItems.length, 3, "one meal, its three foods inside");
+  assert.equal(saved.analysisItems[0].calories, 130, "each food halved too");
+});
+
+test("Copy to today: a whole breakfast lands as today's breakfast, in order, and can be undone", () => {
+  const mon = new Date(2026, 10, 16, 7, 40).getTime();
+  const ids = [
+    store.addFoodEntry({ name: "Arepa", calories: 320, proteinG: 12, carbsG: 34, fatG: 14, timestamp: mon, mealType: "breakfast" }).id,
+    store.addFoodEntry({ name: "Coffee", calories: 70, proteinG: 4, carbsG: 6, fatG: 3, timestamp: mon + 300000, mealType: "breakfast" }).id,
+  ];
+  const evening = new Date(2026, 10, 19, 21, 0).getTime(); // copied at night: still breakfast
+  const copies = store.copyMealtimeTo(ids, "breakfast", evening);
+  assert.equal(copies.length, 2);
+  assert.deepEqual(copies.map((c) => store.getFoodEntry(c.id).mealType), ["breakfast", "breakfast"]);
+  assert.deepEqual(copies.map((c) => c.name), ["Arepa", "Coffee"]);
+  assert.ok(copies[1].timestamp > copies[0].timestamp, "kept in order");
+  assert.equal(store.getFoodEntry(ids[0]).timestamp, mon, "Monday's breakfast is untouched");
+  copies.forEach((c) => store.deleteFoodEntry(c.id));
+  assert.equal(store.getFoodEntry(copies[0].id), null, "Undo removes the copies");
+  assert.deepEqual(store.copyMealtimeTo(ids, "elevenses", evening), [], "only a real mealtime");
+});

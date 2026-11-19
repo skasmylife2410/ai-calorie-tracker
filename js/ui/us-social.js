@@ -9,7 +9,7 @@ import { gifImgHtml, gifUrl, gifSources } from "../gif.js";
 import { openGifPicker } from "./gif-picker.js";
 import { openCropSheet } from "./crop.js";
 import { ingredientBoardHtml } from "./ingredient-board.js";
-import { openAteSameSheet, isMealtimePost } from "./ate-same.js";
+import { openAteSameSheet, isMealtimePost, ateWhenDefault } from "./ate-same.js";
 
 /** The "GIF" mark on buttons: the letters in a small rounded box, drawn like the other glyphs. */
 export const GIF_GLYPH = `<span class="gif-glyph" aria-hidden="true">GIF</span>`;
@@ -110,13 +110,15 @@ export function canEatToo(s, me) {
 }
 
 /**
- * Logs someone's post as a meal you ate with them, at the time they posted it. A shared meal
- * comes with its numbers; a photo post is analysed like your own photo (its caption helps).
+ * Logs someone's photo post as a meal: with them, at the time they posted it ("together"), or now.
+ * It's analysed like your own photo (its caption helps). A shared meal comes with its numbers;
+ * the app opens js/ui/ate-same.js for those, and this path is kept for them too.
  */
-export async function logAteToo(s, now = Date.now()) {
+export async function logAteToo(s, now = Date.now(), { when = "together" } = {}) {
   const d = s.data ?? {};
   const at = Date.parse(s.created_at);
-  const timestamp = Number.isFinite(at) && at <= now ? at : now;
+  // with them, at the time they shared it (a clock that's ahead: now), or now
+  const timestamp = when === "together" && Number.isFinite(at) && at <= now ? at : now;
   if (s.kind === "post") {
     const queue = await import("../queue.js");
     return queue.enqueuePhoto(d.photo, "meal", { description: String(d.text ?? "").trim() || null, timestamp });
@@ -341,21 +343,23 @@ export async function renderFeed(host, { me, people, colors, group = null, group
     list.querySelectorAll("[data-log]").forEach((b) => b.addEventListener("click", async () => {
       const s = out.shares.find((x) => x.id === b.dataset.log);
       if (!s) return;
-      if (isMealtimePost(s)) {
-        // a whole mealtime: pick what you had first
+      if (s.kind === "meal") {
+        // a meal or a whole mealtime: pick what you had, how much, under which meal and when
         const { added: n, mealType } = await openAteSameSheet(s, { who: nameOf(s.owner) });
         if (!n) return;
         markAteToo(s.id);
         b.disabled = true;
         b.textContent = `✓ ${t("social.logged")}`;
-        toast(t("ateSame.done", { foods: t("stack.foods", { n }), meal: t(`mealType.lower.${mealType}`) }));
+        toast(isMealtimePost(s)
+          ? t("ateSame.done", { foods: t("stack.foods", { n }), meal: t(`mealType.lower.${mealType}`) })
+          : t("ateSame.doneOne", { meal: t(`mealType.lower.${mealType}`) }));
         return;
       }
       b.disabled = true;
-      await logAteToo(s);
+      await logAteToo(s, Date.now(), { when: ateWhenDefault(s) });
       markAteToo(s.id);
       b.textContent = `✓ ${t("social.logged")}`;
-      toast(t(s.kind === "post" ? "social.ateTooPhoto" : "social.ateTooMeal"));
+      toast(t("social.ateTooPhoto"));
     }));
     list.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;

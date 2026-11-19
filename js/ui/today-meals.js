@@ -188,6 +188,23 @@ export function renderMealList(list, date, onChange) {
         onDelete: (e) => deleteWithUndo(e, onChange),
       })
     );
+    // an earlier day's whole breakfast, lunch…: one tap copies it all to today's same mealtime
+    if (!isToday && !sel && inIt.length > 0) {
+      const meal = t(`mealType.lower.${type}`);
+      group.insertAdjacentHTML("beforeend", `
+        <div class="ml-group-foot">
+          <button type="button" class="entry-row-share ml-copy-today">${icon("plus", { size: 13 })}<span>${t("stack.copyMealtime", { meal })}</span></button>
+        </div>`);
+      group.querySelector(".ml-copy-today").addEventListener("click", () => {
+        const copies = store.copyMealtimeTo(inIt.map((m) => m.id), type);
+        if (copies.length === 0) return;
+        const kcal = Math.round(copies.reduce((a, m) => a + (Number(m.calories) || 0), 0));
+        onChange();
+        toast(t("stack.copiedMealtime", { meal: t(`mealType.${type}`), kcal: formatNumber(kcal) }), {
+          undo: () => { copies.forEach((c) => store.deleteFoodEntry(c.id)); onChange(); },
+        });
+      });
+    }
     // two or more meals under one mealtime can go out together: one post, and others can eat the same
     const goes = inIt.filter(canShare);
     if (goes.length >= 2) {

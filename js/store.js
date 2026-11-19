@@ -553,12 +553,29 @@ export function groupMany(ids) {
  * Logs a meal again at another time (an earlier day's meal for today): the same foods, amounts,
  * photo and servings, as a new meal. Questions, size checks and leftovers aren't carried over.
  */
-export function copyEntryTo(entryId, timestamp = Date.now()) {
+export function copyEntryTo(entryId, timestamp = Date.now(), { mealType: keepAs = null } = {}) {
   const e = getFoodEntry(entryId);
   if (!e || e.isPending === true || e.analysisFailed === true) return null;
-  // a new meal at a new time: its mealtime is asked again, and it isn't shared yet
+  // a new meal at a new time: its mealtime is asked again (unless it's copied as part of a whole
+  // breakfast, lunch…, which stays one), and it isn't shared yet
   const { id, updatedAt, timestamp: _t, analysisQuestions, questionsAnswered, analysisSizeCheck, sizeChecked, leftovers, leftoversFailed, mealType, sharedAt, ...rest } = JSON.parse(JSON.stringify(e));
-  return addFoodEntry({ ...rest, timestamp, analysisItems: rest.analysisItems ?? null });
+  return addFoodEntry({ ...rest, timestamp, analysisItems: rest.analysisItems ?? null, ...(keepAs ? { mealType: keepAs } : {}) });
+}
+
+/**
+ * Copies a whole breakfast, lunch, dinner or snack to another day (today, by default), kept as
+ * that mealtime and in its order. Meals still being analysed or that failed are left out.
+ * @returns {object[]} the new entries (delete them to undo)
+ */
+export function copyMealtimeTo(entryIds, mealType, timestamp = Date.now()) {
+  if (!MEAL_TYPES.includes(mealType)) return [];
+  const out = [];
+  (entryIds ?? []).forEach((entryId, i) => {
+    // a second apart, so the copies keep their order within the mealtime
+    const copy = copyEntryTo(entryId, timestamp + i * 1000, { mealType });
+    if (copy) out.push(copy);
+  });
+  return out;
 }
 
 /**
