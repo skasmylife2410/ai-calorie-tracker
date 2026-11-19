@@ -5,6 +5,7 @@
 // The builders (daySummary / weekSummary / summaryText) are pure so they can be tested; the
 // card is drawn on a canvas; the sheet ties them together.
 
+import { drawMark } from "./mark.js";
 import * as store from "../store.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
 import { startOfDay, addDays, localDateString, daysForAverage, proteinAverage } from "../nutrition.js";
@@ -26,7 +27,6 @@ const PALETTE = {
 };
 const hoursLabel = (min) => (min >= 60 ? `${one(min / 60)}h` : `${Math.round(min)}m`);
 const SANS = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
-const FLAME_PATH = "M 189.8 125.4 C 183.5 127.1,180.1 129.5,178.4 133.5 C 175.5 140.5,177 144,189.8 160.7 C 204 179.1,211.4 196.8,210.8 210.7 L 210.5 217.5 207.8 213 C 201.1 201.6,190.5 194,181.3 194 C 171.6 194,169.8 197.7,170.7 215.2 C 171.4 230.3,169.9 237.4,161.7 256.6 C 152 279.3,149.6 290.2,149.6 310.5 C 149.7 363.6,189 398,249.5 398 C 306.3 398,346.7 367,359.1 314 C 361.7 302.9,362.7 276.9,361.1 263.4 C 354.5 209,323.5 166.1,273.5 142 C 246 128.7,206.6 120.9,189.8 125.4 M 252.5 264.8 C 252.5 277.3,252.1 281.7,250.7 286.5 C 247.4 297.1,247.2 297.1,243.4 289.9 C 241.5 286.5,238.6 282.1,236.8 280.3 C 233 276.4,232 277,230.1 284 C 229.4 286.5,226.9 291.6,224.5 295.5 C 213.2 314,211.5 324.3,217.8 338.3 C 224.5 353.6,245.2 361.6,265 356.6 C 308.3 345.6,306.6 279.1,262.4 252.5 C 252.4 246.4,252.4 246.4,252.5 264.8";
 const MEALS_SHOWN = 4;
 const OPTS_KEY = "snapcal.shareOpts";
 
@@ -250,14 +250,9 @@ export async function renderCard(s, opts = {}) {
   ctx.fillStyle = P.grid;
   for (let y = 24; y < H; y += 48) for (let x = 24; x < W; x += 48) { ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill(); }
 
-  // header: flame + SNAPCAL, the date on the right
-  ctx.save();
-  ctx.translate(PAD, PAD - 8); ctx.scale(52 / 282, 52 / 282); ctx.translate(-146, -120);
-  ctx.fillStyle = P.ink; ctx.fill(new Path2D(FLAME_PATH), "evenodd");
-  ctx.restore();
-  ctx.save(); ctx.font = sans(800, 32); ctx.fillStyle = P.ink; ctx.textBaseline = "middle";
-  let lx = PAD + 70; for (const ch of "SNAPCAL") { ctx.fillText(ch, lx, PAD + 20); lx += ctx.measureText(ch).width + 6; }
-  ctx.restore();
+  // header: the Boca0 mark and name, the date on the right
+  drawMark(ctx, PAD, PAD - 8, 56, P.ink);
+  text("Boca0", PAD + 72, PAD + 20, { font: sans(800, 34), base: "middle" });
   text((s.kind === "day" ? dayLabel(s.date) : rangeLabel(s.from, s.to)).toUpperCase(), W - PAD, PAD + 20, { font: sans(600, 32), color: P.sec, align: "right", base: "middle" });
 
   const footer = async (left) => {
