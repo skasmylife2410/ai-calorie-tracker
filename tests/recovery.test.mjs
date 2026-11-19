@@ -102,7 +102,7 @@ test("forgot is limited per account", async () => {
 
 test("setting an email needs the session AND the current password", async () => {
   const db = fakeDb();
-  const session = acct.createSession("maria");
+  const session = acct.createSession("maria", undefined, { salt: db.users[0].salt });
   const noPass = await call({ op: "setEmail", username: "maria", password: "wrong", email: "new@example.com" }, { "x-snapcal-token": session });
   assert.equal(noPass.body.errorType, "unauthorized");
   const noSession = await call({ op: "setEmail", username: "maria", password: "oldpassword1", email: "new@example.com" });
@@ -128,10 +128,10 @@ test("without Brevo configured, forgot says so instead of pretending", async () 
 
 test("the first recovery email needs only the session; changing or removing one still needs the password", async () => {
   const db = fakeDb();
-  const session = acct.createSession("noemail");
+  const session = acct.createSession("noemail", undefined, { salt: db.users[1].salt });
   const asked = (body, headers = { "x-snapcal-token": session }) => call({ op: "setEmail", username: "noemail", ...body }, headers);
   assert.equal((await asked({ email: "first@example.com" }, {})).body.errorType, "unauthorized", "never without the session");
-  assert.equal((await call({ op: "setEmail", username: "noemail", email: "first@example.com" }, { "x-snapcal-token": acct.createSession("maria") })).body.errorType, "unauthorized", "only your own account");
+  assert.equal((await call({ op: "setEmail", username: "noemail", email: "first@example.com" }, { "x-snapcal-token": acct.createSession("maria", undefined, { salt: db.users[0].salt }) })).body.errorType, "unauthorized", "only your own account");
   assert.equal((await asked({ email: "" })).body.errorType, "unauthorized", "an empty one isn't a first email");
   assert.equal((await asked({ email: "nope" })).body.errorType, "badEmail");
   assert.equal((await asked({ email: "maria@example.com" })).body.errorType, "emailTaken");

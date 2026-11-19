@@ -13,7 +13,9 @@ const { default: shares, cleanItem, fitPhotos } = await import("../api/shares.js
 
 const mockRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
 const PHOTO = "data:image/webp;base64," + "A".repeat(2000);
-const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": createSession(user) }, body });
+// a current, password-stamped session (unstamped ones are refused since LEGACY_SESSIONS_UNTIL);
+// these fake accounts have no salt, so the stamp only has to be well-formed
+const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": createSession(user, undefined, { salt: "test-salt" }) }, body });
 
 // in-memory Supabase: users, notes, shares, with the filters these endpoints actually use
 let DB;

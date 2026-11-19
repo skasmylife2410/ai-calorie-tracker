@@ -294,11 +294,23 @@ test("security: an older unstamped session is swapped for a stamped one, until t
   USERS = [{ username: "lu", salt: "s2", password_hash: "h", must_change: false }];
   const legacy = acct.createSession("lu"); // no salt: the old three-part format
   assert.equal(legacy.split(".").length, 3);
-  const res = mockRes();
-  await auth(req({ op: "whoami" }, legacy), res);
-  assert.equal(res.body.ok, true);
-  assert.equal(res.body.token.split(".").length, 4);
-  assert.equal(acct.readSessionDetail(res.body.token).stamp, acct.sessionStamp("s2"));
+  // whoami reads the clock, so pin it either side of the cut-off rather than depend on today
+  const realNow = Date.now;
+  try {
+    Date.now = () => acct.LEGACY_SESSIONS_UNTIL - 86400000;
+    const res = mockRes();
+    await auth(req({ op: "whoami" }, legacy), res);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.token.split(".").length, 4);
+    assert.equal(acct.readSessionDetail(res.body.token).stamp, acct.sessionStamp("s2"));
+
+    Date.now = () => acct.LEGACY_SESSIONS_UNTIL + 1;
+    const after = mockRes();
+    await auth(req({ op: "whoami" }, legacy), after);
+    assert.equal(after.body.ok, false, "refused after the cut-off");
+  } finally {
+    Date.now = realNow;
+  }
   const { sessionStillValid } = await import("../api/_auth.js");
   assert.equal(await sessionStillValid(legacy, acct.LEGACY_SESSIONS_UNTIL + 1), false);
 });

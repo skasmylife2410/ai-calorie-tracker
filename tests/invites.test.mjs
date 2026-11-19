@@ -15,7 +15,9 @@ const { default: auth } = await import("../api/auth.js");
 const { maxUsers, isAdmin } = await import("../api/_members.js");
 
 const mockRes = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
-const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": createSession(user) }, body });
+// a current, password-stamped session (unstamped ones are refused since LEGACY_SESSIONS_UNTIL);
+// these fake accounts have no salt, so the stamp only has to be well-formed
+const as = (user, body) => ({ method: "POST", headers: { "x-snapcal-token": createSession(user, undefined, { salt: "test-salt" }) }, body });
 const anon = (body) => ({ method: "POST", headers: {}, body });
 
 // in-memory Supabase with the filters these endpoints use (eq, gt, is.null, conditional PATCH)
@@ -193,7 +195,7 @@ test("only the admin can remove someone; it deletes their account and they're lo
   assert.equal((await call("baby", { op: "remove", username: "thayra23" })).errorType, "forbidden");
   assert.equal((await call("aelson", { op: "remove", username: "aelson" })).ok, false, "not yourself");
 
-  const babySession = acct.createSession("baby");
+  const babySession = acct.createSession("baby", undefined, { salt: "test-salt" });
   assert.equal(await requireUser({ headers: { "x-snapcal-token": babySession } }, mockRes()), "baby");
   const out = await call("aelson", { op: "remove", username: "baby" });
   assert.equal(out.ok, true);
