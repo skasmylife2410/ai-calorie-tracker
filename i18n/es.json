@@ -1733,7 +1733,6 @@
     "goLive": "Transmitir en vivo",
     "watch": "Mirar",
     "badge": "EN VIVO",
-    "empty": "¿Vas a entrenar? Transmite en vivo y tus grupos te pueden ver.",
     "whatToday": "¿Qué vas a entrenar?",
     "yourLevel": "Tu nivel",
     "who": "Solo la gente de {group} puede verte. No se graba nada.",
@@ -1773,7 +1772,6 @@
     "joined": "{name} se unió",
     "you": "Tú",
     "watchingLabel": "mirando",
-    "tapToWatch": "Toca a alguien para mirar y desliza para ver al siguiente.",
     "reply": "Responder",
     "levelWhy": "Según tu registro de ejercicio: {n} días de entrenamiento en las últimas {w} semanas. Todos pueden ver a todos.",
     "soundOn": "Sonido del en vivo activado. Toca para silenciarlo y seguir con tu música.",
@@ -1782,6 +1780,8 @@
     "soundOffShort": "Silencio",
     "micOn": "Micrófono activado. Toca para apagarlo.",
     "micOff": "Micrófono apagado: tu música sigue sonando. Toca para hablar.",
-    "noMic": "Boca0 no puede usar el micrófono. Permítelo en los ajustes del teléfono."
+    "noMic": "Boca0 no puede usar el micrófono. Permítelo en los ajustes del teléfono.",
+    "nobody": "Nadie está en vivo ahora",
+    "youreLive": "Estás en vivo"
   }
 }

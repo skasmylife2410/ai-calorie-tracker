@@ -442,9 +442,8 @@ function groupBarHtml() {
     <div class="us-groups" role="group" aria-label="${t("groups.switch")}">
       ${groups.map((g) => `<button type="button" data-group="${escHtml(g.id)}" aria-pressed="${g.id === current}">${escHtml(g.name)}</button>`).join("")}
     </div>`;
-  const manage = body?.id !== "us-tab-body" ? "" : `
-    <button type="button" class="us-groups-manage" id="us-groups-manage">${icon("peopleFill", { size: 16 })}<span>${t("groups.manage")}</span>${(data.invitedTo ?? []).length ? `<i class="us-groups-dot" aria-hidden="true"></i>` : ""}</button>`;
-  return switcher || manage ? `<div class="us-groups-row">${switcher}${manage}</div>` : "";
+  // (managing groups is the round button in the tab's header, renderUsTab)
+  return switcher ? `<div class="us-groups-row">${switcher}</div>` : "";
 }
 
 /** Someone asked this person to join a group: yes or not now, right on the board. */
@@ -466,7 +465,8 @@ function invitedHtml(people) {
 }
 
 function wireGroups() {
-  body.querySelector("#us-groups-manage")?.addEventListener("click", () => import("./ui/groups.js").then((m) => m.openGroupsSheet()));
+  // the header's Groups button shows a dot while someone has asked you to join a group
+  body.closest(".us-tab")?.querySelector("#us-groups-manage")?.classList.toggle("has-dot", (data.invitedTo ?? []).length > 0);
   body.querySelectorAll("[data-us-accept], [data-us-decline]").forEach((b) => b.addEventListener("click", async () => {
     const accept = Boolean(b.dataset.usAccept);
     const group = b.dataset.usAccept || b.dataset.usDecline;
@@ -634,9 +634,12 @@ export function renderUsTab(container) {
     <div class="us-tab">
       <div class="us-tab-head">
         <h1 class="tg-title">${t("us.title")}</h1>
-        <div class="tg-range" role="group">
-          <button type="button" data-range="7" aria-pressed="${range === 7}">${t("us.days7")}</button>
-          <button type="button" data-range="30" aria-pressed="${range === 30}">${t("us.days30")}</button>
+        <div class="us-tab-actions">
+          <div class="tg-range" role="group">
+            <button type="button" data-range="7" aria-pressed="${range === 7}">${t("us.days7")}</button>
+            <button type="button" data-range="30" aria-pressed="${range === 30}">${t("us.days30")}</button>
+          </div>
+          <button type="button" class="us-groups-manage" id="us-groups-manage" aria-label="${t("groups.manage")}">${icon("peopleFill", { size: 18 })}<i class="us-groups-dot" aria-hidden="true"></i></button>
         </div>
       </div>
       <div id="us-tab-body" aria-live="polite"><p class="tg-note">…</p></div>
@@ -644,6 +647,7 @@ export function renderUsTab(container) {
     </div>`;
   body = container.querySelector("#us-tab-body");
   wireRange(container);
+  container.querySelector("#us-groups-manage").addEventListener("click", () => import("./ui/groups.js").then((m) => m.openGroupsSheet()));
   start();
 }
 

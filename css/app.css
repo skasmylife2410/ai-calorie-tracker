@@ -3064,6 +3064,11 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .us-groups-row .us-groups { margin-bottom: 0; max-width: 100%; overflow-x: auto; }
 .us-groups-manage { position: relative; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px 0 11px; border: 0; border-radius: 999px;
   font: inherit; font-size: 13px; font-weight: 700; background: var(--sc-secondary-14, rgba(0,0,0,.06)); color: var(--sc-primary-text); cursor: pointer; }
+/* in the Us header, next to the 7/30 days switch: round, people icon, a dot when someone asked you to join */
+.us-tab-actions { display: flex; align-items: center; gap: 8px; }
+.us-groups-manage { margin-left: 0; width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%; background: var(--sc-secondary-15); }
+.us-groups-dot { display: none; }
+.us-groups-manage.has-dot .us-groups-dot { display: block; }
 .us-groups-dot { position: absolute; top: 3px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--sc-red); box-shadow: 0 0 0 2px var(--sc-background, #fff); }
 .grp-invite .grp-actions { margin-top: 8px; }
 .grp-body { padding: 4px 16px calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
@@ -3242,23 +3247,25 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 /* "Train together" (js/ui/live.js). The live screens follow Figma "Boca0 · Live redesign", direction A
    "Instrument": the video edge to edge, dot-matrix numbers, the workout as the big word, plain comments. */
 .us-live:empty { display: none; }
-.lv-card { padding: 14px 15px 12px; margin: 6px 0 14px; }
-.lv-head { display: flex; align-items: center; gap: 8px; font-size: 16px; }
-.lv-head-n { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sc-secondary); }
+.lv-card { padding: 16px 16px 16px 18px; margin: 4px 0 14px; }
+.lv-head { display: flex; align-items: center; gap: 12px; }
+.lv-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lv-head-text b { font-size: 16px; font-weight: 600; }
+.lv-head-text span { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--sc-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the one primary action on Us: ink, with the live dot */
+.lv-go { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 16px 0 14px; border: 0; border-radius: 19px;
+  background: var(--sc-primary-text); color: var(--sc-card-bg, #fff); font: inherit; font-size: 14px; font-weight: 600; }
 .lv-dot { flex: none; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #FF3B30; }
-.lv-tiles-row { display: flex; gap: 10px; overflow-x: auto; margin: 12px -15px 0; padding: 0 15px; scrollbar-width: none; }
+.lv-tiles-row { display: flex; gap: 10px; overflow-x: auto; margin: 16px -16px 0 -18px; padding: 0 16px 0 18px; scrollbar-width: none; }
 .lv-tiles-row::-webkit-scrollbar { display: none; }
-.lv-tile { flex: none; width: 104px; display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; font: inherit; text-align: left; color: var(--sc-primary-text); }
-.lv-tile-pic { position: relative; display: flex; flex-direction: column; justify-content: space-between; height: 140px; padding: 9px 10px; border-radius: 16px;
+.lv-tile { flex: none; width: 96px; display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; font: inherit; text-align: left; color: var(--sc-primary-text); }
+.lv-tile-pic { position: relative; display: flex; flex-direction: column; justify-content: space-between; height: 128px; padding: 9px 10px; border-radius: 16px;
   background: radial-gradient(120% 80% at 20% 0%, #3A3936 0%, #1B1B1A 55%, #0C0C0C 100%); color: #F2F2F2; overflow: hidden; }
 .lv-tile-time { display: inline-flex; align-items: center; gap: 5px; }
 .lv-tile-time b, .lv-tile-word { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
 .lv-tile-time b { font-size: 14px; }
 .lv-tile-word { font-size: 19px; text-transform: uppercase; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv-tile-name { padding-left: 2px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-tile.is-go .lv-tile-pic { align-items: center; justify-content: center; gap: 6px; background: transparent; color: var(--sc-primary-text);
-  border: 1.5px dashed var(--sc-secondary-15); font-size: 13px; font-weight: 600; }
-.lv-empty { margin: 10px 0 0; font-size: 13px; line-height: 1.4; color: var(--sc-secondary); }
 .lv-body { padding: 18px 16px 24px; }
 .lv-level { display: flex; flex-direction: column; gap: 3px; margin-top: 20px; }
 .lv-level .ctx-label { font-size: 13px; font-weight: 600; color: var(--sc-secondary); }

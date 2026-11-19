@@ -1733,7 +1733,6 @@
     "goLive": "Go live",
     "watch": "Watch",
     "badge": "LIVE",
-    "empty": "Working out? Go live and your groups can watch.",
     "whatToday": "What are you training?",
     "yourLevel": "Your level",
     "who": "Only people in {group} can watch. Nothing is recorded.",
@@ -1773,7 +1772,6 @@
     "joined": "{name} joined",
     "you": "You",
     "watchingLabel": "watching",
-    "tapToWatch": "Tap someone to watch, then swipe for the next.",
     "reply": "Reply",
     "levelWhy": "From your exercise log: {n} training days in the last {w} weeks. Anyone can watch anyone.",
     "soundOn": "Stream sound on. Tap to mute and keep your own music.",
@@ -1782,6 +1780,8 @@
     "soundOffShort": "Muted",
     "micOn": "Microphone on. Tap to turn it off.",
     "micOff": "Microphone off: your music keeps playing. Tap to talk.",
-    "noMic": "Boca0 can't use the microphone. Allow it in your phone's settings."
+    "noMic": "Boca0 can't use the microphone. Allow it in your phone's settings.",
+    "nobody": "Nobody's live right now",
+    "youreLive": "You're live"
   }
 }

@@ -253,13 +253,17 @@ export function renderLiveCard(el, { group } = {}) {
     lastIce = out.ice?.length ? out.ice : FALLBACK_ICE;
     const others = out.sessions.filter((s) => s.id !== out.mine);
     const mineLive = out.sessions.some((s) => s.id === out.mine);
+    // nobody live: one line and a Go live button; people live: their tiles under the same line
     el.innerHTML = `
-      <div class="lv-card card">
+      <div class="lv-card card${others.length ? "" : " is-quiet"}">
         <div class="lv-head">
-          <b>${t("live.title")}</b>
-          ${others.length ? `<span class="lv-head-n"><i class="lv-dot" aria-hidden="true"></i>${t("live.liveNow", { n: others.length })}</span>` : ""}
+          <div class="lv-head-text">
+            <b>${t("live.title")}</b>
+            <span>${others.length ? `<i class="lv-dot" aria-hidden="true"></i>${t("live.liveNow", { n: others.length })}` : mineLive ? t("live.youreLive") : t("live.nobody")}</span>
+          </div>
+          ${mineLive ? "" : `<button type="button" class="lv-go" data-lv-go><i class="lv-dot" aria-hidden="true"></i>${t("live.goLive")}</button>`}
         </div>
-        <div class="lv-tiles-row" role="list">
+        ${others.length ? `<div class="lv-tiles-row" role="list">
           ${others.map((s) => `
             <button type="button" class="lv-tile" role="listitem" data-lv-open="${esc(s.id)}">
               <span class="lv-tile-pic">
@@ -268,13 +272,7 @@ export function renderLiveCard(el, { group } = {}) {
               </span>
               <span class="lv-tile-name">${esc(s.name)}</span>
             </button>`).join("")}
-          ${mineLive ? "" : `
-            <button type="button" class="lv-tile is-go" data-lv-go>
-              <span class="lv-tile-pic">${icon("plus", { size: 22 })}<span>${t("live.goLive")}</span></span>
-              <span class="lv-tile-name">&nbsp;</span>
-            </button>`}
-        </div>
-        <p class="lv-empty">${others.length ? t("live.tapToWatch") : t("live.empty")}</p>
+        </div>` : ""}
       </div>`;
     el.querySelector("[data-lv-go]")?.addEventListener("click", () => openGoLive({ group }));
     el.querySelectorAll("[data-lv-open]").forEach((b) => b.addEventListener("click", () => openFeed(others, b.dataset.lvOpen)));
