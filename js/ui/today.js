@@ -830,10 +830,18 @@ async function showNoteIfAny(container) {
     <div class="note-from">✉︎ ${t("social.fromName", { name: esc(who) })}</div>
     ${note.gif ? gifImgHtml(note.gif, { cls: "note-gif-img", alt: t("gif.by", { name: who }) }) : ""}
     ${note.body ? `<div class="note-body">${esc(note.body)}</div>` : ""}
-    <button type="button" class="note-dismiss" id="note-dismiss">${t("social.dismiss")}</button>`;
+    <div class="note-actions">
+      <button type="button" class="note-dismiss note-reply" id="note-reply">${t("social.reply")}</button>
+      <button type="button" class="note-dismiss" id="note-dismiss">${t("social.dismiss")}</button>
+    </div>`;
   host.closest(".doodle-card")?.classList.add("has-note");
   host.querySelector("#note-dismiss")?.addEventListener("click", async () => {
     await markNoteSeen(note.id);
     render(container);
+  });
+  // a reply goes back to whoever wrote; once it's sent, their note has been read
+  host.querySelector("#note-reply")?.addEventListener("click", async () => {
+    const { openNoteSheet } = await import("./us-social.js");
+    openNoteSheet(note.from_user, { replyTo: note, onSent: async () => { await markNoteSeen(note.id); render(container); } });
   });
 }

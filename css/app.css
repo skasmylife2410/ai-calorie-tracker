@@ -3231,3 +3231,10 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .exi-steps li { padding: 10px 0; font-size: 14.5px; line-height: 1.45; }
 .exi-steps li + li { border-top: 1px solid var(--sc-secondary-14); }
 .exi-text { margin: 0 4px; font-size: 14.5px; line-height: 1.45; }
+
+/* Reply to a note (js/ui/today.js, js/ui/us-social.js openNoteSheet) */
+.note-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.note-actions .note-dismiss { margin-top: 0; }
+.note-dismiss.note-reply { background: var(--sc-blue); color: var(--sc-card-bg, #fff); }
+.note-quote { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 12px; padding: 10px 12px; border-radius: 14px; background: var(--sc-secondary-14); font-size: 14px; line-height: 1.4; }
+.note-quote small { font-size: 12px; font-weight: 600; color: var(--sc-secondary); }

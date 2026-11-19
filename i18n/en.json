@@ -456,6 +456,9 @@
     "approx": "Approximate — sizes come from typical densities, so a fluffy salad or a dense steak can look a little off."
   },
   "social": {
+    "reply": "Reply",
+    "replyingTo": "Replying to {name}",
+    "replyPlaceholder": "Write your reply…",
     "fromName": "From {name}",
     "dismiss": "Got it",
     "writeNote": "Note",

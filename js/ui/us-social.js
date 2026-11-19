@@ -26,15 +26,19 @@ export function agoLabel(iso, now = Date.now()) {
   return t("social.ago.d", { n: Math.round(h / 24) });
 }
 
-/** Compose sheet for a note to one person. */
-export async function openNoteSheet(to) {
+/**
+ * Compose sheet for a note to one person. `replyTo`: the note being answered, quoted above the
+ * box so it's clear what the reply is to; `onSent` runs once it's gone.
+ */
+export async function openNoteSheet(to, { replyTo = null, onSent = null } = {}) {
   const { openSheet, navBar, wireNavBar } = await import("./sheet.js");
   openSheet({
     render(panel, close) {
       panel.innerHTML = `
         ${navBar({ title: t("social.noteTo", { name: title(to) }), leading: { label: t("app.cancel") }, trailing: { label: t("social.send"), bold: true, disabled: true } })}
         <div class="sheet-panel-body">
-          <textarea class="describe-textarea note-input" id="note-input" rows="4" maxlength="200" placeholder="${t("social.notePlaceholder")}"></textarea>
+          ${replyTo ? `<div class="note-quote"><small>${t("social.replyingTo", { name: esc(title(to)) })}</small>${replyTo.body ? `<span>“${esc(replyTo.body)}”</span>` : replyTo.gif ? `<span>GIF</span>` : ""}</div>` : ""}
+          <textarea class="describe-textarea note-input" id="note-input" rows="4" maxlength="200" placeholder="${replyTo ? t("social.replyPlaceholder") : t("social.notePlaceholder")}"></textarea>
           <div class="note-gif" id="note-gif" hidden></div>
           <div class="note-tools"><button type="button" class="feed-btn note-gif-btn" id="note-gif-btn">${GIF_GLYPH}<span class="note-gif-label">${t("gif.add")}</span></button></div>
           <div class="note-meta"><span id="note-count">0/200</span><span>${t("social.noteHint")}</span></div>
@@ -69,6 +73,7 @@ export async function openNoteSheet(to) {
           }
           close();
           toast(t("social.sent", { name: title(to) }));
+          onSent?.();
         },
       });
       setTimeout(() => input.focus(), 300);

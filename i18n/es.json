@@ -456,6 +456,9 @@
     "approx": "Aproximado: los tamaños salen de densidades típicas, así que una ensalada esponjosa o una carne densa pueden verse algo distintas."
   },
   "social": {
+    "reply": "Responder",
+    "replyingTo": "Respondiendo a {name}",
+    "replyPlaceholder": "Escribe tu respuesta…",
     "fromName": "De {name}",
     "dismiss": "Listo",
     "writeNote": "Nota",
