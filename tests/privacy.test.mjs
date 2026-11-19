@@ -24,7 +24,7 @@ test("delete removes the person from every table that is about them, account las
   const tables = new Set(deleted.map((c) => c.table));
   for (const t of ["snapcal_profile", "snapcal_food_entries", "snapcal_water", "snapcal_exercise", "snapcal_weight",
     "snapcal_favorites", "snapcal_recaps", "snapcal_shares", "snapcal_comments", "snapcal_suggestions",
-    "snapcal_notes", "snapcal_group_members", "snapcal_push_subs", "snapcal_users"]) {
+    "snapcal_notes", "snapcal_group_members", "snapcal_push_subs", "snapcal_client_errors", "snapcal_users"]) {
     assert.ok(tables.has(t), `${t} is cleared`);
   }
   for (const c of deleted) assert.ok(Object.values(c.params).some((v) => v.includes("maria")), `${c.table} delete is scoped to maria`);
@@ -41,4 +41,14 @@ test("export asks for the account without password hash or salt, and push device
   const push = calls.find((c) => c.table === "snapcal_push_subs");
   assert.ok(!/p256dh|auth|endpoint/.test(push.params.select));
   for (const c of calls) assert.ok(Object.values(c.params).some((v) => v.includes("maria")), `${c.table} read is scoped to maria`);
+});
+
+test("delete: barcode products they typed in stay for others, without their name", async () => {
+  const calls = recorder();
+  await deleteAccount("maria");
+  const barcodes = calls.filter((c) => c.table === "snapcal_barcodes");
+  assert.equal(barcodes.length, 1);
+  assert.equal(barcodes[0].method, "PATCH", "kept, not deleted");
+  assert.equal(barcodes[0].params.owner, "eq.maria");
+  assert.deepEqual(JSON.parse(barcodes[0].body), { owner: "deleted" });
 });

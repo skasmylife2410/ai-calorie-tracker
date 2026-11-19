@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Delete your account · SnapCal</title>
+  <meta name="description" content="Delete your SnapCal account and all its data, with or without the app installed." />
+  <meta name="theme-color" content="#F7F6F3" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192-v2.png" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/css/privacy.css" />
+</head>
+<body>
+  <main class="pv">
+    <div class="pv-top">
+      <a class="pv-back" href="/">‹ SnapCal</a>
+      <div class="pv-lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">English</button>
+        <button type="button" data-lang="es" aria-pressed="false">Español</button>
+      </div>
+    </div>
+
+    <!-- What this page is (the Google Play listing links here as SnapCal's account deletion URL) -->
+    <article lang="en" data-lang-block="en">
+      <h1>Delete your SnapCal account</h1>
+      <p class="pv-lead">You can delete your account and everything in it here, without the app. It's permanent and happens at once: there's no way to get the data back afterwards.</p>
+      <h2>What is deleted</h2>
+      <ul>
+        <li>Your account: username, password and recovery email.</li>
+        <li>Everything you logged: meals and their photos, water, exercise, weight, notes about your days.</li>
+        <li>Your profile and goals, saved foods, reminders and notification settings.</li>
+        <li>Meals you shared, comments, notes you sent or received, and your place in your groups.</li>
+      </ul>
+      <h2>What is kept</h2>
+      <p>Nothing linked to you. Our host keeps short technical logs (for example, that a request was made) for a few days, as its service requires; they are deleted on their own.</p>
+      <p>In the app you can also do this from <b>Profile → Privacy → Delete my account</b>. If you'd like a copy first, use <b>Download my data</b> there before deleting.</p>
+    </article>
+
+    <article lang="es" data-lang-block="es" hidden>
+      <h1>Eliminar tu cuenta de SnapCal</h1>
+      <p class="pv-lead">Aquí puedes borrar tu cuenta y todo lo que contiene, sin la app. Es definitivo y ocurre al instante: después no hay forma de recuperar los datos.</p>
+      <h2>Qué se borra</h2>
+      <ul>
+        <li>Tu cuenta: nombre de usuario, contraseña y correo de recuperación.</li>
+        <li>Todo lo que registraste: comidas y sus fotos, agua, ejercicio, peso, notas sobre tus días.</li>
+        <li>Tu perfil y metas, alimentos guardados, recordatorios y ajustes de notificaciones.</li>
+        <li>Comidas que compartiste, comentarios, notas que enviaste o recibiste y tu lugar en tus grupos.</li>
+      </ul>
+      <h2>Qué se conserva</h2>
+      <p>Nada que esté ligado a ti. Nuestro proveedor de alojamiento guarda registros técnicos breves (por ejemplo, que se hizo una solicitud) durante unos días, como exige su servicio; se borran solos.</p>
+      <p>En la app también puedes hacerlo desde <b>Perfil → Privacidad → Eliminar mi cuenta</b>. Si quieres una copia antes, usa <b>Descargar mis datos</b> ahí mismo.</p>
+    </article>
+
+    <form class="da-form" id="da-form" autocomplete="on" novalidate>
+      <h2 data-t="formTitle">Delete it now</h2>
+      <label class="da-label" for="da-user" data-t="username">Username</label>
+      <input class="da-input" id="da-user" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required />
+      <label class="da-label" for="da-pass" data-t="password">Password</label>
+      <input class="da-input" id="da-pass" name="password" type="password" autocomplete="current-password" required />
+      <label class="da-check"><input type="checkbox" id="da-sure" /> <span data-t="sure">I understand this deletes my account and all its data, permanently.</span></label>
+      <button type="submit" class="da-btn" id="da-go" disabled data-t="go">Delete my account</button>
+      <p class="da-msg" id="da-msg" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="da-help" data-t-html="help">Can't sign in? Email <a href="mailto:CONTACT_EMAIL">CONTACT_EMAIL</a> from any address, with your username, and we'll delete the account within 30 days. Read the <a href="/privacy.html">privacy policy</a>.</p>
+  </main>
+  <script type="module" src="/js/delete-account.js"></script>
+</body>
+</html>

@@ -17,6 +17,7 @@ const OWNED = [
   ["snapcal_shares", "owner"],
   ["snapcal_comments", "owner"],
   ["snapcal_suggestions", "owner"],
+  ["snapcal_client_errors", "owner"], // crash reports their phone sent
   ["snapcal_notes", "from_user"],
   ["snapcal_notes", "to_user"],
   ["snapcal_group_members", "username"],
@@ -38,6 +39,7 @@ export async function exportAccount(username) {
     out[key] = await select(table, { select: "*", [col]: `eq.${username}`, limit: "20000" });
   }
   out.push_devices = await select("snapcal_push_subs", { select: "lang,created_at,last_ok_at", owner: `eq.${username}` });
+  out.barcodes_added = await select("snapcal_barcodes", { select: "code,product,updated_at", owner: `eq.${username}`, limit: "5000" });
   return out;
 }
 
@@ -48,5 +50,7 @@ export async function deleteAccount(username) {
   await remove("snapcal_invites", { created_by: `eq.${username}`, used_by: "is.null" }); // their open links
   await patch("snapcal_invites", { used_by: `eq.${username}` }, { used_by: "deleted" });  // keep the link spent
   await remove("snapcal_auth_failures", { key: `eq.user:${username}` });
+  // products they typed in after a scan stay for everyone who scans them, without their name
+  await patch("snapcal_barcodes", { owner: `eq.${username}` }, { owner: "deleted" });
   await remove("snapcal_users", { username: `eq.${username}` }); // reset links go with it (cascade)
 }

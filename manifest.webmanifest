@@ -1,11 +1,21 @@
 {
+  "id": "/",
   "name": "SnapCal",
   "short_name": "SnapCal",
-  "description": "Snap a photo, get calories. Personal calorie tracker.",
+  "description": "Snap a photo, say it or type it: SnapCal counts calories, protein and nutrients, and keeps you on track with the people you eat with.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#050505",
   "theme_color": "#F7F6F3",
+  "categories": [
+    "health",
+    "fitness",
+    "food"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192-v2.png",
