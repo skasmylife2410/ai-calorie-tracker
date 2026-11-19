@@ -4,7 +4,7 @@
 // The video goes straight between phones (WebRTC). The server (api/_live.js via /api/groups) only
 // says who is live and passes each viewer's connection offer and the answer, once. The person
 // who's live sends one copy of their video to each viewer, so a session holds a few people at
-// most (MAX_WATCHING on the server). Nothing is recorded.
+// most (MAX_WATCHING on the server, ten). Nothing is recorded.
 
 import { t } from "../i18n.js";
 import { apiFetch } from "../net.js";
@@ -18,6 +18,9 @@ const VIEW_BEAT_MS = 5000; // a viewer says "still here" this often
 const ANSWER_WAIT_MS = 25000;
 const CARD_REFRESH_MS = 20000;
 const ICE_WAIT_MS = 3000;
+// each viewer gets their own copy of the video from the phone that's live, so each copy is kept
+// light: ten viewers at this rate is about 5 Mbps of upload, which a phone on 4G can manage
+const VIDEO_KBPS = 500;
 const FALLBACK_ICE = [{ urls: ["stun:stun.l.google.com:19302"] }];
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -65,6 +68,18 @@ async function camera(facing = "user") {
     video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } },
     audio: { echoCancellation: true, noiseSuppression: true },
   });
+}
+
+async function capVideo(pc) {
+  for (const sender of pc.getSenders()) {
+    if (sender.track?.kind !== "video") continue;
+    try {
+      const params = sender.getParameters();
+      params.encodings = params.encodings?.length ? params.encodings : [{}];
+      params.encodings.forEach((e) => { e.maxBitrate = VIDEO_KBPS * 1000; });
+      await sender.setParameters(params);
+    } catch { /* the browser picks its own rate */ }
+  }
 }
 
 async function keepAwake() {
@@ -244,6 +259,7 @@ function startLive({ group, muscle, level }) {
         pc.addEventListener("connectionstatechange", () => { if (["failed", "closed"].includes(pc.connectionState)) drop(o.id); });
         await pc.setRemoteDescription({ type: "offer", sdp: o.offer });
         await pc.setLocalDescription(await pc.createAnswer());
+        await capVideo(pc);
         await iceDone(pc);
         await api({ op: "liveAnswer", signal: o.id, answer: pc.localDescription.sdp });
       };

@@ -22,7 +22,7 @@ import { notify, displayName } from "./_push.js";
 
 export const MUSCLES = ["chest", "back", "legs", "shoulders", "arms", "core", "full", "cardio"];
 export const LEVELS = ["beginner", "average", "expert"];
-export const MAX_WATCHING = 6;     // every viewer is a separate upload from the phone that's live
+export const MAX_WATCHING = 10;    // every viewer is a separate upload from the phone that's live
 const ALIVE_MS = 30 * 1000;        // a session or viewer with no beat for this long is gone
 const NOTIFY_EVERY_MS = 2 * 3600 * 1000; // the group hears "X is live" at most this often per person
 const SDP_MAX = 20000;

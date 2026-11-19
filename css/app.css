@@ -3273,7 +3273,8 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .lv-status { position: absolute; left: 24px; right: 24px; top: 46%; text-align: center; font-size: 15px; line-height: 1.4;
   padding: 12px 14px; border-radius: 14px; background: rgba(0,0,0,.55); }
 .lv-status[hidden] { display: none; }
-.lv-tiles { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); display: flex; flex-direction: column; gap: 8px; }
+.lv-tiles { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); display: flex; flex-direction: column; gap: 8px;
+  max-height: calc(100% - 200px); overflow-y: auto; scrollbar-width: none; } /* up to ten people joining with a camera */
 .lv-tile { position: relative; width: 96px; height: 128px; border-radius: 14px; overflow: hidden; background: #151515; box-shadow: 0 0 0 1px rgba(255,255,255,.18); }
 .lv-tile video { width: 100%; height: 100%; object-fit: cover; }
 .lv-tile span { position: absolute; left: 6px; bottom: 5px; right: 6px; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,.8);
