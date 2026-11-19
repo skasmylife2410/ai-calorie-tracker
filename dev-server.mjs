@@ -1,4 +1,4 @@
-// dev-server.mjs — zero-dependency local dev server for Bocado Web.
+// dev-server.mjs — zero-dependency local dev server for Boca0 Web.
 // Serves the static app and executes api/gemini.js with the same
 // (req.body, res.status().json()) interface Vercel's Node runtime provides,
 // reading secrets from ./.env. Not used in production — Vercel replaces it.
@@ -114,5 +114,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Bocado Web → http://localhost:${PORT}`);
+  console.log(`Boca0 Web → http://localhost:${PORT}`);
 });

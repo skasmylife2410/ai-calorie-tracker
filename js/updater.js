@@ -1,4 +1,4 @@
-// updater.js — keeps an open Bocado on the newest version without anyone doing anything.
+// updater.js — keeps an open Boca0 on the newest version without anyone doing anything.
 //
 // A Home Screen app can stay alive in the background for days, so "close it and open it again"
 // is how people ended up on old code. Instead: remember which deployment this page started on
@@ -52,7 +52,7 @@ export async function latestBuild() {
 /** True when reloading now would interrupt nothing. */
 export function safeToReload(doc = globalThis.document) {
   if (!doc) return false;
-  // Sharing hands a file to another app, which reads it after Bocado goes to the background;
+  // Sharing hands a file to another app, which reads it after Boca0 goes to the background;
   // reloading then would empty the share. Wait until it's done, hidden or not.
   if ((globalThis.__snapcalBusyUntil ?? 0) > Date.now()) return false;
   if (doc.visibilityState === "hidden") return true;

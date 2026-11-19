@@ -109,7 +109,7 @@ export function morningPushFor({ today, dueDay = null, weighDays = [], firstLogD
 /** The notification for a morningPushFor result, in the person's language. */
 export function morningMessage(p, { name = "", lang = "en" } = {}) {
   const es = lang === "es";
-  if (p.kind === "checkin") return { title: es ? "Tu revisión de 30 días llegó" : "Your 30-day check-in is here", body: es ? "Ya tenemos un mes de tus datos. Abre Bocado para ver tu nuevo presupuesto diario." : "A month of your data is in. Open Bocado to see your new daily budget.", url: "/", tag: "checkin" };
+  if (p.kind === "checkin") return { title: es ? "Tu revisión de 30 días llegó" : "Your 30-day check-in is here", body: es ? "Ya tenemos un mes de tus datos. Abre Boca0 para ver tu nuevo presupuesto diario." : "A month of your data is in. Open Boca0 to see your new daily budget.", url: "/", tag: "checkin" };
   if (p.kind === "eve") return { title: es ? "Tu revisión es mañana" : "Your check-in is tomorrow", body: es ? "Pésate mañana temprano, antes de abrir la app: entra en tu nuevo presupuesto." : "Weigh in tomorrow morning, before you open the app: it goes into your new budget.", url: "/?weighin=1", tag: "checkin" };
   if (p.kind === "notice") return { title: es ? "Por qué importa tu peso" : "Why your weight matters", body: es ? "Tu presupuesto es una estimación hasta que la báscula diga lo contrario. Toca para ver por qué importa pesarte cada mañana." : "Your budget is a guess until the scale says otherwise. Tap to see why a morning weigh-in matters.", url: "/?weighin=1", tag: "weighin" };
   if (p.kind === "friday") return { title: es ? "Pésate para tu repaso del viernes" : "Weigh in for your Friday review", body: es ? "Tu repaso semanal ya está listo. Súbete a la báscula y se actualiza con tu peso de hoy." : "Your weekly review is ready. Step on the scale and it updates with today's weight.", url: "/?weighin=1", tag: "weighin" };
@@ -351,7 +351,7 @@ export async function nudgeInactive(now = Date.now(), { skip = new Set() } = {})
     const out = await notify([u], (lang) => ({
       title: lang === "es" ? `${name}, ¿qué comiste hoy?` : `${name}, what did you eat today?`,
       body: days <= 1
-        ? (lang === "es" ? "Un día sin registrar. Una foto y listo: Bocado hace el resto." : "A day without logging. One photo is all it takes: Bocado does the rest.")
+        ? (lang === "es" ? "Un día sin registrar. Una foto y listo: Boca0 hace el resto." : "A day without logging. One photo is all it takes: Boca0 does the rest.")
         : (lang === "es" ? `${days} días sin registrar. Retómalo con tu próxima comida, sin culpa.` : `${days} days without logging. Pick it back up with your next meal, no guilt.`),
       url: "/",
       tag: "nudge",

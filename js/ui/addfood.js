@@ -260,7 +260,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
       // a scan that found nothing: read the numbers off a photo of the nutrition label (the AI's
       // label mode), then Save keeps the product for the next scan (rememberBarcode)
       const labelNote = panel.querySelector("#label-note");
-      // Bocado's own camera (as for scanning a meal), with the gallery a tap away in it
+      // Boca0's own camera (as for scanning a meal), with the gallery a tap away in it
       panel.querySelector("#label-snap")?.addEventListener("click", async () => {
         const { openCameraScan } = await import("./scan.js");
         openCameraScan({ photoOnly: t("edit.labelSnap"), onResult: (r) => r.dataUrl && useLabelPhoto(r.dataUrl) });

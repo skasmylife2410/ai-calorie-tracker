@@ -144,7 +144,7 @@ export function openVoiceNote({ timestamp = null, onText = null, onType = null }
 
   function wireActions() {
     $("#vn-stop")?.addEventListener("click", stopAndSend);
-    // Bocado's own camera on top (the note keeps recording), with the gallery a tap away in it
+    // Boca0's own camera on top (the note keeps recording), with the gallery a tap away in it
     $("#vn-photo")?.addEventListener("click", async () => {
       const { openCameraScan } = await import("./scan.js");
       openCameraScan({ photoOnly: t("voiceNote.photo"), onResult: (r) => { if (r.dataUrl) { photo = r.dataUrl; refreshPhoto(); } } });

@@ -1312,7 +1312,7 @@
 
 /* ===========================================================================
    Redesign pass — rounder cards, calmer type, more air. Matches the Figma
-   screens (Bocado — redesign). Only visual: no markup or logic depends on it.
+   screens (Boca0 — redesign). Only visual: no markup or logic depends on it.
    =========================================================================== */
 
 .today-content { padding-top: 4px; }
@@ -2416,7 +2416,7 @@ body.setup-open { overflow: hidden; }
   background: transparent; color: var(--sc-primary-text); box-shadow: inset 0 0 0 1.5px var(--sc-primary-text); }
 .share-hint { margin: 0; text-align: center; font-size: 12px; color: var(--sc-secondary); }
 
-/* "Put Bocado on your Home Screen": the one-time card on Home (one compact line) and the guide sheet */
+/* "Put Boca0 on your Home Screen": the one-time card on Home (one compact line) and the guide sheet */
 .install-card { display: flex; align-items: center; margin: 0 14px; padding: 0 4px 0 0 !important; }
 .install-card-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 4px 8px 10px; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .install-card-icon { flex: none; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--sc-secondary-15, rgba(0,0,0,.08)); color: var(--sc-primary-text); }

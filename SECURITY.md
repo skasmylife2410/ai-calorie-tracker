@@ -1,6 +1,6 @@
-# Bocado security — ISO/IEC 27001:2022 control map
+# Boca0 security — ISO/IEC 27001:2022 control map
 
-ISO 27001 certifies an organisation's way of managing security, not an app, so Bocado can't be
+ISO 27001 certifies an organisation's way of managing security, not an app, so Boca0 can't be
 "ISO certified" by itself. This file maps the Annex A controls that apply to a small health-data
 app to what the code does, and lists what only the owner can do outside the code.
 

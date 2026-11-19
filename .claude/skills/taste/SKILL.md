@@ -1,9 +1,9 @@
 ---
 name: taste
-description: Bocado's design taste and review workflow. Use for ANY visual or UI change in this repo — new screens, restyles, colours, fonts, icons, the intro, charts, layout fixes, themes — and whenever the owner asks for a look, a mockup, "make it nicer", or "make it live". Covers the Mono (Nothing OS-inspired) aesthetic, when colour is allowed, contrast rules, what reads as "vibe-coded", iPhone layout checks, and the mockup-first → approve → ship flow.
+description: Boca0's design taste and review workflow. Use for ANY visual or UI change in this repo — new screens, restyles, colours, fonts, icons, the intro, charts, layout fixes, themes — and whenever the owner asks for a look, a mockup, "make it nicer", or "make it live". Covers the Mono (Nothing OS-inspired) aesthetic, when colour is allowed, contrast rules, what reads as "vibe-coded", iPhone layout checks, and the mockup-first → approve → ship flow.
 ---
 
-# Bocado taste
+# Boca0 taste
 
 The owner has a clear eye. Follow this instead of generic "modern app" defaults.
 
@@ -75,12 +75,12 @@ over-goal, and chart series that need telling apart. Everything else is ink.
 - Coloured side stripes on cards or rows; colour belongs in a small dot by the label instead.
 - Template-looking output (Canva-style logos, stock illustration).
 - Adding words where a mark or a number would do. The intro has **no text**: just the
-  pearl Fluid flow and the flame.
+  pearl Fluid flow and the bite mark.
 
 ## 6. Brand
 
-- The logo is the **flame** from the app icon (vector in `index.html`'s `.intro-flame`).
-- Intro: pearl Fluid background (paper tones, zoom 2.4, low grain, `js/intro.js`), flame
+- The logo is the **solid bite**: a round black disc with one bite taken from the top right (vector in `index.html`'s `.intro-flame`; icons made from the same shape).
+- Intro: pearl Fluid background (paper tones, zoom 2.4, low grain, `js/intro.js`), bite mark
   only, fades into the app.
 - Home has no header row; the Profile avatar ends the week row, and the streak sits in the
   calorie card.

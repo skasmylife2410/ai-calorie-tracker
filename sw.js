@@ -133,9 +133,9 @@ const APP_SHELL = [
   "/vendor/barcode-detector-polyfill.js",
   "/vendor/zbar-wasm/main.js",
   "/vendor/zbar-wasm/zbar.wasm",
-  "/icons/icon-192-v2.png",
-  "/icons/icon-512-v2.png",
-  "/icons/apple-touch-icon-v2.png",
+  "/icons/icon-192-v3.png",
+  "/icons/icon-512-v3.png",
+  "/icons/apple-touch-icon-v3.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -224,11 +224,11 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let msg = {};
   try { msg = event.data ? event.data.json() : {}; } catch { msg = { body: event.data?.text?.() ?? "" }; }
-  const title = msg.title || "Bocado";
+  const title = msg.title || "Boca0";
   const options = {
     body: msg.body || "",
-    icon: "/icons/icon-192-v2.png",
-    badge: "/icons/icon-192-v2.png",
+    icon: "/icons/icon-192-v3.png",
+    badge: "/icons/icon-192-v3.png",
     tag: msg.tag || undefined,
     renotify: Boolean(msg.tag),
     data: { url: msg.url || "/" },

@@ -43,7 +43,7 @@ export function render(container) {
     </div>
     <div class="ios-form">
       ${dailyGoalsSectionHtml(profile, goals)}
-      <div class="ios-caption-block">These aren't required — only used if you want Bocado to estimate your target for you.</div>
+      <div class="ios-caption-block">These aren't required — only used if you want Boca0 to estimate your target for you.</div>
       ${bodyStatsSectionHtml(profile)}
       ${activityLevelSectionHtml(profile)}
       ${goalSectionHtml(profile)}

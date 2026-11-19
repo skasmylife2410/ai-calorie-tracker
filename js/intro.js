@@ -1,4 +1,4 @@
-// intro.js — the opening: liquid chrome (black and silver) with the Bocado flame,
+// intro.js — the opening: liquid chrome (black and silver) with the Boca0 flame,
 // then it dissolves into the app.
 //
 // The paper cover and wordmark are plain markup in index.html, so they're on screen before any

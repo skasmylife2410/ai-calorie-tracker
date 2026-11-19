@@ -7,7 +7,7 @@ function show(lang) {
   blocks.forEach((b) => { b.hidden = b.dataset.langBlock !== lang; });
   buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
   document.documentElement.lang = lang;
-  document.title = lang === "es" ? "Privacidad y términos · Bocado" : "Privacy & Terms · Bocado";
+  document.title = lang === "es" ? "Privacidad y términos · Boca0" : "Privacy & Terms · Boca0";
 }
 
 let saved = "";

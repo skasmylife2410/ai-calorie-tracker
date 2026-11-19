@@ -1,4 +1,4 @@
-// sounds.js — Bocado's sounds, synthesized live with Web Audio (no audio files to download or cache).
+// sounds.js — Boca0's sounds, synthesized live with Web Audio (no audio files to download or cache).
 // Two packs that follow the theme: Mono gets "Grid" (bit-crushed square blips and glitch noise, a
 // data-terminal feel) and Classic gets "Neon" (detuned synthwave saws with an echo). Quiet by
 // design, and the iPhone silent switch mutes them (audio session "ambient", which also never

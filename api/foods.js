@@ -31,7 +31,7 @@ const MAX_QUERY = 80;
 const MAX_RESULTS = 30;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 500;
-const OFF_USER_AGENT = "Bocado/1.0 (personal calorie tracker)";
+const OFF_USER_AGENT = "Boca0/1.0 (personal calorie tracker)";
 
 const cache = new Map(); // normalized query -> { at, products }
 

@@ -1,4 +1,4 @@
-# Bocado — free AI calorie tracker (build it yourself with Claude)
+# Boca0 — free AI calorie tracker (build it yourself with Claude)
 
 Snap a photo of your food → AI tells you the calories and macros. A complete, free clone of paid apps like Cal AI, running entirely on free tiers, installable on your phone as an app.
 

@@ -18,7 +18,7 @@ export async function sendMail({ to, subject, text, html }) {
       method: "POST",
       headers: { "api-key": process.env.BREVO_API_KEY.trim(), "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify({
-        sender: { name: "Bocado", email: process.env.MAIL_FROM.trim() },
+        sender: { name: "Boca0", email: process.env.MAIL_FROM.trim() },
         to: [{ email: to }],
         subject,
         textContent: text,

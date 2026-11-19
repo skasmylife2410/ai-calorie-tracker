@@ -1,4 +1,4 @@
-// qa.cjs — screenshot Bocado's tabs in each theme at iPhone size, with seeded data and
+// qa.cjs — screenshot Boca0's tabs in each theme at iPhone size, with seeded data and
 // mocked auth, so a visual change can be checked everywhere before it ships.
 //
 //   PORT=3100 node dev-server.mjs &            (from the repo root)

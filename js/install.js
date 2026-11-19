@@ -1,4 +1,4 @@
-// install.js — "add Bocado to your Home Screen": which phone this is, whether the app is already
+// install.js — "add Boca0 to your Home Screen": which phone this is, whether the app is already
 // installed, and Android Chrome's own install prompt when the browser offers one.
 //
 // Chrome fires `beforeinstallprompt` once, early, and only if the page catches it can a button

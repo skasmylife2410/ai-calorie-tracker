@@ -9,7 +9,7 @@ import { cleanMicros, scaleMicros, MICRO_KEYS } from "./nutrition.js";
 import { holdItemsToStated } from "./stated.js";
 
 // Open Food Facts asks apps to identify themselves with a contact email — put YOURS here.
-const OFF_USER_AGENT = "Bocado/1.0 (personal calorie tracker; you@example.com)";
+const OFF_USER_AGENT = "Boca0/1.0 (personal calorie tracker; you@example.com)";
 // NOTE (portability): browsers treat "User-Agent" as a forbidden fetch header and silently drop
 // it — there is no web equivalent of setting a custom UA from client JS. We still set it so the
 // header is honored in any environment that does allow it (e.g. a future server-side proxy).

@@ -385,10 +385,10 @@ async function forgot(req, res, body) {
 
     const link = `${appUrl()}/?reset=${token}`;
     const es = body.lang === "es";
-    const subject = es ? "Restablece tu contraseña de Bocado" : "Reset your Bocado password";
+    const subject = es ? "Restablece tu contraseña de Boca0" : "Reset your Boca0 password";
     const lines = es
-      ? [`Hola ${user.username},`, "Alguien (ojalá tú) pidió restablecer tu contraseña de Bocado.", `Ábrelo aquí en los próximos ${RESET_MINUTES} minutos:`, link, "Si no fuiste tú, ignora este correo: tu contraseña no cambia."]
-      : [`Hi ${user.username},`, "Someone (hopefully you) asked to reset your Bocado password.", `Open this within ${RESET_MINUTES} minutes:`, link, "If it wasn't you, ignore this email — your password stays the same."];
+      ? [`Hola ${user.username},`, "Alguien (ojalá tú) pidió restablecer tu contraseña de Boca0.", `Ábrelo aquí en los próximos ${RESET_MINUTES} minutos:`, link, "Si no fuiste tú, ignora este correo: tu contraseña no cambia."]
+      : [`Hi ${user.username},`, "Someone (hopefully you) asked to reset your Boca0 password.", `Open this within ${RESET_MINUTES} minutes:`, link, "If it wasn't you, ignore this email — your password stays the same."];
     const html = `<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.5;color:#1c1c1e">
       <p>${lines[0]}</p><p>${lines[1]}</p>
       <p><a href="${link}" style="display:inline-block;background:#1c1c1e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:12px;font-weight:600">${es ? "Elegir nueva contraseña" : "Choose a new password"}</a></p>

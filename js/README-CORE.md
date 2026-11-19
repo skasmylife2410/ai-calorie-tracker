@@ -1,4 +1,4 @@
-# Bocado Web core — module map & UI contract
+# Boca0 Web core — module map & UI contract
 
 - `nutrition.js` — pure math. `mifflinStJeorBMR(w,h,age,sex)`, `tdee(bmr,activity)`, `targetCalories(tdee,delta)`, `macroTargets(cals)->{proteinG,carbsG,fatG}`, `resolveUserGoals(profile)->{bmr,tdee,computedTargetCalories,targetCalories,proteinTargetG,carbsTargetG,fatTargetG,hasValidStats}`, `computeStreak(loggedDayTimestamps,today?)`, `startOfDay(date)`, `roundDisplay(n)`.
 - `store.js` — localStorage CRUD + pub/sub. `subscribe(fn)->unsub`. FoodEntry: `addFoodEntry(fields)`, `updateFoodEntry(id,patch)`, `deleteFoodEntry(id)`, `getFoodEntry(id)`, `allFoodEntries()`, `entriesForDay(date?)`, `totalsForDay(date?)`, `recentlyUploaded(limit=10)`, `historyGroupedByDay()`, `weekStrip(date?)`, `streak(date?)`. Water: `getWaterEntryForDay(date?)`, `incrementWater(date?)`, `decrementWater(date?)`. Profile: `getProfile()`, `setProfile(patch)`, `computeGoals()`. Saved foods: `allSavedFoods()`, `addSavedFood({name,calories,proteinG,carbsG,fatG,source})`, `deleteSavedFood(id)`, `logSavedFood(id)`. Flags: `isNotifyBannerDismissed()`, `setNotifyBannerDismissed(bool)`.
