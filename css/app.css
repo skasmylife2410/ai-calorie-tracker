@@ -3205,3 +3205,29 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .rc-note span { color: var(--sc-secondary); }
 .rc-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; }
 .rc-rewriting { font-size: 12.5px; color: var(--sc-secondary); }
+
+/* ---------------------------------------------------------------------------
+   How exercise is counted (js/ui/exercise-info.js)
+   --------------------------------------------------------------------------- */
+.ex-info-link { display: block; margin: 12px auto 0; padding: 8px 12px; border: 0; background: none; color: var(--sc-primary-text); font: inherit; font-size: 14px; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.exi-body { padding: 16px 16px 32px; }
+.exi-lead { padding: 18px; border-radius: 20px; background: var(--sc-primary-text); color: var(--sc-background); }
+.exi-lead-title { margin: 0 0 8px; font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
+.exi-lead p { margin: 8px 0 0; font-size: 15px; line-height: 1.45; }
+.exi-h { margin: 24px 4px 8px; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--sc-secondary); }
+.exi-card { border-radius: 18px; background: var(--sc-card-bg); border: 1px solid var(--sc-secondary-15); overflow: hidden; }
+.exi-pad { padding: 4px 16px 14px; }
+.exi-pad p { font-size: 14.5px; line-height: 1.45; margin: 12px 0 0; }
+.exi-row { padding: 14px 16px; }
+.exi-row + .exi-row { border-top: 1px solid var(--sc-secondary-14); }
+.exi-row-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 16px; }
+.exi-kcal { font-size: 14px; color: var(--sc-secondary); white-space: nowrap; }
+.exi-kcal b { font-size: 18px; color: var(--sc-primary-text); font-variant-numeric: tabular-nums; }
+.exi-range { margin-top: 2px; font-size: 12.5px; color: var(--sc-secondary); }
+.exi-note { margin: 6px 0 0; font-size: 14px; line-height: 1.45; }
+.exi-small { margin: 8px 4px 0; font-size: 12.5px; line-height: 1.45; color: var(--sc-secondary); }
+.exi-steps { margin: 0; padding: 4px 16px 4px 34px; border-radius: 18px; background: var(--sc-card-bg); border: 1px solid var(--sc-secondary-15); }
+.exi-steps li { padding: 10px 0; font-size: 14.5px; line-height: 1.45; }
+.exi-steps li + li { border-top: 1px solid var(--sc-secondary-14); }
+.exi-text { margin: 0 4px; font-size: 14.5px; line-height: 1.45; }

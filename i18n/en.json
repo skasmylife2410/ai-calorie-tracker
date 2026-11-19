@@ -1675,5 +1675,41 @@
       "training": "Hard training",
       "other": "Other"
     }
+  },
+  "exInfo": {
+    "navTitle": "How it's counted",
+    "arepaMany": "That's about {n} arepas with cheese.",
+    "arepaOne": "That's about one arepa with cheese.",
+    "arepaLess": "That's less than one arepa with cheese ({kcal} kcal).",
+    "link": "How exercise is counted ›",
+    "title": "How exercise is counted",
+    "leadTitle": "You can't out-train your plate",
+    "leadWalk": "An hour of brisk walking burns about <b>{kcal} extra kcal</b> for you.",
+    "leadUndo": "A soda and a pastry take back about <b>{min} minutes</b> of running.",
+    "leadWhy": "Exercise is one of the best things you can do for your heart, muscles, sleep and mood, and it helps keep weight off once it's gone. But what you eat decides whether the weight comes off. Train for how it makes you feel, and let your meals do the losing.",
+    "perTitle": "30 minutes, for you",
+    "range": "Easy {easy} · Hard {hard} kcal",
+    "perFoot": "Worked out for your weight, height, age and sex. The burn is what the workout adds on top of what your body burns anyway.",
+    "notes": {
+      "walk": "You carry your whole weight, so it counts in full. A brisk walk is Moderate; a stroll is Easy; uphill or with a load is Hard.",
+      "run": "The biggest burn per minute. Easy is a jog you can talk through, Hard is fast running or intervals.",
+      "soccer": "Stop-and-go running with your whole weight. A kickabout is Moderate; a full, competitive match is Hard.",
+      "gym": "Weights burn less than they feel like: most of the time is rest between sets, and muscle is built afterwards, not burned during. Classes and circuits with little rest: pick Hard.",
+      "cycling": "The bike carries you, so your weight counts less. Riding around town is Easy, hills or spinning are Hard.",
+      "swim": "The water carries you, so your weight counts less. Easy laps or steady lengths; Hard is fast or with little rest.",
+      "other": "A general estimate for anything else: dancing, yoga, hiking, chores. If a watch or machine gave you a number, use “Enter kcal” instead."
+    },
+    "howTitle": "How the number is worked out",
+    "how1": "Each activity has an effort score (MET) from the Compendium of Physical Activities, the reference researchers use: {mets}. Easy counts ×0.75, Hard ×1.3.",
+    "how2": "The score times your weight times the time. Walking, running and soccer use your full weight; cycling, swimming and the gym use less, because the bike, the water or the bench carries you.",
+    "how3": "Minus what your body would have burned resting in that time, worked out from your own size and age. Your daily budget already counts that part, so it isn't counted twice.",
+    "creditTitle": "How much goes into your budget",
+    "creditOn": "<b>{pct}%</b> of each workout's burn is added to the day's budget, not all of it.",
+    "creditOff": "None of the burn is added to your budget: the workout is logged, your budget stays the same.",
+    "creditWhy": "Burn estimates — ours, apps' and watches' — tend to run high, and most people move a little less for the rest of a day they trained. Eating back every calorie is the most common reason exercise doesn't show on the scale.",
+    "creditAuto": "On Auto it follows the activity level your budget was built with: {sedentary}% if you sit most of the day, {light}% for light activity, {moderate}% for moderate, {active}% for very active, whose budget already includes training.",
+    "creditChange": "Change it in Profile › Exercise calories.",
+    "watchTitle": "A watch or a machine",
+    "watch": "Their numbers are estimates too, often 20–40% high. Logging their number is fine: the same share of it counts toward your budget."
   }
 }

@@ -88,6 +88,7 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
           </div>
 
           <div class="ex-burn" id="ex-burn"></div>
+          <button type="button" class="ex-info-link" id="ex-info">${t("exInfo.link")}</button>
         </div>
         <div class="results-actions">
           <button class="btn-prominent" id="ex-save">${t("exercise.save")}</button>
@@ -120,6 +121,12 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
           b.addEventListener("click", () => { intensity = b.dataset.intensity; renderChips(); renderBurn(); })
         );
       };
+
+      // every activity, how the burn is worked out, and why exercise can't outpace the plate
+      panel.querySelector("#ex-info").addEventListener("click", async () => {
+        const { openExerciseInfoSheet } = await import("./exercise-info.js");
+        openExerciseInfoSheet();
+      });
 
       const saveBtn = panel.querySelector("#ex-save");
       const renderBurn = () => {

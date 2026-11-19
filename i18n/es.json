@@ -1675,5 +1675,41 @@
       "training": "Entreno fuerte",
       "other": "Otro"
     }
+  },
+  "exInfo": {
+    "navTitle": "Cómo se cuenta",
+    "arepaMany": "Es más o menos {n} arepas con queso.",
+    "arepaOne": "Es más o menos una arepa con queso.",
+    "arepaLess": "Es menos que una arepa con queso ({kcal} kcal).",
+    "link": "Cómo se cuenta el ejercicio ›",
+    "title": "Cómo se cuenta el ejercicio",
+    "leadTitle": "No puedes entrenar más rápido de lo que comes",
+    "leadWalk": "Una hora caminando a buen paso quema unas <b>{kcal} kcal extra</b> para ti.",
+    "leadUndo": "Una gaseosa y un pan dulce se llevan unos <b>{min} minutos</b> de correr.",
+    "leadWhy": "El ejercicio es de lo mejor que puedes hacer por tu corazón, tus músculos, tu sueño y tu ánimo, y ayuda a no recuperar el peso. Pero lo que comes decide si bajas. Entrena por cómo te hace sentir y deja que tus comidas hagan el trabajo de bajar.",
+    "perTitle": "30 minutos, para ti",
+    "range": "Suave {easy} · Fuerte {hard} kcal",
+    "perFoot": "Calculado con tu peso, estatura, edad y sexo. Es lo que el ejercicio suma a lo que tu cuerpo ya quema de todas formas.",
+    "notes": {
+      "walk": "Cargas todo tu peso, así que cuenta completo. Caminar a buen paso es Moderado; pasear es Suave; en subida o con carga es Fuerte.",
+      "run": "La mayor quema por minuto. Suave es trotar pudiendo hablar; Fuerte es correr rápido o hacer intervalos.",
+      "soccer": "Correr y frenar con todo tu peso. Un picado es Moderado; un partido completo y competitivo es Fuerte.",
+      "gym": "Las pesas queman menos de lo que parece: casi todo el tiempo es descanso entre series, y el músculo se construye después, no se quema durante. Clases y circuitos con poco descanso: elige Fuerte.",
+      "cycling": "La bici te carga, así que tu peso cuenta menos. Andar por la ciudad es Suave; subidas o spinning son Fuerte.",
+      "swim": "El agua te carga, así que tu peso cuenta menos. Largos tranquilos o constantes; Fuerte es rápido o con poco descanso.",
+      "other": "Un cálculo general para lo demás: baile, yoga, caminatas al monte, oficios. Si un reloj o una máquina te dio un número, usa “Escribir kcal”."
+    },
+    "howTitle": "Cómo se calcula",
+    "how1": "Cada actividad tiene un puntaje de esfuerzo (MET) del Compendio de Actividades Físicas, la referencia que usan los investigadores: {mets}. Suave cuenta ×0,75 y Fuerte ×1,3.",
+    "how2": "El puntaje por tu peso por el tiempo. Caminar, correr y el fútbol usan todo tu peso; la bici, la natación y el gimnasio usan menos, porque la bici, el agua o el banco te cargan.",
+    "how3": "Menos lo que tu cuerpo habría quemado en reposo en ese tiempo, calculado con tu tamaño y edad. Tu presupuesto diario ya cuenta esa parte, así que no se cuenta dos veces.",
+    "creditTitle": "Cuánto entra en tu presupuesto",
+    "creditOn": "El <b>{pct}%</b> de lo que quema cada entrenamiento se suma a tu presupuesto del día, no todo.",
+    "creditOff": "Nada de lo quemado se suma a tu presupuesto: el ejercicio queda registrado y tu presupuesto sigue igual.",
+    "creditWhy": "Los cálculos de quema — los nuestros, los de otras apps y los de los relojes — suelen quedar altos, y la mayoría se mueve un poco menos el resto del día en que entrenó. Comerse de vuelta cada caloría es la razón más común de que el ejercicio no se note en la báscula.",
+    "creditAuto": "En Auto depende del nivel de actividad con que se hizo tu presupuesto: {sedentary}% si pasas casi todo el día sentado, {light}% con actividad ligera, {moderate}% con moderada y {active}% si eres muy activo, porque tu presupuesto ya incluye el entrenamiento.",
+    "creditChange": "Cámbialo en Perfil › Calorías del ejercicio.",
+    "watchTitle": "Un reloj o una máquina",
+    "watch": "Sus números también son cálculos, a menudo un 20–40% altos. Está bien registrar su número: la misma parte cuenta para tu presupuesto."
   }
 }

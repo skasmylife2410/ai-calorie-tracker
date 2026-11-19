@@ -853,3 +853,23 @@ test("context notes: saved on the profile by day, edited in place, deleted", () 
   assert.equal(store.deleteContextNote(n.id), true);
   assert.equal(store.contextNotes().length, 0);
 });
+
+test("How exercise is counted: its numbers come from the same functions that log a workout", async () => {
+  localStorage.clear();
+  store.setProfile({ weightKg: 82, heightCm: 178, age: 35, sex: "male", activityLevel: "sedentary" });
+  const { exerciseFacts, burnFor, INFO_ACTIVITIES } = await import("../js/ui/exercise-info.js");
+  const f = exerciseFacts();
+  const { ACTIVITY_METS } = await import("../js/nutrition.js");
+  assert.deepEqual(INFO_ACTIVITIES.sort(), Object.keys(ACTIVITY_METS).sort(), "every activity the sheet offers is explained");
+  for (const a of f.activities) {
+    assert.ok(a.easy < a.moderate && a.moderate < a.hard, `${a.key}: easy < moderate < hard`);
+    assert.equal(a.moderate, burnFor(a.key, 30).moderate);
+  }
+  assert.equal(f.walkHour, burnFor("walk", 60).moderate);
+  assert.ok(f.walkHour > 150 && f.walkHour < 400, `an hour's walk for 82 kg: ${f.walkHour} kcal`);
+  assert.ok(f.runToUndo > 10 && f.runToUndo < 90, `minutes of running a soda and a pastry undo: ${f.runToUndo}`);
+  assert.equal(f.creditPct, 40, "Auto for a sedentary budget");
+  assert.equal(f.auto, true);
+  store.setProfile({ exerciseCreditPct: 0 });
+  assert.equal(exerciseFacts().creditPct, 0);
+});
