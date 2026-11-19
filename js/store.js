@@ -1621,8 +1621,19 @@ export function setWeightUnit(unit) {
   setProfile({ weightUnit: unit === "lb" ? "lb" : "kg" });
 }
 
-function allWeightRaw() {
+/** Every stored reading, deleted ones included: a deleted reading stays as {deleted: true} so the
+ *  deletion syncs to the server and other phones (otherwise it came back on the next full pull). */
+function weightStored() {
   return readJSON(STORAGE_KEYS.weightEntries, []);
+}
+
+function allWeightRaw() {
+  return weightStored().filter((w) => w.deleted !== true);
+}
+
+/** For js/sync.js: the readings to push, deletions included. */
+export function weightRowsForSync() {
+  return weightStored();
 }
 
 function saveWeight(list) {
@@ -1644,8 +1655,8 @@ export function addWeightEntry({ kg, timestamp = Date.now(), note = null } = {})
   if (!Number.isFinite(value) || value <= 0 || value > 600) return null;
 
   const day = localDateString(timestamp);
-  const list = allWeightRaw();
-  const idx = list.findIndex((w) => w.day === day);
+  const list = weightStored();
+  const idx = list.findIndex((w) => w.day === day && w.deleted !== true);
   const entry = {
     id: idx === -1 ? generateId() : list[idx].id,
     day,
@@ -1660,11 +1671,25 @@ export function addWeightEntry({ kg, timestamp = Date.now(), note = null } = {})
 }
 
 export function deleteWeightEntry(id) {
-  const list = allWeightRaw();
-  const next = list.filter((w) => w.id !== id);
-  const changed = next.length !== list.length;
-  if (changed) saveWeight(next);
-  return changed;
+  const list = weightStored();
+  const idx = list.findIndex((w) => w.id === id && w.deleted !== true);
+  if (idx === -1) return false;
+  list[idx] = { ...list[idx], deleted: true, updatedAt: Date.now() };
+  saveWeight(list);
+  return true;
+}
+
+/** Undo for deleteWeightEntry: the reading comes back as it was (unless that day has a new one). */
+export function restoreWeightEntry(entry) {
+  if (!entry || typeof entry.id !== "string") return false;
+  const list = weightStored();
+  if (list.some((w) => w.day === entry.day && w.deleted !== true && w.id !== entry.id)) return false;
+  const idx = list.findIndex((w) => w.id === entry.id);
+  const { deleted: _gone, ...live } = entry; // no "deleted" key at all: the server filters on its absence
+  const row = { ...live, updatedAt: Date.now() };
+  if (idx === -1) list.push(row); else list[idx] = row;
+  saveWeight(list);
+  return true;
 }
 
 export function latestWeight() {
@@ -1710,7 +1735,7 @@ export function weightChange(days = 30) {
 export function applyRemoteWeight(data, remoteUpdatedAt) {
   if (!data || typeof data !== "object" || typeof data.id !== "string") return;
   const stamp = Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : Date.now();
-  const list = allWeightRaw();
+  const list = weightStored();
   const idx = list.findIndex((w) => w.id === data.id);
   if (idx !== -1 && (list[idx].updatedAt ?? 0) >= stamp) return;
   const row = { ...data, updatedAt: stamp };

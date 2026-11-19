@@ -539,3 +539,8 @@
 
 /* voice note: the timer is a number people read, so it's dot-matrix like the others */
 :root[data-theme="mono"] .vn-timer { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
+
+/* weight readings: the tile numbers are numbers people read, so dot-matrix; Delete is ink, not red */
+:root[data-theme="mono"] .wt-tile-kg { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
+:root[data-theme="mono"] .wt-tile { background: var(--mn-control); }
+:root[data-theme="mono"] .wt-delete { color: var(--mn-ink); text-decoration: underline; text-underline-offset: 3px; }

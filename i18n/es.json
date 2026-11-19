@@ -321,6 +321,12 @@
     "nextDay": "Día siguiente"
   },
   "weight": {
+    "readings": "Registros",
+    "editReading": "{day}: cambiar o borrar",
+    "allReadings": "Todos los registros",
+    "tapToEdit": "Toca un registro para cambiarlo o borrarlo.",
+    "deleteReading": "Borrar este registro",
+    "deleted": "Registro del {day} borrado",
     "title": "Peso",
     "avgLabel": "promedio de 7 días",
     "addToday": "Añadir peso de hoy",

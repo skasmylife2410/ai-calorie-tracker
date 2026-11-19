@@ -131,7 +131,7 @@ export async function morningPushes(now = Date.now(), { skip = new Set() } = {})
   const [users, profiles, weights, meals] = await Promise.all([
     select("snapcal_users", { select: "username" }),
     select("snapcal_profile", { select: "owner,name:data->>displayName,last:data->>lastReviewAt,next:data->>nextReviewAt" }),
-    select("snapcal_weight", { select: "owner,day,ts:data->>timestamp", limit: "50000" }),
+    select("snapcal_weight", { select: "owner,day,ts:data->>timestamp", "data->>deleted": "is.null", limit: "50000" }),
     select("snapcal_food_entries", { select: "owner,day", deleted: "is.false", day: `gte.${addDays(today, -22)}`, order: "day.asc", limit: "20000" }),
   ]);
   const byOwner = new Map();
@@ -166,7 +166,7 @@ export async function recapFor(owner, win) {
     // columns only — never `data`, which holds the meal photo
     select("snapcal_food_entries", { select: "id,day,logged_at,name,calories,protein_g", owner: `eq.${owner}`, deleted: "eq.false", ...range, limit: "300" }),
     select("snapcal_exercise", { select: "day,data", owner: `eq.${owner}`, ...range, limit: "100" }),
-    select("snapcal_weight", { select: "day,data", owner: `eq.${owner}`, ...range, limit: "30" }),
+    select("snapcal_weight", { select: "day,data", owner: `eq.${owner}`, "data->>deleted": "is.null", ...range, limit: "30" }),
     select("snapcal_profile", { select: "data", owner: `eq.${owner}`, limit: "1" }),
   ]);
   const profile = profiles[0]?.data ?? {};

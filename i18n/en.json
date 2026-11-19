@@ -321,6 +321,12 @@
     "nextDay": "Next day"
   },
   "weight": {
+    "readings": "Readings",
+    "editReading": "{day}: change or delete",
+    "allReadings": "All readings",
+    "tapToEdit": "Tap a reading to change or delete it.",
+    "deleteReading": "Delete this reading",
+    "deleted": "Reading for {day} deleted",
     "title": "Weight",
     "avgLabel": "7-day average",
     "addToday": "Add today's weight",

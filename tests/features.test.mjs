@@ -804,3 +804,33 @@ test("the one-time notice reads well in both languages and opens the explanation
   assert.match(goalsNotice("es").title, /metas/);
   assert.match(goalsNotice("en").title, /targets/);
 });
+
+test("a deleted weigh-in stays deleted everywhere: it syncs as a deletion, and Undo brings it back", () => {
+  localStorage.clear();
+  const day = 86400000;
+  const now = Date.now();
+  const a = store.addWeightEntry({ kg: 80, timestamp: now - 2 * day });
+  const b = store.addWeightEntry({ kg: 79.6, timestamp: now - day });
+  assert.equal(store.allWeightEntries().length, 2);
+
+  assert.equal(store.deleteWeightEntry(a.id), true);
+  assert.deepEqual(store.allWeightEntries().map((w) => w.id), [b.id], "gone from every list");
+  assert.equal(store.weightSeries(30).length, 1, "and from the averages");
+  const pushed = store.weightRowsForSync().find((w) => w.id === a.id);
+  assert.equal(pushed?.deleted, true, "the deletion is pushed, so other phones and the server drop it");
+  assert.equal(store.deleteWeightEntry(a.id), false, "deleting twice does nothing");
+
+  // another phone's older copy of the reading doesn't bring it back
+  store.applyRemoteWeight({ ...a }, pushed.updatedAt - 1000);
+  assert.equal(store.allWeightEntries().length, 1);
+
+  assert.equal(store.restoreWeightEntry(a), true);
+  assert.deepEqual(store.allWeightEntries().map((w) => w.id).sort(), [a.id, b.id].sort(), "Undo puts it back");
+  assert.equal("deleted" in store.weightRowsForSync().find((w) => w.id === a.id), false, "no deleted mark left");
+
+  // a new reading on a deleted day is a new reading, not the deleted one
+  store.deleteWeightEntry(b.id);
+  const again = store.addWeightEntry({ kg: 79.2, timestamp: now - day });
+  assert.notEqual(again.id, b.id);
+  assert.equal(store.allWeightEntries().find((w) => w.day === again.day).kg, 79.2);
+});

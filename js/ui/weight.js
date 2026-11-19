@@ -13,6 +13,7 @@
 
 import * as store from "../store.js";
 import { missedYouHtml } from "./missed-you.js";
+import { showUndoToast } from "./undo-delete.js";
 import { icon } from "./icons.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
 import { t, formatNumber, formatDate } from "../i18n.js";
@@ -112,16 +113,7 @@ export function render(container) {
       ${maintenanceHtml()}
       ${reviewCardHtml()}
 
-      ${series.length > 0 ? `
-        <div class="wt-list-head">${t("weight.history")}</div>
-        <div class="wt-card wt-list">
-          ${[...series].reverse().slice(0, 30).map((s) => `
-            <div class="wt-row" data-day="${s.day}">
-              <span class="wt-row-day">${formatDate(s.timestamp, { weekday: "short", month: "short", day: "numeric" })}</span>
-              <span class="wt-row-kg">${fmt1(toDisplay(s.kg))} ${unit()}</span>
-              <button type="button" class="wt-row-del" data-del="${s.day}" aria-label="${t("app.delete")}">${icon("trashFill", { size: 15 })}</button>
-            </div>`).join("")}
-        </div>` : ""}
+      ${readingsHtml()}
 
       <div class="bottom-safe-spacer"></div>
     </div>`;
@@ -135,13 +127,11 @@ export function render(container) {
   container.querySelector("#wt-add")?.addEventListener("click", () => openWeightSheet({ onSaved: () => render(container) }));
   container.querySelector("#wt-goal")?.addEventListener("click", () => openGoalSheet({ onSaved: () => render(container) }));
   wireReviewCard(container, { onChange: () => render(container) });
-  container.querySelectorAll("[data-del]").forEach((b) =>
-    b.addEventListener("click", () => {
-      const entry = store.allWeightEntries().find((w) => w.day === b.dataset.del);
-      if (entry) store.deleteWeightEntry(entry.id);
-      render(container);
-    })
+  // a reading opens to change or delete it; the full list is a sheet of its own
+  container.querySelectorAll("[data-reading]").forEach((b) =>
+    b.addEventListener("click", () => openWeightSheet({ timestamp: Number(b.dataset.reading), onSaved: () => render(container) }))
   );
+  container.querySelector("#wt-all")?.addEventListener("click", () => openAllReadingsSheet({ onChange: () => render(container) }));
   wireTimeline(container, p);
   const toggleWins = () => {
     showAllWins = !showAllWins;
@@ -431,7 +421,66 @@ function openGoalSheet({ onSaved } = {}) {
   });
 }
 
-/** The entry sheet: one number, a date, done. */
+// ---------------------------------------------------------------------------------------------
+// Readings: the last three as tiles, the rest behind "All readings". The big number above is the
+// 7-day average, so a wall of single readings added noise, not information; every one of them
+// also carried a trash can that deleted on a single tap.
+// ---------------------------------------------------------------------------------------------
+
+const RECENT_SHOWN = 3;
+const dayLabel = (ts) => formatDate(ts, { weekday: "short", month: "short", day: "numeric" });
+
+function readingsHtml() {
+  const all = store.allWeightEntries(); // newest first
+  if (all.length === 0) return "";
+  return `
+    <div class="wt-list-head">${t("weight.readings")}</div>
+    <div class="wt-card wt-recent-card">
+      <div class="wt-recent">
+        ${all.slice(0, RECENT_SHOWN).map((w) => `
+          <button type="button" class="wt-tile" data-reading="${w.timestamp}" aria-label="${t("weight.editReading", { day: dayLabel(w.timestamp) })}">
+            <span class="wt-tile-day">${dayLabel(w.timestamp)}</span>
+            <span class="wt-tile-kg">${fmt1(toDisplay(w.kg))}</span>
+          </button>`).join("")}
+      </div>
+      ${all.length > RECENT_SHOWN ? `
+        <button type="button" class="wt-all" id="wt-all">
+          <span>${t("weight.allReadings")}</span>
+          <span class="wt-all-n">${formatNumber(all.length)} ${icon("chevronRight", { size: 13 })}</span>
+        </button>` : ""}
+    </div>`;
+}
+
+/** Every reading, newest first; tap one to change or delete it. */
+function openAllReadingsSheet({ onChange } = {}) {
+  openSheet({
+    render(panel, close) {
+      const draw = () => {
+        const all = store.allWeightEntries();
+        panel.innerHTML = `
+          ${navBar({ title: t("weight.allReadings"), leading: { label: t("app.close") } })}
+          <div class="sheet-panel-body">
+            <div class="wt-card wt-list">
+              ${all.map((w) => `
+                <button type="button" class="wt-row" data-reading="${w.timestamp}">
+                  <span class="wt-row-day">${dayLabel(w.timestamp)}</span>
+                  <span class="wt-row-kg">${fmt1(toDisplay(w.kg))} ${unit()}</span>
+                  ${icon("chevronRight", { size: 13 })}
+                </button>`).join("")}
+            </div>
+            <div class="wt-hint">${t("weight.tapToEdit")}</div>
+          </div>`;
+        wireNavBar(panel, { onLeading: () => close() });
+        panel.querySelectorAll("[data-reading]").forEach((b) => b.addEventListener("click", () =>
+          openWeightSheet({ timestamp: Number(b.dataset.reading), onSaved: () => { draw(); onChange?.(); } })));
+        if (all.length === 0) close();
+      };
+      draw();
+    },
+  });
+}
+
+/** The entry sheet: one number, a date, done. Opened on an existing reading, it can delete it. */
 export function openWeightSheet({ timestamp = Date.now(), onSaved } = {}) {
   openSheet({
     render(panel, close) {
@@ -440,7 +489,7 @@ export function openWeightSheet({ timestamp = Date.now(), onSaved } = {}) {
       const start = existing ? fmt1(toDisplay(existing.kg)) : "";
 
       panel.innerHTML = `
-        ${navBar({ title: t("weight.addTitle"), leading: { label: t("app.cancel") } })}
+        ${navBar({ title: existing ? dayLabel(existing.timestamp) : t("weight.addTitle"), leading: { label: t("app.cancel") } })}
         <div class="sheet-panel-body">
           <div class="wt-input-card">
             <input id="wt-value" class="wt-input" type="text" inputmode="decimal" value="${start}" placeholder="0.0" />
@@ -450,6 +499,7 @@ export function openWeightSheet({ timestamp = Date.now(), onSaved } = {}) {
         </div>
         <div class="results-actions">
           <button class="btn-prominent" id="wt-save">${t("app.save")}</button>
+          ${existing ? `<button type="button" class="wt-delete" id="wt-delete">${t("weight.deleteReading")}</button>` : ""}
         </div>`;
 
       const input = panel.querySelector("#wt-value");
@@ -468,6 +518,17 @@ export function openWeightSheet({ timestamp = Date.now(), onSaved } = {}) {
       };
 
       panel.querySelector("#wt-save").addEventListener("click", save);
+      // deleted at once, with Undo for a few seconds (as meals are)
+      panel.querySelector("#wt-delete")?.addEventListener("click", () => {
+        const snapshot = { ...existing };
+        if (!store.deleteWeightEntry(existing.id)) return;
+        close();
+        onSaved?.();
+        showUndoToast(t("weight.deleted", { day: dayLabel(snapshot.timestamp) }), () => {
+          store.restoreWeightEntry(snapshot);
+          onSaved?.();
+        });
+      });
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") save(); });
       wireNavBar(panel, { onLeading: () => close() });
     },

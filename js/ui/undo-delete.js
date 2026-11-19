@@ -36,3 +36,23 @@ export function deleteWithUndo(entry, onChange) {
   });
   timer = setTimeout(() => toast.remove(), UNDO_MS);
 }
+
+/** The same toast for anything else that was just removed: `text`, and Undo runs `onUndo`. */
+export function showUndoToast(text, onUndo) {
+  document.getElementById("undo-toast")?.remove();
+  clearTimeout(timer);
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const toast = document.createElement("div");
+  toast.id = "undo-toast";
+  toast.className = "undo-toast";
+  toast.setAttribute("role", "status");
+  toast.innerHTML = `<span class="undo-text">${esc(text)}</span><button type="button" class="undo-btn">${t("undo.action")}</button>`;
+  document.body.appendChild(toast);
+  toast.querySelector(".undo-btn").addEventListener("click", () => {
+    clearTimeout(timer);
+    toast.remove();
+    sfx("undo");
+    onUndo?.();
+  });
+  timer = setTimeout(() => toast.remove(), UNDO_MS);
+}

@@ -120,7 +120,7 @@ export function buildPushPayload(sinceMs = 0) {
     }));
 
   const dirtyWeight = store
-    .allWeightEntries()
+    .weightRowsForSync() // deleted readings too, so the deletion reaches the server
     .filter((w) => (w.updatedAt ?? 0) > sinceMs)
     .map((w) => ({ id: w.id, day: w.day, data: w, updatedAt: new Date(w.updatedAt ?? Date.now()).toISOString() }));
 
