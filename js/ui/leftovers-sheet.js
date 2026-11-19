@@ -45,7 +45,7 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
             </div>
             <ol class="size-steps"><li>${t("left.step1")}</li><li>${t("left.step2")}</li></ol>
             <label class="ask-send size-take" id="left-take">${t("left.take")}
-              <input type="file" accept="image/*" capture="environment" id="left-file" hidden>
+              <input type="file" accept="image/*" id="left-file" hidden>
             </label>
             ${state === "error" ? `<div class="size-error" role="alert">${esc(error || t("left.error"))}</div>` : ""}
             ${entryId ? "" : `<button type="button" class="ask-skip" id="left-back">${t("left.other")}</button>`}`;

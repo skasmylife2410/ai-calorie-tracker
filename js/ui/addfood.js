@@ -71,7 +71,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
             ${prefillBarcode && !isEditing ? `
             <div class="ios-section">
               <label class="add-to-meal-btn label-snap" id="label-snap">${icon("cameraFill", { size: 16 })} ${t("edit.labelSnap")}
-                <input type="file" accept="image/*" capture="environment" id="label-file" hidden>
+                <input type="file" accept="image/*" id="label-file" hidden>
               </label>
               <div class="ios-section-footer" id="label-note" role="status">${t("edit.labelHint")}</div>
             </div>` : ""}

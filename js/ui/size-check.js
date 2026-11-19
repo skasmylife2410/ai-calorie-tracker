@@ -37,7 +37,7 @@ export function openSizeCheckSheet(entry, { onDone } = {}) {
           </ol>
           <label class="ask-send size-take" id="size-take">
             ${t("size.take")}
-            <input type="file" accept="image/*" capture="environment" id="size-file" hidden>
+            <input type="file" accept="image/*" id="size-file" hidden>
           </label>
           <div class="size-error" id="size-error" role="alert" hidden></div>
           <button type="button" class="ask-skip" id="size-skip">${t("ask.keep")}</button>

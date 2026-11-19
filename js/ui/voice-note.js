@@ -79,7 +79,7 @@ export function openVoiceNote({ timestamp = null, onText = null, onType = null }
           <div class="vn-hint" id="vn-hint">${t("voiceNote.hint")}</div>
           <div class="vn-actions" id="vn-actions"></div>
           <div class="vn-under" id="vn-under">${t("voiceNote.under", { max: MAX_SECONDS / 60 })}</div>
-          <input type="file" accept="image/*" capture="environment" id="vn-photo-input" hidden />
+          <input type="file" accept="image/*" id="vn-photo-input" hidden />
         </div>`;
     },
   });
