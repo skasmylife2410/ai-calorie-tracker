@@ -6,7 +6,7 @@
 // waits on the network and the page always matches its files; a new deploy arrives with the new
 // worker (js/updater.js reloads onto it). Other pages (privacy, us.html) are network-first.
 
-const CACHE_VERSION = "snapcal-v118";
+const CACHE_VERSION = "snapcal-v119";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -135,9 +135,9 @@ const APP_SHELL = [
   "/vendor/barcode-detector-polyfill.js",
   "/vendor/zbar-wasm/main.js",
   "/vendor/zbar-wasm/zbar.wasm",
-  "/icons/icon-192-v4.png",
-  "/icons/icon-512-v4.png",
-  "/icons/apple-touch-icon-v4.png",
+  "/icons/icon-192-v5.png",
+  "/icons/icon-512-v5.png",
+  "/icons/apple-touch-icon-v5.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -229,8 +229,8 @@ self.addEventListener("push", (event) => {
   const title = msg.title || "Boca0";
   const options = {
     body: msg.body || "",
-    icon: "/icons/icon-192-v4.png",
-    badge: "/icons/icon-192-v4.png",
+    icon: "/icons/icon-192-v5.png",
+    badge: "/icons/icon-192-v5.png",
     tag: msg.tag || undefined,
     renotify: Boolean(msg.tag),
     data: { url: msg.url || "/" },

@@ -1,6 +1,6 @@
-// mark.js — the Boca0 mark: a round bite with one bite taken out and two front teeth, so the round
-// also reads as a mouth, an O ("boca"). The same shape as the app icon and the opening screen
-// (index.html .intro-flame); Figma "Boca0 · logo with teeth", option A. The bite and the teeth are
+// mark.js — the Boca0 mark: a round bite with one bite taken out, two front teeth and two happy
+// closed eyes (^ ^): a little face enjoying its bite. The same shape as the app icon and the opening screen
+// (index.html .intro-flame); Figma "Boca0 · logo with teeth", option A, plus the happy eyes. The bite and the teeth are
 // cut out, so whatever is behind shows through. Ink-coloured: it follows the text colour.
 
 export const MARK = {
@@ -8,15 +8,19 @@ export const MARK = {
   disc: { cx: 50, cy: 52, r: 40 },
   bites: [[82, 20, 19], [64, 9, 12], [95, 42, 12]],
   teeth: [
-    "M38.3 36h10.6v13.4a3.6 3.6 0 0 1-3.6 3.6h-3.4a3.6 3.6 0 0 1-3.6-3.6Z",
-    "M51.1 36h10.6v13.4a3.6 3.6 0 0 1-3.6 3.6h-3.4a3.6 3.6 0 0 1-3.6-3.6Z",
+    "M39.6 55h9.6v9.8a3.2 3.2 0 0 1-3.2 3.2h-3.2a3.2 3.2 0 0 1-3.2-3.2Z",
+    "M50.8 55h9.6v9.8a3.2 3.2 0 0 1-3.2 3.2h-3.2a3.2 3.2 0 0 1-3.2-3.2Z",
   ],
+  // happy, closed eyes (^ ^): drawn as strokes
+  eyes: ["M31.5 43a5.6 5.6 0 0 1 11 0", "M54.5 43a5.6 5.6 0 0 1 11 0"],
+  eyeWidth: 3.4,
 };
 
 /** The mark's SVG insides (mask + disc), with a mask id unique on the page. */
 export function markSvgInner(id, fill = "currentColor") {
   const cut = MARK.bites.map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#000"/>`).join("")
-    + MARK.teeth.map((d) => `<path d="${d}" fill="#000"/>`).join("");
+    + MARK.teeth.map((d) => `<path d="${d}" fill="#000"/>`).join("")
+    + MARK.eyes.map((d) => `<path d="${d}" fill="none" stroke="#000" stroke-width="${MARK.eyeWidth}" stroke-linecap="round"/>`).join("");
   return `<defs><mask id="${id}"><rect x="0" y="0" width="100" height="100" fill="#fff"/>${cut}</mask></defs>`
     + `<circle cx="${MARK.disc.cx}" cy="${MARK.disc.cy}" r="${MARK.disc.r}" fill="${fill}" mask="url(#${id})"/>`;
 }
@@ -38,6 +42,8 @@ export function drawMark(ctx, x, y, size, color) {
   g.globalCompositeOperation = "destination-out";
   for (const [cx, cy, r] of MARK.bites) { g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill(); }
   for (const d of MARK.teeth) g.fill(new Path2D(d));
+  g.lineWidth = MARK.eyeWidth; g.lineCap = "round"; g.strokeStyle = "#000";
+  for (const d of MARK.eyes) g.stroke(new Path2D(d));
   ctx.drawImage(c, x, y);
 }
 

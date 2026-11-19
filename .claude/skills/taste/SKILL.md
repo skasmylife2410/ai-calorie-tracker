@@ -79,7 +79,7 @@ over-goal, and chart series that need telling apart. Everything else is ink.
 
 ## 6. Brand
 
-- The logo is the **solid bite with two teeth**: a round black disc with one bite taken from the top right and two front teeth cut out in the middle (the round reads as a mouth, an O: "boca"); js/ui/mark.js holds the shape (vector in `index.html`'s `.intro-flame`; icons made from the same shape).
+- The logo is the **solid bite with two teeth**: a round black disc with one bite taken from the top right and two front teeth and two happy closed eyes (^ ^) cut out, a little face enjoying its bite; js/ui/mark.js holds the shape (vector in `index.html`'s `.intro-flame`; icons made from the same shape).
 - Intro: pearl Fluid background (paper tones, zoom 2.4, low grain, `js/intro.js`), bite mark
   only, fades into the app.
 - Home has no header row; the Profile avatar ends the week row, and the streak sits in the
