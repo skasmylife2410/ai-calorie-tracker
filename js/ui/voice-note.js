@@ -10,9 +10,7 @@
 // recognition gives up on silence and is refused outright in some installed apps.
 
 import * as queue from "../queue.js";
-import * as store from "../store.js";
 import { transcribeAudio } from "../api.js";
-import { resizeImage, scanPreset } from "../resize.js";
 import { safeSrc } from "../safe-src.js";
 import { openFullScreenCover } from "./sheet.js";
 import { icon } from "./icons.js";
@@ -56,7 +54,6 @@ export function openVoiceNote({ timestamp = null, onText = null, onType = null }
   let tick = 0;
   let limit = 0;
   let photo = null;          // data URL of the optional meal photo
-  let preparingPhoto = false;
   let discarded = false;
   const levels = new Array(SPOKES).fill(0);
 
@@ -79,7 +76,6 @@ export function openVoiceNote({ timestamp = null, onText = null, onType = null }
           <div class="vn-hint" id="vn-hint">${t("voiceNote.hint")}</div>
           <div class="vn-actions" id="vn-actions"></div>
           <div class="vn-under" id="vn-under">${t("voiceNote.under", { max: MAX_SECONDS / 60 })}</div>
-          <input type="file" accept="image/*" id="vn-photo-input" hidden />
         </div>`;
     },
   });
@@ -144,29 +140,21 @@ export function openVoiceNote({ timestamp = null, onText = null, onType = null }
   };
   const photoButtonInner = () => photo
     ? `<img class="vn-photo-thumb" src="${safeSrc(photo)}" alt="" />`
-    : preparingPhoto ? `<span class="vn-spinner is-small"></span>` : icon("cameraFill", { size: 20 });
+    : icon("cameraFill", { size: 20 });
 
   function wireActions() {
     $("#vn-stop")?.addEventListener("click", stopAndSend);
-    $("#vn-photo")?.addEventListener("click", () => $("#vn-photo-input").click());
+    // SnapCal's own camera on top (the note keeps recording), with the gallery a tap away in it
+    $("#vn-photo")?.addEventListener("click", async () => {
+      const { openCameraScan } = await import("./scan.js");
+      openCameraScan({ photoOnly: t("voiceNote.photo"), onResult: (r) => { if (r.dataUrl) { photo = r.dataUrl; refreshPhoto(); } } });
+    });
     $("#vn-retry")?.addEventListener("click", () => send());
     $("#vn-again")?.addEventListener("click", () => { blob = null; startRecording(); });
     $("#vn-type")?.addEventListener("click", () => { discarded = true; cover.close(); onType?.(); });
   }
 
   $("#vn-close").addEventListener("click", () => { discarded = true; cover.close(); });
-  $("#vn-photo-input").addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
-    preparingPhoto = true;
-    refreshPhoto();
-    try {
-      photo = (await resizeImage(f, scanPreset(store.getProfile().scanQuality))).dataUrl;
-    } catch { /* unreadable: no photo */ }
-    preparingPhoto = false;
-    refreshPhoto();
-  });
   const refreshPhoto = () => { const b = $("#vn-photo"); if (b) b.innerHTML = photoButtonInner(); };
 
   // --- recording --------------------------------------------------------------------------

@@ -10,7 +10,6 @@ import { cleanMicros, scaleMicros } from "../nutrition.js";
 import { microInputsHtml, wireMicroInputs, refreshMicroInputs } from "./micros.js";
 import { apiFetch } from "../net.js";
 import { analyzeMeal } from "../api.js";
-import { resizeImage, scanPreset } from "../resize.js";
 import { icon } from "./icons.js";
 import { baseOf } from "../meal-builder.js";
 
@@ -70,9 +69,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
           <div class="ios-form">
             ${prefillBarcode && !isEditing ? `
             <div class="ios-section">
-              <label class="add-to-meal-btn label-snap" id="label-snap">${icon("cameraFill", { size: 16 })} ${t("edit.labelSnap")}
-                <input type="file" accept="image/*" id="label-file" hidden>
-              </label>
+              <button type="button" class="add-to-meal-btn label-snap" id="label-snap">${icon("cameraFill", { size: 16 })} ${t("edit.labelSnap")}</button>
               <div class="ios-section-footer" id="label-note" role="status">${t("edit.labelHint")}</div>
             </div>` : ""}
             <div class="ios-section">
@@ -262,15 +259,15 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
 
       // a scan that found nothing: read the numbers off a photo of the nutrition label (the AI's
       // label mode), then Save keeps the product for the next scan (rememberBarcode)
-      const labelFile = panel.querySelector("#label-file");
       const labelNote = panel.querySelector("#label-note");
-      labelFile?.addEventListener("change", async () => {
-        const f = labelFile.files?.[0];
-        labelFile.value = "";
-        if (!f) return;
+      // SnapCal's own camera (as for scanning a meal), with the gallery a tap away in it
+      panel.querySelector("#label-snap")?.addEventListener("click", async () => {
+        const { openCameraScan } = await import("./scan.js");
+        openCameraScan({ photoOnly: t("edit.labelSnap"), onResult: (r) => r.dataUrl && useLabelPhoto(r.dataUrl) });
+      });
+      const useLabelPhoto = async (dataUrl) => {
         labelNote.textContent = t("edit.labelWorking");
         try {
-          const { dataUrl } = await resizeImage(f, scanPreset(store.getProfile().scanQuality));
           const out = await analyzeMeal({ mode: "label", imageDataUrl: dataUrl });
           if (!out.success || !out.items?.[0]) throw new Error(out.reason || "");
           Object.assign(draft, fillFromLabel(draft, out.items[0]));
@@ -287,7 +284,7 @@ export function openAddFoodSheet({ entry = null, prefill = null, prefillBarcode 
         refreshMacros();
         refreshMicroInputs(panel, draft.micros);
         labelNote.textContent = t("edit.labelDone");
-      });
+      };
 
       panel.querySelector("#share-food")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;

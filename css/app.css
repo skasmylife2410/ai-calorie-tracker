@@ -990,6 +990,7 @@
 
 .scan-zoom-chips, .scan-mode-chips { display: flex; gap: 10px; justify-content: center; }
 .scan-mode-chips { width: 100%; }
+.scan-photo-title { width: 100%; text-align: center; color: #fff; font-size: 15px; font-weight: 600; padding: 10px 16px; }
 .zoom-chip {
   font-family: var(--sc-font-rounded);
   font-size: 14px;
@@ -3155,7 +3156,6 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .vn-stop-square { width: 26px; height: 26px; border-radius: 6px; background: var(--sc-background); }
 .vn-main.is-busy { cursor: default; }
 .vn-spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--sc-background); border-right-color: transparent; animation: vn-spin .9s linear infinite; }
-.vn-spinner.is-small { width: 18px; height: 18px; border-width: 2px; border-color: var(--sc-primary-text); border-right-color: transparent; }
 @keyframes vn-spin { to { transform: rotate(360deg); } }
 .vn-cover.is-sending .vn-dot { opacity: .14; }
 .vn-choices { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 340px; }

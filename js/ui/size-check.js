@@ -7,7 +7,6 @@ import { t, formatNumber } from "../i18n.js";
 import * as queue from "../queue.js";
 import * as store from "../store.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
-import { resizeImage, scanPreset } from "../resize.js";
 
 let openFor = null;
 
@@ -35,22 +34,20 @@ export function openSizeCheckSheet(entry, { onDone } = {}) {
             <li>${t("size.step1")}</li>
             <li>${t("size.step2")}</li>
           </ol>
-          <label class="ask-send size-take" id="size-take">
-            ${t("size.take")}
-            <input type="file" accept="image/*" id="size-file" hidden>
-          </label>
+          <button type="button" class="ask-send size-take" id="size-take">${t("size.take")}</button>
           <div class="size-error" id="size-error" role="alert" hidden></div>
           <button type="button" class="ask-skip" id="size-skip">${t("ask.keep")}</button>
         </div>`;
       wireNavBar(panel, { onLeading: () => close() });
-      const file = panel.querySelector("#size-file");
-      file.addEventListener("change", async () => {
-        const f = file.files?.[0];
-        if (!f) return;
+      // SnapCal's own camera (as for scanning a meal), with the gallery a tap away in it
+      panel.querySelector("#size-take").addEventListener("click", async () => {
+        const { openCameraScan } = await import("./scan.js");
+        openCameraScan({ photoOnly: t("size.title"), onResult: (r) => r.dataUrl && useSizePhoto(r.dataUrl) });
+      });
+      const useSizePhoto = async (dataUrl) => {
         const take = panel.querySelector("#size-take");
         take.classList.add("is-busy");
         try {
-          const { dataUrl } = await resizeImage(f, scanPreset(store.getProfile().scanQuality));
           finished = true;
           queue.addSizePhoto(entry.id, dataUrl);
           close();
@@ -60,7 +57,7 @@ export function openSizeCheckSheet(entry, { onDone } = {}) {
           err.textContent = t("size.error");
           err.hidden = false;
         }
-      });
+      };
       panel.querySelector("#size-skip").addEventListener("click", () => { finished = true; queue.skipSizeCheck(entry.id); close(); });
     },
     onClosed() {

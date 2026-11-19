@@ -5,7 +5,6 @@ import { safeSrc } from "../safe-src.js";
 import { t, formatNumber } from "../i18n.js";
 import * as store from "../store.js";
 import { openSheet, navBar, wireNavBar } from "./sheet.js";
-import { resizeImage, scanPreset } from "../resize.js";
 import { icon } from "./icons.js";
 import { leftoverCandidates, takeLeftovers, undoLeftovers } from "../leftovers.js";
 
@@ -44,9 +43,7 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
               <div class="ask-intro"><b>${esc(meal.name)}</b><span>${formatNumber(Math.round(meal.calories))} kcal · ${time(meal.timestamp)}</span></div>
             </div>
             <ol class="size-steps"><li>${t("left.step1")}</li><li>${t("left.step2")}</li></ol>
-            <label class="ask-send size-take" id="left-take">${t("left.take")}
-              <input type="file" accept="image/*" id="left-file" hidden>
-            </label>
+            <button type="button" class="ask-send size-take" id="left-take">${t("left.take")}</button>
             ${state === "error" ? `<div class="size-error" role="alert">${esc(error || t("left.error"))}</div>` : ""}
             ${entryId ? "" : `<button type="button" class="ask-skip" id="left-back">${t("left.other")}</button>`}`;
         } else if (state === "working") {
@@ -73,14 +70,15 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
         panel.querySelector("#left-back")?.addEventListener("click", () => { chosen = null; state = "pick"; draw(); });
         panel.querySelector("#left-ok")?.addEventListener("click", close);
         panel.querySelector("#left-undo")?.addEventListener("click", () => { undoLeftovers(chosen); onChange?.(); close(); });
-        const file = panel.querySelector("#left-file");
-        file?.addEventListener("change", async () => {
-          const f = file.files?.[0];
-          if (!f) return;
+        // SnapCal's own camera (as for scanning a meal), with the gallery a tap away in it
+        panel.querySelector("#left-take")?.addEventListener("click", async () => {
+          const { openCameraScan } = await import("./scan.js");
+          openCameraScan({ photoOnly: t("left.title"), onResult: (r) => r.dataUrl && useLeftoverPhoto(r.dataUrl) });
+        });
+        const useLeftoverPhoto = async (dataUrl) => {
           state = "working";
           draw();
           try {
-            const { dataUrl } = await resizeImage(f, scanPreset(store.getProfile().scanQuality));
             const out = await takeLeftovers(chosen, dataUrl);
             if (!out.ok) { state = "error"; error = out.message; draw(); return; }
             result = out;
@@ -90,7 +88,7 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
           } catch {
             state = "error"; error = ""; draw();
           }
-        });
+        };
       };
       draw();
     },

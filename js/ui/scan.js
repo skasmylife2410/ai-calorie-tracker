@@ -63,11 +63,15 @@ function getDetectorClass() {
 
 /**
  * Opens the camera scan full-screen cover.
- * @param {{onResult:(result:{type:"foodPhoto"|"labelPhoto", dataUrl:string}|{type:"barcode", code:string})=>void}} opts
+ * @param {{onResult:(result:{type:"foodPhoto"|"labelPhoto", dataUrl:string}|{type:"barcode", code:string})=>void, photoOnly?: string}} opts
+ *   photoOnly: just take a photo (leftovers, a size check, a label): the same camera without the
+ *   Food / Barcode / Label switch, with this title in its place. Used instead of a file input with
+ *   capture="environment", which did nothing on some Android phones (and without it, Android
+ *   offers only the gallery).
  */
 let noteText = ""; // survives the camera panel re-rendering (torch toggle, permission changes)
 
-export function openCameraScan({ onResult }) {
+export function openCameraScan({ onResult, photoOnly = "" }) {
   let mode = "food";
   let cameraState = "checking"; // checking | ready | denied | noCamera
   let stream = null;
@@ -106,14 +110,14 @@ export function openCameraScan({ onResult }) {
             ${mode === "barcode" ? `<div class="scan-barcode-hint" id="scan-barcode-hint" role="status">${cameraState === "ready" ? t("scan.pointAt") : ""}</div>` : ""}
             ${mode === "barcode" ? manualBarcodeHtml(cameraState === "ready") : ""}
             <div class="scan-bottom-controls">
-              <div class="scan-mode-chips">
+              ${photoOnly ? `<div class="scan-photo-title">${escapeAttr(photoOnly)}</div>` : `<div class="scan-mode-chips">
                 ${MODES.map(
                   (m) => `
                   <button class="mode-chip${m.id === mode ? " selected" : ""}" data-mode="${m.id}">
                     ${icon(m.icon, { size: 16 })}<span>${m.title}</span>
                   </button>`
                 ).join("")}
-              </div>
+              </div>`}
               ${mode === "meal" ? `
                 <div class="scan-note-row">
                   <input type="text" id="scan-note" class="scan-note" placeholder="${t("context.before")}" value="${escapeAttr(noteText)}" />
