@@ -3290,18 +3290,43 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .lv-feed::-webkit-scrollbar { display: none; }
 .lv-slide { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; background: #0A0A0A; }
 .lv-none { display: grid; place-items: center; padding: 0 32px; text-align: center; color: #A3A3A8; font-size: 15px; }
-.lv-info { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 4px;
-  padding: 48px 18px calc(env(safe-area-inset-bottom, 0px) + 26px); background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.65)); }
+/* in the feed, who it is sits at the top (under the filters); comments take the bottom */
+.lv-info { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; gap: 3px;
+  padding: calc(env(safe-area-inset-top, 0px) + 62px) 18px 40px; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0)); pointer-events: none; }
 .lv-info b { font-size: 19px; }
 .lv-info .lv-badge { align-self: flex-start; margin-bottom: 4px; color: #F2F2F2; }
 .lv-info span { font-size: 14px; color: #D0D0D4; }
-.lv-sound { position: absolute; z-index: 1; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 30px); }
+.lv-sound { position: absolute; z-index: 1; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 66px); height: 40px; }
 .lv-levels { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .lv-levels button { flex: none; font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 11px; border-radius: 999px; border: 0;
   background: rgba(0,0,0,.4); color: #D0D0D4; }
 .lv-levels button[aria-pressed="true"] { background: rgba(0,0,0,.55); color: #F2F2F2; box-shadow: inset 0 0 0 1.5px #F2F2F2; }
 .lv-close { margin-left: auto; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 0;
   background: rgba(0,0,0,.45); color: #F2F2F2; }
-.lv-swipe { position: absolute; z-index: 2; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); transform: translateX(-50%);
+.lv-swipe { position: absolute; z-index: 2; left: 50%; top: 46%; transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; background: rgba(0,0,0,.55); font-size: 13px; white-space: nowrap; pointer-events: none; }
 .lv-swipe[hidden] { display: none; }
+
+/* comments and hearts over a live (feed and while you're live) */
+.lv-chat { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; padding: 60px 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.6)); }
+.lv-chat.is-host { bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); padding-bottom: 6px; background: none; }
+.lv-comments { max-height: 34vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 64px; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(transparent, #000 28%); mask-image: linear-gradient(transparent, #000 28%); }
+.lv-comments::-webkit-scrollbar { display: none; }
+.lv-c { align-self: flex-start; max-width: 100%; font-size: 14px; line-height: 1.35; color: #F2F2F2; text-shadow: 0 1px 2px rgba(0,0,0,.7); overflow-wrap: anywhere; }
+.lv-c b { font-weight: 700; margin-right: 4px; }
+.lv-c.is-host b::after { content: " ·"; opacity: .6; }
+.lv-c.is-join { font-size: 12.5px; color: #C8C8CC; }
+.lv-say { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.lv-input { flex: 1; min-width: 0; height: 42px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35);
+  background: rgba(0,0,0,.3); color: #F2F2F2; font: inherit; font-size: 15px; }
+.lv-input::placeholder { color: #C8C8CC; }
+.lv-like { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 50%; background: none; color: #F2F2F2; }
+.lv-like:active { transform: scale(.88); }
+.lv-hearts { position: absolute; right: 18px; bottom: calc(100% - 60px); width: 40px; height: 0; pointer-events: none; }
+.lv-heart { position: absolute; right: 0; bottom: 0; color: #F2F2F2; animation: lv-heart 1.8s ease-out forwards; }
+@keyframes lv-heart { from { opacity: 1; transform: translate(0, 0) scale(.6); } 20% { transform: translate(calc(var(--dx) * .3), -40px) scale(1); }
+  to { opacity: 0; transform: translate(var(--dx), -220px) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .lv-heart { animation-duration: .6s; } }
+.lv-input:focus { outline: none; border-color: #F2F2F2; box-shadow: none; }

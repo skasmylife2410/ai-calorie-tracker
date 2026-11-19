@@ -1759,6 +1759,10 @@
     "liveNow": "{n} en vivo",
     "all": "Todos",
     "swipe": "Desliza para ver a otra persona",
-    "noneAtLevel": "Nadie de este nivel está en vivo ahora."
+    "noneAtLevel": "Nadie de este nivel está en vivo ahora.",
+    "commentPlaceholder": "Comenta…",
+    "heart": "Enviar un corazón",
+    "joined": "{name} se unió",
+    "you": "Tú"
   }
 }

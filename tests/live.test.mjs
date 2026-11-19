@@ -150,3 +150,48 @@ test("deleting an account removes its live sessions and seats", async () => {
   assert.match(src, /\["snapcal_live", "owner"\]/);
   assert.match(src, /\["snapcal_live_signals", "viewer"\]/);
 });
+
+test("comments: the live phone passes each one on under the name the server gave, not too fast", async () => {
+  const { chatRoom, cleanComment, COMMENT_MAX } = await import("../js/ui/live.js");
+  let clock = 1000;
+  const room = chatRoom({ now: () => clock });
+  const chan = () => ({ readyState: "open", got: [], send(x) { this.got.push(JSON.parse(x)); } });
+  const shown = [];
+  room.onMessage((m) => shown.push(m));
+  const a = chan(), b = chan();
+  room.join("s1", a, "Thayra");
+  room.join("s2", b, "Aelson");
+  assert.deepEqual(b.got[0], { type: "history", items: [] });
+  assert.deepEqual(a.got.at(-1), { type: "join", name: "Aelson" }, "everyone sees who joined");
+
+  room.receive("s1", JSON.stringify({ type: "comment", text: "  vamos   con todo ", name: "Someone else" }));
+  const c = { type: "comment", name: "Thayra", text: "vamos con todo" };
+  assert.deepEqual(b.got.at(-1), c, "named by the seat it came from, never by what it claims");
+  assert.deepEqual(shown.at(-1), c, "and the live phone shows it");
+
+  room.receive("s1", JSON.stringify({ type: "comment", text: "again" }));
+  assert.notEqual(b.got.at(-1).text, "again", "too soon after the last one");
+  clock += 1000;
+  room.receive("s1", JSON.stringify({ type: "comment", text: "again" }));
+  assert.equal(b.got.at(-1).text, "again");
+
+  room.receive("s2", "not json");
+  room.receive("s2", JSON.stringify({ type: "join", name: "Fake" }));
+  room.receive("nobody", JSON.stringify({ type: "comment", text: "hi" }));
+  assert.equal(b.got.at(-1).text, "again", "anything else is ignored");
+
+  room.receive("s2", JSON.stringify({ type: "heart" }));
+  assert.deepEqual(a.got.at(-1), { type: "heart" });
+
+  room.say("gracias!");
+  assert.deepEqual(a.got.at(-1), { type: "comment", host: true, text: "gracias!" });
+
+  const late = chan();
+  room.join("s3", late, "Mi baby");
+  assert.deepEqual(late.got[0].items.map((m) => m.text), ["vamos con todo", "again", "gracias!"], "a late arrival is caught up");
+  room.leave("s3");
+  assert.equal(room.size, 2);
+
+  assert.equal(cleanComment("a".repeat(400)).length, COMMENT_MAX);
+  assert.equal(cleanComment("   "), "");
+});

@@ -1759,6 +1759,10 @@
     "liveNow": "{n} live",
     "all": "All",
     "swipe": "Swipe for the next person",
-    "noneAtLevel": "Nobody at this level is live right now."
+    "noneAtLevel": "Nobody at this level is live right now.",
+    "commentPlaceholder": "Comment…",
+    "heart": "Send a heart",
+    "joined": "{name} joined",
+    "you": "You"
   }
 }

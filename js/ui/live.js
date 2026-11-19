@@ -89,6 +89,113 @@ async function keepAwake() {
   try { return await navigator.wakeLock?.request("screen"); } catch { return null; }
 }
 
+// --- comments (like a live on Instagram) ---------------------------------------------------
+// Comments ride the same direct connection as the video (a WebRTC data channel), so they never
+// touch the server and are gone when the live ends. Viewers send theirs to the person who's live,
+// whose phone passes each one on to everyone watching, with the sender's name as the server gave
+// it (nobody can post as someone else). Someone who arrives late gets the last few.
+
+export const COMMENT_MAX = 150;
+const HISTORY = 20;
+const COMMENT_GAP_MS = 700; // one comment per viewer this often, at most
+const SHOWN = 30;           // comments kept on screen
+
+/** A comment as typed, tidied: one line, trimmed, not too long; "" when there's nothing to send. */
+export function cleanComment(text) {
+  return String(text ?? "").replace(/\s+/g, " ").trim().slice(0, COMMENT_MAX);
+}
+
+/**
+ * The live phone's side of the comments: who's connected, the recent ones, and passing each new
+ * one on to everyone. `channels` are data channels (or anything with send and readyState).
+ */
+export function chatRoom({ now = () => Date.now() } = {}) {
+  const channels = new Map(); // signal id -> { dc, name, last }
+  const history = [];
+  const listeners = [];
+  const broadcast = (msg) => {
+    const text = JSON.stringify(msg);
+    for (const c of channels.values()) if (c.dc.readyState === "open") { try { c.dc.send(text); } catch { /* gone */ } }
+    for (const fn of listeners) fn(msg);
+  };
+  const remember = (msg) => { history.push(msg); if (history.length > HISTORY) history.shift(); };
+  return {
+    onMessage(fn) { listeners.push(fn); },
+    /** A viewer's channel opened: catch them up, and tell everyone they're here. */
+    join(id, dc, name) {
+      channels.set(id, { dc, name, last: 0 });
+      try { dc.send(JSON.stringify({ type: "history", items: history })); } catch { /* not open yet */ }
+      broadcast({ type: "join", name });
+    },
+    leave(id) { channels.delete(id); },
+    /** Something a viewer sent. Comments and hearts only, and not too fast. */
+    receive(id, raw) {
+      const c = channels.get(id);
+      if (!c) return;
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
+      if (msg?.type === "heart") return broadcast({ type: "heart" });
+      if (msg?.type !== "comment") return;
+      const text = cleanComment(msg.text);
+      if (!text || now() - c.last < COMMENT_GAP_MS) return;
+      c.last = now();
+      const out = { type: "comment", name: c.name, text };
+      remember(out);
+      broadcast(out);
+    },
+    /** The person who's live says something too. */
+    say(text) {
+      const clean = cleanComment(text);
+      if (!clean) return;
+      const out = { type: "comment", host: true, text: clean };
+      remember(out);
+      broadcast(out);
+    },
+    get size() { return channels.size; },
+  };
+}
+
+function commentHtml(msg, hostName) {
+  if (msg.type === "join") return `<div class="lv-c is-join">${esc(t("live.joined", { name: msg.name }))}</div>`;
+  const who = msg.host ? hostName : msg.name;
+  return `<div class="lv-c${msg.host ? " is-host" : ""}"><b>${esc(who)}</b> ${esc(msg.text)}</div>`;
+}
+
+/** Draws incoming comments, joins and hearts into a stream's overlay. */
+function chatView(root, hostName) {
+  const list = root.querySelector(".lv-comments");
+  const hearts = root.querySelector(".lv-hearts");
+  const add = (msg) => {
+    list.insertAdjacentHTML("beforeend", commentHtml(msg, hostName));
+    while (list.children.length > SHOWN) list.firstElementChild.remove();
+    list.scrollTop = list.scrollHeight;
+  };
+  return {
+    show(msg) {
+      if (msg.type === "history") (msg.items ?? []).forEach(add);
+      else if (msg.type === "heart") {
+        const h = document.createElement("i");
+        h.className = "lv-heart";
+        h.style.setProperty("--dx", `${Math.round(Math.random() * 30 - 15)}px`);
+        h.innerHTML = icon("heartFill", { size: 26 });
+        hearts.appendChild(h);
+        setTimeout(() => h.remove(), 1800);
+      } else add(msg);
+    },
+    clear() { list.innerHTML = ""; hearts.innerHTML = ""; },
+  };
+}
+
+function chatBarHtml({ heart = true } = {}) {
+  return `
+    <div class="lv-hearts" aria-hidden="true"></div>
+    <div class="lv-comments" aria-live="polite"></div>
+    <form class="lv-say" autocomplete="off">
+      <input class="lv-input" name="c" maxlength="${COMMENT_MAX}" enterkeyhint="send" placeholder="${t("live.commentPlaceholder")}" aria-label="${t("live.commentPlaceholder")}" />
+      ${heart ? `<button type="button" class="lv-like" aria-label="${t("live.heart")}">${icon("heartFill", { size: 22 })}</button>` : ""}
+    </form>`;
+}
+
 // --- the card on Us ------------------------------------------------------------------------
 
 let pendingLive = null; // a notification asked to open this stream
@@ -185,6 +292,7 @@ function startLive({ group, muscle, level }) {
   let micOn = false;
   let lock = null;
   const peers = new Map(); // signal id -> RTCPeerConnection
+  const room = chatRoom();
 
   const stopAll = () => {
     for (const pc of peers.values()) pc.close();
@@ -203,6 +311,7 @@ function startLive({ group, muscle, level }) {
           <span class="lv-count" id="lv-count"></span>
         </div>
         <div class="lv-status" id="lv-status">${t("live.starting")}</div>
+        <div class="lv-chat is-host">${chatBarHtml({ heart: false })}</div>
         <div class="lv-controls">
           <button type="button" class="lv-ctl" id="lv-mic" aria-pressed="false" aria-label="${t("live.mic")}">${icon("mic", { size: 20 })}</button>
           <button type="button" class="lv-ctl" id="lv-flip" aria-label="${t("live.flip")}">${icon("cameraFill", { size: 20 })}</button>
@@ -236,10 +345,26 @@ function startLive({ group, muscle, level }) {
         } catch { /* keep the camera it had */ }
       });
 
-      const drop = (sig) => { peers.get(sig)?.close(); peers.delete(sig); };
+      const chat = chatView(panel, t("live.you"));
+      room.onMessage((msg) => chat.show(msg));
+      const form = panel.querySelector(".lv-say");
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        room.say(form.c.value);
+        form.c.value = "";
+      });
+
+      const drop = (sig) => { peers.get(sig)?.close(); peers.delete(sig); room.leave(sig); };
       const answer = async (o) => {
         const pc = new RTCPeerConnection({ iceServers: lastIce });
         peers.set(o.id, pc);
+        pc.addEventListener("datachannel", (e) => {
+          const dc = e.channel;
+          const hello = () => room.join(o.id, dc, o.name);
+          if (dc.readyState === "open") hello(); else dc.addEventListener("open", hello);
+          dc.addEventListener("message", (m) => room.receive(o.id, m.data));
+          dc.addEventListener("close", () => room.leave(o.id));
+        });
         stream.getTracks().forEach((tr) => pc.addTrack(tr, stream));
         pc.addEventListener("connectionstatechange", () => { if (["failed", "closed"].includes(pc.connectionState)) drop(o.id); });
         await pc.setRemoteDescription({ type: "offer", sdp: o.offer });
@@ -289,14 +414,29 @@ function startLive({ group, muscle, level }) {
 /** One stream on screen: connects when it's shown, lets go when you swipe past. */
 function watcher(slide, s) {
   let pc = null;
+  let dc = null;
   let signal = null;
   let stopped = false;
+  const chat = chatView(slide, s.name);
+  const form = slide.querySelector(".lv-say");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = cleanComment(form.c.value);
+    if (!text || dc?.readyState !== "open") return;
+    dc.send(JSON.stringify({ type: "comment", text }));
+    form.c.value = "";
+  });
+  slide.querySelector(".lv-like").addEventListener("click", () => {
+    if (dc?.readyState === "open") dc.send(JSON.stringify({ type: "heart" }));
+  });
   const video = slide.querySelector("video");
   const status = (key) => { const el = slide.querySelector(".lv-status"); el.textContent = key ? t(key) : ""; el.hidden = !key; };
   const stop = () => {
     stopped = true;
     pc?.close();
     pc = null;
+    dc = null;
+    chat.clear();
     video.srcObject = null;
     if (signal) api({ op: "liveLeave", signal });
     signal = null;
@@ -308,6 +448,12 @@ function watcher(slide, s) {
     const mine = pc;
     pc.addTransceiver("video", { direction: "recvonly" });
     pc.addTransceiver("audio", { direction: "recvonly" });
+    const channel = pc.createDataChannel("chat");
+    dc = channel;
+    channel.addEventListener("message", (m) => {
+      if (mine !== pc) return;
+      try { chat.show(JSON.parse(m.data)); } catch { /* not a message */ }
+    });
     pc.addEventListener("track", (e) => {
       if (mine !== pc) return;
       video.srcObject = e.streams[0] ?? new MediaStream([e.track]);
@@ -355,6 +501,7 @@ function slideHtml(s) {
       <video class="lv-main" autoplay playsinline></video>
       <div class="lv-status" hidden></div>
       <button type="button" class="lv-ctl lv-sound" hidden>${t("live.sound")}</button>
+      <div class="lv-chat">${chatBarHtml()}</div>
       <div class="lv-info">
         <span class="lv-badge"><i class="lv-dot" aria-hidden="true"></i>${t("live.badge")}${s.watching ? ` · ${t("live.watching", { n: s.watching })}` : ""}</span>
         <b>${esc(s.name)}</b>
