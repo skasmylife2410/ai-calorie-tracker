@@ -1651,5 +1651,25 @@
     "add": "Add to my {meal}",
     "pickOne": "Pick at least one food",
     "done": "Added {foods} to your {meal}"
+  },
+  "ctxNote": {
+    "add": "Add context",
+    "title": "Add context",
+    "question": "Anything that explains these days?",
+    "why": "Your Friday review takes it into account instead of judging those days.",
+    "whichDays": "Which days",
+    "placeholder": "In your own words, if you like — “flu, barely ate, mostly soup”",
+    "private": "Only you and the AI coach see this.",
+    "delete": "Delete this note",
+    "rewriting": "Updating your review…",
+    "kinds": {
+      "sick": "Sick",
+      "travel": "Travelling",
+      "celebration": "Celebration",
+      "period": "Period",
+      "stress": "Stressed",
+      "training": "Hard training",
+      "other": "Other"
+    }
   }
 }

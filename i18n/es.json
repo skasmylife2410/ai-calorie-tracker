@@ -1651,5 +1651,25 @@
     "add": "Agregar a mi {meal}",
     "pickOne": "Elige al menos un alimento",
     "done": "Agregaste {foods} a tu {meal}"
+  },
+  "ctxNote": {
+    "add": "Agregar contexto",
+    "title": "Agregar contexto",
+    "question": "¿Algo que explique estos días?",
+    "why": "Tu repaso del viernes lo tiene en cuenta en vez de juzgar esos días.",
+    "whichDays": "Qué días",
+    "placeholder": "Con tus palabras, si quieres — “gripa, casi no comí, sobre todo sopa”",
+    "private": "Solo tú y el coach de IA lo ven.",
+    "delete": "Borrar esta nota",
+    "rewriting": "Actualizando tu repaso…",
+    "kinds": {
+      "sick": "Enfermo",
+      "travel": "De viaje",
+      "celebration": "Celebración",
+      "period": "Periodo",
+      "stress": "Estrés",
+      "training": "Entreno fuerte",
+      "other": "Otro"
+    }
   }
 }

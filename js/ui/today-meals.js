@@ -216,7 +216,7 @@ export function renderMealList(list, date, onChange) {
             ? `<button type="button" class="entry-row-share is-shared" aria-label="${t("feedShare.sharedLabel")}">${icon("checkmark", { size: 13 })}<span>${t("feedShare.shared")}</span></button>`
             : `<button type="button" class="entry-row-share" aria-label="${t("feedShare.mealtimeLabel", { meal })}">${icon("feedShare", { size: 17 })}<span>${t("feedShare.mealtime", { meal })}</span></button>`}
         </div>`);
-      group.querySelector(".ml-group-foot .entry-row-share").addEventListener("click", async (e) => {
+      group.querySelector(".ml-group-foot .entry-row-share:not(.ml-copy-today)").addEventListener("click", async (e) => {
         if (shared) { globalThis.snapcalGoTo?.("shared"); return; }
         const btn = e.currentTarget;
         btn.disabled = true;

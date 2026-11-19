@@ -211,5 +211,5 @@ export async function changeGroups(body) {
 
 export async function sharingGroups() {
   const out = await myGroupsInfo();
-  return out.ok ? out.groups.map((g) => ({ id: g.id, name: g.name })) : [];
+  return out.ok && Array.isArray(out.groups) ? out.groups.map((g) => ({ id: g.id, name: g.name })) : [];
 }

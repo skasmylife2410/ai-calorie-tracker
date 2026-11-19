@@ -5,6 +5,7 @@ import { safeSrc } from "../safe-src.js";
 import { myRecap } from "../social.js";
 import * as store from "../store.js";
 import { t, formatNumber } from "../i18n.js";
+import { noteLabel, wireContextRow } from "./context-note.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -64,6 +65,15 @@ function mealHtml(meal, lang) {
     : `<div class="rc-chip"><span class="rc-chip-name">${esc(meal.name)}</span><span class="rc-chip-meta">${day}, ${kcal}</span></div>`;
 }
 
+/** The context they gave about the week shown (from this phone's profile, which the server read). */
+function weekNotesHtml(r) {
+  const notes = store.contextNotes?.().filter((n) => n.days.some((d) => d >= r.weekStart && d <= r.weekEnd)) ?? [];
+  return notes.map((n) => `
+    <button type="button" class="rc-note" data-ctx-note="${esc(n.id)}">
+      <b>${esc(noteLabel(n))}</b>${n.text ? ` <span>“${esc(n.text)}”</span>` : ""}
+    </button>`).join("");
+}
+
 export async function renderRecap(host, { lang = "en" } = {}) {
   host.innerHTML = "";
   const out = await myRecap(lang);
@@ -85,6 +95,7 @@ export async function renderRecap(host, { lang = "en" } = {}) {
       <h2 class="rc-title">${t("recap.title")}</h2>
       <p class="rc-range">${t("recap.range", { from: esc(shortDay(r.weekStart, lang, true)), to: esc(shortDay(r.weekEnd, lang, true)) })} <span class="rc-private">🔒 ${t("recap.private")}</span></p>
       <p class="rc-headline">${esc(r.headline)}</p>
+      ${weekNotesHtml(r)}
       <ul class="rc-stats">${statLines(stats).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
       <ol class="rc-tips">
         ${r.tips.map((tip) => `
@@ -94,7 +105,14 @@ export async function renderRecap(host, { lang = "en" } = {}) {
             ${tip.meals?.length ? `<div class="rc-meals">${tip.meals.map((m) => mealHtml(m, lang)).join("")}</div>` : ""}
           </li>`).join("")}
       </ol>
+      <div class="rc-context"><button type="button" class="ctx-chip" data-ctx-add>${t("ctxNote.add")}</button></div>
     </div>`;
+  // context about this week (being sick…): saved, sent to the server, and the check-in is rewritten
+  wireContextRow(host, new Date(`${r.weekEnd}T12:00:00`), async () => {
+    host.querySelector(".rc-context")?.insertAdjacentHTML("beforeend", `<span class="rc-rewriting">${esc(t("ctxNote.rewriting"))}</span>`);
+    try { const { syncNow } = await import("../sync.js"); await syncNow(); } catch { /* offline: it goes with the next sync */ }
+    renderRecap(host, { lang });
+  });
   host.querySelector(".rc-hide")?.addEventListener("click", () => {
     hideRecap(r.weekStart);
     host.innerHTML = `<p class="rc-hidden-note">${esc(t("recap.hiddenNote"))}</p>`;

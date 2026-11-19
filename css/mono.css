@@ -544,3 +544,5 @@
 :root[data-theme="mono"] .wt-tile-kg { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; letter-spacing: .02em; }
 :root[data-theme="mono"] .wt-tile { background: var(--mn-control); }
 :root[data-theme="mono"] .wt-delete { color: var(--mn-ink); text-decoration: underline; text-underline-offset: 3px; }
+:root[data-theme="mono"] .ctx-delete { color: var(--mn-ink); text-decoration: underline; text-underline-offset: 3px; }
+:root[data-theme="mono"] .ctx-day[aria-pressed="true"] .ctx-day-n, :root[data-theme="mono"] .rc-note { background: var(--mn-control); }

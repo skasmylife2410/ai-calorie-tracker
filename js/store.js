@@ -553,13 +553,13 @@ export function groupMany(ids) {
  * Logs a meal again at another time (an earlier day's meal for today): the same foods, amounts,
  * photo and servings, as a new meal. Questions, size checks and leftovers aren't carried over.
  */
-export function copyEntryTo(entryId, timestamp = Date.now(), { mealType: keepAs = null } = {}) {
+export function copyEntryTo(entryId, timestamp = Date.now(), { mealType: keepAs = null, quiet = false } = {}) {
   const e = getFoodEntry(entryId);
   if (!e || e.isPending === true || e.analysisFailed === true) return null;
   // a new meal at a new time: its mealtime is asked again (unless it's copied as part of a whole
   // breakfast, lunch…, which stays one), and it isn't shared yet
   const { id, updatedAt, timestamp: _t, analysisQuestions, questionsAnswered, analysisSizeCheck, sizeChecked, leftovers, leftoversFailed, mealType, sharedAt, ...rest } = JSON.parse(JSON.stringify(e));
-  return addFoodEntry({ ...rest, timestamp, analysisItems: rest.analysisItems ?? null, ...(keepAs ? { mealType: keepAs } : {}) });
+  return addFoodEntry({ ...rest, timestamp, analysisItems: rest.analysisItems ?? null, ...(keepAs ? { mealType: keepAs } : {}) }, { quiet });
 }
 
 /**
@@ -572,7 +572,8 @@ export function copyMealtimeTo(entryIds, mealType, timestamp = Date.now()) {
   const out = [];
   (entryIds ?? []).forEach((entryId, i) => {
     // a second apart, so the copies keep their order within the mealtime
-    const copy = copyEntryTo(entryId, timestamp + i * 1000, { mealType });
+    // quietly: its mealtime is already known, and the toast says where it went
+    const copy = copyEntryTo(entryId, timestamp + i * 1000, { mealType, quiet: true });
     if (copy) out.push(copy);
   });
   return out;
@@ -946,6 +947,54 @@ export function setProfile(patch) {
   writeJSON(STORAGE_KEYS.userProfile, next);
   notify();
   return next;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Context notes: being sick, travelling, a celebration… on some days. Kept on the profile (so they
+// sync to every phone and the server's Friday check-in reads them, api/_week.js weekNotes) and
+// shown only to their owner and the AI coach.
+// ---------------------------------------------------------------------------------------------
+
+export const CONTEXT_KINDS = Object.freeze(["sick", "travel", "celebration", "period", "stress", "training", "other"]);
+const CONTEXT_KEEP_DAYS = 60;
+const CONTEXT_MAX = 30;
+
+/** Every note, newest first. */
+export function contextNotes(profile = getProfile()) {
+  const list = Array.isArray(profile.contextNotes) ? profile.contextNotes : [];
+  return list.filter((n) => n && Array.isArray(n.days) && n.days.length > 0).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+}
+
+/** The notes that cover a day ("2026-11-17" or a Date/timestamp). */
+export function contextNotesForDay(day) {
+  const key = typeof day === "string" ? day : localDateString(day);
+  return contextNotes().filter((n) => n.days.includes(key));
+}
+
+/** Adds or (with `id`) replaces a note. Days are local day keys; text is capped at 200 chars. */
+export function saveContextNote({ id = null, kind, days, text = "" }) {
+  const clean = [...new Set((days ?? []).filter((d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+  if (clean.length === 0) return null;
+  const note = {
+    id: id ?? generateId(),
+    kind: CONTEXT_KINDS.includes(kind) ? kind : "other",
+    days: clean.slice(-14),
+    text: String(text ?? "").trim().slice(0, 200),
+    createdAt: Date.now(),
+  };
+  // old notes go: the check-in only ever looks at the last week
+  const oldest = localDateString(addDays(startOfDay(new Date()), -CONTEXT_KEEP_DAYS));
+  const others = contextNotes().filter((n) => n.id !== note.id && n.days[n.days.length - 1] >= oldest);
+  setProfile({ contextNotes: [note, ...others].slice(0, CONTEXT_MAX) });
+  return note;
+}
+
+export function deleteContextNote(id) {
+  const list = contextNotes();
+  const next = list.filter((n) => n.id !== id);
+  if (next.length === list.length) return false;
+  setProfile({ contextNotes: next });
+  return true;
 }
 
 /**

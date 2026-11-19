@@ -26,6 +26,7 @@ import { cachedFaceDoodle, makeFaceDoodle } from "./photo-doodle.js";
 import { cachedNanoDoodle, ensureNanoDoodle } from "./nano-doodle.js";
 import { renderMealList } from "./today-meals.js";
 import { openFailedMealSheet } from "./failed-meal.js";
+import { contextRowHtml, wireContextRow } from "./context-note.js";
 // opened on a tap, so loaded then (app.js warms them up once the app is idle)
 const openResultsSheet = (...args) => import("./results.js").then((m) => m.openResultsSheet(...args));
 const openAddFoodSheet = (...args) => import("./addfood.js").then((m) => m.openAddFoodSheet(...args));
@@ -111,6 +112,7 @@ export function render(container) {
           <span>${t("home.viewingDay", { day: formatViewedDay(date) })}</span>
           <button type="button" id="back-to-today">${t("home.backToToday")}</button>
         </div>`}
+      ${contextRowHtml(date)}
 
       ${caloriesPageHtml(totals, goals, remaining, overBudget, energy, mealCount, streakCount, microsDay, weekAvg, weighPrompt)}
       ${waterRowHtml(water)}
@@ -629,6 +631,8 @@ function wireDaySelection(container) {
       render(container);
     });
   }
+  // being sick, travelling…: notes the Friday check-in takes into account (js/ui/context-note.js)
+  wireContextRow(container.querySelector("#ctx-row"), viewedDate(), () => render(container));
   container.querySelector("#back-to-today")?.addEventListener("click", () => {
     selectedDayStart = null;
     stripScroll = null;

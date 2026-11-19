@@ -19,7 +19,7 @@ import { notify } from "./_push.js";
 import { select, remove, restBase, restHeaders, parseBody } from "./_rest.js";
 import { boardGoals, GOALS_VERSION, streakFromDays, quietDays } from "../js/nutrition.js";
 import { ADMIN } from "./_members.js";
-import { weekWindow, localWeekday, summarizeWeek, candidateMeals, buildPrompt, cleanRecap, RECAP_SCHEMA, TRANSLATE_SCHEMA, translatePrompt, textIn, localDay } from "./_week.js";
+import { weekWindow, localWeekday, summarizeWeek, candidateMeals, buildPrompt, cleanRecap, RECAP_SCHEMA, TRANSLATE_SCHEMA, translatePrompt, textIn, localDay, weekNotes, notesKey } from "./_week.js";
 
 const MODEL_ID = "gemini-3.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
@@ -172,14 +172,15 @@ export async function recapFor(owner, win) {
   const profile = profiles[0]?.data ?? {};
   const stats = summarizeWeek({ meals, exercise, weights, goals: goalsFrom(profile), profile });
   const { days, ...shownStats } = stats;
+  const notes = weekNotes(profile, win); // being sick, travelling…: explained, not judged
 
   let recap = { headline: "", tips: [] };
   if (stats.enough) {
     const candidates = candidateMeals(meals);
-    const raw = await askGemini(buildPrompt({ name: profile.displayName, stats, candidates }));
+    const raw = await askGemini(buildPrompt({ name: profile.displayName, stats, candidates, notes }));
     recap = cleanRecap(raw, candidates);
   }
-  const data = { weekStart: win.start, weekEnd: win.end, stats: { ...shownStats, days }, ...recap, goalsV: GOALS_VERSION, createdAt: new Date().toISOString() };
+  const data = { weekStart: win.start, weekEnd: win.end, stats: { ...shownStats, days }, ...recap, goalsV: GOALS_VERSION, notesKey: notesKey(notes), createdAt: new Date().toISOString() };
   await upsert("snapcal_recaps", { owner, week_start: win.start, data });
   return data;
 }
@@ -419,8 +420,11 @@ export default async function handler(req, res) {
     let recap = rows[0]?.data ?? null;
     // shown until the next Friday's replaces it; older than 8 days means the job missed a week
     if (!recap || localDay(new Date()) > addDays(recap.weekEnd, 8)) return res.status(200).json({ ok: true, recap: null });
-    // written with old targets: the same week again, judged by the targets they have now
-    if (recap.goalsV !== GOALS_VERSION || recapIsStale(recap, goalsFrom((await select("snapcal_profile", { select: "data", owner: `eq.${me}`, limit: "1" }))[0]?.data))) {
+    // written with old targets, or before they added context about that week (being sick…):
+    // the same week again, with the targets and the context they have now
+    const profile = (await select("snapcal_profile", { select: "data", owner: `eq.${me}`, limit: "1" }))[0]?.data;
+    const contextChanged = notesKey(weekNotes(profile, { start: recap.weekStart, end: recap.weekEnd })) !== (recap.notesKey ?? "");
+    if (recap.goalsV !== GOALS_VERSION || recapIsStale(recap, goalsFrom(profile)) || contextChanged) {
       try { recap = await recapFor(me, { start: recap.weekStart, end: recap.weekEnd }); } catch { /* keep the old one rather than none */ }
     }
     if (recap.tips?.length && !recap.byLang?.[lang]) recap = await addLanguage(me, rows[0].week_start, recap, lang);

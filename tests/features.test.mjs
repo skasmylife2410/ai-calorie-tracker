@@ -834,3 +834,22 @@ test("a deleted weigh-in stays deleted everywhere: it syncs as a deletion, and U
   assert.notEqual(again.id, b.id);
   assert.equal(store.allWeightEntries().find((w) => w.day === again.day).kg, 79.2);
 });
+
+test("context notes: saved on the profile by day, edited in place, deleted", () => {
+  localStorage.clear();
+  const today = new Date();
+  const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const y = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  const n = store.saveContextNote({ kind: "sick", days: [key(today), key(y), key(y), "bad"], text: "  flu  " });
+  assert.deepEqual(n.days, [key(y), key(today)], "sorted, de-duplicated, valid days only");
+  assert.equal(n.text, "flu");
+  assert.equal(store.contextNotesForDay(today)[0].id, n.id);
+  assert.equal(store.getProfile().contextNotes.length, 1, "kept on the profile, which syncs");
+  store.saveContextNote({ id: n.id, kind: "travel", days: [key(today)] });
+  assert.equal(store.contextNotes().length, 1, "edited, not duplicated");
+  assert.equal(store.contextNotes()[0].kind, "travel");
+  assert.equal(store.contextNotesForDay(y).length, 0);
+  assert.equal(store.saveContextNote({ kind: "sick", days: [] }), null, "needs a day");
+  assert.equal(store.deleteContextNote(n.id), true);
+  assert.equal(store.contextNotes().length, 0);
+});
