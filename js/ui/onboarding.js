@@ -90,7 +90,7 @@ export function render(container, onComplete, { redo = false, resume = false } =
   if (redo || resume) prefillFrom(store.getProfile());
   else draft = { ...DEFAULTS };
   let step = 0;
-  // Last step: how to put SnapCal on the Home Screen. Not when it's already opened from there,
+  // Last step: how to put Bocado on the Home Screen. Not when it's already opened from there,
   // and not when someone is only redoing their plan from Profile.
   const STEPS = redo || isStandalone() ? BASE_STEPS : [...BASE_STEPS, "install"];
   const LAST = STEPS[STEPS.length - 1];

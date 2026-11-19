@@ -1,12 +1,12 @@
 // delete-account.js — the account deletion page (delete-account.html), which Google Play links to
-// as SnapCal's "delete your account" web address: anyone can delete their account and all its
+// as Bocado's "delete your account" web address: anyone can delete their account and all its
 // data here without the app. It signs in with the username and password (api/auth.js "login"),
 // then asks the same "deleteAccount" the app's Profile uses, which needs the password again.
 // No inline scripts: the site's CSP forbids them.
 
 const TEXT = {
   en: {
-    title: "Delete your account · SnapCal",
+    title: "Delete your account · Bocado",
     formTitle: "Delete it now",
     username: "Username",
     password: "Password",
@@ -21,7 +21,7 @@ const TEXT = {
     help: 'Can\'t sign in? Email <a href="mailto:skasmylife2410@gmail.com">skasmylife2410@gmail.com</a> from any address, with your username, and we\'ll delete the account within 30 days. Read the <a href="/privacy.html">privacy policy</a>.',
   },
   es: {
-    title: "Eliminar tu cuenta · SnapCal",
+    title: "Eliminar tu cuenta · Bocado",
     formTitle: "Eliminarla ahora",
     username: "Nombre de usuario",
     password: "Contraseña",

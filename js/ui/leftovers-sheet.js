@@ -70,7 +70,7 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
         panel.querySelector("#left-back")?.addEventListener("click", () => { chosen = null; state = "pick"; draw(); });
         panel.querySelector("#left-ok")?.addEventListener("click", close);
         panel.querySelector("#left-undo")?.addEventListener("click", () => { undoLeftovers(chosen); onChange?.(); close(); });
-        // SnapCal's own camera (as for scanning a meal), with the gallery a tap away in it
+        // Bocado's own camera (as for scanning a meal), with the gallery a tap away in it
         panel.querySelector("#left-take")?.addEventListener("click", async () => {
           const { openCameraScan } = await import("./scan.js");
           openCameraScan({ photoOnly: t("left.title"), onResult: (r) => r.dataUrl && useLeftoverPhoto(r.dataUrl) });

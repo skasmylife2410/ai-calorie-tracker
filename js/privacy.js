@@ -7,7 +7,7 @@ function show(lang) {
   blocks.forEach((b) => { b.hidden = b.dataset.langBlock !== lang; });
   buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
   document.documentElement.lang = lang;
-  document.title = lang === "es" ? "Privacidad y términos · SnapCal" : "Privacy & Terms · SnapCal";
+  document.title = lang === "es" ? "Privacidad y términos · Bocado" : "Privacy & Terms · Bocado";
 }
 
 let saved = "";

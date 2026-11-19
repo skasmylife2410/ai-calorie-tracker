@@ -1,6 +1,6 @@
-# SnapCal on Google Play
+# Bocado on Google Play
 
-SnapCal goes on Google Play as a Trusted Web Activity: the same web app, packaged by
+Bocado goes on Google Play as a Trusted Web Activity: the same web app, packaged by
 PWABuilder (pwabuilder.com) or Bubblewrap. Updates keep coming from Vercel; a new upload is
 only needed to change the Android package itself (name, icon, version).
 
@@ -13,14 +13,14 @@ only needed to change the Android package itself (name, icon, version).
 | In-app account deletion | Profile → Privacy → Delete my account |
 | Digital Asset Links | `/.well-known/assetlinks.json` (fingerprint still to add, below) |
 | Web app manifest | `/manifest.webmanifest`: id, scope, categories, portrait, icons (the 512 icon is safe for Android's round crop) |
-| Package name | `app.snapcal.tracker`: permanent once the app exists in the Play Console |
+| Package name | `app.bocado.diario`: permanent once the app exists in the Play Console |
 
 ## Steps
 
 1. **Contact email:** skasmylife2410@gmail.com is in the privacy policy and on the deletion
    page. Use the same address as the Play listing's developer email.
-2. **Play Console.** Create the developer account ($25 once) and an app called SnapCal.
-3. **PWABuilder.** Enter the site address, choose Android, package ID `app.snapcal.tracker`,
+2. **Play Console.** Create the developer account ($25 once) and an app called Bocado.
+3. **PWABuilder.** Enter the site address, choose Android, package ID `app.bocado.diario`,
    and let it create the signing key. Keep the key file and its passwords somewhere safe.
 4. **Fingerprint.** In the Play Console: Setup → App signing → "SHA-256 certificate
    fingerprint" (the app signing key, not the upload key). Put it in

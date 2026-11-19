@@ -1,4 +1,4 @@
-# SnapCal — full update
+# Bocado — full update
 
 Everything currently built, in one folder. Safe to upload over what is live: nothing here
 needs deleting first, and js/ui/saved.js is included so no file is ever missing mid-upload.

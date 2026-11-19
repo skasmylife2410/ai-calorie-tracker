@@ -6,7 +6,7 @@
 // waits on the network and the page always matches its files; a new deploy arrives with the new
 // worker (js/updater.js reloads onto it). Other pages (privacy, us.html) are network-first.
 
-const CACHE_VERSION = "snapcal-v114";
+const CACHE_VERSION = "snapcal-v115";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -224,7 +224,7 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let msg = {};
   try { msg = event.data ? event.data.json() : {}; } catch { msg = { body: event.data?.text?.() ?? "" }; }
-  const title = msg.title || "SnapCal";
+  const title = msg.title || "Bocado";
   const options = {
     body: msg.body || "",
     icon: "/icons/icon-192-v2.png",

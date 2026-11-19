@@ -1,4 +1,4 @@
-# SnapCal — usernames and passwords
+# Bocado — usernames and passwords
 
 Upload these files the same way as before:
 https://github.com/skasmylife2410/ai-calorie-tracker/upload/main  (Cmd+A inside this folder, drag, commit)

@@ -39,7 +39,7 @@ export function openSizeCheckSheet(entry, { onDone } = {}) {
           <button type="button" class="ask-skip" id="size-skip">${t("ask.keep")}</button>
         </div>`;
       wireNavBar(panel, { onLeading: () => close() });
-      // SnapCal's own camera (as for scanning a meal), with the gallery a tap away in it
+      // Bocado's own camera (as for scanning a meal), with the gallery a tap away in it
       panel.querySelector("#size-take").addEventListener("click", async () => {
         const { openCameraScan } = await import("./scan.js");
         openCameraScan({ photoOnly: t("size.title"), onResult: (r) => r.dataUrl && useSizePhoto(r.dataUrl) });

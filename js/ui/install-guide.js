@@ -1,4 +1,4 @@
-// install-guide.js — "Put SnapCal on your Home Screen": the iPhone / Android steps, in one place
+// install-guide.js — "Put Bocado on your Home Screen": the iPhone / Android steps, in one place
 // for the last step of setup, the one-time card on Home and the row in Profile. Hidden once the
 // app runs from the Home Screen (install.js isStandalone()).
 

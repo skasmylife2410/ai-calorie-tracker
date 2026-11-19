@@ -391,7 +391,7 @@ function postCompletionNotification(name, calories) {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
     // eslint-disable-next-line no-new
-    new Notification("SnapCal", { body: `${name} — ${Math.round(calories)} calories logged` });
+    new Notification("Bocado", { body: `${name} — ${Math.round(calories)} calories logged` });
   } catch {
     // best-effort only
   }

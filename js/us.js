@@ -645,7 +645,7 @@ if (typeof document !== "undefined" && document.getElementById("tg-body")) {
   wireRange(document);
   (async () => {
     await initI18n();
-    document.title = `${t("us.title")} · SnapCal`;
+    document.title = `${t("us.title")} · Bocado`;
     document.getElementById("tg-title").textContent = t("us.title");
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
     start();

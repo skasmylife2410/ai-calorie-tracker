@@ -80,7 +80,7 @@ export function renderEmailGate(container, username) {
       container.innerHTML = `
         <div class="auth-screen">
           <div class="auth-card">
-            <div class="auth-brand">SnapCal</div>
+            <div class="auth-brand">Bocado</div>
             <h1 class="auth-title">${t("auth.emailGateTitle")}</h1>
             <div class="auth-sub">${t("auth.emailGateSub")}</div>
             <div class="auth-who">${t("auth.emailGateWho", { name: escapeHtml(username) })}</div>
@@ -128,7 +128,7 @@ export function renderConsent(container) {
       container.innerHTML = `
         <div class="auth-screen">
           <div class="auth-card">
-            <div class="auth-brand">SnapCal</div>
+            <div class="auth-brand">Bocado</div>
             <h1 class="auth-title">${t("privacy.consentTitle")}</h1>
             <div class="auth-sub">${t("privacy.consentSub")}</div>
             <ul class="consent-list">
@@ -225,7 +225,7 @@ export function renderLogin(container, { mode = "login" } = {}) {
       container.innerHTML = `
         <div class="auth-screen">
           <div class="auth-card">
-            <div class="auth-brand">SnapCal</div>
+            <div class="auth-brand">Bocado</div>
             <h1 class="auth-title">${isReset ? t("auth.resetTitle") : t("auth.forgotTitle")}</h1>
             <div class="auth-sub">${isReset ? t("auth.resetSub") : t("auth.forgotSub")}</div>
             ${isReset ? `
@@ -282,7 +282,7 @@ export function renderLogin(container, { mode = "login" } = {}) {
       container.innerHTML = `
         <div class="auth-screen">
           <div class="auth-card">
-            <div class="auth-brand">SnapCal</div>
+            <div class="auth-brand">Bocado</div>
             <h1 class="auth-title">${isSignup && linkCode ? t("invite.joinTitle") : isSignup ? t("auth.createTitle") : t("auth.signInTitle")}</h1>
             ${isSignup && linkCode ? `<div class="auth-sub">${t("invite.joinSub")}</div><div class="auth-error" id="auth-link-msg">${linkProblem ? t(`invite.bad.${linkProblem}`) : ""}</div>` : ""}
 

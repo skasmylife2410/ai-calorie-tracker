@@ -71,7 +71,7 @@ export function render(container) {
   container.innerHTML = `
     <div class="today-content">
       <div class="today-header">
-        <div class="wordmark">${icon("forkKnife", { size: 24 })}<span class="wordmark-text">SnapCal</span></div>
+        <div class="wordmark">${icon("forkKnife", { size: 24 })}<span class="wordmark-text">Bocado</span></div>
         <div class="today-header-right">
           <div class="streak-pill">${icon("flameFill", { size: 18, color: "var(--sc-streak-flame)" })}<span class="streak-count">${streakCount}</span></div>
           <button type="button" class="home-avatar" id="home-avatar" aria-label="${t("tabs.profile")}">

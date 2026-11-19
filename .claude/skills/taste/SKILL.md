@@ -1,9 +1,9 @@
 ---
 name: taste
-description: SnapCal's design taste and review workflow. Use for ANY visual or UI change in this repo — new screens, restyles, colours, fonts, icons, the intro, charts, layout fixes, themes — and whenever the owner asks for a look, a mockup, "make it nicer", or "make it live". Covers the Mono (Nothing OS-inspired) aesthetic, when colour is allowed, contrast rules, what reads as "vibe-coded", iPhone layout checks, and the mockup-first → approve → ship flow.
+description: Bocado's design taste and review workflow. Use for ANY visual or UI change in this repo — new screens, restyles, colours, fonts, icons, the intro, charts, layout fixes, themes — and whenever the owner asks for a look, a mockup, "make it nicer", or "make it live". Covers the Mono (Nothing OS-inspired) aesthetic, when colour is allowed, contrast rules, what reads as "vibe-coded", iPhone layout checks, and the mockup-first → approve → ship flow.
 ---
 
-# SnapCal taste
+# Bocado taste
 
 The owner has a clear eye. Follow this instead of generic "modern app" defaults.
 

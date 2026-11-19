@@ -46,7 +46,7 @@ export function renderLogin(container, { mode = "login" } = {}) {
       container.innerHTML = `
         <div class="auth-screen">
           <div class="auth-card">
-            <div class="auth-brand">SnapCal</div>
+            <div class="auth-brand">Bocado</div>
             <h1 class="auth-title">${isSignup ? t("auth.createTitle") : t("auth.signInTitle")}</h1>
 
             <label class="auth-label" for="auth-user">${t("auth.username")}</label>

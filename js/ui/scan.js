@@ -156,7 +156,7 @@ export function openCameraScan({ onResult, photoOnly = "" }) {
         }
         const message =
           cameraState === "denied"
-            ? "SnapCal needs camera access to scan food. Enable it in Settings, or choose a photo from your library below."
+            ? "Bocado needs camera access to scan food. Enable it in Settings, or choose a photo from your library below."
             : "No camera available on this device. Use the photo library below to test capture, or enter a barcode manually.";
         return `
           <div class="scan-fallback">

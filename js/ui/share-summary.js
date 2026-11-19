@@ -1,6 +1,6 @@
 // share-summary.js — "Share" on the calorie card: a clean summary of a day or a week, as a
 // 1080×1350 image (4:5, shown uncropped by Instagram and WhatsApp) or as plain text, handed to
-// the phone's own share menu so it can go to any app. Nothing is uploaded by SnapCal itself.
+// the phone's own share menu so it can go to any app. Nothing is uploaded by Bocado itself.
 //
 // The builders (daySummary / weekSummary / summaryText) are pure so they can be tested; the
 // card is drawn on a canvas; the sheet ties them together.
@@ -139,7 +139,7 @@ const rangeLabel = (a, b) => `${formatDate(a, { month: "short", day: "numeric" }
 export function summaryText(s, { meals = true, streak = true, weight = false } = {}) {
   const lines = [];
   if (s.kind === "day") {
-    lines.push(`SnapCal · ${dayLabel(s.date)}`);
+    lines.push(`Bocado · ${dayLabel(s.date)}`);
     lines.push(`${formatNumber(s.eaten)} / ${formatNumber(s.goal)} kcal (${s.remaining >= 0 ? t("share.leftN", { n: formatNumber(s.remaining) }) : t("share.overN", { n: formatNumber(-s.remaining) })})`);
     lines.push(t("share.macrosLine", { p: s.proteinG, c: s.carbsG, f: s.fatG }));
     if (meals && s.meals.length) {
@@ -152,7 +152,7 @@ export function summaryText(s, { meals = true, streak = true, weight = false } =
     if (weight && s.weightKg) { const w = kgOrLb(s.weightKg); foot.push(`${one(w.v)} ${w.u}`); }
     if (foot.length) lines.push("", foot.join(" · "));
   } else {
-    lines.push(`SnapCal · ${rangeLabel(s.from, s.to)}`);
+    lines.push(`Bocado · ${rangeLabel(s.from, s.to)}`);
     lines.push(t("share.weekAvg", { n: formatNumber(s.avgCalories), goal: formatNumber(s.goal) }));
     lines.push(t("share.weekLogged", { n: s.loggedDays }) + " · " + t("share.weekNear", { n: s.nearGoal }));
     lines.push(t("share.weekProtein", { n: s.avgProteinG }));
@@ -441,7 +441,7 @@ export async function renderCard(s, opts = {}) {
     const hw = (W - PAD * 2 - 18) / 2;
     statTile(PAD, 1030, hw, 132, String(s.meals.length), biggest ? t("share.mealsBiggest", { n: formatNumber(biggest.calories) }) : t("share.mealsWord"), P.ink, 54);
     statTile(PAD + hw + 18, 1030, hw, 132, String(s.water), t("share.glassesWord"), P.ink, 54);
-    await footer(opts.weight && s.weightKg ? (() => { const w = kgOrLb(s.weightKg); return `${one(w.v)} ${w.u}`; })() : "SnapCal");
+    await footer(opts.weight && s.weightKg ? (() => { const w = kgOrLb(s.weightKg); return `${one(w.v)} ${w.u}`; })() : "Bocado");
   } else if (!dark) {
     // A · week
     await bigNumber(formatNumber(s.avgCalories), 210, 318, 128, 180);
@@ -471,7 +471,7 @@ export async function renderCard(s, opts = {}) {
     statTile(PAD, 1050, hw, 132, String(s.workouts), s.workoutKcal ? t("share.workoutsKcal", { n: formatNumber(s.workoutKcal) }) : t("share.workouts"), P.ink, 54);
     const wt = opts.weight && s.weightDeltaKg !== null ? (() => { const x = kgOrLb(s.weightDeltaKg); return [`${x.v > 0 ? "+" : ""}${one(x.v)}`, t("share.weightWeek", { u: x.u })]; })() : [String(one(s.waterPerDay)), t("share.waterAvgShort")];
     statTile(PAD + hw + 18, 1050, hw, 132, wt[0], wt[1], P.ink, 54);
-    await footer("SnapCal");
+    await footer("Bocado");
   }
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92));

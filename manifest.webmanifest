@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "SnapCal",
-  "short_name": "SnapCal",
-  "description": "Snap a photo, say it or type it: SnapCal counts calories, protein and nutrients, and keeps you on track with the people you eat with.",
+  "name": "Bocado",
+  "short_name": "Bocado",
+  "description": "Snap a photo, say it or type it: Bocado counts calories, protein and nutrients, and keeps you on track with the people you eat with.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",

@@ -138,7 +138,7 @@
     box.style.cssText = "position:fixed;inset:0;z-index:10001;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:#F2F2F2;color:#000;font:16px/1.4 -apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif";
     var btn = "font:inherit;font-weight:600;padding:12px 22px;border-radius:999px;border:0;min-width:200px;";
     box.innerHTML =
-      "<div style=\"font-size:19px;font-weight:700\">" + (es ? "SnapCal no pudo abrir" : "SnapCal didn't open") + "</div>" +
+      "<div style=\"font-size:19px;font-weight:700\">" + (es ? "Bocado no pudo abrir" : "Bocado didn't open") + "</div>" +
       "<div style=\"max-width:300px;color:#5C5C60;font-size:15px\">" + (es
         ? "Tus datos están a salvo en este teléfono. Prueba de nuevo o repara la app."
         : "Your data is safe on this phone. Try again, or repair the app.") + "</div>" +
