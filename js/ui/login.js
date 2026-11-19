@@ -4,6 +4,7 @@
 // The token returned by /api/auth is a signed session, stored exactly where the old passcode was,
 // so every existing call (sync, Gemini, the Us page) keeps working untouched.
 
+import { biteMark, numberedHtml } from "./mark.js";
 import { setStoredToken, getStoredToken } from "../net.js";
 import { t, currentLanguage } from "../i18n.js";
 
@@ -126,22 +127,17 @@ export function renderConsent(container) {
     let busy = false;
     const draw = () => {
       container.innerHTML = `
-        <div class="auth-screen">
-          <div class="auth-card">
-            <div class="auth-brand">Boca0</div>
-            <h1 class="auth-title">${t("privacy.consentTitle")}</h1>
-            <div class="auth-sub">${t("privacy.consentSub")}</div>
-            <ul class="consent-list">
-              <li>${t("privacy.point1")}</li>
-              <li>${t("privacy.point2")}</li>
-              <li>${t("privacy.point3")}</li>
-              <li>${t("privacy.point4")}</li>
-            </ul>
-            <a class="consent-link" href="/privacy.html" target="_blank" rel="noopener">${t("privacy.read")} ↗</a>
-            <label class="consent-check"><input type="checkbox" id="consent-box" /> <span>${t("privacy.agree")}</span></label>
+        <div class="auth-screen consent-screen">
+          <div class="consent">
+            <span class="consent-mark">${biteMark(44)}</span>
+            <h1 class="consent-title">${t("privacy.consentTitle")}</h1>
+            <p class="consent-sub">${t("privacy.consentSub")}</p>
+            <div class="consent-card">${numberedHtml([1, 2, 3, 4].map((i) => [t(`privacy.p${i}t`), t(`privacy.p${i}`)]))}</div>
+            <label class="consent-check"><input type="checkbox" id="consent-box" />
+              <span>${t("privacy.agree")} <a href="/privacy.html" target="_blank" rel="noopener">${t("privacy.policyLink")}</a></span></label>
             ${error ? `<div class="auth-error">${escapeHtml(error)}</div>` : ""}
             <button type="button" class="auth-submit" id="consent-go" ${busy ? "disabled" : ""}>${busy ? t("auth.working") : t("privacy.continue")}</button>
-            <button type="button" class="auth-switch" id="consent-out">${t("auth.signOut")}</button>
+            <button type="button" class="auth-switch consent-out" id="consent-out">${t("auth.signOut")}</button>
           </div>
         </div>`;
       container.querySelector("#consent-go").addEventListener("click", async () => {

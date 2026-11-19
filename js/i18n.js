@@ -100,6 +100,12 @@ export function t(key, vars = {}) {
   );
 }
 
+/** A string in a given language, whatever the app is showing (e.g. a notification for everyone). */
+export function tIn(lang, key) {
+  const raw = lookup(SUPPORTED.includes(lang) ? lang : FALLBACK, key) ?? lookup(FALLBACK, key) ?? key;
+  return typeof raw === "string" ? raw : key;
+}
+
 function pickPlural(raw, n) {
   if (typeof raw !== "string" || !raw.includes("|") || n === undefined) return raw;
   const [one, other] = raw.split("|");

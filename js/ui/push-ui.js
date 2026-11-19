@@ -4,11 +4,14 @@
 //   maybeShowWhatsNew()        a one-time "What's new" sheet after an update
 // To announce the next update: change WHATS_NEW.id and the whatsNew.* strings in i18n.
 
-import { t } from "../i18n.js";
+import { t, tIn } from "../i18n.js";
 import { openSheet } from "./sheet.js";
+import { biteMark, numberedHtml } from "./mark.js";
+import { apiFetch } from "../net.js";
+import { myGroupsInfo } from "../social.js";
 import { pushState, enablePush, disablePush, pushCardDismissed, dismissPushCard, serverKey } from "../push.js";
 
-export const WHATS_NEW = { id: "2026-09-25-notifications", items: ["n1", "n2"] };
+export const WHATS_NEW = { id: "2026-11-21-boca0", items: ["n1", "n2", "n3"] };
 const SEEN_KEY = "snapcal.whatsNewSeen";
 
 function toast(text) {
@@ -88,35 +91,62 @@ export async function renderPushSettings(host) {
   }));
 }
 
+/**
+ * Whether this phone used the app before this update: the "SnapCal is now Boca0" news means
+ * nothing to someone who has just signed up.
+ */
+export function usedBefore(storage = globalThis.localStorage, since = Date.parse("2026-11-20T00:00:00Z")) {
+  try {
+    if (storage.getItem(SEEN_KEY)) return true;
+    const meals = JSON.parse(storage.getItem("snapcal.foodEntries") || "[]");
+    return meals.some((m) => Number(m?.timestamp) < since);
+  } catch {
+    return false;
+  }
+}
+
+async function announce() {
+  const pick = (k) => ({ en: tIn("en", k), es: tIn("es", k) });
+  try {
+    const res = await apiFetch("/api/notes", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ op: "announce", title: pick("whatsNew.pushTitle"), body: pick("whatsNew.pushBody") }) });
+    return await res.json();
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** Shows the latest update once per phone (or on demand, e.g. from an announcement tap). */
 export async function maybeShowWhatsNew({ force = false } = {}) {
   let seen = null;
   try { seen = localStorage.getItem(SEEN_KEY); } catch {}
   if (!force && seen === WHATS_NEW.id) return;
-  // this update is about notifications: wait until the server can actually send them
-  if (!(await serverKey())) return;
+  if (!force && !usedBefore()) { try { localStorage.setItem(SEEN_KEY, WHATS_NEW.id); } catch {} return; }
   try { localStorage.setItem(SEEN_KEY, WHATS_NEW.id); } catch {}
-  const state = await pushState();
+  const groups = await myGroupsInfo().catch(() => ({}));
   openSheet({
     render(panel, close) {
       panel.innerHTML = `
-        <div class="whatsnew">
-          <h2 class="whatsnew-title">✨ ${t("whatsNew.title")}</h2>
-          ${WHATS_NEW.items.map((k) => `
-            <div class="whatsnew-item">
-              <div class="whatsnew-item-title">${t(`whatsNew.${k}Title`)}</div>
-              <p class="whatsnew-item-body">${t(`whatsNew.${k}Body`)}</p>
-            </div>`).join("")}
-          ${state === "needsInstall" ? `<p class="whatsnew-note">${t("push.installBody")}</p>` : ""}
-          <div class="push-actions">
-            ${state === "off" ? `<button type="button" class="acct-btn is-primary" data-wn="on">🔔 ${t("push.turnOn")}</button>` : ""}
-            <button type="button" class="acct-btn" data-wn="close">${t("whatsNew.close")}</button>
+        <div class="wn">
+          <span class="wn-mark">${biteMark(44)}</span>
+          <h2 class="wn-title">${t("whatsNew.title")}</h2>
+          <p class="wn-sub">${t("whatsNew.sub")}</p>
+          ${numberedHtml(WHATS_NEW.items.map((k) => [t(`whatsNew.${k}Title`), t(`whatsNew.${k}Body`)]))}
+          <div class="wn-actions">
+            <button type="button" class="acct-btn is-primary" data-wn="try">${t("whatsNew.try")}</button>
+            <button type="button" class="wn-plain" data-wn="close">${t("whatsNew.close")}</button>
+            ${groups?.isAdmin ? `<button type="button" class="wn-admin" data-wn="notify">${t("whatsNew.notify")}</button>` : ""}
           </div>
         </div>`;
       panel.querySelector('[data-wn="close"]').addEventListener("click", close);
-      panel.querySelector('[data-wn="on"]')?.addEventListener("click", async (e) => {
-        await turnOn(e.currentTarget);
-        close();
+      panel.querySelector('[data-wn="try"]').addEventListener("click", () => { close(); globalThis.snapcalGoTo?.("us"); });
+      panel.querySelector('[data-wn="notify"]')?.addEventListener("click", async (e) => {
+        if (!confirm(t("whatsNew.notifyAsk"))) return;
+        const b = e.currentTarget;
+        b.disabled = true;
+        const out = await announce();
+        b.textContent = out.ok ? t("whatsNew.notified", { n: out.sent ?? 0 }) : t("whatsNew.notifyFailed");
+        b.disabled = Boolean(out.ok);
       });
     },
   });
