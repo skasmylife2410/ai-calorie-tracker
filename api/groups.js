@@ -6,6 +6,7 @@
 // POST { op: "accept" | "decline", group } -> answers an ask to join
 // Owner only: { op: "all" | "set" | "remove" } (Profile › Members).
 // "Train together" (going live for a group): { op: "live…" }, see api/_live.js.
+// Planned workouts: { op: "plans" | "plan…" }, see api/_plans.js.
 //
 // Being in a group shows your log to everyone in it, so nobody is ever put in a group by someone
 // else: an ask waits in snapcal_group_invites until the person says yes. A group someone made
@@ -21,6 +22,7 @@ import { notify, displayName } from "./_push.js";
 import { mailConfigured } from "./_mail.js";
 import { audit } from "./_audit.js";
 import { handleLive } from "./_live.js";
+import { handlePlans } from "./_plans.js";
 
 const NAME_MAX = 30;
 const fail = (res, errorType, message) => res.status(200).json({ ok: false, errorType, message });
@@ -73,6 +75,10 @@ export default async function handler(req, res) {
   try {
     if (op.startsWith("live")) {
       const out = await handleLive(op, me, body);
+      if (out) return res.status(200).json(out);
+    }
+    if (op === "plans" || op.startsWith("plan")) {
+      const out = await handlePlans(op, me, body);
       if (out) return res.status(200).json(out);
     }
 

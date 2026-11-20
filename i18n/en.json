@@ -1783,5 +1783,46 @@
     "noMic": "Boca0 can't use the microphone. Allow it in your phone's settings.",
     "nobody": "Nobody's live right now",
     "youreLive": "You're live"
+  },
+  "plans": {
+    "planned": "Planned",
+    "plan": "Plan a session",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "every": "every {days}",
+    "going": "{n} going",
+    "goingN": "Going · {n}",
+    "goingBtn": "Going",
+    "imIn": "I'm in",
+    "update": "Save",
+    "cant": "Can't make it",
+    "howOften": "How often",
+    "everyWeek": "Every week",
+    "once": "Once",
+    "time": "Time",
+    "split": "Split",
+    "where": "Where",
+    "wherePh": "The gym, e.g. Smart Fit 93",
+    "for": "For",
+    "customPh": "Name it, e.g. Glutes & abs",
+    "who": "Everyone in {group} hears about it now, and the ones who are in get a reminder an hour before.",
+    "past": "That time has already passed.",
+    "by": "Planned by {name} for {group}",
+    "yourSplit": "Your split that day",
+    "everyTime": "Same answer {days}",
+    "nobodyYet": "Nobody yet. Be the first.",
+    "remove": "Remove this plan",
+    "removeAsk": "Remove this plan for everyone?",
+    "splits": {
+      "push": "Push",
+      "pull": "Pull",
+      "legs": "Legs",
+      "custom": "Custom"
+    },
+    "hints": {
+      "push": "Push: chest, shoulders, triceps",
+      "pull": "Pull: back, biceps, rear shoulders",
+      "legs": "Legs: quads, hamstrings, glutes, calves"
+    }
   }
 }

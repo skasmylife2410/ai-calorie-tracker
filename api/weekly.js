@@ -13,6 +13,7 @@
 //
 // One Vercel function for both jobs keeps the project under the Hobby plan's function limit.
 
+import { planReminders } from "./_plans.js";
 import crypto from "node:crypto";
 import { requireUser } from "./_auth.js";
 import { notify } from "./_push.js";
@@ -383,6 +384,12 @@ export async function purgeOldPosts(now = Date.now()) {
 
 export default async function handler(req, res) {
   if (!restBase()) return fail(res, "unconfigured", "Needs Supabase configured.");
+
+  // every five minutes from pg_cron (Supabase): the planned-workout reminders. Needs no secret:
+  // it only ever sends reminders that are due, once each, and runs at most once a minute.
+  if (req.method === "GET" && String(req.query?.job ?? new URL(req.url, "http://x").searchParams.get("job") ?? "") === "tick") {
+    try { return res.status(200).json({ ok: true, plans: await planReminders() }); } catch (err) { return fail(res, "other", String(err?.message ?? err)); }
+  }
 
   if (req.method === "GET") {
     const secret = (process.env.CRON_SECRET || "").trim();

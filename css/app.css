@@ -3372,3 +3372,48 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .wn-actions .acct-btn { padding: 15px 0; font-size: 16px; border-radius: 26px; }
 .wn-plain { padding: 13px 0; border: 0; background: none; font: inherit; font-size: 16px; font-weight: 600; color: var(--sc-primary-text); }
 .wn-admin { margin-top: 6px; padding: 12px 0 0; border: 0; border-top: 1px solid var(--sc-secondary-15); background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--sc-secondary); }
+
+/* planned workouts in Train together (js/ui/plans.js; Figma "Boca0 · Workout plans") */
+.pl { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--sc-secondary-15); }
+.pl-label, .pl-day { font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--sc-secondary); }
+.pl-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--sc-secondary-15); cursor: pointer; }
+.pl-when { flex: none; width: 104px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pl-when .pl-day { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-clock { display: flex; align-items: baseline; gap: 5px; }
+.pl-clock b { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; font-size: 26px; line-height: 1; letter-spacing: .02em; }
+.pl-clock small { font-size: 12px; font-weight: 600; color: var(--sc-secondary); }
+.pl-clock.is-big b { font-size: 46px; }
+.pl-clock.is-big small { font-size: 15px; }
+.pl-what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pl-what b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-what span { font-size: 13px; color: var(--sc-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-btn { flex: none; height: 34px; padding: 0 15px; border: 0; border-radius: 17px; background: var(--sc-primary-text); color: var(--sc-card-bg, #fff); font: inherit; font-size: 13.5px; font-weight: 600; }
+.pl-btn.is-on { background: transparent; color: var(--sc-primary-text); box-shadow: inset 0 0 0 1.5px var(--sc-primary-text); }
+.pl-new { margin-top: 12px; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 14.5px; font-weight: 600; color: var(--sc-primary-text); }
+.pl-sheet, .pl-session { padding: 16px 20px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+.pl-session { padding-top: 24px; }
+.pl-f { margin: 20px 0 9px; font-size: 13px; font-weight: 500; color: var(--sc-secondary); }
+.pl-seg { display: flex; padding: 3px; border-radius: 20px; background: var(--sc-secondary-15); }
+.pl-seg button { flex: 1; height: 32px; border: 0; border-radius: 16px; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-secondary); }
+.pl-seg button[aria-pressed="true"] { background: var(--sc-card-bg, #fff); color: var(--sc-primary-text); box-shadow: inset 0 0 0 1.5px var(--sc-primary-text); }
+.pl-days { display: flex; justify-content: space-between; margin-top: 14px; }
+.pl-days button { width: 40px; height: 40px; border-radius: 50%; border: 0; background: none; box-shadow: inset 0 0 0 1px var(--sc-secondary-15); font: inherit; font-size: 14px; font-weight: 600; color: var(--sc-secondary); }
+.pl-days button[aria-pressed="true"] { color: var(--sc-primary-text); box-shadow: inset 0 0 0 1.5px var(--sc-primary-text); font-weight: 700; }
+.pl-input { display: block; width: 100%; box-sizing: border-box; height: 46px; margin-top: 12px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--sc-secondary-15);
+  background: var(--sc-card-bg, #fff); color: var(--sc-primary-text); font: inherit; font-size: 15px; }
+.pl-f + .pl-input, .pl-f + .pl-time { margin-top: 0; }
+.pl-time { display: block; border: 0; background: none; padding: 0; color: var(--sc-primary-text); font-family: "Doto", var(--sc-font-rounded); font-weight: 900; font-size: 44px; letter-spacing: .02em; color-scheme: light dark; }
+.pl-hint { margin: 10px 0 0; font-size: 13px; line-height: 1.4; color: var(--sc-secondary); }
+.pl-error { margin: 12px 0 0; font-size: 14px; color: var(--sc-red); }
+.pl-title { margin-top: 8px; font-size: 18px; font-weight: 600; }
+.pl-by { margin-top: 3px; font-size: 13.5px; color: var(--sc-secondary); }
+.pl-every { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 14px; }
+.pl-every input { width: 20px; height: 20px; margin: 0; accent-color: var(--sc-primary-text); }
+.pl-who { list-style: none; margin: 0; padding: 0; }
+.pl-who li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--sc-secondary-15); font-size: 15px; }
+.pl-who li span { color: var(--sc-secondary); font-size: 14px; }
+.pl-who .pl-nobody { color: var(--sc-secondary); font-size: 14px; }
+.pl-actions { display: flex; flex-direction: column; gap: 4px; margin-top: 24px; }
+.pl-actions .acct-btn { padding: 15px 0; font-size: 16px; border-radius: 26px; }
+.pl-plain { padding: 12px 0; border: 0; background: none; font: inherit; font-size: 16px; font-weight: 600; color: var(--sc-primary-text); }
+.pl-remove { margin-top: 6px; padding: 12px 0 0; border: 0; border-top: 1px solid var(--sc-secondary-15); background: none; font: inherit; font-size: 14px; color: var(--sc-red); }

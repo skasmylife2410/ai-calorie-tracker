@@ -18,6 +18,8 @@ const OWNED = [
   ["snapcal_comments", "owner"],
   ["snapcal_suggestions", "owner"],
   ["snapcal_client_errors", "owner"], // crash reports their phone sent
+  ["snapcal_plans", "created_by"],      // workouts they planned (answers to them go with them)
+  ["snapcal_plan_rsvps", "username"],   // their answers to other people's plans
   ["snapcal_live", "owner"],            // times they went live (no video is ever stored)
   ["snapcal_live_signals", "viewer"],   // times they watched or joined someone
   ["snapcal_notes", "from_user"],

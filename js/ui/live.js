@@ -17,6 +17,7 @@ import { t } from "../i18n.js";
 import { apiFetch } from "../net.js";
 import { icon } from "./icons.js";
 import { openSheet, openFullScreenCover, navBar, wireNavBar } from "./sheet.js";
+import { loadPlans, plansHtml, wirePlans } from "./plans.js";
 
 export const MUSCLES = ["chest", "back", "legs", "shoulders", "arms", "core", "full", "cardio"];
 export const LEVELS = ["beginner", "average", "expert"];
@@ -248,7 +249,7 @@ export function renderLiveCard(el, { group } = {}) {
   const draw = async () => {
     if (!el.isConnected) { clearInterval(timer); return; }
     if (document.visibilityState === "hidden") return;
-    const out = await api({ op: "live" });
+    const [out, plans] = await Promise.all([api({ op: "live" }), loadPlans()]);
     if (!el.isConnected || !out.ok) return;
     lastIce = out.ice?.length ? out.ice : FALLBACK_ICE;
     const others = out.sessions.filter((s) => s.id !== out.mine);
@@ -273,7 +274,9 @@ export function renderLiveCard(el, { group } = {}) {
               <span class="lv-tile-name">${esc(s.name)}</span>
             </button>`).join("")}
         </div>` : ""}
+        ${plansHtml(plans)}
       </div>`;
+    wirePlans(el, plans, { group });
     el.querySelector("[data-lv-go]")?.addEventListener("click", () => openGoLive({ group }));
     el.querySelectorAll("[data-lv-open]").forEach((b) => b.addEventListener("click", () => openFeed(others, b.dataset.lvOpen)));
     if (pendingLive) {
@@ -288,6 +291,9 @@ export function renderLiveCard(el, { group } = {}) {
     el.querySelectorAll("[data-started]").forEach((b) => { b.textContent = elapsed(b.dataset.started); });
   }, TICK_MS);
   const refresh = setInterval(() => { if (!el.isConnected) clearInterval(refresh); else draw(); }, CARD_REFRESH_MS);
+  // a plan made, answered or removed: draw again at once
+  const again = () => { if (!el.isConnected) globalThis.removeEventListener("boca0:plans-changed", again); else draw(); };
+  globalThis.addEventListener("boca0:plans-changed", again);
 }
 
 // --- going live ----------------------------------------------------------------------------

@@ -1783,5 +1783,46 @@
     "noMic": "Boca0 no puede usar el micrófono. Permítelo en los ajustes del teléfono.",
     "nobody": "Nadie está en vivo ahora",
     "youreLive": "Estás en vivo"
+  },
+  "plans": {
+    "planned": "Planeado",
+    "plan": "Planear una sesión",
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "every": "cada {days}",
+    "going": "{n} van",
+    "goingN": "Van · {n}",
+    "goingBtn": "Voy",
+    "imIn": "Me apunto",
+    "update": "Guardar",
+    "cant": "No puedo",
+    "howOften": "Cada cuánto",
+    "everyWeek": "Cada semana",
+    "once": "Una vez",
+    "time": "Hora",
+    "split": "Rutina",
+    "where": "Dónde",
+    "wherePh": "El gimnasio, p. ej. Smart Fit 93",
+    "for": "Para",
+    "customPh": "Ponle nombre, p. ej. Glúteos y abdomen",
+    "who": "Todos en {group} se enteran ahora, y quienes se apunten reciben un recordatorio una hora antes.",
+    "past": "Esa hora ya pasó.",
+    "by": "Lo planeó {name} para {group}",
+    "yourSplit": "Tu rutina ese día",
+    "everyTime": "Igual {days}",
+    "nobodyYet": "Nadie todavía. Sé el primero.",
+    "remove": "Quitar este plan",
+    "removeAsk": "¿Quitar este plan para todos?",
+    "splits": {
+      "push": "Empuje",
+      "pull": "Jalón",
+      "legs": "Piernas",
+      "custom": "Otra"
+    },
+    "hints": {
+      "push": "Empuje: pecho, hombros, tríceps",
+      "pull": "Jalón: espalda, bíceps, hombro posterior",
+      "legs": "Piernas: cuádriceps, isquios, glúteos, pantorrillas"
+    }
   }
 }

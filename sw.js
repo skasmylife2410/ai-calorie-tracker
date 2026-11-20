@@ -128,6 +128,7 @@ const APP_SHELL = [
   "/js/ui/voice-note.js",
   "/js/ui/context-note.js",
   "/js/ui/live.js",
+  "/js/ui/plans.js",
   "/js/ui/exercise-info.js",
   "/js/ui/weight.js",
   "/vendor/fonts/doto/doto-latin-900-normal.woff2",
