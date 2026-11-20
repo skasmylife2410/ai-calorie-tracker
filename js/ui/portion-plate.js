@@ -63,14 +63,14 @@ const spec = (kind) => KINDS[kind] ?? FALLBACK;
 /** ml for an ingredient, from its grams and the typical density of its kind. */
 export function volumeMl(item) {
   const g = Math.max(0, Number(item.gramsEstimate) || 0);
-  return g / spec(kindOf(item.name)).density;
+  return g / spec(kindOf(item.searchName || item.name)).density;
 }
 
 const HAND_ML = { fist: 240, cup: 120, thumb: 15, glass: 250 };
 
 /** How many hand-units this is, rounded to the nearest half. */
 export function handReference(item) {
-  const kind = kindOf(item.name);
+  const kind = kindOf(item.searchName || item.name);
   const s = spec(kind);
   const g = Math.max(0, Number(item.gramsEstimate) || 0);
   const count = s.hand === "palm" ? g / 100 : volumeMl(item) / HAND_ML[s.hand];
@@ -93,7 +93,7 @@ export function handLabel({ hand, count }, lang = "en") {
 
 /** Footprint radius in cm for a food on the plate (area = volume / height). */
 function footprintRadiusCm(item) {
-  const s = spec(kindOf(item.name));
+  const s = spec(kindOf(item.searchName || item.name));
   if (!s.height) return 0;
   const area = volumeMl(item) / s.height; // cm²
   return Math.sqrt(area / Math.PI);
@@ -142,8 +142,8 @@ export function plateSvg(items, { lang = "en" } = {}) {
   const innerR = plateR - RIM_CM * S;
   const cx = plateR + 6, cy = plateR + 6;
 
-  const onPlate = items.filter((i) => spec(kindOf(i.name)).height > 0 && Number(i.gramsEstimate) > 0);
-  const drinks = items.filter((i) => ["drink", "soup"].includes(kindOf(i.name)) && Number(i.gramsEstimate) > 0);
+  const onPlate = items.filter((i) => spec(kindOf(i.searchName || i.name)).height > 0 && Number(i.gramsEstimate) > 0);
+  const drinks = items.filter((i) => ["drink", "soup"].includes(kindOf(i.searchName || i.name)) && Number(i.gramsEstimate) > 0);
 
   const circles = layout(
     onPlate.map((i) => ({ item: i, r: footprintRadiusCm(i) })),

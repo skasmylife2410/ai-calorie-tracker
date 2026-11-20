@@ -671,11 +671,14 @@ export function sameFood(itemName, description) {
   return mine.every((w) => theirs.has(w));
 }
 
+/** The English name the AI gave for database lookups (the shown name may be in Spanish). */
+export const searchNameOf = (item) => String(item?.searchName || item?.name || "");
+
 /** The item with USDA's numbers when they pass the checks above, else null. */
 export function groundWith(item, hit) {
   if (!hit || !(item?.calories > 0) || !(item.gramsEstimate > 0)) return null;
-  if (SPECIAL_VERSION.test(item.name ?? "")) return null;
-  if (!sameFood(item.name, hit.description)) return null;
+  if (SPECIAL_VERSION.test(searchNameOf(item))) return null;
+  if (!sameFood(searchNameOf(item), hit.description)) return null;
   const factor = item.gramsEstimate / 100;
   const calories = hit.per100.calories * factor;
   const ratio = calories / item.calories;
@@ -702,10 +705,10 @@ export function groundWith(item, hit) {
 
 async function groundSingle(item) {
   try {
-    if (!(item?.calories > 0) || SPECIAL_VERSION.test(item.name ?? "")) return item;
+    if (!(item?.calories > 0) || SPECIAL_VERSION.test(searchNameOf(item))) return item;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), GROUNDING_PER_ITEM_TIMEOUT_MS);
-    const res = await apiFetch(`/api/foods?ground=${encodeURIComponent(item.name)}`, { signal: controller.signal }).finally(() => clearTimeout(timer));
+    const res = await apiFetch(`/api/foods?ground=${encodeURIComponent(searchNameOf(item))}`, { signal: controller.signal }).finally(() => clearTimeout(timer));
     if (!res.ok) return item;
     const body = await res.json();
     const hits = Array.isArray(body?.hits) ? body.hits : [];
@@ -713,7 +716,7 @@ async function groundSingle(item) {
     for (const hit of hits) {
       const out = groundWith(item, hit);
       if (out) return out;
-      if (sameFood(item.name, hit.description)) return item; // same food, numbers too far apart: keep the AI's
+      if (sameFood(searchNameOf(item), hit.description)) return item; // same food, numbers too far apart: keep the AI's
     }
     return item;
   } catch {
@@ -786,6 +789,8 @@ export function pieceCount(raw) {
   return Number.isFinite(n) && n >= 1 && n <= 50 ? Math.round(n * 2) / 2 : 0;
 }
 
+const shownName = (raw) => (typeof raw?.display_name === "string" && raw.display_name.trim() ? raw.display_name.trim().slice(0, 80) : raw?.name);
+
 /** Maps a raw Gemini item (post JSON-schema decode) to the final AnalyzedFoodItem shape. */
 export function mapRawItemToAnalyzedItem(raw) {
   const grams = raw.grams_estimate ?? raw.gramsEstimate;
@@ -796,7 +801,9 @@ export function mapRawItemToAnalyzedItem(raw) {
     : {};
   return {
     id: generateItemId(),
-    name: raw.name,
+    // shown in the person's language; the English name is kept for the USDA check
+    name: shownName(raw),
+    ...(shownName(raw) !== raw.name && typeof raw.name === "string" ? { searchName: raw.name } : {}),
     gramsEstimate: raw.grams_estimate ?? raw.gramsEstimate,
     calories: raw.calories,
     proteinG: raw.protein_g ?? raw.proteinG,

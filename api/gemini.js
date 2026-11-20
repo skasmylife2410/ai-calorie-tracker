@@ -56,6 +56,7 @@ const RESPONSE_SCHEMA = {
         type: "OBJECT",
         properties: {
           name: { type: "STRING" },
+          display_name: { type: "STRING" },
           grams_estimate: { type: "NUMBER" },
           calories: { type: "NUMBER" },
           protein_g: { type: "NUMBER" },
@@ -84,6 +85,17 @@ const MEAL_ITEMS = {
     required: [...RESPONSE_SCHEMA.properties.items.items.required, "stated_amount"],
   },
 };
+/**
+ * `name` stays in English because the app checks it against the USDA database (js/api.js
+ * groundItems); `display_name` is what the person reads, in their language.
+ */
+function nameRule(lang) {
+  const es = String(lang || "en").slice(0, 2) === "es";
+  return es
+    ? `- display_name: the same food's everyday name in Spanish as said in Colombia, the way the person would write it ("arroz blanco", "pechuga de pollo a la plancha", "arepa con queso", "aceite de cocina", "jugo de mora"). Never English. name stays the short English, database-searchable name.`
+    : `- display_name: the same as name.`;
+}
+
 const STATED_RULE = `- stated_amount: copy, word for word, the part of the person's own words that gives THIS item's weight or volume ("200 g", "330ml", "half a litre", "1 lb", "2 cups", "a 500 ml bottle"); an empty string when they gave none. A number of pieces alone ("2 eggs") is not a weight or volume — leave it empty. Never put an amount you estimated here.`;
 
 const MEAL_SCHEMA = {
@@ -284,7 +296,7 @@ function buildMealPrompt(description, lang, { twoPhotos = false } = {}) {
       `The user says: "${description.trim()}". The user's description is authoritative — trust it over the photo when they conflict, and use it to resolve foods hidden or ambiguous in the image. A weight or volume they give for a food (grams, ml, ounces, cups…) is that food's amount exactly — never resize it from the photo.`
     );
   }
-  sections.push(`${MEAL_PROMPT_SECTION_3}\n${confidenceRules(lang)}\nReturn ONLY JSON matching the schema.`);
+  sections.push(`${MEAL_PROMPT_SECTION_3}\n${nameRule(lang)}\n${confidenceRules(lang)}\nReturn ONLY JSON matching the schema.`);
   return sections.join("\n\n");
 }
 
@@ -323,6 +335,7 @@ ${MICRO_RULE}
 - confidence is 0–1: how sure you are of the item's identity AND portion size. Be honest — a precisely quantified item ("two scoops of whey") deserves high confidence, while an unquantified vague one ("some pasta") deserves LOW confidence.
 - If the text does not describe any food or drink, return an empty items array.
 ${STATED_RULE}
+${nameRule(lang)}
 ${confidenceRules(lang)}
 Return ONLY JSON matching the schema.`;
 }
@@ -335,8 +348,14 @@ Rules:
 - calories, protein_g, carbs_g, fat_g must be the numbers PRINTED on the label — transcribe, do not estimate. Convert kJ to kcal (divide by 4.184) only if kcal is not printed.
 - fiber_g, sugar_g (total sugars), added_sugar_g, sat_fat_g, sodium_mg and potassium_mg: transcribe them from the label for the same serving. If the label gives salt instead of sodium, sodium_mg = salt in grams × 400. If a value is not printed, estimate it for this product (use 0 for added sugar only if the label shows no sugar in the ingredients).
 - confidence is 0.95 when the label is clearly legible; lower it if the label is blurry or partially visible.
-- If the photo does not contain a nutrition label, return an empty items array.
+- If the photo does not contain a nutrition label, return an empty items array.`;
+
+function buildLabelPrompt(lang) {
+  const es = String(lang || "en").slice(0, 2) === "es";
+  return `${LABEL_PROMPT}
+${es ? "- display_name: the product name as printed when it is in Spanish or is a brand; otherwise the food's everyday name in Spanish. Never English words the person wouldn't use." : "- display_name: the same as name."}
 Return ONLY JSON matching the schema.`;
+}
 
 // --- stripCodeFences (Gemini sometimes wraps JSON in a fence despite JSON mode) -----------------
 
@@ -568,7 +587,7 @@ export default async function handler(req, res) {
         preferences: body.preferences,
         lang: body.lang,
       })
-    : LABEL_PROMPT;
+    : buildLabelPrompt(body.lang);
   const schema = mode === "leftovers" ? LEFTOVERS_SCHEMA : mode === "exercise" ? EXERCISE_SCHEMA : mode === "recipes" ? RECIPE_SCHEMA : mode === "transcribe" ? TRANSCRIBE_SCHEMA
     : mode === "meal" || mode === "text" ? MEAL_SCHEMA : RESPONSE_SCHEMA;
   // Empty-image rule: a 0-byte image must never be base64-encoded into inline_data (§3).

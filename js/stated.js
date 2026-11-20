@@ -133,7 +133,8 @@ export function holdToStated(item, text) {
   } else {
     // a volume: the model's grams are fine for any sensible density (oil 0.9 … honey 1.4)
     // something poured by the ml that isn't a known food is a drink: water's density
-    const density = kindOf(item.name) === "other" ? 1 : densityOf(item.name);
+    const nm = item.searchName || item.name; // the English name, which the density table knows
+    const density = kindOf(nm) === "other" ? 1 : densityOf(nm);
     const impliedMl = grams > 0 ? grams / density : m.lo;
     ml = m.lo === m.hi ? m.lo : clamp(impliedMl, m.lo, m.hi);
     target = grams >= ml * 0.8 && grams <= ml * 1.5 ? grams : ml * density;
