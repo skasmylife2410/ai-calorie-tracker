@@ -7,6 +7,8 @@ description: Boca0's design taste and review workflow. Use for ANY visual or UI 
 
 The owner has a clear eye. Follow this instead of generic "modern app" defaults.
 
+Also load `.claude/skills/frontend-design` (Anthropic's frontend-design skill) for its plan → review → build → critique process and copywriting rules. Where the two disagree, this file wins: Boca0's Mono look deliberately uses dot-matrix numbers, numbered rows and small caps labels.
+
 ## 1. Workflow: show, then ship
 
 1. **Mockups first.** Before changing anything the owner will see, render mockups and send
