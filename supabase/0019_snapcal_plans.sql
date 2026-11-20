@@ -50,3 +50,10 @@ alter table public.snapcal_plan_rsvps enable row level security;
 alter table public.snapcal_plan_sent enable row level security;
 alter table public.snapcal_ticks enable row level security;
 revoke all on table public.snapcal_plans, public.snapcal_plan_rsvps, public.snapcal_plan_sent, public.snapcal_ticks from anon, authenticated;
+
+-- The reminder job (applied separately as "boca0_plan_reminder_tick"): every five minutes,
+-- pg_cron asks the app to send any reminders that are due. The endpoint needs no secret: it only
+-- sends what's due, once each, and runs at most once a minute.
+-- create extension if not exists pg_cron;
+-- create extension if not exists pg_net;
+-- select cron.schedule('boca0-plan-tick', '*/5 * * * *', $$ select net.http_get(url := 'https://ai-calorie-tracker-gules.vercel.app/api/weekly?job=tick', timeout_milliseconds := 20000) $$);
