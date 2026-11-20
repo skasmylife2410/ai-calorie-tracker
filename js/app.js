@@ -24,6 +24,7 @@ import { openSheet, navBar, wireNavBar } from "./ui/sheet.js";
 import { refreshPush, clearBadge } from "./push.js";
 import { maybeShowWhatsNew } from "./ui/push-ui.js";
 import { maybeShowGoalsUpdate } from "./ui/goals-update.js";
+import { watchAnalysis, flyPhotoToDock } from "./ui/ai-dock.js";
 
 // Screens and sheets that aren't on Home load the first time they're opened, and in the
 // background once Home is up, so opening the app parses far less code. (The service worker
@@ -357,6 +358,7 @@ function openFromUrl(href) {
 // ---------------------------------------------------------------------------
 
 function renderShell() {
+  if (hasProfile) watchAnalysis(); // the floating "analysing your meal" capsule (js/ui/ai-dock.js)
   if (!hasProfile) {
     appRoot.innerHTML = `<div class="screen scroll-view" id="onboarding-screen"></div>`;
     renderOnboarding(document.getElementById("onboarding-screen"), () => {
@@ -578,10 +580,12 @@ function handleCameraResult(result) {
     queue.enqueuePhoto(result.dataUrl, "meal", { description: result.note ?? null });
     selectedTab = "home";
     renderShell();
+    flyPhotoToDock(result.dataUrl);
   } else if (result.type === "labelPhoto") {
     queue.enqueuePhoto(result.dataUrl, "label", { description: result.note ?? null });
     selectedTab = "home";
     renderShell();
+    flyPhotoToDock(result.dataUrl);
   } else if (result.type === "barcode") {
     startBarcodeFlow(result.code);
   }

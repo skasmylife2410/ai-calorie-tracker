@@ -1852,5 +1852,11 @@
     "leftover": "Looking at what's left…",
     "subtract": "Taking it off the meal…",
     "fix": "Taking your notes in…"
+  },
+  "aiDock": {
+    "andMore": "{name} and {n} more",
+    "review": "Tap to check it",
+    "failed": "Couldn't analyze this meal",
+    "failedHint": "Tap to try again or fix it"
   }
 }

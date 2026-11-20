@@ -1852,5 +1852,11 @@
     "leftover": "Mirando lo que sobró…",
     "subtract": "Restándolo de la comida…",
     "fix": "Teniendo en cuenta tus notas…"
+  },
+  "aiDock": {
+    "andMore": "{name} y {n} más",
+    "review": "Toca para revisarlo",
+    "failed": "No se pudo analizar esta comida",
+    "failedHint": "Toca para reintentar o corregirla"
   }
 }

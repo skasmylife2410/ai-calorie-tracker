@@ -6,7 +6,7 @@
 // waits on the network and the page always matches its files; a new deploy arrives with the new
 // worker (js/updater.js reloads onto it). Other pages (privacy, us.html) are network-first.
 
-const CACHE_VERSION = "snapcal-v125";
+const CACHE_VERSION = "snapcal-v126";
 const STALL_MS = 3000; // how long a page or file may wait on the network before the cached copy is used
 const STALLED_FOR_MS = 30000; // after one stall, cached files are served at once for this long
 let stalledUntil = 0;
@@ -80,6 +80,7 @@ const APP_SHELL = [
   "/js/ui/login.js",
   "/js/ui/mark.js",
   "/js/ui/chew.js",
+  "/js/ui/ai-dock.js",
   "/js/ui/meal-drag.js",
   "/js/ui/meal-type.js",
   "/js/ui/share-meal.js",
