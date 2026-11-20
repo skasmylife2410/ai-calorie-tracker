@@ -1,6 +1,7 @@
 // leftovers-sheet.js — "Leftovers" in the + menu (and on a meal): pick the meal, photograph what's
 // left, and the meal is scaled down to what was eaten (js/leftovers.js). Shows the result with Undo.
 
+import { thinkingHtml, keepThinking } from "./chew.js";
 import { safeSrc } from "../safe-src.js";
 import { t, formatNumber } from "../i18n.js";
 import * as store from "../store.js";
@@ -22,6 +23,7 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
 
   openSheet({
     render(panel, close) {
+      keepThinking(panel); // the "working" line moves on while the AI looks
       const draw = () => {
         const meal = chosen ? store.getFoodEntry(chosen) : null;
         let body = "";
@@ -47,7 +49,7 @@ export function openLeftoversSheet({ entryId = null, onChange } = {}) {
             ${state === "error" ? `<div class="size-error" role="alert">${esc(error || t("left.error"))}</div>` : ""}
             ${entryId ? "" : `<button type="button" class="ask-skip" id="left-back">${t("left.other")}</button>`}`;
         } else if (state === "working") {
-          body = `<div class="left-working"><span class="left-spin" aria-hidden="true"></span>${t("left.working")}</div>`;
+          body = `<div class="left-working is-ai">${thinkingHtml("leftovers", { size: 40 })}</div>`;
         } else if (state === "done" && meal) {
           const ate = Math.round(meal.calories);
           body = result.removedKcal > 0

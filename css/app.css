@@ -3456,3 +3456,50 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
   :root[data-someone-live] .tab-btn[data-tab="us"] .tab-icon-pill::before,
   :root[data-someone-live] .tab-btn[data-tab="us"] .tab-icon-pill svg { animation: none; }
 }
+
+/* While the AI works (js/ui/chew.js): the Boca0 mascot chewing, crumbs flying off its bite, and a
+   line that moves through what it's doing. Ink-coloured; its eyes and teeth are the surface colour. */
+.chew { --chew-size: 24px; --chew-paper: var(--sc-card-bg, #fff); display: inline-block; flex: none; width: var(--chew-size); height: var(--chew-size); color: var(--sc-primary-text); }
+.chew-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chew-eye { stroke: var(--chew-paper); }
+.chew-teeth path { fill: var(--chew-paper); }
+.chew-head { transform-box: fill-box; transform-origin: 50% 100%; animation: chew-head .52s ease-in-out infinite; }
+.chew-teeth { transform-box: fill-box; transform-origin: 50% 0; animation: chew-teeth .52s ease-in-out infinite; }
+.chew-crumb { opacity: 0; transform-box: fill-box; transform-origin: center; animation: chew-crumb 1.56s ease-out infinite; }
+.chew-crumb.c2 { animation-delay: .52s; }
+.chew-crumb.c3 { animation-delay: 1.04s; }
+@keyframes chew-head { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.04, .93); } }
+@keyframes chew-teeth { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-2.6px) scaleY(.72); } }
+@keyframes chew-crumb { 0% { opacity: 0; transform: translate(0, 0) scale(.7); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(18px, 30px) scale(1.15); } }
+.chew-line { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.chew-text { font-size: 13.5px; font-weight: 500; color: var(--sc-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chew-text.is-new { animation: chew-in .35s ease-out; }
+@keyframes chew-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+/* the pending meal row: a dot-matrix scan sweeps across the photo, the % in dot-matrix */
+.entry-thumb-pending.has-photo::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,.95) 0 1.2px, transparent 1.7px) 0 0 / 7px 7px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 38%, #000 46% 54%, transparent 62% 100%); mask-image: linear-gradient(180deg, transparent 0 38%, #000 46% 54%, transparent 62% 100%);
+  -webkit-mask-size: 100% 300%; mask-size: 100% 300%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; animation: dot-scan 1.9s linear infinite; }
+/* plus a thin bright line riding the band */
+.entry-thumb-pending.has-photo::before { content: ""; position: absolute; left: 0; right: 0; height: 2px; z-index: 0; pointer-events: none;
+  background: rgba(255,255,255,.85); box-shadow: 0 0 10px 2px rgba(255,255,255,.45); animation: scan-line 1.9s linear infinite; }
+@keyframes dot-scan { from { -webkit-mask-position: 0 100%; mask-position: 0 100%; } to { -webkit-mask-position: 0 0; mask-position: 0 0; } }
+@keyframes scan-line { from { top: -4%; } to { top: 104%; } }
+.pending-ring-pct { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; font-size: 12px; letter-spacing: 0; }
+.entry-body .chew-line { margin: 2px 0 1px; }
+
+/* elsewhere the AI is working */
+.left-working.is-ai { flex-direction: column; gap: 14px; }
+.left-working.is-ai .chew-line { flex-direction: column; gap: 14px; }
+.left-working.is-ai .chew-text { font-size: 15px; }
+.vn-main.is-busy .chew { color: var(--sc-card-bg, #fff); --chew-paper: var(--sc-primary-text); }
+.fix-results-progress .chew, .meal-item-pending .chew { flex: none; }
+.ex-hint .chew-line, #ex-hint .chew-line { display: inline-flex; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chew-head, .chew-teeth { animation: none; }
+  .chew-crumb { animation: none; opacity: 0; }
+  .entry-thumb-pending.has-photo::after { animation: none; -webkit-mask-position: 0 50%; mask-position: 0 50%; }
+  .entry-thumb-pending.has-photo::before { animation: none; display: none; }
+}

@@ -1,6 +1,7 @@
 // entry-row.js — RecentEntryRow, shared by Today (§5.4.3) and Progress/History (§6.2).
 // Three states (pending / failed / completed), swipeable to delete, tap-routed per §5.4.4.
 
+import { thinkingHtml, tickThinking } from "./chew.js";
 import { safeSrc } from "../safe-src.js";
 import { entryState, isWaitingForAi } from "../queue.js";
 import { isGroupedEntry, isFavorited, itemsOfEntry } from "../store.js";
@@ -42,8 +43,10 @@ function pendingRowHtml(entry) {
     color: "#fff",
     trackColor: "rgba(255,255,255,0.3)",
   });
+  // a dot-matrix scan sweeps across the photo while the AI looks at it (css .entry-thumb-pending::after)
+  const mode = entry.analysisMode ?? "meal";
   return `
-    <div class="entry-thumb-pending">
+    <div class="entry-thumb-pending${entry.photoDataUrl ? " has-photo" : ""}">
       ${thumbInner}
       <div class="pending-ring-wrap" data-pending-ring>
         ${ring}
@@ -51,13 +54,9 @@ function pendingRowHtml(entry) {
       </div>
     </div>
     <div class="entry-body">
-      <div class="entry-pending-title">${entry.name}</div>
-      <div class="shimmer-bars">
-        <div class="shimmer-bar" style="width:100%"></div>
-        <div class="shimmer-bar" style="width:70%"></div>
-        <div class="shimmer-bar" style="width:50%"></div>
-      </div>
-      <div class="entry-pending-footer">We'll notify you when done!</div>
+      <div class="entry-pending-title">${t(`chew.title.${mode === "text" ? "text" : mode === "label" ? "label" : "meal"}`)}</div>
+      ${thinkingHtml(mode === "text" ? "text" : mode === "label" ? "label" : "meal", { startedAt: entry.timestamp })}
+      <div class="entry-pending-footer">${t("chew.footer")}</div>
     </div>
   `;
 }
@@ -282,6 +281,7 @@ export function mountEntryRow(container, entry, { onTap, onDelete, onShare = nul
         const circumference = 2 * Math.PI * r;
         progressCircle.setAttribute("stroke-dashoffset", String(circumference * (1 - pct / 100)));
       }
+      tickThinking(wrap);
     }, 300);
   }
 

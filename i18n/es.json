@@ -1829,5 +1829,27 @@
       "legs": "Piernas: cuádriceps, isquios, glúteos, pantorrillas"
     },
     "weekly": "semanal"
+  },
+  "chew": {
+    "title": {
+      "meal": "Mirando tu comida",
+      "label": "Leyendo la etiqueta",
+      "text": "Calculando tu comida"
+    },
+    "footer": "Te avisamos cuando esté lista.",
+    "look": "Mirando tu plato…",
+    "spot": "Viendo qué tiene…",
+    "weigh": "Pesando las porciones…",
+    "count": "Contando las calorías…",
+    "almost": "Ya casi…",
+    "label": "Leyendo la etiqueta…",
+    "numbers": "Buscando los números…",
+    "read": "Leyendo lo que escribiste…",
+    "match": "Buscando los alimentos…",
+    "workout": "Leyendo tu entreno…",
+    "burn": "Calculando lo que quemaste…",
+    "leftover": "Mirando lo que sobró…",
+    "subtract": "Restándolo de la comida…",
+    "fix": "Teniendo en cuenta tus notas…"
   }
 }

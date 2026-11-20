@@ -3,6 +3,7 @@
 // EXERCISE_CREDIT_RATIO share of it raises the day's calorie budget, and the sheet shows both
 // numbers rather than one blended figure.
 
+import { thinkingHtml, keepThinking } from "./chew.js";
 import * as store from "../store.js";
 import { t, formatNumber, currentLanguage } from "../i18n.js";
 import { parseExerciseText } from "../api.js";
@@ -165,7 +166,8 @@ export function openExerciseSheet({ timestamp = Date.now(), onSaved } = {}) {
         if (text === "" || parsing) return;
         parsing = true;
         parseError = "";
-        els.hint.textContent = t("exercise.reading");
+        els.hint.innerHTML = thinkingHtml("exercise", { size: 18 });
+        keepThinking(els.hint);
         els.parse.disabled = true;
 
         const outcome = await parseExerciseText(text, { lang: currentLanguage() });

@@ -9,6 +9,7 @@
 // then Analyze), which needed four taps and stopped whenever someone paused: the phone's own
 // recognition gives up on silence and is refused outright in some installed apps.
 
+import { chewHtml } from "./chew.js";
 import * as queue from "../queue.js";
 import { transcribeAudio } from "../api.js";
 import { safeSrc } from "../safe-src.js";
@@ -124,7 +125,7 @@ export function openVoiceNote({ timestamp = null, onText = null, onType = null }
     $("#vn-prompt").textContent = t("voiceNote.sending");
     $("#vn-hint").textContent = "";
     $("#vn-under").textContent = "";
-    setActions(`<div class="vn-main is-busy" aria-hidden="true"><span class="vn-spinner"></span></div>`);
+    setActions(`<div class="vn-main is-busy" aria-hidden="true">${chewHtml(40)}</div>`);
   };
   const showError = (message, { retry = false, again = false } = {}) => {
     panel.classList.remove("is-sending");

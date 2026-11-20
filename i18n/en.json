@@ -1829,5 +1829,27 @@
       "legs": "Legs: quads, hamstrings, glutes, calves"
     },
     "weekly": "weekly"
+  },
+  "chew": {
+    "title": {
+      "meal": "Looking at your meal",
+      "label": "Reading the label",
+      "text": "Working out your meal"
+    },
+    "footer": "We'll let you know when it's ready.",
+    "look": "Looking at your plate…",
+    "spot": "Spotting what's on it…",
+    "weigh": "Weighing the portions…",
+    "count": "Counting the calories…",
+    "almost": "Almost there…",
+    "label": "Reading the label…",
+    "numbers": "Finding the numbers…",
+    "read": "Reading what you wrote…",
+    "match": "Matching the foods…",
+    "workout": "Reading your workout…",
+    "burn": "Working out what you burned…",
+    "leftover": "Looking at what's left…",
+    "subtract": "Taking it off the meal…",
+    "fix": "Taking your notes in…"
   }
 }

@@ -4,6 +4,7 @@
 // direct macro edits become the new baseline (§12.2). "Fix results" re-runs analysis with an
 // appended correction via queue.submitCorrection.
 
+import { chewHtml } from "./chew.js";
 import { safeSrc } from "../safe-src.js";
 import * as store from "../store.js";
 import { t, currentLanguage } from "../i18n.js";
@@ -279,7 +280,7 @@ export function openResultsSheet(entry, { template = null } = {}) {
       };
       const pendingHtml = () => pending.map((p) => p.error
         ? `<div class="meal-item-pending is-error" role="alert"><span><b>${escapeHtml(p.label)}</b> ${escapeHtml(p.error)}</span><button type="button" data-pending-x="${p.id}" aria-label="${escapeAttr(t("app.close"))}">${icon("xmark", { size: 14 })}</button></div>`
-        : `<div class="meal-item-pending" role="status"><span class="spinner" aria-hidden="true"></span><span>${escapeHtml(p.label)} · ${t("addTo.working")}</span></div>`).join("");
+        : `<div class="meal-item-pending" role="status">${chewHtml(20)}<span>${escapeHtml(p.label)} · ${t("addTo.working")}</span></div>`).join("");
       const wirePending = () => itemsEl.querySelectorAll("[data-pending-x]").forEach((b) => b.addEventListener("click", () => {
         pending = pending.filter((p) => p.id !== b.dataset.pendingX);
         renderItems();
@@ -660,7 +661,7 @@ function openFixResultsSheet(entry, onSuccess) {
               </div>
               <textarea class="describe-textarea" id="fix-input" rows="4" placeholder="${t("context.placeholder")}" ${submitting ? "disabled" : ""}></textarea>
               ${errorMessage ? `<div class="fix-results-error">${escapeHtml(errorMessage)}</div>` : ""}
-              <div class="fix-results-progress ${submitting ? "" : "hidden"}" id="fix-progress"><div class="spinner"></div><span>${t("context.working")}</span></div>
+              <div class="fix-results-progress ${submitting ? "" : "hidden"}" id="fix-progress">${chewHtml(22)}<span>${t("context.working")}</span></div>
             </div>
           </div>
         `;
