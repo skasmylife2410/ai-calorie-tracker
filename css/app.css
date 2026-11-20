@@ -3431,3 +3431,28 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
   white-space: nowrap; box-shadow: 0 4px 24px rgba(0,0,0,.35); }
 .lv-hear[hidden] { display: none; }
 :root[data-mode="dark"] .pl-time, :root[data-mode="dark"] .pl-input { color-scheme: dark; }
+
+/* the whole camera picture, never cropped: it fits the screen, and a dimmed, blurred copy of it
+   fills the space around (instead of cutting the sides off a portrait picture on a tall phone) */
+.lv-cover .lv-main { object-fit: contain; background: transparent; }
+.lv-bg { position: absolute; inset: -8%; width: 116%; height: 116%; object-fit: cover; filter: blur(28px) brightness(.55) saturate(1.1); pointer-events: none; }
+.lv-cover .lv-bg.is-mirror { transform: scaleX(-1); }
+
+/* someone in your groups is live: the Us tab pulses (a red dot with a ring, and the icon breathes) */
+.tab-icon-pill { position: relative; }
+:root[data-someone-live] .tab-btn[data-tab="us"] .tab-icon-pill::after {
+  content: ""; position: absolute; top: 1px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #FF3B30;
+  box-shadow: 0 0 0 2px var(--sc-card-bg, #fff);
+}
+:root[data-someone-live] .tab-btn[data-tab="us"] .tab-icon-pill::before {
+  content: ""; position: absolute; top: 1px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #FF3B30;
+  animation: live-ring 1.6s ease-out infinite;
+}
+:root[data-someone-live] .tab-btn[data-tab="us"] .tab-icon-pill svg { animation: live-breathe 1.6s ease-in-out infinite; }
+:root[data-someone-live] .tab-btn[data-tab="us"] { color: var(--sc-primary-text); }
+@keyframes live-ring { from { transform: scale(1); opacity: .7; } to { transform: scale(3.2); opacity: 0; } }
+@keyframes live-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-someone-live] .tab-btn[data-tab="us"] .tab-icon-pill::before,
+  :root[data-someone-live] .tab-btn[data-tab="us"] .tab-icon-pill svg { animation: none; }
+}

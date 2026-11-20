@@ -238,6 +238,30 @@ function soundButtonHtml(on) {
     ${icon(on ? "speaker" : "speakerSlash", { size: 18 })}<span>${t(on ? "live.soundOnShort" : "live.soundOffShort")}</span></button>`;
 }
 
+// --- the Us tab pulses while someone is live ------------------------------------------------------
+
+const BADGE_MS = 60 * 1000;
+/** Marks the page (html[data-someone-live]) so the Us tab can pulse; true when someone else is live. */
+export function markLive(sessions, mine = null) {
+  const on = (sessions ?? []).some((s) => s.id !== mine);
+  if (on) document.documentElement.dataset.someoneLive = "1";
+  else delete document.documentElement.dataset.someoneLive;
+  return on;
+}
+let badgeTimer = null;
+/** Checks who's live now and then (only while the app is on screen) for the Us tab's pulse. */
+export function watchLive() {
+  if (badgeTimer) return;
+  const check = async () => {
+    if (document.visibilityState === "hidden") return;
+    const out = await api({ op: "live" });
+    if (out.ok) markLive(out.sessions, out.mine);
+  };
+  check();
+  badgeTimer = setInterval(check, BADGE_MS);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
+}
+
 // --- the card on Us ------------------------------------------------------------------------
 
 let pendingLive = null; // a notification asked to open this stream
@@ -256,6 +280,7 @@ export function renderLiveCard(el, { group } = {}) {
     const [out, plans] = await Promise.all([api({ op: "live" }), loadPlans()]);
     if (!el.isConnected || !out.ok) return;
     lastIce = out.ice?.length ? out.ice : FALLBACK_ICE;
+    markLive(out.sessions, out.mine);
     const others = out.sessions.filter((s) => s.id !== out.mine);
     const mineLive = out.sessions.some((s) => s.id === out.mine);
     // nobody live: one line and a Go live button; people live: their tiles under the same line
@@ -360,6 +385,7 @@ function startLive({ group, muscle }) {
     render: (panel, close) => {
       panel.classList.add("lv-cover");
       panel.innerHTML = `
+        <video class="lv-bg is-mirror" id="lv-self-bg" autoplay playsinline muted aria-hidden="true"></video>
         <video class="lv-main is-mirror" id="lv-self" autoplay playsinline muted></video>
         <div class="lv-shade" aria-hidden="true"></div>
         ${instrumentHtml()}
@@ -414,6 +440,7 @@ function startLive({ group, muscle }) {
           for (const pc of peers.values()) pc.getSenders().find((s) => s.track?.kind === "video")?.replaceTrack(track);
           stream.removeTrack(old); old.stop(); stream.addTrack(track);
           $("lv-self").classList.toggle("is-mirror", facing === "user");
+          $("lv-self-bg").classList.toggle("is-mirror", facing === "user");
         } catch { /* keep the camera it had */ }
       });
 
@@ -457,6 +484,7 @@ function startLive({ group, muscle }) {
         }
         if (ended) { stream.getTracks().forEach((tr) => tr.stop()); return; }
         $("lv-self").srcObject = stream;
+        $("lv-self-bg").srcObject = stream;
         if (micWanted()) setMic(true); // they talked last time: the mic comes back on
         const out = await api({ op: "liveStart", group: group.id, muscle });
         if (!out.ok) { status(out.errorType === "network" ? "live.offline" : "live.failed"); return; }
@@ -504,7 +532,7 @@ function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {}, 
   slide.querySelector(".lv-like").addEventListener("click", () => {
     if (dc?.readyState === "open") dc.send(JSON.stringify({ type: "heart" }));
   });
-  const video = slide.querySelector("video");
+  const video = slide.querySelector("video.lv-main");
   const status = (key) => { const el = slide.querySelector(".lv-status"); el.textContent = key ? t(key) : ""; el.hidden = !key; };
   const stop = () => {
     stopped = true;
@@ -513,6 +541,7 @@ function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {}, 
     dc = null;
     chat.clear();
     video.srcObject = null;
+    slide.querySelector(".lv-bg").srcObject = null;
     if (signal) api({ op: "liveLeave", signal });
     signal = null;
   };
@@ -541,7 +570,13 @@ function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {}, 
         e.track.addEventListener("mute", check);
         setTimeout(check, 0);
       }
-      if (video.srcObject !== media) video.srcObject = media;
+      if (video.srcObject !== media) {
+        video.srcObject = media;
+        // the whole picture, never cropped: a soft blurred copy fills the edges around it
+        const bg = slide.querySelector(".lv-bg");
+        bg.srcObject = new MediaStream(media.getVideoTracks());
+        bg.play().catch(() => {});
+      }
       video.muted = !sound();
       // a phone that won't play sound without a tap plays muted, and the button says so
       video.play().catch(() => { video.muted = true; video.play().catch(() => {}); onAutoplayBlocked(); });
@@ -583,6 +618,7 @@ function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {}, 
 function slideHtml(s) {
   return `
     <section class="lv-slide" data-id="${esc(s.id)}" data-started="${esc(s.startedAt ?? "")}">
+      <video class="lv-bg" autoplay playsinline muted aria-hidden="true"></video>
       <video class="lv-main" autoplay playsinline></video>
       <div class="lv-shade" aria-hidden="true"></div>
       <div class="lv-status" hidden></div>

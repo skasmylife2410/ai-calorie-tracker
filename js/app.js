@@ -52,6 +52,8 @@ function preloadLater() {
     // and the server's side of Us and Shared, so the first visit to either opens at once
     if (hasProfile && navigator.onLine !== false) {
       import("./us.js").then((m) => m.prefetchUs()).catch(() => {});
+      // the Us tab pulses while someone in your groups is live (js/ui/live.js)
+      import("./ui/live.js").then((m) => m.watchLive()).catch(() => {});
       import("./ui/shared-tab.js").then((m) => m.prefetchShared()).catch(() => {});
     }
   };
