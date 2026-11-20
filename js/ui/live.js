@@ -95,6 +95,10 @@ export const SOUND_KEY = "snapcal.liveSound";
 export function soundWanted(storage = globalThis.localStorage) {
   try { return storage?.getItem(SOUND_KEY) === "1"; } catch { return false; }
 }
+// The person going live: whether they had the mic on last time (then it starts on again).
+const MIC_KEY = "snapcal.liveMic";
+function micWanted() { try { return localStorage.getItem(MIC_KEY) === "1"; } catch { return false; } }
+function rememberMic(on) { try { localStorage.setItem(MIC_KEY, on ? "1" : "0"); } catch { /* private mode */ } }
 function rememberSound(on) { try { localStorage.setItem(SOUND_KEY, on ? "1" : "0"); } catch { /* private mode */ } }
 
 async function capVideo(pc) {
@@ -365,11 +369,12 @@ function startLive({ group, muscle }) {
           <div class="lv-comments" aria-live="polite"></div>
           <div class="lv-word" id="lv-word">${esc(t(`live.muscles.${muscle}`))}</div>
           <div class="lv-meta" id="lv-meta">${t("live.you")}</div>
+          <div class="lv-michint" id="lv-michint">${t("live.micHint")}</div>
           <div class="lv-host-row">
             <form class="lv-say" autocomplete="off">
               <input class="lv-input" name="c" maxlength="${COMMENT_MAX}" enterkeyhint="send" placeholder="${t("live.reply")}" aria-label="${t("live.reply")}" />
             </form>
-            <button type="button" class="lv-round" id="lv-mic" aria-pressed="false" aria-label="${t("live.mic")}">${icon("mic", { size: 19 })}</button>
+            <button type="button" class="lv-micbtn" id="lv-mic" aria-pressed="false">${icon("mic", { size: 17 })}<span class="lv-mic-label">${t("live.micOffShort")}</span></button>
             <button type="button" class="lv-round" id="lv-flip" aria-label="${t("live.flip")}">${icon("cameraFill", { size: 19 })}</button>
           </div>
           <button type="button" class="lv-end" id="lv-end">${t("live.end")}</button>
@@ -395,6 +400,9 @@ function startLive({ group, muscle }) {
         for (const pc of peers.values()) audioSender(pc)?.replaceTrack(micOn ? mic : null).catch(() => {});
         $("lv-mic").setAttribute("aria-pressed", String(micOn));
         $("lv-mic").setAttribute("aria-label", t(micOn ? "live.micOn" : "live.micOff"));
+        $("lv-mic").querySelector(".lv-mic-label").textContent = t(micOn ? "live.micOnShort" : "live.micOffShort");
+        $("lv-michint").hidden = micOn;
+        rememberMic(micOn);
       };
       $("lv-mic").addEventListener("click", () => setMic(!micOn));
       $("lv-flip").addEventListener("click", async () => {
@@ -449,6 +457,7 @@ function startLive({ group, muscle }) {
         }
         if (ended) { stream.getTracks().forEach((tr) => tr.stop()); return; }
         $("lv-self").srcObject = stream;
+        if (micWanted()) setMic(true); // they talked last time: the mic comes back on
         const out = await api({ op: "liveStart", group: group.id, muscle });
         if (!out.ok) { status(out.errorType === "network" ? "live.offline" : "live.failed"); return; }
         sessionId = out.id;
@@ -478,7 +487,7 @@ function startLive({ group, muscle }) {
 // --- the feed: swipe through whoever is live ----------------------------------------------
 
 /** One stream on screen: connects when it's shown, lets go when you swipe past. */
-function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {} } = {}) {
+function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {}, onWantSound = () => {} } = {}) {
   let pc = null;
   let dc = null;
   let signal = null;
@@ -525,6 +534,13 @@ function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {} }
     pc.addEventListener("track", (e) => {
       if (mine !== pc) return;
       media.addTrack(e.track);
+      if (e.track.kind === "audio") {
+        // their voice is coming through (their mic is on): offer the sound if this phone is muted
+        const check = () => { hear.hidden = !(video.muted && !e.track.muted); };
+        e.track.addEventListener("unmute", check);
+        e.track.addEventListener("mute", check);
+        setTimeout(check, 0);
+      }
       if (video.srcObject !== media) video.srcObject = media;
       video.muted = !sound();
       // a phone that won't play sound without a tap plays muted, and the button says so
@@ -558,7 +574,9 @@ function watcher(slide, s, { sound = () => false, onAutoplayBlocked = () => {} }
       await sleep(answered ? VIEW_BEAT_MS : 1000);
     }
   };
-  const setSound = (on) => { video.muted = !on; if (on) video.play().catch(() => {}); };
+  const hear = slide.querySelector(".lv-hear");
+  hear.addEventListener("click", () => onWantSound());
+  const setSound = (on) => { video.muted = !on; if (on) video.play().catch(() => {}); hear.hidden = true; };
   return { start: () => start().catch(() => status("live.failed")), stop, setSound };
 }
 
@@ -568,6 +586,7 @@ function slideHtml(s) {
       <video class="lv-main" autoplay playsinline></video>
       <div class="lv-shade" aria-hidden="true"></div>
       <div class="lv-status" hidden></div>
+      <button type="button" class="lv-hear" hidden>${icon("speaker", { size: 20 })}<span>${esc(t("live.tapToHear", { name: s.name }))}</span></button>
       <div class="lv-bottom">
         <div class="lv-hearts" aria-hidden="true"></div>
         <div class="lv-comments" aria-live="polite"></div>
@@ -636,7 +655,7 @@ function openFeed(list, startId) {
       const addSlide = (s) => {
         feed.insertAdjacentHTML("beforeend", slideHtml(s));
         const slide = feed.lastElementChild;
-        watchers.set(s.id, watcher(slide, s, { sound: () => soundOn, onAutoplayBlocked: () => drawSound(false) }));
+        watchers.set(s.id, watcher(slide, s, { sound: () => soundOn, onAutoplayBlocked: () => drawSound(false), onWantSound: () => { if (!soundOn) toggleSound(); } }));
         observer.observe(slide);
       };
 

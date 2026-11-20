@@ -65,7 +65,7 @@ export function everyLabel(weekdays, loc = locale()) {
 // --- the list on Us ------------------------------------------------------------------------------
 
 export function plansHtml(out) {
-  const sessions = out?.ok ? out.sessions : [];
+  const sessions = out?.ok && Array.isArray(out.sessions) ? out.sessions : [];
   return `
     <div class="pl">
       ${sessions.length ? `<div class="pl-label">${t("plans.planned")}</div>` : ""}
@@ -90,7 +90,7 @@ export function plansHtml(out) {
 }
 
 export function wirePlans(root, out, { group } = {}) {
-  const sessions = out?.ok ? out.sessions : [];
+  const sessions = out?.ok && Array.isArray(out.sessions) ? out.sessions : [];
   root.querySelectorAll("[data-pl]").forEach((row) => {
     const open = () => openSession(sessions[Number(row.dataset.pl)]);
     row.addEventListener("click", (e) => { if (!e.target.closest("[data-pl-in]")) open(); });

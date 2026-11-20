@@ -3322,7 +3322,7 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 
 /* while you're live: reply, mic and camera on one row, then End */
 .lv-host-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-.lv-host-row .lv-say { flex: 1; margin-top: 0; }
+.lv-host-row .lv-say { flex: 1; min-width: 0; margin-top: 0; }
 .lv-round { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(242,242,242,.14); color: #F2F2F2; }
 .lv-round[aria-pressed="false"]#lv-mic { color: #8E8E93; }
 .lv-round[aria-pressed="true"] { background: #F2F2F2; color: #0A0A0A; }
@@ -3417,3 +3417,16 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .pl-actions .acct-btn { padding: 15px 0; font-size: 16px; border-radius: 26px; }
 .pl-plain { padding: 12px 0; border: 0; background: none; font: inherit; font-size: 16px; font-weight: 600; color: var(--sc-primary-text); }
 .pl-remove { margin-top: 6px; padding: 12px 0 0; border: 0; border-top: 1px solid var(--sc-secondary-15); background: none; font: inherit; font-size: 14px; color: var(--sc-red); }
+
+/* sound you can see: the host's mic says on/off in words, with a hint while it's off; a viewer
+   who's muted gets "Tap to hear" as soon as the other person's voice is coming through */
+.lv-micbtn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px 0 12px; border: 0; border-radius: 22px;
+  background: rgba(242,242,242,.14); color: #F2F2F2; font: inherit; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.lv-micbtn[aria-pressed="false"] { box-shadow: inset 0 0 0 1px rgba(242,242,242,.35); color: #C8C8CC; }
+.lv-micbtn[aria-pressed="true"] { background: #F2F2F2; color: #0A0A0A; }
+.lv-michint { margin-top: 12px; font-size: 13px; line-height: 1.35; color: #E5E5EA; }
+.lv-michint[hidden] { display: none; }
+.lv-hear { position: absolute; z-index: 3; left: 50%; top: 44%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 8px;
+  height: 48px; padding: 0 20px; border: 0; border-radius: 24px; background: #F2F2F2; color: #0A0A0A; font: inherit; font-size: 15px; font-weight: 600;
+  white-space: nowrap; box-shadow: 0 4px 24px rgba(0,0,0,.35); }
+.lv-hear[hidden] { display: none; }

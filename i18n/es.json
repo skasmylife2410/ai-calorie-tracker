@@ -1782,7 +1782,11 @@
     "micOff": "Micrófono apagado: tu música sigue sonando. Toca para hablar.",
     "noMic": "Boca0 no puede usar el micrófono. Permítelo en los ajustes del teléfono.",
     "nobody": "Nadie está en vivo ahora",
-    "youreLive": "Estás en vivo"
+    "youreLive": "Estás en vivo",
+    "micOnShort": "Mic activado",
+    "micOffShort": "Mic apagado",
+    "micHint": "Tu micrófono está apagado: te ven pero no te oyen. Toca Mic para hablar.",
+    "tapToHear": "Toca para oír a {name}"
   },
   "plans": {
     "planned": "Planeado",

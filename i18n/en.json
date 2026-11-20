@@ -1782,7 +1782,11 @@
     "micOff": "Microphone off: your music keeps playing. Tap to talk.",
     "noMic": "Boca0 can't use the microphone. Allow it in your phone's settings.",
     "nobody": "Nobody's live right now",
-    "youreLive": "You're live"
+    "youreLive": "You're live",
+    "micOnShort": "Mic on",
+    "micOffShort": "Mic off",
+    "micHint": "Your mic is off: viewers see you but can't hear you. Tap Mic to talk.",
+    "tapToHear": "Tap to hear {name}"
   },
   "plans": {
     "planned": "Planned",
