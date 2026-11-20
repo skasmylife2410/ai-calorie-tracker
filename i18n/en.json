@@ -1827,6 +1827,7 @@
       "push": "Push: chest, shoulders, triceps",
       "pull": "Pull: back, biceps, rear shoulders",
       "legs": "Legs: quads, hamstrings, glutes, calves"
-    }
+    },
+    "weekly": "weekly"
   }
 }

@@ -76,7 +76,7 @@ export function plansHtml(out) {
         return `
           <div class="pl-row" role="button" tabindex="0" data-pl="${i}">
             <div class="pl-when">
-              <span class="pl-day">${esc(dayLabel(s.at))}${s.weekdays ? ` · ${esc(everyLabel(s.weekdays))}` : ""}</span>
+              <span class="pl-day">${esc(dayLabel(s.at))}${s.weekdays ? ` · ${t("plans.weekly")}` : ""}</span>
               <span class="pl-clock"><b>${esc(c.time)}</b>${c.period ? `<small>${esc(c.period)}</small>` : ""}</span>
             </div>
             <div class="pl-what"><b>${esc(splitLabel(s.split, s.custom))}</b><span>${esc(sub)}</span></div>

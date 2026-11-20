@@ -3377,8 +3377,8 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
 .pl { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--sc-secondary-15); }
 .pl-label, .pl-day { font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--sc-secondary); }
 .pl-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--sc-secondary-15); cursor: pointer; }
-.pl-when { flex: none; width: 104px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.pl-when .pl-day { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-when { flex: none; width: 118px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pl-when .pl-day { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .03em; }
 .pl-clock { display: flex; align-items: baseline; gap: 5px; }
 .pl-clock b { font-family: "Doto", var(--sc-font-rounded); font-weight: 900; font-size: 26px; line-height: 1; letter-spacing: .02em; }
 .pl-clock small { font-size: 12px; font-weight: 600; color: var(--sc-secondary); }
@@ -3430,3 +3430,4 @@ body:has(.meal-type-bar) .undo-toast { bottom: calc(212px + env(safe-area-inset-
   height: 48px; padding: 0 20px; border: 0; border-radius: 24px; background: #F2F2F2; color: #0A0A0A; font: inherit; font-size: 15px; font-weight: 600;
   white-space: nowrap; box-shadow: 0 4px 24px rgba(0,0,0,.35); }
 .lv-hear[hidden] { display: none; }
+:root[data-mode="dark"] .pl-time, :root[data-mode="dark"] .pl-input { color-scheme: dark; }

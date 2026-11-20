@@ -1827,6 +1827,7 @@
       "push": "Empuje: pecho, hombros, tríceps",
       "pull": "Jalón: espalda, bíceps, hombro posterior",
       "legs": "Piernas: cuádriceps, isquios, glúteos, pantorrillas"
-    }
+    },
+    "weekly": "semanal"
   }
 }
