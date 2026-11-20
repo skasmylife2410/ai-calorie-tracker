@@ -1786,7 +1786,8 @@
     "micOnShort": "Mic activado",
     "micOffShort": "Mic apagado",
     "micHint": "Tu micrófono está apagado: te ven pero no te oyen. Toca Mic para hablar.",
-    "tapToHear": "Toca para oír a {name}"
+    "tapToHear": "Toca para oír a {name}",
+    "isLive": "{name} está en vivo"
   },
   "plans": {
     "planned": "Planeado",

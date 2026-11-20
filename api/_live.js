@@ -78,6 +78,41 @@ export function iceServers(env = process.env) {
   return out;
 }
 
+// A relay (TURN) for phones that can't reach each other directly: mobile networks and many routers.
+// With Cloudflare's (CF_TURN_KEY_ID + CF_TURN_API_TOKEN, free up to 1,000 GB a month), the server
+// asks for short-lived credentials and hands them to the phones; they're cached for 12 hours.
+const CF_TTL_S = 24 * 3600;
+let cfCache = { at: 0, servers: null };
+export async function relayServers(env = process.env, { fetchImpl = fetch, now = Date.now() } = {}) {
+  const id = String(env.CF_TURN_KEY_ID ?? "").trim();
+  const token = String(env.CF_TURN_API_TOKEN ?? "").trim();
+  if (!id || !token) return [];
+  if (cfCache.servers && now - cfCache.at < CF_TTL_S * 500) return cfCache.servers;
+  try {
+    const r = await fetchImpl(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(id)}/credentials/generate-ice-servers`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ttl: CF_TTL_S }),
+    });
+    if (!r.ok) throw new Error(`Cloudflare TURN ${r.status}`);
+    const j = await r.json();
+    const list = [].concat(j.iceServers ?? []).map((x) => ({
+      // port 53 is often blocked and makes phones wait: leave it out
+      urls: [].concat(x.urls ?? []).filter((u) => !/:53(\?|$)/.test(u)),
+      ...(x.username ? { username: x.username, credential: x.credential } : {}),
+    })).filter((x) => x.urls.length);
+    cfCache = { at: now, servers: list };
+    return list;
+  } catch (err) {
+    console.warn("live: relay credentials failed", err?.message ?? err);
+    return cfCache.servers ?? [];
+  }
+}
+export function resetRelayCache() { cfCache = { at: 0, servers: null }; }
+
+/** Everything a phone needs to connect: STUN, plus the relay when there is one. */
+export async function connectServers(env = process.env, opts) {
+  return [...iceServers(env), ...(await relayServers(env, opts))];
+}
+
 async function session(id) {
   const [s] = await select("snapcal_live", { select: "*", id: `eq.${id}`, limit: "1" });
   return s ?? null;
@@ -101,7 +136,7 @@ export async function handleLive(op, me, body) {
       id: r.id, owner: r.owner, name: await displayName(r.owner), muscle: r.muscle, level: r.level,
       group: mine.find((g) => g.id === r.group_id)?.name ?? "", startedAt: r.started_at, watching: await watchingCount(r.id),
     })));
-    return { ok: true, sessions, ice: iceServers(), mine: sessions.find((s) => s.owner === me)?.id ?? null };
+    return { ok: true, sessions, ice: await connectServers(), mine: sessions.find((s) => s.owner === me)?.id ?? null };
   }
 
   if (op === "liveLevel") return { ok: true, ...(await levelOf(me)) };
@@ -128,7 +163,7 @@ export async function handleLive(op, me, body) {
         tag: `live-${me}`,
       }));
     }
-    return { ok: true, id, level };
+    return { ok: true, id, level, ice: await connectServers() };
   }
 
   if (op === "liveBeat" || op === "liveEnd") {

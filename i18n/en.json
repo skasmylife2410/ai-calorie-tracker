@@ -1786,7 +1786,8 @@
     "micOnShort": "Mic on",
     "micOffShort": "Mic off",
     "micHint": "Your mic is off: viewers see you but can't hear you. Tap Mic to talk.",
-    "tapToHear": "Tap to hear {name}"
+    "tapToHear": "Tap to hear {name}",
+    "isLive": "{name} is live"
   },
   "plans": {
     "planned": "Planned",

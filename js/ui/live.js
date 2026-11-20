@@ -30,7 +30,7 @@ const CARD_REFRESH_MS = 20000;
 const ICE_WAIT_MS = 3000;
 // each viewer gets their own copy of the video from the phone that's live, so each copy is kept
 // light: ten viewers at this rate is about 5 Mbps of upload, which a phone on 4G can manage
-const VIDEO_KBPS = 500;
+const VIDEO_KBPS = 600;
 const FALLBACK_ICE = [{ urls: ["stun:stun.l.google.com:19302"] }];
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -79,11 +79,21 @@ function iceDone(pc) {
 
 // Video only. The microphone is asked for only when it's turned on: opening it at all makes
 // phones (iPhones above all) pause whatever music is playing, and most people train to their own.
+// Upright, like the phone is held (or propped up): a tall 9:16 picture. Phones (iPhones above all)
+// read small sizes as landscape, so ask for a phone-shaped one, and if a held-upright phone still
+// hands back a wide picture, ask once more with the sides swapped.
+export const VIDEO_SHAPE = { width: { ideal: 720 }, height: { ideal: 1280 }, aspectRatio: { ideal: 9 / 16 } };
+async function upright(track) {
+  const portrait = (globalThis.innerHeight ?? 1) >= (globalThis.innerWidth ?? 0);
+  const st = track?.getSettings?.() ?? {};
+  if (portrait && st.width && st.height && st.width > st.height) {
+    try { await track.applyConstraints({ width: { ideal: st.height }, height: { ideal: st.width }, aspectRatio: { ideal: 9 / 16 } }); } catch { /* keep what it gave */ }
+  }
+}
 async function camera(facing = "user") {
-  return navigator.mediaDevices.getUserMedia({
-    // upright, like the phone is held (or propped up) while streaming
-    video: { facingMode: facing, width: { ideal: 480 }, height: { ideal: 640 }, frameRate: { ideal: 24, max: 30 } },
-  });
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, ...VIDEO_SHAPE, frameRate: { ideal: 24, max: 30 } } });
+  await upright(stream.getVideoTracks()[0]);
+  return stream;
 }
 async function microphone() {
   const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
@@ -107,7 +117,11 @@ async function capVideo(pc) {
     try {
       const params = sender.getParameters();
       params.encodings = params.encodings?.length ? params.encodings : [{}];
-      params.encodings.forEach((e) => { e.maxBitrate = VIDEO_KBPS * 1000; });
+      const h = sender.track.getSettings?.().height ?? 0;
+      params.encodings.forEach((e) => {
+        e.maxBitrate = VIDEO_KBPS * 1000;
+        if (h > 900) e.scaleResolutionDownBy = h / 854; // about 480×854 to each viewer
+      });
       await sender.setParameters(params);
     } catch { /* the browser picks its own rate */ }
   }
@@ -238,15 +252,65 @@ function soundButtonHtml(on) {
     ${icon(on ? "speaker" : "speakerSlash", { size: 18 })}<span>${t(on ? "live.soundOnShort" : "live.soundOffShort")}</span></button>`;
 }
 
+/** 3 · 2 · 1 · LIVE over the camera before going live. Resolves when it's done (or cancelled). */
+async function countIn(panel, cancelled) {
+  const el = document.createElement("div");
+  el.className = "lv-countin";
+  panel.appendChild(el);
+  const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  for (const step of ["3", "2", "1", t("live.badge")]) {
+    if (cancelled()) break;
+    el.innerHTML = `<b class="${step.length > 1 ? "is-word" : ""}">${esc(step)}</b>${step.length > 1 ? `<span class="lv-countin-ring" aria-hidden="true"></span>` : ""}`;
+    await sleep(reduced ? 350 : step.length > 1 ? 900 : 800);
+  }
+  el.classList.add("is-out");
+  setTimeout(() => el.remove(), 300);
+}
+
 // --- the Us tab pulses while someone is live ------------------------------------------------------
 
 const BADGE_MS = 60 * 1000;
 /** Marks the page (html[data-someone-live]) so the Us tab can pulse; true when someone else is live. */
 export function markLive(sessions, mine = null) {
-  const on = (sessions ?? []).some((s) => s.id !== mine);
+  const others = (sessions ?? []).filter((s) => s.id !== mine);
+  const on = others.length > 0;
   if (on) document.documentElement.dataset.someoneLive = "1";
   else delete document.documentElement.dataset.someoneLive;
+  drawLivePill(others);
   return on;
+}
+
+// A pill floating above the tab bar on every screen while someone is live: who, what, how long,
+// and Watch. Closing it hides it until someone else goes live.
+let pillDismissed = "";
+let pillTick = null;
+function drawLivePill(others) {
+  let pill = document.getElementById("lv-pill");
+  const key = others.map((s) => s.id).sort().join(",");
+  if (!others.length || key === pillDismissed || !document.getElementById("app-root")) {
+    pill?.remove(); clearInterval(pillTick); pillTick = null;
+    return;
+  }
+  const s = others[0];
+  if (!pill) {
+    pill = document.createElement("div");
+    pill.id = "lv-pill";
+    pill.className = "lv-pill";
+    document.body.appendChild(pill);
+    requestAnimationFrame(() => pill.classList.add("is-in"));
+  }
+  const more = others.length > 1 ? ` <span class="lv-pill-more">+${others.length - 1}</span>` : "";
+  pill.innerHTML = `
+    <button type="button" class="lv-pill-main" data-pill-watch>
+      <span class="lv-pill-dot" aria-hidden="true"></span>
+      <span class="lv-pill-text"><b>${esc(t("live.isLive", { name: s.name }))}${more}</b><span>${esc(t(`live.muscles.${s.muscle}`))} · <span class="lv-pill-clock" data-started="${esc(s.startedAt)}">${elapsed(s.startedAt)}</span></span></span>
+      <span class="lv-pill-watch">${t("live.watch")}</span>
+    </button>
+    <button type="button" class="lv-pill-x" data-pill-x aria-label="${t("app.close")}">${icon("xmark", { size: 14 })}</button>`;
+  pill.querySelector("[data-pill-watch]").addEventListener("click", () => openFeed(others, s.id));
+  pill.querySelector("[data-pill-x]").addEventListener("click", () => { pillDismissed = key; drawLivePill([]); });
+  clearInterval(pillTick);
+  pillTick = setInterval(() => pill.querySelectorAll("[data-started]").forEach((b) => { b.textContent = elapsed(b.dataset.started); }), TICK_MS);
 }
 let badgeTimer = null;
 /** Checks who's live now and then (only while the app is on screen) for the Us tab's pulse. */
@@ -434,8 +498,9 @@ function startLive({ group, muscle }) {
       $("lv-flip").addEventListener("click", async () => {
         try {
           facing = facing === "user" ? "environment" : "user";
-          const fresh = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 480 }, height: { ideal: 640 } } });
+          const fresh = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, ...VIDEO_SHAPE, frameRate: { ideal: 24, max: 30 } } });
           const track = fresh.getVideoTracks()[0];
+          await upright(track);
           const old = stream.getVideoTracks()[0];
           for (const pc of peers.values()) pc.getSenders().find((s) => s.track?.kind === "video")?.replaceTrack(track);
           stream.removeTrack(old); old.stop(); stream.addTrack(track);
@@ -486,9 +551,14 @@ function startLive({ group, muscle }) {
         $("lv-self").srcObject = stream;
         $("lv-self-bg").srcObject = stream;
         if (micWanted()) setMic(true); // they talked last time: the mic comes back on
+        // a moment to get set: 3 · 2 · 1 in big dot-matrix, then LIVE (the group hears about it then)
+        status("");
+        await countIn(panel, () => ended);
+        if (ended) return;
         const out = await api({ op: "liveStart", group: group.id, muscle });
         if (!out.ok) { status(out.errorType === "network" ? "live.offline" : "live.failed"); return; }
         sessionId = out.id;
+        if (out.ice?.length) lastIce = out.ice; // with the relay, for viewers who can't reach this phone directly
         if (out.level) $("lv-meta").textContent = `${t("live.you")} · ${t(`live.levels.${out.level}`)} · ${group.name ?? ""}`;
         lock = await keepAwake();
         status("live.waiting");

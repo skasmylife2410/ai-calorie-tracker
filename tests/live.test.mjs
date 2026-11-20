@@ -241,3 +241,26 @@ test("watching is muted unless you turned the sound on (your own music keeps pla
   const cam = src.slice(src.indexOf("async function camera"), src.indexOf("async function microphone"));
   assert.doesNotMatch(cam, /audio/, "going live doesn't open the mic (that would pause their music)");
 });
+
+test("the relay: Cloudflare credentials when it's set up, cached, never port 53, and nothing when it isn't", async () => {
+  const { relayServers, resetRelayCache, connectServers } = await import("../api/_live.js");
+  resetRelayCache();
+  assert.deepEqual(await relayServers({}), []);
+  let calls = 0;
+  const fetchImpl = async (url, opts) => {
+    calls++;
+    assert.match(url, /rtc\.live\.cloudflare\.com\/v1\/turn\/keys\/KEY\/credentials\/generate-ice-servers$/);
+    assert.equal(opts.headers.Authorization, "Bearer TOKEN");
+    return { ok: true, json: async () => ({ iceServers: [{ urls: ["stun:stun.cloudflare.com:3478", "stun:stun.cloudflare.com:53"] }, { urls: ["turn:turn.cloudflare.com:3478?transport=udp", "turn:turn.cloudflare.com:53?transport=udp", "turns:turn.cloudflare.com:443?transport=tcp"], username: "u", credential: "c" }] }) };
+  };
+  const env = { CF_TURN_KEY_ID: "KEY", CF_TURN_API_TOKEN: "TOKEN" };
+  const list = await relayServers(env, { fetchImpl, now: 1000 });
+  assert.deepEqual(list[1], { urls: ["turn:turn.cloudflare.com:3478?transport=udp", "turns:turn.cloudflare.com:443?transport=tcp"], username: "u", credential: "c" });
+  assert.ok(!list.some((s) => s.urls.some((u) => /:53\b/.test(u))));
+  await relayServers(env, { fetchImpl, now: 2000 });
+  assert.equal(calls, 1, "cached");
+  const all = await connectServers(env, { fetchImpl, now: 3000 });
+  assert.ok(all.length >= 3, "STUN plus the relay");
+  resetRelayCache();
+  assert.deepEqual(await relayServers(env, { fetchImpl: async () => ({ ok: false, status: 401 }), now: 4000 }), [], "a failure never breaks going live");
+});
