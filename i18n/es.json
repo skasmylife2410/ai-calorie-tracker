@@ -309,7 +309,8 @@
     "emailMismatch": "Los dos correos no coinciden.",
     "emailGateEmpty": "Escribe tu correo.",
     "emailGateLater": "Ahora no",
-    "emailGateGo": "Guardar y continuar"
+    "emailGateGo": "Guardar y continuar",
+    "sessionEnded": "Se cerró tu sesión en este teléfono. Vuelve a iniciar sesión: las comidas guardadas aquí se conservan."
   },
   "day": {
     "meals": "Comidas",

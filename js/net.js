@@ -1,9 +1,7 @@
-// net.js — shared helper for calling this app's own /api/* endpoints with the passcode header
-// (x-snapcal-token) attached, and prompting for the passcode on 401. Used by api.js (Gemini)
-// and sync.js so the gate lives in exactly one place.
+// net.js — shared helper for calling this app's own /api/* endpoints with the session header
+// (x-snapcal-token) attached, and sending people back to sign-in when the server refuses it.
 
 const TOKEN_KEY = "snapcal.apiToken";
-const MAX_PASSCODE_ATTEMPTS = 5;
 
 export function getStoredToken() {
   try {
@@ -22,37 +20,45 @@ export function setStoredToken(token) {
   }
 }
 
-let promptInFlight = null;
+const ENDED_KEY = "snapcal.sessionEnded";
 
-/** De-duped: concurrent 401s from multiple calls share a single passcode prompt. */
-function promptForPasscode(showError) {
-  if (promptInFlight) return promptInFlight;
-  promptInFlight = (async () => {
-    const { openPasscodeSheet } = await import("./ui/passcode.js");
-    return openPasscodeSheet(showError);
-  })().finally(() => {
-    promptInFlight = null;
-  });
-  return promptInFlight;
+/** True once, right after the server stopped accepting this phone's sign-in (login.js says why). */
+export function takeSessionEnded() {
+  try {
+    const was = globalThis.sessionStorage?.getItem(ENDED_KEY) === "1";
+    globalThis.sessionStorage?.removeItem(ENDED_KEY);
+    return was;
+  } catch {
+    return false;
+  }
+}
+
+let ending = false;
+/**
+ * The server refused this phone's session (the password was changed or reset, the account was
+ * removed, or an old session ran out): back to the sign-in screen. Meals saved on the phone stay
+ * and sync once they sign in again. This used to open the old shared-passcode prompt from before
+ * accounts, which asked people for a "passcode" they never had and saved whatever they typed in
+ * place of their session.
+ */
+function sessionEnded() {
+  if (ending) return;
+  ending = true;
+  setStoredToken("");
+  try { globalThis.sessionStorage?.setItem(ENDED_KEY, "1"); } catch { /* private mode */ }
+  globalThis.location?.reload();
 }
 
 /**
- * Fetches a same-origin /api/* endpoint, attaching the stored passcode header. On 401, prompts
- * once for the passcode and retries (looping up to MAX_PASSCODE_ATTEMPTS on repeated wrong
- * entries); if the user cancels the prompt, resolves with the original 401 response so the
- * caller can treat it like any other failed request.
+ * Fetches a same-origin /api/* endpoint with this phone's session (x-snapcal-token). A 401 means
+ * the session is no longer valid: the app goes back to sign-in, and the 401 is returned so the
+ * caller treats it like any other failed request.
  */
 export async function apiFetch(url, options = {}) {
-  let attempt = 0;
-  let res;
-  while (attempt < MAX_PASSCODE_ATTEMPTS) {
-    const headers = { ...(options.headers || {}), "x-snapcal-token": getStoredToken() };
-    res = await fetch(url, { ...options, headers });
-    if (res.status !== 401) return res;
-
-    const submitted = await promptForPasscode(attempt > 0);
-    if (!submitted) return res;
-    attempt += 1;
-  }
+  const token = getStoredToken();
+  const headers = { ...(options.headers || {}), "x-snapcal-token": token };
+  const res = await fetch(url, { ...options, headers });
+  // only a session that was sent can have ended (no token: the sign-in screen is already showing)
+  if (res.status === 401 && token) sessionEnded();
   return res;
 }

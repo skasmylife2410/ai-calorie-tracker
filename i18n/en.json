@@ -309,7 +309,8 @@
     "emailMismatch": "The two emails don't match.",
     "emailGateEmpty": "Enter your email.",
     "emailGateLater": "Not now",
-    "emailGateGo": "Save and continue"
+    "emailGateGo": "Save and continue",
+    "sessionEnded": "You were signed out on this phone. Sign in again: the meals saved here are kept."
   },
   "day": {
     "meals": "Meals",

@@ -5,7 +5,7 @@
 // so every existing call (sync, Gemini, the Us page) keeps working untouched.
 
 import { biteMark, numberedHtml } from "./mark.js";
-import { setStoredToken, getStoredToken } from "../net.js";
+import { setStoredToken, getStoredToken, takeSessionEnded } from "../net.js";
 import { t, currentLanguage } from "../i18n.js";
 
 function escapeHtml(s) {
@@ -207,6 +207,10 @@ export function renderLogin(container, { mode = "login" } = {}) {
     let busy = false;
     let error = "";
     let notice = "";
+    // the server stopped accepting this phone's sign-in: say so, and fill in who they were
+    const sessionEnded = takeSessionEnded();
+    let lastUser = "";
+    try { lastUser = sessionEnded ? localStorage.getItem("snapcal.username") || "" : ""; } catch { /* private mode */ }
 
     const signedIn = (token, username) => {
       setStoredToken(token);
@@ -280,11 +284,12 @@ export function renderLogin(container, { mode = "login" } = {}) {
           <div class="auth-card">
             <div class="auth-brand">Boca0</div>
             <h1 class="auth-title">${isSignup && linkCode ? t("invite.joinTitle") : isSignup ? t("auth.createTitle") : t("auth.signInTitle")}</h1>
+            ${!isSignup && sessionEnded ? `<div class="auth-notice">${t("auth.sessionEnded")}</div>` : ""}
             ${isSignup && linkCode ? `<div class="auth-sub">${t("invite.joinSub")}</div><div class="auth-error" id="auth-link-msg">${linkProblem ? t(`invite.bad.${linkProblem}`) : ""}</div>` : ""}
 
             <label class="auth-label" for="auth-user">${t("auth.username")}</label>
             <input id="auth-user" class="auth-input" type="text" autocapitalize="none" autocorrect="off"
-                   spellcheck="false" autocomplete="username" inputmode="text" />
+                   spellcheck="false" autocomplete="username" inputmode="text" value="${escapeHtml(lastUser)}" />
 
             <label class="auth-label" for="auth-pass">${t("auth.password")}</label>
             <input id="auth-pass" class="auth-input" type="password"
