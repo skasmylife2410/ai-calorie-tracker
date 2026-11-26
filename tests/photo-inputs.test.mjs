@@ -16,8 +16,8 @@ test("no photo input asks for the camera app directly", async () => {
   }
 });
 
-test("leftovers, size check, label photo and the voice note's photo use the in-app camera", async () => {
-  for (const name of ["leftovers-sheet.js", "size-check.js", "addfood.js", "voice-note.js"]) {
+test("leftovers, size check, label photo, the voice note's photo and the describe photos use the in-app camera", async () => {
+  for (const name of ["leftovers-sheet.js", "size-check.js", "addfood.js", "voice-note.js", "describe.js"]) {
     const src = await readFile(new URL(`../js/ui/${name}`, import.meta.url), "utf8");
     assert.match(src, /openCameraScan\(\{ photoOnly:/, name);
     assert.ok(!/type="file"/.test(src), `${name} has no file input of its own`);

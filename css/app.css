@@ -2883,7 +2883,7 @@ button.meal-item-grams.is-unknown { font: inherit; font-size: 12px; font-weight:
 .describe-photos-head { font-size: 13px; font-weight: 700; color: var(--sc-primary-text); margin: 0 2px 8px; }
 .describe-photo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .describe-photo { box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; border-radius: 14px;
-  border: 1.5px dashed var(--sc-secondary-35); background: none; color: var(--sc-primary-text); cursor: pointer; }
+  border: 1.5px dashed var(--sc-secondary-35); background: none; color: var(--sc-primary-text); cursor: pointer; font: inherit; text-align: left; width: 100%; }
 .describe-photo.is-set { border-style: solid; border-color: var(--sc-secondary-15); background: var(--sc-card-bg, #fff); box-shadow: var(--sc-card-shadow); cursor: default; padding-right: 34px; }
 .describe-photo-ic { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--sc-secondary-15); color: var(--sc-primary-text); }
 .describe-photo img { flex: none; width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
