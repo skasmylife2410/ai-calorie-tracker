@@ -90,7 +90,7 @@ export function openDescribeMealSheet({ voice = false, timestamp = null, onText 
               : `<label class="describe-photo">
                    <span class="describe-photo-ic" aria-hidden="true">${icon(p.icon, { size: 18 })}</span>
                    <span class="describe-photo-text"><b>${t(`descPhotos.${p.id}`)}</b><small>${t(`descPhotos.${p.id}Sub`)}</small></span>
-                   <input type="file" accept="image/*" data-photo="${p.id}" hidden>
+                   <input type="file" accept="image/*" capture="environment" data-photo="${p.id}" hidden>
                  </label>`).join("")}
           </div>
           ${preparing > 0 ? `<div class="describe-photos-note" role="status">${t("descPhotos.working")}</div>` : ""}
